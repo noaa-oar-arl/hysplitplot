@@ -1,0 +1,153 @@
+import logging
+import sys
+from hysplit4 import util
+
+
+logger = logging.getLogger(__name__)
+
+
+def run(mainFunction, programName):
+    """Provides a common main entry point.
+
+    Initializes a logger, prints banner, calls the main function, and exits
+    with a code returned by the main function.
+
+    :param mainFunction: main function to be executed. It should return an integer.
+    :param programName: program name.
+    """
+    logging.basicConfig(
+        stream=sys.stdout,
+        level=logging.DEBUG,
+        format="%(asctime)s %(levelname)s %(name)s - %(message)s"
+    )
+
+    logging.info("This is {0}.".format(programName))
+
+    exitCode = mainFunction()
+    logging.info("exiting with code [{0}]".format(exitCode))
+
+    sys.exit(exitCode)
+
+
+class CommandLineArguments:
+    """A simple command-line arguments holder
+
+    Provides access to parsed option values.
+    """
+
+    def __init__(self, args=None):
+        """Constructor
+
+        :param args: list of command-line arguments excluding the program name.
+        """
+        self.args = dict()
+        if args != None:
+            self.add(args)
+
+    def clear(self):
+        """Removes all arguments.
+
+        """
+        self.args.clear()
+
+    def add(self, args):
+        """Parses and adds command-line arguments.
+
+        :param args: list of command-line arguments excluding the program name.
+        """
+        for arg in args:
+            if len(arg) >= 2:
+                if arg == "-:":
+                    break
+                elif arg[0] == "+" or arg[0] == "-":
+                    opt = arg[:2]
+                    val = arg[2:]
+                    self.args[opt] = val
+                    logger.debug("adding command-line argument %s as %s -> %s", arg, opt, val)
+
+    def has_arg(self, option):
+        if isinstance(option, list):
+            for opt in option:
+                if opt in self.args:
+                    return True
+            return False
+        else:
+            return True if (option in self.args) else False
+
+    def get_value(self, option):
+        """Returns an option value.
+
+        :param option: name of an option, e.g., -a.
+        :return: None if the option is not found. Otherwise, the option value as string.
+        """
+        if isinstance(option, list):
+            for opt in option:
+                if opt in self.args:
+                    return self.args[opt]
+            return None
+        else:
+            return self.args[option] if (option in self.args) else None
+
+    def get_string_value(self, option, default_value):
+        """Returns an option value as string.
+
+        :param option: name of an option.
+        :param default_value: value to be returned if the option is not found.
+        :return: a string.
+        """
+        val = self.get_value(option)
+        return default_value if (val == None or (not val)) else val
+
+    def get_integer_value(self, option, default_value):
+        """Returns an option value as integer.
+
+        :param option: name of an option.
+        :param default_value: value to be returned if the option is not found.
+        :return: an integer.
+        """
+        val = self.get_value(option)
+        if (val == None or (not val)):
+            return default_value
+        else:
+            try:
+                return int(val)
+            except ValueError:
+                logger.error("ignored non-integer value %s for command-line option %s", val, option)
+                return default_value
+
+    def get_float_value(self, option, default_value):
+        """Returns an option value as floating-point number.
+
+        :param option: name of an option.
+        :param default_value: value to be returned if the option is not found.
+        :return: a floating-point number.
+        """
+        val = self.get_value(option)
+        if (val == None or (not val)):
+            return default_value
+        else:
+            try:
+                return float(val)
+            except ValueError:
+                logger.error("ignored non-float value %s for command-line option %s", val, option)
+                return default_value
+
+    def get_boolean_value(self, option, default_value):
+        """Returns an option value as boolean.
+
+        The option value is first converted to an integer. If the integer is equal to or less
+        than 0, False is returned. Otherwise, True is returned.
+
+        :param option: name of an option.
+        :param default_value: value to be returned if the option is not found.
+        :return: an integer.
+        """
+        val = self.get_value(option)
+        if (val == None or (not val)):
+            return default_value
+        else:
+            try:
+                return util.convert_integer_to_boolean(val)
+            except ValueError:
+                logger.error("ignored non-boolean value %s for command-line option %s", val, option)
+                return default_value
