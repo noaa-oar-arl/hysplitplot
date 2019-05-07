@@ -393,12 +393,15 @@ class TrajectoryDataFileReader(io.FormattedTextFileReader):
         while self.has_next():
             v = self.parse_line(fmt)
             if settings.end_hour_duration <= 0 or abs(v[8]) <= settings.end_hour_duration:
-                g = pd.grids[v[1] - 1]
+                g = pd.grids[v[1] - 1] if (v[1] > 0) else None
                 t = pd.trajectories[v[0] - 1]
                 if firstQ:
                     firstQ = False
-                    if t.starting_loc == (99.0, 99.0):
+                    if t.starting_loc == (99.0, 99.0) and v[1] > 0:
                         t.repair_starting_location(pd.trajectories[v[1] - 1])
+                    actual = len(v) - 12
+                    if actual != ndiagnostics:
+                        logger.error("expected %d diagnostic(s) but found %d in the data file", ndiagnostics, actual)
                 t.grids.append(g)
                 t.datetimes.append(datetime.datetime(v[2], v[3], v[4], v[5], v[6]))
                 t.forecast_hours.append(v[7])
@@ -407,7 +410,8 @@ class TrajectoryDataFileReader(io.FormattedTextFileReader):
                 t.longitudes.append(v[10])
                 t.heights.append(v[11])
                 for k in range(ndiagnostics):
-                    t.others[diagnostic[k]].append(v[12 + k])
+                    if 12 + k < len(v):
+                        t.others[diagnostic[k]].append(v[12 + k])
 
         pd.after_reading_file(settings)
         return self.trajectory_data
@@ -1061,20 +1065,23 @@ class TrajectoryPlot:
                 # gather data points
                 ages = vert_proj.select_xvalues(t)
                 vc = t.collect_vertical_coordinate()
-                # draw the source marker
-                axes.scatter(ages[0], vc[0],
-                             s=self.settings.source_marker_size,
-                             marker=self.settings.source_marker,
-                             c=self.settings.source_marker_color,
-                             clip_on=False)
-                # draw a profile.
-                axes.plot(ages, vc, clr)
-                # draw triangle markers along the profile if necessary
-                interval_symbol_drawer.draw(t, ages, vc, c=clr, marker=ms, clip_on=False)
-                # show the value of the first vertical coordinate
-                if k == 0:
-                    axes.text(ages[0], vc[0], "{0}  ".format(int(vc[0])),
-                              horizontalalignment="right", verticalalignment="center")
+                if len(vc) > 0:
+                    # draw the source marker
+                    axes.scatter(ages[0], vc[0],
+                                 s=self.settings.source_marker_size,
+                                 marker=self.settings.source_marker,
+                                 c=self.settings.source_marker_color,
+                                 clip_on=False)
+                    # draw a profile.
+                    axes.plot(ages, vc, clr)
+                    # draw triangle markers along the profile if necessary
+                    interval_symbol_drawer.draw(t, ages, vc, c=clr, marker=ms, clip_on=False)
+                    # show the value of the first vertical coordinate
+                    if k == 0:
+                        axes.text(ages[0], vc[0], "{0}  ".format(int(vc[0])),
+                                  horizontalalignment="right", verticalalignment="center")
+                else:
+                    logger.error("skipping a trajectory with no vertical coordinate")
 
         # draw the terrain profile if it is necessary
         if terrain_profileQ and self.settings.vertical_coordinate == self.settings.Vertical.ABOVE_GROUND_LEVEL:
@@ -1193,7 +1200,7 @@ class TrajectoryPlot:
 
     def draw_bottom_plot(self):
         if self.settings.vertical_coordinate == TrajectoryPlotSettings.Vertical.NONE:
-            self._turn_off_spines(self.height_axes_outer)
+            self._turn_off_spines(self.height_axes_outer, top=True)
             self._turn_off_ticks(self.height_axes_outer)
 
             self._turn_off_spines(self.height_axes)
@@ -1221,7 +1228,7 @@ class TrajectoryPlot:
         elif (alt_text_lines is not None) and (len(alt_text_lines) > 0):
             self._draw_alt_text_boxes(self.text_axes, alt_text_lines)
         else:
-            self._turn_off_spines(self.text_axes)
+            self._turn_off_spines(self.text_axes, top=True)
         
     def make_maptext_filename(self):
         s = self.settings.output_suffix
@@ -1250,11 +1257,15 @@ class TrajectoryPlot:
                       transform=axes.transAxes)
             count += 1
 
-    def _turn_off_spines(self, axes):
-        axes.spines["left"].set_visible(False)
-        axes.spines["right"].set_visible(False)
-        axes.spines["top"].set_visible(True)
-        axes.spines["bottom"].set_visible(False)
+    def _turn_off_spines(self, axes, **kw):
+        left = kw["left"] if "left" in kw else False
+        right = kw["right"] if "right" in kw else False
+        top = kw["top"] if "top" in kw else False
+        bottom = kw["bottom"] if "bottom" in kw else False
+        axes.spines["left"].set_visible(left)
+        axes.spines["right"].set_visible(right)
+        axes.spines["top"].set_visible(top)
+        axes.spines["bottom"].set_visible(bottom)
     
     def _turn_off_ticks(self, axes):
         axes.set_xticks([])
@@ -1365,13 +1376,14 @@ class TimeIntervalSymbolDrawer(IntervalSymbolDrawer):
         xint = []; yint = []  # at every 1, 3, 6, 12, or 24.
         firstIndex = 1 if omit_first else 0
 
-        for k in range(firstIndex, len(datetimes)):
-            if datetimes[k].hour == 0 and datetimes[k].minute == 0:
-                x24.append(x[k])
-                y24.append(y[k])
-            elif (datetimes[k].hour % interval) == 0 and datetimes[k].minute == 0:
-                xint.append(x[k])
-                yint.append(y[k])
+        if len(x) == len(y) and len(x) > 0:
+            for k in range(firstIndex, len(datetimes)):
+                if datetimes[k].hour == 0 and datetimes[k].minute == 0:
+                    x24.append(x[k])
+                    y24.append(y[k])
+                elif (datetimes[k].hour % interval) == 0 and datetimes[k].minute == 0:
+                    xint.append(x[k])
+                    yint.append(y[k])
 
         return x24, y24, xint, yint
 
@@ -1397,13 +1409,14 @@ class AgeIntervalSymbolDrawer(IntervalSymbolDrawer):
         xint = []; yint = []  # at every 1, 3, 6, 12, or 24.
         firstIndex = 1 if omit_first else 0
 
-        for k in range(firstIndex, len(ages)):
-            if (ages[k] % 24.0) == 0:
-                x24.append(x[k])
-                y24.append(y[k])
-            elif (ages[k] % interval) == 0:
-                xint.append(x[k])
-                yint.append(y[k])
+        if len(x) == len(y) and len(x) > 0:
+            for k in range(firstIndex, len(ages)):
+                if (ages[k] % 24.0) == 0:
+                    x24.append(x[k])
+                    y24.append(y[k])
+                elif (ages[k] % interval) == 0:
+                    xint.append(x[k])
+                    yint.append(y[k])
 
         return x24, y24, xint, yint
 
