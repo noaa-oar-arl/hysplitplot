@@ -2,15 +2,15 @@
 
 This project is to replace the postscript graphics of HYSPLIT with Python
 graphics.  The source code is written using Python 3.7 and it requires a few
-external packages.  See setup.py for external packages that are required.
+external packages.  See setup.py for the external packages that are required.
 
 To generate a trajectory plot using a trajectory dump file, say, tdump found
 in HYSPLIT's working directory, run
 
     $ python ~/hysplit_graf/trajplot.py -itdump
 
-It is assumed that the hysplit_graf is installed at the top-level of your
-home directory.  If it is installed somewhere else, use that path to run
+It is assumed that hysplit_graf is installed at the top-level of your home
+directory.  If it is installed somewhere else, use that path to run
 trajplot.py.  The command-line arguments for the trajplot.py script have the
 same format and meaning as the TRAJPLOT program in HYSPLIT.
 
