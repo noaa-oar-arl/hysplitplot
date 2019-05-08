@@ -1326,6 +1326,20 @@ def test_TrajectoryPlot_update_gridlines():
         raise pytest.fail("unexpeced exception: {0}".format(ex))
 
 
+def test_TrajectoryPlot__draw_latlon_labels():
+    p = plot.TrajectoryPlot()
+    p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
+    p.read_data_files()
+    p.read_background_map()
+    p.layout()
+
+    try:
+        p._draw_latlon_labels(p.traj_axes, p.projection.corners_lonlat, 1.0, 1.0)
+        cleanup_plot(p)
+    except Exception as ex:
+        raise pytest.fail("unexpeced exception: {0}".format(ex))
+
+
 def test_TrajectoryPlot__draw_concentric_circles():
     p = plot.TrajectoryPlot()
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated", "-g4:100"])

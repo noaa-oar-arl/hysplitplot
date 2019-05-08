@@ -13,7 +13,8 @@ import matplotlib.gridspec
 import matplotlib.patches
 import matplotlib.pyplot as plt
 
-from hysplit4 import cmdline, io, graph, tick, util
+from hysplit4 import cmdline, io, graph, util
+from matplotlib.pyplot import xticks
 
 
 logger = logging.getLogger(__name__)
@@ -775,14 +776,24 @@ class TrajectoryPlot:
         if util.sign(1.0, alonl) != util.sign(1.0, alonr) and alonr < 0.0:
             alonr += 360.0
 
+        logger.debug("calculating gridline spacing for lons %f, %f and lats %f, %f", alonl, alonr, alatb, alatt)
+
         # interval to have at least 4 lat/lon lines on a map
         ref = max(abs(alatt-alatb)*0.25, abs(alonl-alonr)*0.25, spacings[-1])
-
+        logger.debug("searching optimal spacing starting from %f", ref)
+                     
+        delta = None
         for s in spacings:
             if s <= ref:
-                return s
-
-        return spacings[-1]
+                delta = s
+                logger.debug("optimal spacing %f", delta)
+                break;
+        
+        if delta is None:
+            delta = spacings[-1]
+            logger.debug("optimal spacing %f", delta)
+            
+        return delta
 
     def _fix_map_color(self, clr):
         return clr if self.settings.color != self.settings.Color.BLACK_AND_WHITE else 'k'
@@ -984,6 +995,7 @@ class TrajectoryPlot:
     @staticmethod
     def _collect_tick_values(istart, iend, idelta, scale, lmt):
         amin, amax = lmt
+        logger.debug("collecting tick values in the range [%f, %f] using spacing %f", amin, amax, scale*idelta)
         state = 0
         list = []
         for i in range(istart, iend, idelta):
@@ -997,34 +1009,91 @@ class TrajectoryPlot:
                 list.append( util.make_int_if_same(v) )
                 if v > amax:
                     state = 2
+            
         return list
 
     def update_gridlines(self):
-        delta = self.get_gridline_spacing(self.projection.corners_lonlat)
-        idelta = int(delta*10.0)
-        if idelta == 0:
+        deltax = deltay = self.get_gridline_spacing(self.projection.corners_lonlat)
+        ideltax = ideltay = int(deltax*10.0)
+        if ideltax == 0:
+            logger.debug("not updating gridlines because deltas are %f, %f", deltax, deltay)
             return
 
         lonlat_ext = self.traj_axes.get_extent(self.data_crs)
-        logger.debug("determining gridlines for extent %s using delta %f", lonlat_ext, delta)
+        logger.debug("determining gridlines for extent %s using deltas %f, %f", lonlat_ext, deltax, deltay)
 
-        xticks = self._collect_tick_values(-1800, 1800, idelta, 0.1, lonlat_ext[0:2])
+        xticks = self._collect_tick_values(-1800, 1800, ideltax, 0.1, lonlat_ext[0:2])
         logger.debug("gridlines at lons %s", xticks)
-
-        yticks = self._collect_tick_values(-900+idelta, 900, idelta, 0.1, lonlat_ext[2:4])
+        if len(xticks) == 0:
+            # recompute deltay and try again
+            alonl, alonr, alatb, alatt = lonlat_ext
+            deltax = self.calc_gridline_spacing([alonl, alonr, alatb, alatb])
+            ideltax = int(deltax*10.0)
+            xticks = self._collect_tick_values(-1800, 1800, ideltax, 0.1, lonlat_ext[0:2])
+            logger.debug("gridlines at lats %s", xticks)
+            
+        yticks = self._collect_tick_values(-900+ideltay, 900, ideltay, 0.1, lonlat_ext[2:4])
         logger.debug("gridlines at lats %s", yticks)
-
+        if len(yticks) == 0:
+            # recompute deltay and try again
+            alonl, alonr, alatb, alatt = lonlat_ext
+            deltay = self.calc_gridline_spacing([alonl, alonl, alatb, alatt])
+            ideltay = int(deltay*10.0)
+            yticks = self._collect_tick_values(-900+ideltay, 900, ideltay, 0.1, lonlat_ext[2:4])
+            logger.debug("gridlines at lats %s", yticks)
+            
         # draw dotted gridlines
-        gl = self.traj_axes.gridlines(crs=self.data_crs,
-                                      xlocs=xticks, ylocs=yticks,
-                                      linestyle=":", linewidth=0.5,
-                                      color=self.settings.map_color)
+        kwargs = {"crs": self.data_crs, "linestyle": ":", "linewidth": 0.5, "color": self.settings.map_color}
+        if len(xticks) > 0:
+            kwargs["xlocs"] = xticks
+        if len(yticks) > 0:
+            kwargs["ylocs"] = yticks
+        gl = self.traj_axes.gridlines(**kwargs)
         gl.xformatter = cartopy.mpl.gridliner.LONGITUDE_FORMATTER
         gl.yformatter = cartopy.mpl.gridliner.LATITUDE_FORMATTER
 
-        # draw tick labels - note call set_yticks() if the y-axis label is not shown.
-        tick.projection_xticks(self.traj_axes, xticks)
-        tick.projection_yticks(self.traj_axes, yticks)
+        # lat/lon line labels
+        self._draw_latlon_labels(self.traj_axes, lonlat_ext, deltax, deltay)
+    
+    def _draw_latlon_labels(self, axes, lonlat_ext, deltax, deltay):
+        logger.debug("latlon labels at intervals %f, %f", deltax, deltay)
+        ideltax = int(deltax*10.0)
+        ideltay = int(deltay*10.0)
+        if ideltax == 0 or ideltay == 0:
+            logger.debug("not drawing latlon labels because deltas are %f, %f", deltax, deltay)
+            return
+        
+        x1, x2, y1, y2 = self.projection.corners_xy
+        clon, clat = self.projection.coord.calc_lonlat(0.5*(x1+x2), 0.5*(y1+y2))
+        clon = util.nearest_int(clon/deltax)*deltax
+        clat = util.nearest_int(clat/deltay)*deltay
+        logger.debug("label reference at lon %f, lat %f", clon, clat)
+        
+        # lon labels
+        lat = (clat - 0.5 * deltay) if (clat > 80.0) else clat + 0.5 * deltay
+        for k in range(-(1800-ideltax), 1800, ideltax):
+            lon = 0.1 * k
+            if deltax < 1.0:
+                str = "{0:.1f}".format(lon)
+            else:
+                str = "{0}".format(int(lon))
+            logger.debug("lon label %s at lon %f, lat %f", str, lon, lat)
+            axes.text(lon, lat, str, transform=self.data_crs,
+                      horizontalalignment="center", verticalalignment="center",
+                      color=self.settings.map_color, clip_on=True)
+        
+        # lat labels
+        lon = clon + 0.5 * deltax
+        for k in range(-(900-ideltay), 900, ideltay):
+            lat = 0.1 * k
+            if deltay < 1.0:
+                str = "{0:.1f}".format(lat)
+            else:
+                str = "{0}".format(int(lat))
+            logger.debug("lat label %s at lon %f, lat %f", str, lon, lat)
+            axes.text(lon, lat, str, transform=self.data_crs,
+                      horizontalalignment="center", verticalalignment="center",
+                      color=self.settings.map_color, clip_on=True)
 
     def _draw_concentric_circles(self, axes):
         lon, lat = self.data_list[0].trajectories[0].starting_loc
