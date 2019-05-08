@@ -1022,11 +1022,15 @@ class TrajectoryPlot:
         lonlat_ext = self.traj_axes.get_extent(self.data_crs)
         logger.debug("determining gridlines for extent %s using deltas %f, %f", lonlat_ext, deltax, deltay)
 
+        alonl, alonr, alatb, alatt = lonlat_ext
+        # check for crossing dateline
+        if util.sign(1.0, alonl) != util.sign(1.0, alonr) and alonr < 0.0:
+            alonr += 360.0
+            
         xticks = self._collect_tick_values(-1800, 1800, ideltax, 0.1, lonlat_ext[0:2])
         logger.debug("gridlines at lons %s", xticks)
-        if len(xticks) == 0:
-            # recompute deltay and try again
-            alonl, alonr, alatb, alatt = lonlat_ext
+        if len(xticks) == 0 or deltax >= abs(0.25*(alonr - alonl)):
+            # recompute deltax with zero latitude span and try again
             deltax = self.calc_gridline_spacing([alonl, alonr, alatb, alatb])
             ideltax = int(deltax*10.0)
             xticks = self._collect_tick_values(-1800, 1800, ideltax, 0.1, lonlat_ext[0:2])
@@ -1034,9 +1038,8 @@ class TrajectoryPlot:
             
         yticks = self._collect_tick_values(-900+ideltay, 900, ideltay, 0.1, lonlat_ext[2:4])
         logger.debug("gridlines at lats %s", yticks)
-        if len(yticks) == 0:
-            # recompute deltay and try again
-            alonl, alonr, alatb, alatt = lonlat_ext
+        if len(yticks) == 0 or deltay >= abs(0.25*(alatt - alatb)):
+            # recompute deltay with zero longitude span and try again
             deltay = self.calc_gridline_spacing([alonl, alonl, alatb, alatt])
             ideltay = int(deltay*10.0)
             yticks = self._collect_tick_values(-900+ideltay, 900, ideltay, 0.1, lonlat_ext[2:4])
@@ -1077,7 +1080,6 @@ class TrajectoryPlot:
                 str = "{0:.1f}".format(lon)
             else:
                 str = "{0}".format(int(lon))
-            logger.debug("lon label %s at lon %f, lat %f", str, lon, lat)
             axes.text(lon, lat, str, transform=self.data_crs,
                       horizontalalignment="center", verticalalignment="center",
                       color=self.settings.map_color, clip_on=True)
@@ -1090,7 +1092,6 @@ class TrajectoryPlot:
                 str = "{0:.1f}".format(lat)
             else:
                 str = "{0}".format(int(lat))
-            logger.debug("lat label %s at lon %f, lat %f", str, lon, lat)
             axes.text(lon, lat, str, transform=self.data_crs,
                       horizontalalignment="center", verticalalignment="center",
                       color=self.settings.map_color, clip_on=True)
