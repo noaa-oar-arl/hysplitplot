@@ -716,6 +716,7 @@ class TrajectoryPlotHelper:
 class TrajectoryPlot:
 
     _WGS84 = {"init": "epsg:4326"}  # A coordinate reference system.
+    _GRIDLINE_DENSITY = 0.25        # 4 gridlines at minimum in each direction
 
     def __init__(self):
         self.settings = TrajectoryPlotSettings()
@@ -779,7 +780,7 @@ class TrajectoryPlot:
         logger.debug("calculating gridline spacing for lons %f, %f and lats %f, %f", alonl, alonr, alatb, alatt)
 
         # interval to have at least 4 lat/lon lines on a map
-        ref = max(abs(alatt-alatb)*0.25, abs(alonl-alonr)*0.25, spacings[-1])
+        ref = max(abs(alatt-alatb)*self._GRIDLINE_DENSITY, abs(alonl-alonr)*self._GRIDLINE_DENSITY, spacings[-1])
         logger.debug("searching optimal spacing starting from %f", ref)
                      
         delta = None
@@ -1029,7 +1030,7 @@ class TrajectoryPlot:
             
         xticks = self._collect_tick_values(-1800, 1800, ideltax, 0.1, lonlat_ext[0:2])
         logger.debug("gridlines at lons %s", xticks)
-        if len(xticks) == 0 or deltax >= abs(0.25*(alonr - alonl)):
+        if len(xticks) == 0 or deltax >= abs(self._GRIDLINE_DENSITY*(alonr - alonl)):
             # recompute deltax with zero latitude span and try again
             deltax = self.calc_gridline_spacing([alonl, alonr, alatb, alatb])
             ideltax = int(deltax*10.0)
@@ -1038,7 +1039,7 @@ class TrajectoryPlot:
             
         yticks = self._collect_tick_values(-900+ideltay, 900, ideltay, 0.1, lonlat_ext[2:4])
         logger.debug("gridlines at lats %s", yticks)
-        if len(yticks) == 0 or deltay >= abs(0.25*(alatt - alatb)):
+        if len(yticks) == 0 or deltay >= abs(self._GRIDLINE_DENSITY*(alatt - alatb)):
             # recompute deltay with zero longitude span and try again
             deltay = self.calc_gridline_spacing([alonl, alonl, alatb, alatt])
             ideltay = int(deltay*10.0)
@@ -1052,8 +1053,8 @@ class TrajectoryPlot:
         if len(yticks) > 0:
             kwargs["ylocs"] = yticks
         gl = self.traj_axes.gridlines(**kwargs)
-        gl.xformatter = cartopy.mpl.gridliner.LONGITUDE_FORMATTER
-        gl.yformatter = cartopy.mpl.gridliner.LATITUDE_FORMATTER
+        #gl.xformatter = cartopy.mpl.gridliner.LONGITUDE_FORMATTER
+        #gl.yformatter = cartopy.mpl.gridliner.LATITUDE_FORMATTER
 
         # lat/lon line labels
         self._draw_latlon_labels(self.traj_axes, lonlat_ext, deltax, deltay)
