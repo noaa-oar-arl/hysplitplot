@@ -1,5 +1,6 @@
 import pytest
 import datetime
+import os
 import matplotlib.pyplot as plt
 import matplotlib.dates
 import cartopy.crs
@@ -955,66 +956,6 @@ def test_Trajectory_repair_starting_level():
     return
 
 
-def test_TrajectoryPlotHelper_make_plot_title(plotData):
-    labels_cfg = graph.LabelsConfig()
-    title = plot.TrajectoryPlotHelper.make_plot_title(plotData, labels_cfg)
-    assert title == "NOAA HYSPLIT MODEL\n" + \
-           "Forward trajectories starting at 0000 UTC 16 Oct 95\n" + \
-           "NGM Meteorological Data"
-
-    # Change the model name
-
-    plotData.grids[0].model = " TEST "
-    title = plot.TrajectoryPlotHelper.make_plot_title(plotData, labels_cfg)
-    assert title == "NOAA HYSPLIT MODEL\n" + \
-           "Forward trajectories starting at 0000 UTC 16 Oct 95\n" + \
-           "TEST Meteorological Data"
-
-    # Add a grid
-
-    g = plot.TrajectoryPlotData.MeteorologicalGrid()
-    g.model = "TEST"
-    plotData.grids.append(g)
-    title = plot.TrajectoryPlotHelper.make_plot_title(plotData, labels_cfg)
-    assert title == "NOAA HYSPLIT MODEL\n" + \
-           "Forward trajectories starting at 0000 UTC 16 Oct 95\n" + \
-           "Various Meteorological Data"
-
-    # Change the starting time of a trajectory
-
-    t = plotData.trajectories[2]
-    t.starting_datetime = datetime.datetime(93, 10, 16, 1, 0)
-    title = plot.TrajectoryPlotHelper.make_plot_title(plotData, labels_cfg)
-    assert title == "NOAA HYSPLIT MODEL\n" + \
-           "Forward trajectories starting at various times\n" + \
-           "Various Meteorological Data"
-
-    # Change direction
-
-    plotData.trajectory_direction = "BACKWARD"
-    title = plot.TrajectoryPlotHelper.make_plot_title(plotData, labels_cfg)
-    assert title == "NOAA HYSPLIT MODEL\n" + \
-           "Backward trajectories ending at various times\n" + \
-           "Various Meteorological Data"
-
-    # With one trajectory
-
-    plotData.trajectories.pop()
-    plotData.trajectories.pop()
-    title = plot.TrajectoryPlotHelper.make_plot_title(plotData, labels_cfg)
-    assert title == "NOAA HYSPLIT MODEL\n" + \
-           "Backward trajectory ending at 0000 UTC 16 Oct 95\n" + \
-           "Various Meteorological Data"
-
-    # Change direction
-
-    plotData.trajectory_direction = "FORWARD"
-    title = plot.TrajectoryPlotHelper.make_plot_title(plotData, labels_cfg)
-    assert title == "NOAA HYSPLIT MODEL\n" + \
-           "Forward trajectory starting at 0000 UTC 16 Oct 95\n" + \
-           "Various Meteorological Data"
-
-
 def test_TrajectoryPlotHelper_make_ylabel():
     plotData = plot.TrajectoryPlotData()
     t = plot.TrajectoryPlotData.Trajectory()
@@ -1257,6 +1198,86 @@ def test_TrajectoryPlot_layout():
     cleanup_plot(p)
 
 
+def test_TrajectoryPlot_make_plot_title(plotData):
+    p = plot.TrajectoryPlot()
+    p.labels = graph.LabelsConfig()
+    p.cluster_list = graph.ClusterList(1)
+    
+    title = p.make_plot_title(plotData)
+    assert title == "NOAA HYSPLIT MODEL\n" + \
+           "Forward trajectories starting at 0000 UTC 16 Oct 95\n" + \
+           "NGM Meteorological Data"
+
+    # Change the model name
+
+    plotData.grids[0].model = " TEST "
+    title = p.make_plot_title(plotData)
+    assert title == "NOAA HYSPLIT MODEL\n" + \
+           "Forward trajectories starting at 0000 UTC 16 Oct 95\n" + \
+           "TEST Meteorological Data"
+
+    # Add a grid
+
+    g = plot.TrajectoryPlotData.MeteorologicalGrid()
+    g.model = "TEST"
+    plotData.grids.append(g)
+    title = p.make_plot_title(plotData)
+    assert title == "NOAA HYSPLIT MODEL\n" + \
+           "Forward trajectories starting at 0000 UTC 16 Oct 95\n" + \
+           "Various Meteorological Data"
+
+    # Change the starting time of a trajectory
+
+    t = plotData.trajectories[2]
+    t.starting_datetime = datetime.datetime(93, 10, 16, 1, 0)
+    title = p.make_plot_title(plotData)
+    assert title == "NOAA HYSPLIT MODEL\n" + \
+           "Forward trajectories starting at various times\n" + \
+           "Various Meteorological Data"
+
+    # Change direction
+
+    plotData.trajectory_direction = "BACKWARD"
+    title = p.make_plot_title(plotData)
+    assert title == "NOAA HYSPLIT MODEL\n" + \
+           "Backward trajectories ending at various times\n" + \
+           "Various Meteorological Data"
+
+    # With one trajectory
+
+    plotData.trajectories.pop()
+    plotData.trajectories.pop()
+    title = p.make_plot_title(plotData)
+    assert title == "NOAA HYSPLIT MODEL\n" + \
+           "Backward trajectory ending at 0000 UTC 16 Oct 95\n" + \
+           "Various Meteorological Data"
+
+    # Change direction
+
+    plotData.trajectory_direction = "FORWARD"
+    title = p.make_plot_title(plotData)
+    assert title == "NOAA HYSPLIT MODEL\n" + \
+           "Forward trajectory starting at 0000 UTC 16 Oct 95\n" + \
+           "Various Meteorological Data"
+
+    # IDLBL = "MERGMEAN"
+    
+    plotData.IDLBL = "MERGMEAN"
+    p.cluster_list.total_traj = 112
+    title = p.make_plot_title(plotData)
+    assert title == "NOAA HYSPLIT MODEL\n" + \
+           "112 forward trajectories\n" + \
+           "Various Meteorological Data"
+           
+    # change direction
+    
+    plotData.trajectory_direction = "BACKWARD"
+    title = p.make_plot_title(plotData)
+    assert title == "NOAA HYSPLIT MODEL\n" + \
+           "112 backward trajectories\n" + \
+           "Various Meteorological Data"
+
+
 def test_TrajectoryPlot__connect_event_handlers():
     p = plot.TrajectoryPlot()
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump"])
@@ -1374,6 +1395,74 @@ def test_TrajectoryPlot_draw_trajectory_plot():
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
+
+
+def test_TrajecotryPlot__read_cluster_info_if_exists():
+    p = plot.TrajectoryPlot()
+    pd = plot.TrajectoryPlotData()
+    pd.IDLBL = "MERGMEAN"
+    # need four trajectories to match the contents of CLUSLIST_4
+    pd.trajectories.append(plot.TrajectoryPlotData.Trajectory())
+    pd.trajectories.append(plot.TrajectoryPlotData.Trajectory())
+    pd.trajectories.append(plot.TrajectoryPlotData.Trajectory())
+    pd.trajectories.append(plot.TrajectoryPlotData.Trajectory())
+    p.data_list = [pd]
+    
+    # when CLUSLIST_4 does not exist
+    try:
+        p._read_cluster_info_if_exists(p.data_list)
+        pytest.fail("expected an exception")
+    except Exception as ex:
+        assert str(ex) == "file not found CLUSLIST_4 or CLUSLIST_3"
+    
+    # create CLUSLIST_4
+    with open("CLUSLIST_4", "wt") as f:
+        f.write("1 1\n")
+        f.write("2 1\n")
+        f.write("3 1\n")
+        f.write("4 1\n")
+    
+    try:
+        p._read_cluster_info_if_exists(p.data_list)
+        assert p.cluster_list is not None
+        assert p.cluster_list.total_traj == 4
+    except Exception as ex:
+        pytest.fail("expected no exception")
+
+    os.remove("CLUSLIST_4")
+    
+    return
+
+
+def test_TrajectoryPlot_make_clusterlist_filename():
+    p = plot.TrajectoryPlot()
+    
+    # create a test file
+    with open("CLUSLIST_4", "wt") as f:
+        f.write("line")
+    
+    fn, start_index, candidates = p.make_clusterlist_filename(4)
+    assert fn == "CLUSLIST_4"
+    assert start_index == 1
+    
+    os.remove("CLUSLIST_4")
+    
+    # create another test file
+    with open("CLUSLIST_3", "wt") as f:
+        f.write("line")
+    
+    fn, start_index, candidates = p.make_clusterlist_filename(4)
+    assert fn == "CLUSLIST_3"
+    assert start_index == 0
+    
+    os.remove("CLUSLIST_3")
+
+    # otherwise
+    fn, start_index, candidates = p.make_clusterlist_filename(4)
+    assert fn is None
+    assert start_index == 1
+    assert candidates[0] == "CLUSLIST_4"
+    assert candidates[1] == "CLUSLIST_3"
 
 
 def test_TrajectoryPlot_draw_bottom_plot():

@@ -675,35 +675,6 @@ class TrajectoryPlotData:
 class TrajectoryPlotHelper:
 
     @staticmethod
-    def make_plot_title(plot_data, labels_cfg):
-        fig_title = labels_cfg.get("TITLE")
-
-        if plot_data.is_forward_calculation():
-            if len(plot_data.trajectories) > 1:
-                fig_title += "\nForward trajectories starting at"
-            else:
-                fig_title += "\nForward trajectory starting at"
-        else:
-            if len(plot_data.trajectories) > 1:
-                fig_title += "\nBackward trajectories ending at"
-            else:
-                fig_title += "\nBackward trajectory ending at"
-
-        traj_times = plot_data.get_unique_start_datetimes()
-        if len(traj_times) == 1:
-            fig_title += traj_times[0].strftime(" %H%M UTC %d %b %y")
-        else:
-            fig_title += " various times"
-
-        if len(plot_data.grids) == 1:
-            fig_title += "\n{0}".format(plot_data.grids[0].model.strip())
-        else:
-            fig_title += "\nVarious"
-        fig_title += " Meteorological Data"
-
-        return fig_title
-
-    @staticmethod
     def make_ylabel(plot_data, marker, time_label_interval):
         y_label = "Source {0} at".format(marker) if time_label_interval >= 0 else "Source at"
 
@@ -756,6 +727,7 @@ class TrajectoryPlot:
         self.height_axes = None
         self.height_axes_outer = None
         self.labels = graph.LabelsConfig()
+        self.cluster_list = None
 
     def merge_plot_settings(self, filename, args):
         if filename is not None:
@@ -928,7 +900,10 @@ class TrajectoryPlot:
             constrained_layout=False
         )
 
-        fig.suptitle(TrajectoryPlotHelper.make_plot_title(self.data_list[0], self.labels))
+        # cluster information
+        self._read_cluster_info_if_exists(self.data_list)        
+
+        fig.suptitle(self.make_plot_title(self.data_list[0]))
 
         outer_grid = matplotlib.gridspec.GridSpec(3, 1,
                                                   wspace=0.0, hspace=0.0,  # no spaces between subplots
@@ -947,6 +922,49 @@ class TrajectoryPlot:
 
         if ev_handlers is not None:
             self._connect_event_handlers(ev_handlers)
+
+    def make_plot_title(self, plot_data):
+        cluster_list = self.cluster_list
+        IDLBL = plot_data.IDLBL
+        ntraj = len(plot_data.trajectories)
+
+        fig_title = self.labels.get("TITLE")
+        
+        if IDLBL == "MERGMEAN":
+            if plot_data.is_forward_calculation():
+                fig_title += "\n{0} forward trajectories".format(cluster_list.total_traj)
+            else:
+                fig_title += "\n{0} backward trajectories".format(cluster_list.total_traj)
+        elif IDLBL == "MERGLIST":
+            if plot_data.is_forward_calculation():
+                fig_title += "\n{0} forward trajectories starting at various times".format(ntraj)
+            else:
+                fig_title += "\n{0} backward trajectories ending at various times".format(ntraj)
+        else:
+            if plot_data.is_forward_calculation():
+                if ntraj > 1:
+                    fig_title += "\nForward trajectories starting at"
+                else:
+                    fig_title += "\nForward trajectory starting at"
+            else:
+                if ntraj > 1:
+                    fig_title += "\nBackward trajectories ending at"
+                else:
+                    fig_title += "\nBackward trajectory ending at"
+    
+            traj_times = plot_data.get_unique_start_datetimes()
+            if len(traj_times) == 1:
+                fig_title += traj_times[0].strftime(" %H%M UTC %d %b %y")
+            else:
+                fig_title += " various times"
+
+        if len(plot_data.grids) == 1:
+            fig_title += "\n{0}".format(plot_data.grids[0].model.strip())
+        else:
+            fig_title += "\nVarious"
+        fig_title += " Meteorological Data"
+
+        return fig_title
 
     def _connect_event_handlers(self, handlers):
         for ev in handlers:
@@ -1174,9 +1192,9 @@ class TrajectoryPlot:
 
         # See if the data time span is longer than the specified interval
         interval_symbol_drawer = IntervalSymbolDrawerFactory.create_instance(axes, self.settings)
-
+            
         for plotData in self.data_list:
-            for t in plotData.trajectories:
+            for k, t in enumerate(plotData.trajectories):
                 # draw a source marker
                 if self.settings.label_source == 1:
                     if util.is_valid_lonlat(t.starting_loc):
@@ -1197,7 +1215,34 @@ class TrajectoryPlot:
                 # draw interval markers
                 interval_symbol_drawer.draw(t, lons, lats, c=clr, marker=ms, clip_on=True,
                                             transform=self.data_crs)
+                # cluster info
+                if self.cluster_list is not None:
+                    cluster_label = self.cluster_list.get_label(k)
+                    axes.text(lons[-1], lats[-1], cluster_label, horizontalalignment="right",
+                              verticalalignment="bottom", transform=self.data_crs)
 
+    def _read_cluster_info_if_exists(self, data_list):
+        for data in data_list:
+            if data.IDLBL == "MERGMEAN":
+                ntraj = len(data.trajectories)
+                fn, start_index, candidates = self.make_clusterlist_filename(ntraj)
+                if fn is None:
+                    logger.error("file not found %s or %s", candidates[0], candidates[1])
+                    raise Exception("file not found {0} or {1}".format(candidates[0], candidates[1]))
+                self.cluster_list = graph.ClusterList(start_index).get_reader().read(fn)
+                break
+    
+    def make_clusterlist_filename(self, traj_count):
+        f1 = "CLUSLIST_{0}".format(traj_count)
+        if os.path.exists(f1):
+            return f1, 1, f1 # 1-based cluster index
+        
+        f2 = "CLUSLIST_{0}".format(traj_count - 1)
+        if os.path.exists(f2):
+            return f2, 0, f2 # 0-based cluster index
+        
+        return None, 1, (f1, f2)
+        
     def draw_bottom_plot(self):
         if self.settings.vertical_coordinate == TrajectoryPlotSettings.Vertical.NONE:
             self._turn_off_spines(self.height_axes_outer, top=True)
