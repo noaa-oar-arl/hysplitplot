@@ -567,7 +567,8 @@ class TrajectoryPlotData:
                 
     def after_reading_file(self, settings):
         for k, t in enumerate(self.trajectories):
-            t.make_vertical_coordinates(settings.vertical_coordinate, settings.height_unit)
+            t.vertical_coord = AbstractVerticalCoordinate.create_instance(settings, t)
+            t.vertical_coord.make_vertical_coordinates()
 
             if len(t.vertical_coordinates) > 0:
                 t.repair_starting_level()
@@ -619,6 +620,7 @@ class TrajectoryPlotData:
             self.starting_level_index = -1  # determined after all starting_levels are collected
             self.diagnostic_names = None
             self.color = None               # when settings.color == Color.itemized
+            self.vertical_coord = None      # an AbstractVerticalCoordinate instance
             # below from data points
             self.grids = []
             self.datetimes = []
@@ -665,24 +667,6 @@ class TrajectoryPlotData:
         def has_terrain_profile(self):
             return True if "TERR_MSL" in self.others else False
 
-        def make_vertical_coordinates(self, vertical_coordinate, height_unit=None):
-            if vertical_coordinate == TrajectoryPlotSettings.Vertical.PRESSURE:
-                self.vertical_coordinates = self.collect_pressure()
-            elif vertical_coordinate == TrajectoryPlotSettings.Vertical.ABOVE_GROUND_LEVEL:
-                if self.has_terrain_profile():
-                    self.vertical_coordinates = numpy.add(self.heights,
-                                                          self.collect_terrain_profile())
-                else:
-                    self.vertical_coordinates = self.heights
-
-                if height_unit == TrajectoryPlotSettings.HeightUnit.FEET:
-                    f = 1.0 / 0.3048
-                    self.vertical_coordinates = [v*f for v in self.vertical_coordinates]
-            elif vertical_coordinate == TrajectoryPlotSettings.Vertical.THETA:
-                self.vertical_coordinates = self.others["THETA"] if "THETA" in self.others else None
-            elif vertical_coordinate == TrajectoryPlotSettings.Vertical.METEO:
-                self.vertical_coordinates = self.others[self.diagnostic_names[-1]]
-
         def repair_starting_location(self, t):
             self.starting_loc = (t.longitude[-2], t.latitudes[-2])
             return
@@ -715,21 +699,6 @@ class TrajectoryPlotHelper:
                 if t.has_terrain_profile():
                     return True
         return False
-
-    @staticmethod
-    def make_vertical_label(option, plot_data, height_unit, terrain_profile=False):
-        if option == TrajectoryPlotSettings.Vertical.PRESSURE:
-            return "hPa"
-        elif option == TrajectoryPlotSettings.Vertical.ABOVE_GROUND_LEVEL:
-            if terrain_profile:
-                return "Meters MSL" if height_unit == TrajectoryPlotSettings.HeightUnit.METER else "Feet MSL"
-            else:
-                return "Meters AGL" if height_unit == TrajectoryPlotSettings.HeightUnit.METER else "Feet AGL"
-        elif option == TrajectoryPlotSettings.Vertical.THETA:
-            return "Theta"
-        elif option == TrajectoryPlotSettings.Vertical.METEO:
-            return plot_data.trajectories[0].diagnostic_names[-1]
-        return ""
 
 
 class TrajectoryPlot:
@@ -916,7 +885,7 @@ class TrajectoryPlot:
                     ptop = max(ptop, max(t.collect_vertical_coordinate()))
                     pbot = min(pbot, min(t.collect_vertical_coordinate()))
 
-        if vertical_coordinate == TrajectoryPlotSettings.Vertical.PRESSURE:
+        if plot_data.trajectories[0].vertical_coord.need_axis_inversion():
             ptop, pbot = pbot, ptop
 
         return (pbot, ptop)
@@ -1139,7 +1108,7 @@ class TrajectoryPlot:
         self.settings.reset_marker_cycle()
 
         # Invert the y-axis for pressure profile.
-        if self.settings.vertical_coordinate == TrajectoryPlotSettings.Vertical.PRESSURE:
+        if self.data_list[0].trajectories[0].vertical_coord.need_axis_inversion():
             axes.invert_yaxis()
 
         # Draw y-tick labels on the right.
@@ -1347,10 +1316,8 @@ class TrajectoryPlot:
             terrainProfileQ = TrajectoryPlotHelper.has_terrain_profile(self.data_list)
 
             self._turn_off_ticks(self.height_axes_outer)
-            str = TrajectoryPlotHelper.make_vertical_label(self.settings.vertical_coordinate,
-                                                           self.data_list[0],
-                                                           self.settings.height_unit,
-                                                           terrainProfileQ)
+            str = self.data_list[0].trajectories[0].vertical_coord.get_vertical_label()
+
             self.height_axes_outer.set_ylabel(str)
 
             self.draw_height_profile(terrainProfileQ)
@@ -1366,7 +1333,8 @@ class TrajectoryPlot:
         elif (alt_text_lines is not None) and (len(alt_text_lines) > 0):
             self._draw_alt_text_boxes(self.text_axes, alt_text_lines)
         else:
-            self._turn_off_spines(self.text_axes, top=True)
+            top_spineQ = self.settings.vertical_coordinate != TrajectoryPlotSettings.Vertical.NONE
+            self._turn_off_spines(self.text_axes, top=top_spineQ)
         
     def make_maptext_filename(self):
         s = self.settings.output_suffix
@@ -1648,3 +1616,115 @@ class AgeVerticalProjection(AbstractVerticalProjection):
     
     def select_xvalues(self, t):
         return t.collect_age()
+    
+    
+class AbstractVerticalCoordinate:
+    
+    def __init__(self, traj):
+        self.t = traj
+    
+    def scale(self, scale_factor):
+        self.t.vertical_coordinates = [v*scale_factor for v in self.t.vertical_coordinates]
+    
+    def need_axis_inversion(self):
+        return False
+    
+    @staticmethod
+    def create_instance(settings, traj):
+        vc = settings.vertical_coordinate
+        
+        if vc == TrajectoryPlotSettings.Vertical.PRESSURE:
+            return PressureCoordinate(traj)
+        elif vc == TrajectoryPlotSettings.Vertical.ABOVE_GROUND_LEVEL:
+            if traj.has_terrain_profile():
+                return TerrainHeightCoordinate(traj, settings.height_unit)
+            else:
+                return HeightCoordinate(traj, settings.height_unit)
+        elif vc == TrajectoryPlotSettings.Vertical.THETA:
+            if "THETA" in traj.others:
+                return ThetaCoordinate(traj)
+        elif vc == TrajectoryPlotSettings.Vertical.METEO:
+                return OtherCoordinate(traj)
+        
+        return BlankCoordinate(traj)
+
+    
+class BlankCoordinate(AbstractVerticalCoordinate):
+    
+    def __init__(self, traj):
+        AbstractVerticalCoordinate.__init__(self, traj)
+        
+    def make_vertical_coordinates(self):
+        self.t.vertical_coordinates = numpy.zeros(len(self.t.longitudes))
+        
+    def get_vertical_label(self):
+        return ""
+
+        
+class PressureCoordinate(AbstractVerticalCoordinate):
+    
+    def __init__(self, traj):
+        AbstractVerticalCoordinate.__init__(self, traj)
+    
+    def make_vertical_coordinates(self):
+        self.t.vertical_coordinates = self.t.collect_pressure()
+    
+    def get_vertical_label(self):
+        return "hPa"
+    
+    def need_axis_inversion(self):
+        return True
+    
+    
+class TerrainHeightCoordinate(AbstractVerticalCoordinate):
+    
+    def __init__(self, traj, unit=TrajectoryPlotSettings.HeightUnit.METER):
+        AbstractVerticalCoordinate.__init__(self, traj)
+        self.unit = unit
+        
+    def make_vertical_coordinates(self):
+        self.t.vertical_coordinates = numpy.add(self.t.heights, self.t.collect_terrain_profile())             
+        if self.unit == TrajectoryPlotSettings.HeightUnit.FEET:
+            self.scale(1.0 / 0.3048)    # meter to feet
+    
+    def get_vertical_label(self):
+        return "Meters MSL" if self.unit == TrajectoryPlotSettings.HeightUnit.METER else "Feet MSL"
+
+
+class HeightCoordinate(AbstractVerticalCoordinate):
+    
+    def __init__(self, traj, unit=TrajectoryPlotSettings.HeightUnit.METER):
+        AbstractVerticalCoordinate.__init__(self, traj)
+        self.unit = unit
+
+    def make_vertical_coordinates(self):
+        self.t.vertical_coordinates = self.t.heights
+        if self.unit == TrajectoryPlotSettings.HeightUnit.FEET:
+            self.scale(1.0 / 0.3048)    # meter to feet
+     
+    def get_vertical_label(self):
+        return "Meters AGL" if self.unit == TrajectoryPlotSettings.HeightUnit.METER else "Feet AGL"
+   
+    
+class ThetaCoordinate(AbstractVerticalCoordinate):
+    
+    def __init__(self, traj):
+        AbstractVerticalCoordinate.__init__(self, traj)
+
+    def make_vertical_coordinates(self):
+        self.t.vertical_coordinates = self.t.others["THETA"]
+
+    def get_vertical_label(self):
+        return "Theta"
+    
+
+class OtherCoordinate(AbstractVerticalCoordinate):
+    
+    def __init__(self, traj):
+        AbstractVerticalCoordinate.__init__(self, traj)
+    
+    def make_vertical_coordinates(self):
+        self.t.vertical_coordinates = self.t.others[self.t.diagnostic_names[-1]]
+    
+    def get_vertical_label(self):
+        return self.t.diagnostic_names[-1]

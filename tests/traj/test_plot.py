@@ -18,6 +18,17 @@ def plotData():
     return d
 
 
+@pytest.fixture
+def simpleTraj():
+    t = plot.TrajectoryPlotData.Trajectory()
+    t.longitudes = [0.0, 0.0]
+    t.latitudes = [0.0, 0.0]
+    t.heights = [10.0, 20.0]
+    t.diagnostic_names = []
+    t.others = dict()
+    return t
+
+
 def blank_event_handler(event):
     # do nothing
     return
@@ -802,6 +813,7 @@ def test_Trajectory___init__():
     assert t.starting_level_index == -1
     assert t.diagnostic_names == None
     assert t.color == None
+    assert t.vertical_coord == None
     assert t.grids != None and len(t.grids) == 0
     assert t.datetimes != None and len(t.datetimes) == 0
     assert t.forecast_hours != None and len(t.forecast_hours) == 0
@@ -887,91 +899,13 @@ def test_Trajectory_has_terrain_profile(plotData):
     assert t.has_terrain_profile() == True
 
 
-def test_Trajectory_make_vertical_coordinates():
-    t = plot.TrajectoryPlotData.Trajectory()
-
-    t.diagnostic_names = ["PRESSURE"]
-    t.others["PRESSURE"] = [1001.0, 1002.0]
-    t.make_vertical_coordinates(plot.TrajectoryPlotSettings.Vertical.PRESSURE)
-    p = t.collect_vertical_coordinate()
-    assert len(p) == 2
-    assert p[0] == 1001.0
-    assert p[1] == 1002.0
-
-    # without terrain
-    t.heights = [10.0, 20.0]
-    t.make_vertical_coordinates(plot.TrajectoryPlotSettings.Vertical.ABOVE_GROUND_LEVEL)
-    h = t.collect_vertical_coordinate()
-    assert len(h) == 2
-    assert h[0] == 10.0
-    assert h[1] == 20.0
-
-    # without terrain and in feet
-    t.heights = [10.0, 20.0]
-    t.make_vertical_coordinates(plot.TrajectoryPlotSettings.Vertical.ABOVE_GROUND_LEVEL,
-                                plot.TrajectoryPlotSettings.HeightUnit.FEET)
-    h = t.collect_vertical_coordinate()
-    assert len(h) == 2
-    assert h[0] == pytest.approx(10.0 * 3.28084)
-    assert h[1] == pytest.approx(20.0 * 3.28084)
-    
-    # with terrain
-    t.diagnostic_names.append("TERR_MSL")
-    t.others["TERR_MSL"] = [500.0, 550.0]
-    t.make_vertical_coordinates(plot.TrajectoryPlotSettings.Vertical.ABOVE_GROUND_LEVEL)
-    h = t.collect_vertical_coordinate()
-    assert len(h) == 2
-    assert h[0] == 510.0
-    assert h[1] == 570.0
-    
-    # with terrain and in feet
-    t.diagnostic_names.append("TERR_MSL")
-    t.others["TERR_MSL"] = [500.0, 550.0]
-    t.make_vertical_coordinates(plot.TrajectoryPlotSettings.Vertical.ABOVE_GROUND_LEVEL,
-                                plot.TrajectoryPlotSettings.HeightUnit.FEET)
-    h = t.collect_vertical_coordinate()
-    assert len(h) == 2
-    assert h[0] == pytest.approx(510.0 * 3.28084)
-    assert h[1] == pytest.approx(570.0 * 3.28084)
-    
-    # theta
-    t.diagnostic_names.append("THETA")
-    t.others["THETA"] = [1500.0, 1550.0]
-    t.make_vertical_coordinates(plot.TrajectoryPlotSettings.Vertical.THETA)
-    h = t.collect_vertical_coordinate()
-    assert len(h) == 2
-    assert h[0] == 1500.0
-    assert h[1] == 1550.0
-
-    # something else
-    t.diagnostic_names.append("SUN_FLUX")
-    t.others["SUN_FLUX"] = [50.0, 55.0]
-    t.make_vertical_coordinates(plot.TrajectoryPlotSettings.Vertical.METEO)
-    h = t.collect_vertical_coordinate()
-    assert len(h) == 2
-    assert h[0] == 50.0
-    assert h[1] == 55.0
-
-    # not set
-    t.vertical_coordinates = None
-    t.make_vertical_coordinates(plot.TrajectoryPlotSettings.Vertical.NOT_SET)
-    h = t.collect_vertical_coordinate()
-    assert h == None
-
-    # none
-    t.vertical_coordinates = None
-    t.make_vertical_coordinates(plot.TrajectoryPlotSettings.Vertical.NONE)
-    h = t.collect_vertical_coordinate()
-    assert h == None
-
-    return
-
-
 def test_Trajectory_repair_starting_location():
+    # TODO
     return
 
 
 def test_Trajectory_repair_starting_level():
+    # TODO
     return
 
 
@@ -1020,19 +954,6 @@ def test_TrajectoryPlotHelper_has_terrain_profile(plotData):
 
     plotData.trajectories[0].others["TERR_MSL"].append(0.0)
     assert plot.TrajectoryPlotHelper.has_terrain_profile([plotData]) == True
-
-
-def test_TrajectoryPlotHelper_make_vertical_label(plotData):
-    height_unit = plot.TrajectoryPlotSettings.HeightUnit.METER
-    assert "hPa" == plot.TrajectoryPlotHelper.make_vertical_label(0, plotData, height_unit, False)
-    assert "Meters AGL" == plot.TrajectoryPlotHelper.make_vertical_label(1, plotData, height_unit, False)
-    assert "Meters MSL" == plot.TrajectoryPlotHelper.make_vertical_label(1, plotData, height_unit, True)
-    height_unit = plot.TrajectoryPlotSettings.HeightUnit.FEET
-    assert "Feet AGL" == plot.TrajectoryPlotHelper.make_vertical_label(1, plotData, height_unit, False)
-    assert "Feet MSL" == plot.TrajectoryPlotHelper.make_vertical_label(1, plotData, height_unit, True)
-    assert "Theta" == plot.TrajectoryPlotHelper.make_vertical_label(2, plotData, height_unit)
-    assert "PRESSURE" == plot.TrajectoryPlotHelper.make_vertical_label(3, plotData, height_unit)
-    assert "" == plot.TrajectoryPlotHelper.make_vertical_label(4, plotData, height_unit)
 
 
 def test_TrapjectoyPlot___init__():
@@ -2022,3 +1943,230 @@ def test_AgeVerticalProjection_select_xvalues(plotData):
     assert len(x) > 0
     assert x[0] == 0
     plt.close(axes.get_figure())
+    
+
+def test_AbstractVerticalCoordinate___init__():
+    t = plot.TrajectoryPlotData.Trajectory()
+    vc = plot.AbstractVerticalCoordinate(t)
+    assert vc.t is t
+
+
+def test_AbstractVerticalCoordinate_scale():
+    t = plot.TrajectoryPlotData.Trajectory()
+    t.vertical_coordinates = [1.0, 2.0]
+    vc = plot.AbstractVerticalCoordinate(t)
+    vc.scale(2.0)
+    assert t.vertical_coordinates == pytest.approx((2.0, 4.0))
+    
+
+def test_AbstractVerticalCoordinate_need_axis_inversion():
+    t = plot.TrajectoryPlotData.Trajectory()
+    vc = plot.AbstractVerticalCoordinate(t)
+    assert not vc.need_axis_inversion()
+
+
+def test_AbstractVerticalCoordinate_create_instance():
+    s = plot.TrajectoryPlotSettings()
+    t = plot.TrajectoryPlotData.Trajectory()
+    
+    s.vertical_coordinate = plot.TrajectoryPlotSettings.Vertical.PRESSURE
+    vc = plot.AbstractVerticalCoordinate.create_instance(s, t)
+    assert isinstance(vc, plot.PressureCoordinate)
+    
+    s.vertical_coordinate = plot.TrajectoryPlotSettings.Vertical.ABOVE_GROUND_LEVEL
+    vc = plot.AbstractVerticalCoordinate.create_instance(s, t)
+    assert isinstance(vc, plot.HeightCoordinate)
+    
+    t.others["TERR_MSL"] = [1.0, 2.0]
+    s.vertical_coordinate = plot.TrajectoryPlotSettings.Vertical.ABOVE_GROUND_LEVEL
+    vc = plot.AbstractVerticalCoordinate.create_instance(s, t)
+    assert isinstance(vc, plot.TerrainHeightCoordinate)
+    
+    t.others["THETA"] = [0.0, 1.0]
+    s.vertical_coordinate = plot.TrajectoryPlotSettings.Vertical.THETA
+    vc = plot.AbstractVerticalCoordinate.create_instance(s, t)
+    assert isinstance(vc, plot.ThetaCoordinate)
+    
+    s.vertical_coordinate = plot.TrajectoryPlotSettings.Vertical.METEO
+    vc = plot.AbstractVerticalCoordinate.create_instance(s, t)
+    assert isinstance(vc, plot.OtherCoordinate)
+    
+    s.vertical_coordinate = plot.TrajectoryPlotSettings.Vertical.NONE
+    vc = plot.AbstractVerticalCoordinate.create_instance(s, t)
+    assert isinstance(vc, plot.BlankCoordinate)
+
+
+def test_BlankCoordinate___init__(simpleTraj):
+    vc = plot.BlankCoordinate(simpleTraj)
+    assert vc.t is simpleTraj
+    
+
+def test_BlankCoordinate_make_vertical_coordinates(simpleTraj):
+    vc = plot.BlankCoordinate(simpleTraj)
+    vc.make_vertical_coordinates()
+    assert len(vc.t.vertical_coordinates) == 2
+    assert vc.t.vertical_coordinates[0] == 0.0
+     
+
+def test_BlankCoordinate_get_vertical_label(simpleTraj):
+    vc = plot.BlankCoordinate(simpleTraj)
+    assert vc.get_vertical_label() == ""
+
+
+def test_PressureCoordinate___init__(simpleTraj):
+    vc = plot.PressureCoordinate(simpleTraj)
+    assert vc.t is simpleTraj
+    
+
+def test_PressureCoordinate_make_vertical_coordinates(simpleTraj):
+    simpleTraj.diagnostic_names.append("PRESSURE")
+    simpleTraj.others["PRESSURE"] = [1001.0, 1002.0]
+    
+    vc = plot.PressureCoordinate(simpleTraj)
+    vc.make_vertical_coordinates()
+    
+    p = simpleTraj.collect_vertical_coordinate()
+    assert len(p) == 2
+    assert p[0] == 1001.0
+    assert p[1] == 1002.0
+    
+
+def test_PressureCoordinate_get_vertical_label(simpleTraj):
+    vc = plot.PressureCoordinate(simpleTraj)
+    assert vc.get_vertical_label() == "hPa"
+    
+
+def test_PressureCoordinate_need_axis_inversion(simpleTraj):
+    vc = plot.PressureCoordinate(simpleTraj)
+    assert vc.need_axis_inversion() == True
+
+
+def test_TerrainHeightCoordinate___init__(simpleTraj):
+    vc = plot.TerrainHeightCoordinate(simpleTraj)
+    assert vc.t is simpleTraj
+    assert vc.unit == plot.TrajectoryPlotSettings.HeightUnit.METER
+    
+    vc = plot.TerrainHeightCoordinate(simpleTraj, plot.TrajectoryPlotSettings.HeightUnit.FEET)
+    assert vc.t is simpleTraj
+    assert vc.unit == plot.TrajectoryPlotSettings.HeightUnit.FEET
+    
+
+def test_TerrainHeightCoordinate_make_vertical_coordinates(simpleTraj):
+    # with terrain
+    simpleTraj.diagnostic_names.append("TERR_MSL")
+    simpleTraj.others["TERR_MSL"] = [500.0, 550.0]
+ 
+    vc = plot.TerrainHeightCoordinate(simpleTraj)
+    vc.make_vertical_coordinates()
+    
+    h = simpleTraj.collect_vertical_coordinate()
+    assert len(h) == 2
+    assert h[0] == 510.0
+    assert h[1] == 570.0
+    
+    # with terrain and in feet
+    vc = plot.TerrainHeightCoordinate(simpleTraj, plot.TrajectoryPlotSettings.HeightUnit.FEET)
+    vc.make_vertical_coordinates()
+    
+    h = simpleTraj.collect_vertical_coordinate()
+    assert len(h) == 2
+    assert h[0] == pytest.approx(510.0 * 3.28084)
+    assert h[1] == pytest.approx(570.0 * 3.28084)
+    
+
+def test_TerrainHeightCoordinate_get_vertical_label(simpleTraj):
+    vc = plot.TerrainHeightCoordinate(simpleTraj)
+    assert vc.get_vertical_label() == "Meters MSL"
+        
+    vc = plot.TerrainHeightCoordinate(simpleTraj, plot.TrajectoryPlotSettings.HeightUnit.FEET)
+    assert vc.get_vertical_label() == "Feet MSL"
+
+
+def test_HeightCoordinate___init__(simpleTraj):
+    vc = plot.HeightCoordinate(simpleTraj)
+    assert vc.t is simpleTraj
+    assert vc.unit == plot.TrajectoryPlotSettings.HeightUnit.METER
+    
+    vc = plot.HeightCoordinate(simpleTraj, plot.TrajectoryPlotSettings.HeightUnit.FEET)
+    assert vc.t is simpleTraj
+    assert vc.unit == plot.TrajectoryPlotSettings.HeightUnit.FEET
+    
+
+def test_HeightCoordinate_make_vertical_coordinates(simpleTraj):
+    # without terrain
+    vc = plot.HeightCoordinate(simpleTraj)
+    vc.make_vertical_coordinates()
+    
+    h = simpleTraj.collect_vertical_coordinate()
+    assert len(h) == 2
+    assert h[0] == 10.0
+    assert h[1] == 20.0
+    
+    # without terrain and in feet
+    vc = plot.HeightCoordinate(simpleTraj,  plot.TrajectoryPlotSettings.HeightUnit.FEET)
+    vc.make_vertical_coordinates()
+    
+    h = simpleTraj.collect_vertical_coordinate()
+    assert len(h) == 2
+    assert h[0] == pytest.approx(10.0 * 3.28084)
+    assert h[1] == pytest.approx(20.0 * 3.28084)
+
+
+def test_HeightCoordinate_get_vertical_label(simpleTraj):
+    vc = plot.HeightCoordinate(simpleTraj)
+    assert vc.get_vertical_label() == "Meters AGL"
+        
+    vc = plot.HeightCoordinate(simpleTraj, plot.TrajectoryPlotSettings.HeightUnit.FEET)
+    assert vc.get_vertical_label() == "Feet AGL"
+
+
+def test_ThetaCoordinate___init__(simpleTraj):
+    vc = plot.ThetaCoordinate(simpleTraj)
+    assert vc.t is simpleTraj
+    
+
+def test_ThetaCoordinate_make_vertical_coordinates(simpleTraj):
+    # theta
+    simpleTraj.diagnostic_names.append("THETA")
+    simpleTraj.others["THETA"] = [1500.0, 1550.0]
+    
+    vc = plot.ThetaCoordinate(simpleTraj)
+    vc.make_vertical_coordinates()
+    
+    h = simpleTraj.collect_vertical_coordinate()
+    assert len(h) == 2
+    assert h[0] == 1500.0
+    assert h[1] == 1550.0
+ 
+
+def test_ThetaCoordinate_get_vertical_label(simpleTraj):
+    vc = plot.ThetaCoordinate(simpleTraj)
+    assert vc.get_vertical_label() == "Theta"
+    
+
+def test_OtherCoordinate___init__(simpleTraj):
+    vc = plot.OtherCoordinate(simpleTraj)
+    assert vc.t is simpleTraj
+    
+
+def test_OtherCoordinate_make_vertical_coordinates(simpleTraj):
+    # something else
+    simpleTraj.diagnostic_names.append("SUN_FLUX")
+    simpleTraj.others["SUN_FLUX"] = [50.0, 55.0]
+    
+    vc = plot.OtherCoordinate(simpleTraj)
+    vc.make_vertical_coordinates()
+    
+    h = simpleTraj.collect_vertical_coordinate()
+    assert len(h) == 2
+    assert h[0] == 50.0
+    assert h[1] == 55.0
+    
+
+def test_OtherCoordinate_get_vertical_label(simpleTraj):
+    simpleTraj.diagnostic_names.append("SUN_FLUX")
+    simpleTraj.others["SUN_FLUX"] = [50.0, 55.0]
+    
+    vc = plot.OtherCoordinate(simpleTraj)
+    
+    assert vc.get_vertical_label() == "SUN_FLUX"
