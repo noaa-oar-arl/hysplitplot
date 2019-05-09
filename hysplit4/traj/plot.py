@@ -1648,12 +1648,12 @@ class AbstractVerticalCoordinate:
             if "THETA" in traj.others:
                 return ThetaCoordinate(traj)
         elif vc == TrajectoryPlotSettings.Vertical.METEO:
-                return OtherCoordinate(traj)
+                return OtherVerticalCoordinate(traj)
         
-        return BlankCoordinate(traj)
+        return BlankVerticalCoordinate(traj)
 
     
-class BlankCoordinate(AbstractVerticalCoordinate):
+class BlankVerticalCoordinate(AbstractVerticalCoordinate):
     
     def __init__(self, traj):
         AbstractVerticalCoordinate.__init__(self, traj)
@@ -1722,7 +1722,7 @@ class ThetaCoordinate(AbstractVerticalCoordinate):
         return "Theta"
     
 
-class OtherCoordinate(AbstractVerticalCoordinate):
+class OtherVerticalCoordinate(AbstractVerticalCoordinate):
     
     def __init__(self, traj):
         AbstractVerticalCoordinate.__init__(self, traj)

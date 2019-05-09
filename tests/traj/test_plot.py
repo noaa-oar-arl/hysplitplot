@@ -1116,7 +1116,7 @@ def test_TrajectoryPlot__determine_vertical_limit(plotData):
 
     pd = plot.TrajectoryPlotData()
     traj = plot.TrajectoryPlotData.Trajectory()
-    traj.vertical_coord = plot.BlankCoordinate(traj)
+    traj.vertical_coord = plot.BlankVerticalCoordinate(traj)
     pd.trajectories.append(traj)
     low, high = p._determine_vertical_limit(pd, plot.TrajectoryPlotSettings.Vertical.ABOVE_GROUND_LEVEL)
     assert low is None
@@ -1991,28 +1991,28 @@ def test_AbstractVerticalCoordinate_create_instance():
     
     s.vertical_coordinate = plot.TrajectoryPlotSettings.Vertical.METEO
     vc = plot.AbstractVerticalCoordinate.create_instance(s, t)
-    assert isinstance(vc, plot.OtherCoordinate)
+    assert isinstance(vc, plot.OtherVerticalCoordinate)
     
     s.vertical_coordinate = plot.TrajectoryPlotSettings.Vertical.NONE
     vc = plot.AbstractVerticalCoordinate.create_instance(s, t)
-    assert isinstance(vc, plot.BlankCoordinate)
+    assert isinstance(vc, plot.BlankVerticalCoordinate)
 
 
-def test_BlankCoordinate___init__(simpleTraj):
-    vc = plot.BlankCoordinate(simpleTraj)
+def test_BlankVerticalCoordinate___init__(simpleTraj):
+    vc = plot.BlankVerticalCoordinate(simpleTraj)
     assert vc.t is simpleTraj
     
 
-def test_BlankCoordinate_make_vertical_coordinates(simpleTraj):
-    vc = simpleTraj.vertical_coord = plot.BlankCoordinate(simpleTraj)
+def test_BlankVerticalCoordinate_make_vertical_coordinates(simpleTraj):
+    vc = simpleTraj.vertical_coord = plot.BlankVerticalCoordinate(simpleTraj)
     vc.make_vertical_coordinates()
     h = simpleTraj.collect_vertical_coordinate()
     assert len(h) == 2
     assert h[0] == 0.0
      
 
-def test_BlankCoordinate_get_vertical_label(simpleTraj):
-    vc = simpleTraj.vertical_coord = plot.BlankCoordinate(simpleTraj)
+def test_BlankVerticalCoordinate_get_vertical_label(simpleTraj):
+    vc = simpleTraj.vertical_coord = plot.BlankVerticalCoordinate(simpleTraj)
     assert vc.get_vertical_label() == ""
 
 
@@ -2147,17 +2147,17 @@ def test_ThetaCoordinate_get_vertical_label(simpleTraj):
     assert vc.get_vertical_label() == "Theta"
     
 
-def test_OtherCoordinate___init__(simpleTraj):
-    vc = simpleTraj.vertical_coord = plot.OtherCoordinate(simpleTraj)
+def test_OtherVerticalCoordinate___init__(simpleTraj):
+    vc = simpleTraj.vertical_coord = plot.OtherVerticalCoordinate(simpleTraj)
     assert vc.t is simpleTraj
     
 
-def test_OtherCoordinate_make_vertical_coordinates(simpleTraj):
+def test_OtherVerticalCoordinate_make_vertical_coordinates(simpleTraj):
     # something else
     simpleTraj.diagnostic_names.append("SUN_FLUX")
     simpleTraj.others["SUN_FLUX"] = [50.0, 55.0]
     
-    vc = simpleTraj.vertical_coord = plot.OtherCoordinate(simpleTraj)
+    vc = simpleTraj.vertical_coord = plot.OtherVerticalCoordinate(simpleTraj)
     vc.make_vertical_coordinates()
     
     h = simpleTraj.collect_vertical_coordinate()
@@ -2166,10 +2166,10 @@ def test_OtherCoordinate_make_vertical_coordinates(simpleTraj):
     assert h[1] == 55.0
     
 
-def test_OtherCoordinate_get_vertical_label(simpleTraj):
+def test_OtherVerticalCoordinate_get_vertical_label(simpleTraj):
     simpleTraj.diagnostic_names.append("SUN_FLUX")
     simpleTraj.others["SUN_FLUX"] = [50.0, 55.0]
     
-    vc = simpleTraj.vertical_coord = plot.OtherCoordinate(simpleTraj)
+    vc = simpleTraj.vertical_coord = plot.OtherVerticalCoordinate(simpleTraj)
     
     assert vc.get_vertical_label() == "SUN_FLUX"
