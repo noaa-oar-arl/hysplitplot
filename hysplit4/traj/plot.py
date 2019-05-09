@@ -629,7 +629,6 @@ class TrajectoryPlotData:
             self.latitudes = []
             self.longitudes = []
             self.heights = []
-            self.vertical_coordinates = []
             self.others = dict()
 
         def dump(self, stream):
@@ -662,7 +661,11 @@ class TrajectoryPlotData:
             return self.others["TERR_MSL"] if "TERR_MSL" in self.others else None
 
         def collect_vertical_coordinate(self):
-            return self.vertical_coordinates
+            return self.vertical_coord.values
+
+        @property
+        def vertical_coordinates(self):
+            return self.vertical_coord.values
 
         def has_terrain_profile(self):
             return True if "TERR_MSL" in self.others else False
@@ -672,7 +675,7 @@ class TrajectoryPlotData:
             return
 
         def repair_starting_level(self):
-            self.starting_level = self.vertical_coordinates[0]
+            self.starting_level = self.vertical_coord.values[0]
             return
 
 
@@ -1622,9 +1625,10 @@ class AbstractVerticalCoordinate:
     
     def __init__(self, traj):
         self.t = traj
+        self.values = []
     
     def scale(self, scale_factor):
-        self.t.vertical_coordinates = [v*scale_factor for v in self.t.vertical_coordinates]
+        self.values = [v*scale_factor for v in self.values]
     
     def need_axis_inversion(self):
         return False
@@ -1655,7 +1659,7 @@ class BlankCoordinate(AbstractVerticalCoordinate):
         AbstractVerticalCoordinate.__init__(self, traj)
         
     def make_vertical_coordinates(self):
-        self.t.vertical_coordinates = numpy.zeros(len(self.t.longitudes))
+        self.values = numpy.zeros(len(self.t.longitudes))
         
     def get_vertical_label(self):
         return ""
@@ -1667,7 +1671,7 @@ class PressureCoordinate(AbstractVerticalCoordinate):
         AbstractVerticalCoordinate.__init__(self, traj)
     
     def make_vertical_coordinates(self):
-        self.t.vertical_coordinates = self.t.collect_pressure()
+        self.values = self.t.collect_pressure()
     
     def get_vertical_label(self):
         return "hPa"
@@ -1683,7 +1687,7 @@ class TerrainHeightCoordinate(AbstractVerticalCoordinate):
         self.unit = unit
         
     def make_vertical_coordinates(self):
-        self.t.vertical_coordinates = numpy.add(self.t.heights, self.t.collect_terrain_profile())             
+        self.values = numpy.add(self.t.heights, self.t.collect_terrain_profile())             
         if self.unit == TrajectoryPlotSettings.HeightUnit.FEET:
             self.scale(1.0 / 0.3048)    # meter to feet
     
@@ -1698,7 +1702,7 @@ class HeightCoordinate(AbstractVerticalCoordinate):
         self.unit = unit
 
     def make_vertical_coordinates(self):
-        self.t.vertical_coordinates = self.t.heights
+        self.values = self.t.heights
         if self.unit == TrajectoryPlotSettings.HeightUnit.FEET:
             self.scale(1.0 / 0.3048)    # meter to feet
      
@@ -1712,7 +1716,7 @@ class ThetaCoordinate(AbstractVerticalCoordinate):
         AbstractVerticalCoordinate.__init__(self, traj)
 
     def make_vertical_coordinates(self):
-        self.t.vertical_coordinates = self.t.others["THETA"]
+        self.values = self.t.others["THETA"]
 
     def get_vertical_label(self):
         return "Theta"
@@ -1724,7 +1728,7 @@ class OtherCoordinate(AbstractVerticalCoordinate):
         AbstractVerticalCoordinate.__init__(self, traj)
     
     def make_vertical_coordinates(self):
-        self.t.vertical_coordinates = self.t.others[self.t.diagnostic_names[-1]]
+        self.values = self.t.others[self.t.diagnostic_names[-1]]
     
     def get_vertical_label(self):
         return self.t.diagnostic_names[-1]
