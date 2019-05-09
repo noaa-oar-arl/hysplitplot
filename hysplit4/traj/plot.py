@@ -549,6 +549,22 @@ class TrajectoryPlotData:
 
         return (amin, amax)
 
+    def get_max_forecast_hour(self):
+        pts = self.trajectories[0].collect_forecast_hour()
+        amax = max(pts)
+        
+        for k in range(1, len(self.trajectories)):
+            pts = self.trajectories[k].collect_forecast_hour()
+            amax = max(amax, max(pts))
+        
+        return amax
+    
+    def get_forecast_init_datetime(self):
+        dt = self.trajectories[0].collect_datetime()[0]
+        forecast_hour = self.trajectories[0].collect_forecast_hour()[0]
+        delta = datetime.timedelta(hours=forecast_hour)
+        return dt - delta
+                
     def after_reading_file(self, settings):
         for k, t in enumerate(self.trajectories):
             t.make_vertical_coordinates(settings.vertical_coordinate, settings.height_unit)
@@ -634,6 +650,9 @@ class TrajectoryPlotData:
         def collect_datetime(self):
             return self.datetimes
 
+        def collect_forecast_hour(self):
+            return self.forecast_hours
+        
         def collect_pressure(self):
             return self.others["PRESSURE"] if "PRESSURE" in self.others else None
 
@@ -970,11 +989,14 @@ class TrajectoryPlot:
             else:
                 fig_title += " various times"
 
-        if len(plot_data.grids) == 1:
-            fig_title += "\n{0}".format(plot_data.grids[0].model.strip())
-        else:
-            fig_title += "\nVarious"
-        fig_title += " Meteorological Data"
+        if len(plot_data.grids) > 0:
+            # use the first grid for plotting
+            model_name = plot_data.grids[0].model.strip()
+            if plot_data.get_max_forecast_hour() > 12:
+                init_time_str = plot_data.get_forecast_init_datetime().strftime("%H UTC %d %b");
+                fig_title += "\n{0}  {1}  Forecast Initialization".format(init_time_str, model_name)
+            else:
+                fig_title += "\n{0}  Meteorological Data".format(model_name)
 
         return fig_title
 

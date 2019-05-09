@@ -466,7 +466,6 @@ def test_TrajectoryDataFileReader_read_fmt0():
     assert d.format_version == 0
     assert d.IDLBL == None
 
-    # TODO: modify lines below for trajectory format 0.
     assert len(d.grids) == 1
     g = d.grids[0]
     assert g.model == "    NGM "
@@ -730,6 +729,19 @@ def test_TrajectoryPlotData_get_datetime_range(plotData):
     assert r[1] == datetime.datetime(95, 10, 16, 12, 0)
 
 
+def test_TrajectoryPlotData_get_max_forecast_hour(plotData):
+    assert 0.0 == plotData.get_max_forecast_hour()
+    
+    plotData.trajectories[0].forecast_hours[-1] = 12.0
+    assert 12.0 == plotData.get_max_forecast_hour()
+
+
+def test_TrajectoryPlotData_get_forecast_init_datetime(plotData):
+    r = plotData.get_forecast_init_datetime()
+
+    assert r == datetime.datetime(95, 10, 16,  0, 0)
+
+
 def test_TrajectoryPlotData_after_reading_file():
     s = plot.TrajectoryPlotSettings()
     d = plot.TrajectoryPlotData()
@@ -827,6 +839,13 @@ def test_Trajectory_collect_datetime(plotData):
     assert len(datetimes) == 13
     assert datetimes[0] == datetime.datetime(95, 10, 16, 0, 0)
     assert datetimes[12] == datetime.datetime(95, 10, 16, 12, 0)
+
+
+def test_Trajectory_collect_forecast_hour(plotData):
+    forecast_hours = plotData.trajectories[0].collect_forecast_hour()
+    assert len(forecast_hours) == 13
+    assert forecast_hours[0] == 0
+    assert forecast_hours[12] == 0
 
 
 def test_Trajectory_collect_pressure(plotData):
@@ -1206,7 +1225,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "Forward trajectories starting at 0000 UTC 16 Oct 95\n" + \
-           "NGM Meteorological Data"
+           "NGM  Meteorological Data"
 
     # Change the model name
 
@@ -1214,7 +1233,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "Forward trajectories starting at 0000 UTC 16 Oct 95\n" + \
-           "TEST Meteorological Data"
+           "TEST  Meteorological Data"
 
     # Add a grid
 
@@ -1224,7 +1243,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "Forward trajectories starting at 0000 UTC 16 Oct 95\n" + \
-           "Various Meteorological Data"
+           "TEST  Meteorological Data"
 
     # Change the starting time of a trajectory
 
@@ -1233,7 +1252,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "Forward trajectories starting at various times\n" + \
-           "Various Meteorological Data"
+           "TEST  Meteorological Data"
 
     # Change direction
 
@@ -1241,7 +1260,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "Backward trajectories ending at various times\n" + \
-           "Various Meteorological Data"
+           "TEST  Meteorological Data"
 
     # With one trajectory
 
@@ -1250,7 +1269,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "Backward trajectory ending at 0000 UTC 16 Oct 95\n" + \
-           "Various Meteorological Data"
+           "TEST  Meteorological Data"
 
     # Change direction
 
@@ -1258,7 +1277,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "Forward trajectory starting at 0000 UTC 16 Oct 95\n" + \
-           "Various Meteorological Data"
+           "TEST  Meteorological Data"
 
     # IDLBL = "MERGMEAN"
     
@@ -1267,7 +1286,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "112 forward trajectories\n" + \
-           "Various Meteorological Data"
+           "TEST  Meteorological Data"
            
     # change direction
     
@@ -1275,8 +1294,15 @@ def test_TrajectoryPlot_make_plot_title(plotData):
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "112 backward trajectories\n" + \
-           "Various Meteorological Data"
+           "TEST  Meteorological Data"
 
+    # Forecast
+    
+    plotData.trajectories[0].collect_forecast_hour()[0] = 13.0 # > 12
+    title = p.make_plot_title(plotData)
+    assert title == "NOAA HYSPLIT MODEL\n" + \
+           "112 backward trajectories\n" + \
+           "11 UTC 15 Oct  TEST  Forecast Initialization"
 
 def test_TrajectoryPlot__connect_event_handlers():
     p = plot.TrajectoryPlot()
