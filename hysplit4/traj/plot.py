@@ -1,19 +1,16 @@
 import sys
 import os
 import logging
-import datetime
 import math
-import numpy
 import geopandas
 import shapely.geometry
 import cartopy.crs
-import cartopy.mpl
 import matplotlib.dates
 import matplotlib.gridspec
 import matplotlib.patches
 import matplotlib.pyplot as plt
 
-from hysplit4 import cmdline, io, graph, util, const
+from hysplit4 import cmdline, clist, stnplot, labels, util, const, mapfile, mapproj, mapbox
 from hysplit4.traj import model
 
 
@@ -280,34 +277,8 @@ class TrajectoryPlotSettings:
         self.marker_cycle_index = -1
 
 
-class TrajectoryPlotHelper:
-
-    @staticmethod
-    def make_ylabel(plot_data, marker, time_label_interval):
-        y_label = "Source {0} at".format(marker) if time_label_interval >= 0 else "Source at"
-
-        traj_locations = plot_data.get_unique_start_locations()
-        if len(traj_locations) == 1:
-            lon, lat = traj_locations[0]
-            y_label += "  {0:5.2f} {1}".format(abs(lat), "N" if lat >= 0 else "S")
-            y_label += "  {0:6.2f} {1}".format(abs(lon), "E" if lon >= 0 else "W")
-        else:
-            y_label += " multiple locations"
-
-        return y_label
-
-    @staticmethod
-    def has_terrain_profile(plot_data_list):
-        for plotData in plot_data_list:
-            for t in plotData.trajectories:
-                if t.has_terrain_profile():
-                    return True
-        return False
-
-
 class TrajectoryPlot:
 
-    _WGS84 = {"init": "epsg:4326"}  # A coordinate reference system.
     _GRIDLINE_DENSITY = 0.25        # 4 gridlines at minimum in each direction
 
     def __init__(self):
@@ -320,7 +291,7 @@ class TrajectoryPlot:
         self.traj_axes = None
         self.height_axes = None
         self.height_axes_outer = None
-        self.labels = graph.LabelsConfig()
+        self.labels = labels.LabelsConfig()
         self.cluster_list = None
 
     def merge_plot_settings(self, filename, args):
@@ -329,7 +300,7 @@ class TrajectoryPlot:
         self.settings.process_command_line_arguments(args)
 
     def read_data_files(self):
-        input_files = io.make_file_list(self.settings.input_files)
+        input_files = util.make_file_list(self.settings.input_files)
 
         self.data_list = []
         for inp in input_files:
@@ -345,7 +316,15 @@ class TrajectoryPlot:
         # create an color cycle instance
         self.settings.color_cycle = ColorCycleFactory.create_instance(self.settings,
                                                                       len(self.data_list[0].uniq_start_levels))
-
+    
+    @staticmethod
+    def has_terrain_profile(plot_data_list):
+        for plotData in plot_data_list:
+            for t in plotData.trajectories:
+                if t.has_terrain_profile():
+                    return True
+        return False
+    
     def set_trajectory_color(self, plot_data, settings):
         if settings.color == const.Color.ITEMIZED:
             for k, t in enumerate(plot_data.trajectories):
@@ -421,11 +400,11 @@ class TrajectoryPlot:
             map_box.set_ring_extent(self.settings)
         map_box.dump(sys.stdout)
 
-        self.projection = graph.MapProjection.create_instance(self.settings,
-                                                              self.settings.center_loc,
-                                                              1.3,
-                                                              (map_box.grid_delta, map_box.grid_delta),
-                                                              map_box)
+        self.projection = mapproj.MapProjection.create_instance(self.settings,
+                                                                self.settings.center_loc,
+                                                                1.3,
+                                                                (map_box.grid_delta, map_box.grid_delta),
+                                                                map_box)
         self.projection.refine_corners(map_box, self.settings.center_loc)
 
         # map projection might have changed.
@@ -436,17 +415,17 @@ class TrajectoryPlot:
     def read_background_map(self):
         self.background_maps.clear()
         if self.settings.map_background.startswith("shapefiles"):
-            shapefiles = graph.ShapeFilesReader().read(self.settings.map_background)
+            shapefiles = mapfile.ShapeFilesReader().read(self.settings.map_background)
             for sf in shapefiles:
-                map = graph.ShapeFileConverter.convert(sf)
+                map = mapfile.ShapeFileConverter.convert(sf)
                 self.background_maps.append(map)
         else:
             filename = self._fix_arlmap_filename(self.settings.map_background)
             if filename is None:
                 logger.warning("map background file not found")
             else:
-                arlmap = graph.ARLMap().get_reader().read(filename)
-                for m in graph.ARLMapConverter.convert(arlmap):
+                arlmap = mapfile.ARLMap().get_reader().read(filename)
+                for m in mapfile.ARLMapConverter.convert(arlmap):
                     self.background_maps.append(m)
 
     @staticmethod
@@ -462,7 +441,7 @@ class TrajectoryPlot:
         return None
 
     def _determine_map_limits(self, plot_data, map_opt_passes):
-        mb = graph.MapBox()
+        mb = mapbox.MapBox()
 
         for ipass in range(map_opt_passes):
             mb.allocate()
@@ -585,7 +564,21 @@ class TrajectoryPlot:
                 fig_title += "\n{0}  Meteorological Data".format(model_name)
 
         return fig_title
+    
+    @staticmethod
+    def make_ylabel(plot_data, marker, time_label_interval):
+        y_label = "Source {0} at".format(marker) if time_label_interval >= 0 else "Source at"
 
+        traj_locations = plot_data.get_unique_start_locations()
+        if len(traj_locations) == 1:
+            lon, lat = traj_locations[0]
+            y_label += "  {0:5.2f} {1}".format(abs(lat), "N" if lat >= 0 else "S")
+            y_label += "  {0:6.2f} {1}".format(abs(lon), "E" if lon >= 0 else "W")
+        else:
+            y_label += " multiple locations"
+
+        return y_label
+    
     def _connect_event_handlers(self, handlers):
         for ev in handlers:
             self.fig.canvas.mpl_connect(ev, handlers[ev])
@@ -661,8 +654,6 @@ class TrajectoryPlot:
         if len(yticks) > 0:
             kwargs["ylocs"] = yticks
         gl = self.traj_axes.gridlines(**kwargs)
-        #gl.xformatter = cartopy.mpl.gridliner.LONGITUDE_FORMATTER
-        #gl.yformatter = cartopy.mpl.gridliner.LATITUDE_FORMATTER
 
         # lat/lon line labels
         self._draw_latlon_labels(self.traj_axes, lonlat_ext, deltax, deltay)
@@ -745,7 +736,7 @@ class TrajectoryPlot:
         # Adjust x-range.
         x_range = None
         for pd in self.data_list:
-            x_range = graph.union_ranges(x_range, vert_proj.calc_xrange(pd))
+            x_range = util.union_ranges(x_range, vert_proj.calc_xrange(pd))
         axes.set_xlim(x_range[0], x_range[1])
 
         # Invert the x-axis if it is a backward trajectory
@@ -808,7 +799,7 @@ class TrajectoryPlot:
 
     def _draw_stations_if_exists(self, axes, filename):
         if os.path.exists(filename):
-            cfg = graph.StationPlotConfig().get_reader().read(filename)
+            cfg = stnplot.StationPlotConfig().get_reader().read(filename)
             for stn in cfg.stations:
                 if len(stn.label) > 0:
                     axes.text(stn.longitude, stn.latitude, stn.label,
@@ -845,9 +836,9 @@ class TrajectoryPlot:
         plt.setp(axes.get_yticklabels(), color=self.settings.map_color)
 
         # y-label
-        axes.set_ylabel(TrajectoryPlotHelper.make_ylabel(self.data_list[0],
-                                                         self.settings.source_label,
-                                                         self.settings.time_label_interval))
+        axes.set_ylabel(self.make_ylabel(self.data_list[0],
+                                         self.settings.source_label,
+                                         self.settings.time_label_interval))
 
         # set the data range
         axes.set_extent(self.projection.corners_lonlat, self.data_crs)
@@ -908,7 +899,7 @@ class TrajectoryPlot:
                 if fn is None:
                     logger.error("file not found %s or %s", candidates[0], candidates[1])
                     raise Exception("file not found {0} or {1}".format(candidates[0], candidates[1]))
-                self.cluster_list = graph.ClusterList(start_index).get_reader().read(fn)
+                self.cluster_list = clist.ClusterList(start_index).get_reader().read(fn)
                 break
     
     def make_clusterlist_filename(self, traj_count):
@@ -930,7 +921,7 @@ class TrajectoryPlot:
             self._turn_off_spines(self.height_axes)
             self._turn_off_ticks(self.height_axes)
         else:
-            terrainProfileQ = TrajectoryPlotHelper.has_terrain_profile(self.data_list)
+            terrainProfileQ = self.has_terrain_profile(self.data_list)
 
             self._turn_off_ticks(self.height_axes_outer)
             str = self.data_list[0].trajectories[0].vertical_coord.get_vertical_label()

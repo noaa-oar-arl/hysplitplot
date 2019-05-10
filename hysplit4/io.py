@@ -159,26 +159,3 @@ class FormattedTextFileReader:
 
     def get_current_line(self):
         return self.buffer
-
-
-def make_file_list(input_endpoints):
-    files = []
-
-    if input_endpoints[0:1] == "+":
-        list_file = input_endpoints[1:]
-        if os.path.exists(list_file):
-            with open(input_endpoints[1:], "r") as f:
-                try:
-                    for line in f:
-                        files.append(line.rstrip())
-                    f.close()
-                except:
-                    raise Exception("FATAL ERROR - Cannot read file: {0}".format(list_file))
-        else:
-            raise Exception("FATAL ERROR - File not found: {0}".format(list_file))
-    elif input_endpoints.count("+"):
-        files = input_endpoints.split("+")
-    else:
-        files.append(input_endpoints)
-
-    return files

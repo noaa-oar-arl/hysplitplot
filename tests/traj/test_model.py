@@ -18,7 +18,7 @@ def plotData():
 
 @pytest.fixture
 def simpleTraj():
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     t.longitudes = [0.0, 0.0]
     t.latitudes = [0.0, 0.0]
     t.heights = [10.0, 20.0]
@@ -68,7 +68,7 @@ def test_TrajectoryPlotData_get_unique_start_datetimes():
 
     # add one trajectory
 
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     t.starting_datetime = datetime.datetime(2019, 4, 8, 13, 4)
     d.trajectories.append(t)
 
@@ -78,7 +78,7 @@ def test_TrajectoryPlotData_get_unique_start_datetimes():
 
     # add one more with the same date and time.
 
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     t.starting_datetime = datetime.datetime(2019, 4, 8, 13, 4)
     d.trajectories.append(t)
 
@@ -88,7 +88,7 @@ def test_TrajectoryPlotData_get_unique_start_datetimes():
 
     # add one more with a different date and time.
 
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     t.starting_datetime = datetime.datetime(2019, 4, 8, 13, 8)
     d.trajectories.append(t)
 
@@ -104,7 +104,7 @@ def test_TrajectoryPlotData_get_unique_start_locations():
 
     # add one trajectory
 
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     t.starting_loc = (-90.0, 40.0)
     d.trajectories.append(t)
 
@@ -114,7 +114,7 @@ def test_TrajectoryPlotData_get_unique_start_locations():
 
     # add one more with the same location.
 
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     t.starting_loc = (-90.0, 40.0)
     d.trajectories.append(t)
 
@@ -124,7 +124,7 @@ def test_TrajectoryPlotData_get_unique_start_locations():
 
     # add one more with a different location.
 
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     t.starting_loc = (-90.0, 43.0)
     d.trajectories.append(t)
 
@@ -140,7 +140,7 @@ def test_TrajectoryPlotData_get_unique_start_levels():
 
     # add one trajectory
 
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     t.starting_level = 0.0
     d.trajectories.append(t)
 
@@ -150,7 +150,7 @@ def test_TrajectoryPlotData_get_unique_start_levels():
 
     # add one more with the same level.
 
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     t.starting_level = 0.0
     d.trajectories.append(t)
 
@@ -160,7 +160,7 @@ def test_TrajectoryPlotData_get_unique_start_levels():
 
     # add one more with a different level.
 
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     t.starting_level = 500.0
     d.trajectories.append(t)
 
@@ -214,7 +214,7 @@ def test_TrajectoryPlotData_fix_vertical_coordinates():
     s = plot.TrajectoryPlotSettings()
     d = model.TrajectoryPlotData()
 
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     t.starting_level = 10.0
     t.longitudes = [0]
     t.latitues = [0]
@@ -234,22 +234,22 @@ def test_TrajectoryPlotData_fix_start_levels():
 
     # add four trajectories
 
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     t.starting_level = 10.0
     t.pressures = [700.0]
     d.trajectories.append(t)
 
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     t.starting_level = 500.0
     t.pressures = [600.0]
     d.trajectories.append(t)
 
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     t.starting_level = 1000.0
     t.pressures = [500.0]
     d.trajectories.append(t)
 
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     t.starting_level = 500.0
     t.pressures = [600.0]
     d.trajectories.append(t)
@@ -267,51 +267,8 @@ def test_TrajectoryPlotData_fix_start_levels():
     assert d.trajectories[3].starting_level_index == 1
 
 
-# def test_TrajectoryPlotData_after_reading_file():
-#     s = plot.TrajectoryPlotSettings()
-#     d = model.TrajectoryPlotData()
-#     s.color = const.Color.ITEMIZED
-#     s.color_codes = ['2', '3']
-# 
-#     # add four trajectories
-# 
-#     t = model.TrajectoryPlotData.Trajectory()
-#     t.starting_level = 10.0
-#     d.trajectories.append(t)
-# 
-#     t = model.TrajectoryPlotData.Trajectory()
-#     t.starting_level = 500.0
-#     d.trajectories.append(t)
-# 
-#     t = model.TrajectoryPlotData.Trajectory()
-#     t.starting_level = 1000.0
-#     d.trajectories.append(t)
-# 
-#     t = model.TrajectoryPlotData.Trajectory()
-#     t.starting_level = 500.0
-#     d.trajectories.append(t)
-# 
-#     # Run and check
-# 
-#     d.after_reading_file(s)
-# 
-#     assert d.trajectories[0].starting_level_index == 0
-#     assert d.trajectories[1].starting_level_index == 1
-#     assert d.trajectories[2].starting_level_index == 2
-#     assert d.trajectories[3].starting_level_index == 1
-# 
-#     assert d.trajectories[0].color == '2'
-#     assert d.trajectories[1].color == '3'
-#     assert d.trajectories[2].color == '1'
-#     assert d.trajectories[3].color == '1'
-# 
-#     assert d.uniq_start_levels == [10.0, 500.0, 1000.0]
-# 
-#     assert isinstance(s.color_cycle, plot.ColorCycle)
-
-
 def test_MeteorologicalGrid___init__():
-    g = model.TrajectoryPlotData.MeteorologicalGrid()
+    g = model.MeteorologicalGrid()
 
     assert hasattr(g, 'model')
     assert hasattr(g, 'datetime')
@@ -319,7 +276,7 @@ def test_MeteorologicalGrid___init__():
 
 
 def test_Trajectory___init__():
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
 
     assert hasattr(t, 'starting_datetime')
     assert t.starting_loc == (0, 0)
@@ -438,7 +395,7 @@ def test_Trajectory_has_terrain_profile(plotData):
 
 
 def test_Trajectory_repair_starting_location():
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     t.longitudes = [0, 1, 2, 3]
     t.latitudes = [1, 2, 3, 4]
     t.starting_loc = (0, 0)
@@ -449,7 +406,7 @@ def test_Trajectory_repair_starting_location():
 
 
 def test_Trajectory_repair_starting_level():
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     t.longitudes = [0]
     t.latitudes = [0]
     t.vertical_coord = model.BlankVerticalCoordinate(t)
@@ -687,14 +644,14 @@ def test_TrajectoryPlotSettings_adjust_vertical_coordinate():
 
 
 def test_AbstractVerticalCoordinate___init__():
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     vc = model.AbstractVerticalCoordinate(t)
     assert vc.t is t
     assert vc.values != None and len(vc.values) == 0
 
 
 def test_AbstractVerticalCoordinate_scale():
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     vc = model.AbstractVerticalCoordinate(t)
     vc.values = [1.0, 2.0]
     vc.scale(2.0)
@@ -702,14 +659,14 @@ def test_AbstractVerticalCoordinate_scale():
     
 
 def test_AbstractVerticalCoordinate_need_axis_inversion():
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     vc = model.AbstractVerticalCoordinate(t)
     assert not vc.need_axis_inversion()
 
 
 def test_AbstractVerticalCoordinate_create_instance():
     s = plot.TrajectoryPlotSettings()
-    t = model.TrajectoryPlotData.Trajectory()
+    t = model.Trajectory()
     
     s.vertical_coordinate = const.Vertical.PRESSURE
     vc = model.AbstractVerticalCoordinate.create_instance(s.vertical_coordinate, s.height_unit, t)

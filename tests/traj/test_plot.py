@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates
 import cartopy.crs
 from hysplit4.traj import plot, model
-from hysplit4 import graph, const
+from hysplit4 import labels, clist, mapfile, mapproj, const
 
 
 @pytest.fixture
@@ -328,53 +328,6 @@ def test_TrajectoryPlotSettings_reset_marker_cycle():
     assert s.marker_cycle_index == -1
 
 
-def test_TrajectoryPlotHelper_make_ylabel():
-    plotData = model.TrajectoryPlotData()
-    t = model.TrajectoryPlotData.Trajectory()
-    t.starting_loc = (30.0, 20.0)
-    plotData.trajectories.append(t)
-
-    label = plot.TrajectoryPlotHelper.make_ylabel(plotData, "*", 6)
-    assert label == "Source * at  20.00 N   30.00 E"
-
-    # no marker when the time label interval is negative
-    label = plot.TrajectoryPlotHelper.make_ylabel(plotData, "*", -6)
-    assert label == "Source at  20.00 N   30.00 E"
-
-    # negative longitude
-
-    t.starting_loc = (-30.0, 20.0)
-
-    label = plot.TrajectoryPlotHelper.make_ylabel(plotData, "*", 6)
-    assert label == "Source * at  20.00 N   30.00 W"
-
-    # negative latitude
-
-    t.starting_loc = (-30.0, -20.0)
-
-    label = plot.TrajectoryPlotHelper.make_ylabel(plotData, "*", 6)
-    assert label == "Source * at  20.00 S   30.00 W"
-
-    # add a trajectory with a different starting location
-
-    t = model.TrajectoryPlotData.Trajectory()
-    t.starting_loc = (30.0, 25.0)
-    plotData.trajectories.append(t)
-
-    label = plot.TrajectoryPlotHelper.make_ylabel(plotData, "*", 6)
-    assert label == "Source * at multiple locations"
-
-
-def test_TrajectoryPlotHelper_has_terrain_profile(plotData):
-    assert plot.TrajectoryPlotHelper.has_terrain_profile([plotData]) == False
-
-    plotData.trajectories[0].others["TERR_MSL"] = []
-    assert plot.TrajectoryPlotHelper.has_terrain_profile([plotData]) == True
-
-    plotData.trajectories[0].others["TERR_MSL"].append(0.0)
-    assert plot.TrajectoryPlotHelper.has_terrain_profile([plotData]) == True
-
-
 def test_TrapjectoyPlot___init__():
     p = plot.TrajectoryPlot()
 
@@ -387,7 +340,7 @@ def test_TrapjectoyPlot___init__():
     assert hasattr(p, "traj_axes")
     assert hasattr(p, "height_axes")
     assert hasattr(p, "height_axes_outer")
-    assert isinstance(p.labels, graph.LabelsConfig)
+    assert isinstance(p.labels, labels.LabelsConfig)
 
 
 def test_TrajectoryPlot_merge_plot_settings():
@@ -406,8 +359,40 @@ def test_TrajectoryPlot_read_data_files():
 
     assert len(p.data_list) == 1
     assert len(p.data_list[0].trajectories) == 3
+    assert p.settings.color_cycle is not None
 
 
+def test_TrajectoryPlot_has_terrain_profile(plotData):
+    assert plot.TrajectoryPlot.has_terrain_profile([plotData]) == False
+
+    plotData.trajectories[0].others["TERR_MSL"] = []
+    assert plot.TrajectoryPlot.has_terrain_profile([plotData]) == True
+
+    plotData.trajectories[0].others["TERR_MSL"].append(0.0)
+    assert plot.TrajectoryPlot.has_terrain_profile([plotData]) == True
+
+
+def test_TrajectoryPlot_set_trajectory_color():
+    p = plot.TrajectoryPlot()
+    s = p.settings
+    s.color = const.Color.ITEMIZED
+    s.color_codes = ['2', '3']
+
+    # add four trajectories
+    pd = model.TrajectoryPlotData()
+    pd.trajectories.append(model.Trajectory())
+    pd.trajectories.append(model.Trajectory())
+    pd.trajectories.append(model.Trajectory())
+    pd.trajectories.append(model.Trajectory())
+    
+    p.set_trajectory_color(pd, s)
+    
+    assert pd.trajectories[0].color == '2'
+    assert pd.trajectories[1].color == '3'
+    assert pd.trajectories[2].color == '1'
+    assert pd.trajectories[3].color == '1'
+    
+    
 def test_TrajectoryPlot_make_labels_filename():
     p = plot.TrajectoryPlot()
     s = p.settings
@@ -476,7 +461,7 @@ def test_TrajectoryPlot__initialize_map_projection():
 
     p._initialize_map_projection()
 
-    assert isinstance(p.projection, graph.MapProjection)
+    assert isinstance(p.projection, mapproj.MapProjection)
     assert p.crs is not None
 
 
@@ -488,8 +473,8 @@ def test_TrajectoryPlot_read_background_map():
 
     assert p.background_maps is not None
     assert len(p.background_maps) > 0
-    assert isinstance(p.background_maps[0], graph.DrawableBackgroundMap)
-    assert p.background_maps[0].map.crs == plot.TrajectoryPlot._WGS84
+    assert isinstance(p.background_maps[0], mapfile.DrawableBackgroundMap)
+    assert p.background_maps[0].map.crs == mapproj.MapProjection._WGS84
 
 
 def test_TrajectoryPlot__fix_arlmap_filename():
@@ -533,7 +518,7 @@ def test_TrajectoryPlot__determine_vertical_limit(plotData):
     assert high == 1000.0
 
     pd = model.TrajectoryPlotData()
-    traj = model.TrajectoryPlotData.Trajectory()
+    traj = model.Trajectory()
     traj.vertical_coord = model.BlankVerticalCoordinate(traj)
     pd.trajectories.append(traj)
     low, high = p._determine_vertical_limit(pd, const.Vertical.ABOVE_GROUND_LEVEL)
@@ -559,8 +544,8 @@ def test_TrajectoryPlot_layout():
 
 def test_TrajectoryPlot_make_plot_title(plotData):
     p = plot.TrajectoryPlot()
-    p.labels = graph.LabelsConfig()
-    p.cluster_list = graph.ClusterList(1)
+    p.labels = labels.LabelsConfig()
+    p.cluster_list = clist.ClusterList(1)
     
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
@@ -577,7 +562,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
 
     # Add a grid
 
-    g = model.TrajectoryPlotData.MeteorologicalGrid()
+    g = model.MeteorologicalGrid()
     g.model = "TEST"
     plotData.grids.append(g)
     title = p.make_plot_title(plotData)
@@ -643,6 +628,44 @@ def test_TrajectoryPlot_make_plot_title(plotData):
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "112 backward trajectories\n" + \
            "11 UTC 15 Oct  TEST  Forecast Initialization"
+
+
+def test_TrajectoryPlot_make_ylabel():
+    plotData = model.TrajectoryPlotData()
+    t = model.Trajectory()
+    t.starting_loc = (30.0, 20.0)
+    plotData.trajectories.append(t)
+
+    label = plot.TrajectoryPlot.make_ylabel(plotData, "*", 6)
+    assert label == "Source * at  20.00 N   30.00 E"
+
+    # no marker when the time label interval is negative
+    label = plot.TrajectoryPlot.make_ylabel(plotData, "*", -6)
+    assert label == "Source at  20.00 N   30.00 E"
+
+    # negative longitude
+
+    t.starting_loc = (-30.0, 20.0)
+
+    label = plot.TrajectoryPlot.make_ylabel(plotData, "*", 6)
+    assert label == "Source * at  20.00 N   30.00 W"
+
+    # negative latitude
+
+    t.starting_loc = (-30.0, -20.0)
+
+    label = plot.TrajectoryPlot.make_ylabel(plotData, "*", 6)
+    assert label == "Source * at  20.00 S   30.00 W"
+
+    # add a trajectory with a different starting location
+
+    t = model.Trajectory()
+    t.starting_loc = (30.0, 25.0)
+    plotData.trajectories.append(t)
+
+    label = plot.TrajectoryPlot.make_ylabel(plotData, "*", 6)
+    assert label == "Source * at multiple locations"
+
 
 def test_TrajectoryPlot__connect_event_handlers():
     p = plot.TrajectoryPlot()
@@ -782,10 +805,10 @@ def test_TrajecotryPlot__read_cluster_info_if_exists():
     pd = model.TrajectoryPlotData()
     pd.IDLBL = "MERGMEAN"
     # need four trajectories to match the contents of CLUSLIST_4
-    pd.trajectories.append(model.TrajectoryPlotData.Trajectory())
-    pd.trajectories.append(model.TrajectoryPlotData.Trajectory())
-    pd.trajectories.append(model.TrajectoryPlotData.Trajectory())
-    pd.trajectories.append(model.TrajectoryPlotData.Trajectory())
+    pd.trajectories.append(model.Trajectory())
+    pd.trajectories.append(model.Trajectory())
+    pd.trajectories.append(model.Trajectory())
+    pd.trajectories.append(model.Trajectory())
     p.data_list = [pd]
     
     # when CLUSLIST_4 does not exist

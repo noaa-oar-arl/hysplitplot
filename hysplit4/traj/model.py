@@ -138,127 +138,127 @@ class TrajectoryPlotData:
             t.dump(stream)
         stream.write("----- end TrajectoryPlotData\n")
 
-    class MeteorologicalGrid:
+class MeteorologicalGrid:
 
-        def __init__(self):
-            self.model = None
-            self.datetime = None
-            self.forecast_hour = 0
+    def __init__(self):
+        self.model = None
+        self.datetime = None
+        self.forecast_hour = 0
 
-        def dump(self, stream):
-            stream.write("Grid: model {0}, date {1}, forecast hour {2}\n".format(\
-                self.model, self.datetime, self.forecast_hour))
+    def dump(self, stream):
+        stream.write("Grid: model {0}, date {1}, forecast hour {2}\n".format(\
+            self.model, self.datetime, self.forecast_hour))
 
-    class Trajectory:
+class Trajectory:
 
-        def __init__(self):
-            self.starting_datetime = None
-            self.starting_loc = (0, 0)
-            self.starting_level = 0
-            self.starting_level_index = -1  # determined after all starting_levels are collected
-            self.diagnostic_names = None
-            self.color = None               # when settings.color == Color.itemized
-            self.vertical_coord = None      # an AbstractVerticalCoordinate instance
-            # below from data points
-            self.grids = []
-            self.__datetimes = []
-            self.__forecast_hours = []
-            self.__ages = []
-            self.__latitudes = []
-            self.__longitudes = []
-            self.__heights = []
-            self.others = dict()
+    def __init__(self):
+        self.starting_datetime = None
+        self.starting_loc = (0, 0)
+        self.starting_level = 0
+        self.starting_level_index = -1  # determined after all starting_levels are collected
+        self.diagnostic_names = None
+        self.color = None               # when settings.color == Color.itemized
+        self.vertical_coord = None      # an AbstractVerticalCoordinate instance
+        # below from data points
+        self.grids = []
+        self.__datetimes = []
+        self.__forecast_hours = []
+        self.__ages = []
+        self.__latitudes = []
+        self.__longitudes = []
+        self.__heights = []
+        self.others = dict()
 
-        def dump(self, stream):
-            stream.write("Trajectory: date {0}, latlon {1} {2}, starting level {3}\n".format(
-                self.starting_datetime, self.starting_loc[1], self.starting_loc[0], self.starting_level))
-            for k in range(len(self.datetimes)):
-                stream.write("date {4}, age {0}, latlon {1} {2}, height {3}, pressure {5}\n".format(
-                    self.ages[k], self.latitudes[k], self.longitudes[k],
-                    self.heights[k], self.datetimes[k], self.others["PRESSURE"][k]))
+    def dump(self, stream):
+        stream.write("Trajectory: date {0}, latlon {1} {2}, starting level {3}\n".format(
+            self.starting_datetime, self.starting_loc[1], self.starting_loc[0], self.starting_level))
+        for k in range(len(self.datetimes)):
+            stream.write("date {4}, age {0}, latlon {1} {2}, height {3}, pressure {5}\n".format(
+                self.ages[k], self.latitudes[k], self.longitudes[k],
+                self.heights[k], self.datetimes[k], self.others["PRESSURE"][k]))
 
-        @property
-        def latitudes(self):
-            return self.__latitudes
+    @property
+    def latitudes(self):
+        return self.__latitudes
 
-        @latitudes.setter
-        def latitudes(self, lats):
-            self.__latitudes = lats
-             
-        @property
-        def longitudes(self):
-            return self.__longitudes
+    @latitudes.setter
+    def latitudes(self, lats):
+        self.__latitudes = lats
+         
+    @property
+    def longitudes(self):
+        return self.__longitudes
 
-        @longitudes.setter
-        def longitudes(self, lons):
-            self.__longitudes = lons
-            
-        @property
-        def ages(self):
-            return self.__ages
-
-        @ages.setter
-        def ages(self, ages):
-            self.__ages = ages
-            
-        @property
-        def datetimes(self):
-            return self.__datetimes
-            
-        @datetimes.setter
-        def datetimes(self, dts):
-            self.__datetimes = dts
+    @longitudes.setter
+    def longitudes(self, lons):
+        self.__longitudes = lons
         
-        @property
-        def forecast_hours(self):
-            return self.__forecast_hours
+    @property
+    def ages(self):
+        return self.__ages
+
+    @ages.setter
+    def ages(self, ages):
+        self.__ages = ages
         
-        @forecast_hours.setter
-        def forecast_hours(self, hrs):
-            self.__forecast_hours = hrs
-            
-        @property
-        def heights(self):
-            return self.__heights
+    @property
+    def datetimes(self):
+        return self.__datetimes
         
-        @heights.setter
-        def heights(self, h):
-            self.__heights = h
-            
-        @property
-        def pressures(self):
-            return self.others["PRESSURE"] if "PRESSURE" in self.others else None
-
-        @pressures.setter
-        def pressures(self, p):
-            self.others["PRESSURE"] = p
-            
-        @property
-        def terrain_profile(self):
-            return self.others["TERR_MSL"] if "TERR_MSL" in self.others else None
-
-        @terrain_profile.setter
-        def terrain_profile(self, p):
-            self.others["TERR_MSL"] = p
-            
-        @property
-        def vertical_coordinates(self):
-            return self.vertical_coord.values
-
-        @vertical_coordinates.setter
-        def vertical_coordinates(self, vc):
-            self.vertical_coord.values = vc
+    @datetimes.setter
+    def datetimes(self, dts):
+        self.__datetimes = dts
+    
+    @property
+    def forecast_hours(self):
+        return self.__forecast_hours
+    
+    @forecast_hours.setter
+    def forecast_hours(self, hrs):
+        self.__forecast_hours = hrs
         
-        def has_terrain_profile(self):
-            return True if "TERR_MSL" in self.others else False
+    @property
+    def heights(self):
+        return self.__heights
+    
+    @heights.setter
+    def heights(self, h):
+        self.__heights = h
+        
+    @property
+    def pressures(self):
+        return self.others["PRESSURE"] if "PRESSURE" in self.others else None
 
-        def repair_starting_location(self, t):
-            self.starting_loc = (t.longitudes[-2], t.latitudes[-2])
-            return
+    @pressures.setter
+    def pressures(self, p):
+        self.others["PRESSURE"] = p
+        
+    @property
+    def terrain_profile(self):
+        return self.others["TERR_MSL"] if "TERR_MSL" in self.others else None
 
-        def repair_starting_level(self):
-            self.starting_level = self.vertical_coord.values[0]
-            return
+    @terrain_profile.setter
+    def terrain_profile(self, p):
+        self.others["TERR_MSL"] = p
+        
+    @property
+    def vertical_coordinates(self):
+        return self.vertical_coord.values
+
+    @vertical_coordinates.setter
+    def vertical_coordinates(self, vc):
+        self.vertical_coord.values = vc
+    
+    def has_terrain_profile(self):
+        return True if "TERR_MSL" in self.others else False
+
+    def repair_starting_location(self, t):
+        self.starting_loc = (t.longitudes[-2], t.latitudes[-2])
+        return
+
+    def repair_starting_level(self):
+        self.starting_level = self.vertical_coord.values[0]
+        return
 
 
 class TrajectoryDataFileReader(io.FormattedTextFileReader):
@@ -370,7 +370,7 @@ class TrajectoryDataFileReader(io.FormattedTextFileReader):
         # meteorological grids
         for k in range(ngrid):
             v = self.parse_line("A8, 5I6")
-            g = pd.MeteorologicalGrid()
+            g = MeteorologicalGrid()
             g.model = v[0]
             g.datetime = datetime.datetime(v[1], v[2], v[3], v[4])
             g.forecast_hour = v[5]
@@ -393,7 +393,7 @@ class TrajectoryDataFileReader(io.FormattedTextFileReader):
         fmt = "4I6,2F8.3,F8.1" if pd.format_version == 0 else "4I6,2F9.3,F8.1"
         for k in range(ntraj):
             v = self.parse_line(fmt)
-            t = pd.Trajectory()
+            t = Trajectory()
             t.starting_datetime = datetime.datetime(v[0], v[1], v[2], v[3])
             t.starting_loc = (v[5], v[4])
             t.starting_level = v[6]

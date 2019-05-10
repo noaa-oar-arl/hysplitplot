@@ -1,32 +1,8 @@
 import logging
-import sys
 from hysplit4 import util
 
 
 logger = logging.getLogger(__name__)
-
-
-def run(mainFunction, programName):
-    """Provides a common main entry point.
-
-    Initializes a logger, prints banner, calls the main function, and exits
-    with a code returned by the main function.
-
-    :param mainFunction: main function to be executed. It should return an integer.
-    :param programName: program name.
-    """
-    logging.basicConfig(
-        stream=sys.stdout,
-        level=logging.DEBUG,
-        format="%(asctime)s %(levelname)s %(name)s - %(message)s"
-    )
-
-    logging.info("This is {0}.".format(programName))
-
-    exitCode = mainFunction()
-    logging.info("exiting with code [{0}]".format(exitCode))
-
-    sys.exit(exitCode)
 
 
 class CommandLineArguments:
