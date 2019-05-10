@@ -5,8 +5,8 @@ import math
 import numpy
 import geopandas
 import cartopy.crs
-from hysplit4 import graph
-from hysplit4.traj import plot
+from hysplit4 import graph, const
+from hysplit4.traj import plot, model
 
 
 # Notes:
@@ -37,10 +37,13 @@ def clusterList():
 
 def create_map_box(s):
     # TODO: add a method in the module that does this and simplify this fixture.
-    d = plot.TrajectoryPlotData()
-    r = plot.TrajectoryDataFileReader(d)
-    r.adjust_settings("data/tdump", s)
-    r.read("data/tdump", s)
+    d = model.TrajectoryPlotData()
+    r = model.TrajectoryDataFileReader(d)
+    r.set_end_hour_duration(s.end_hour_duration)
+    r.set_vertical_coordinate(s.vertical_coordinate, s.height_unit)
+    r.read("data/tdump")
+    s.vertical_coordinate = r.vertical_coordinate
+    
     map_box = graph.MapBox()
     map_box.allocate()
     for t in d.trajectories:
@@ -59,7 +62,7 @@ def create_map_box(s):
 @pytest.fixture
 def lambert_proj():
     s = plot.TrajectoryPlotSettings()
-    s.map_projection = plot.TrajectoryPlotSettings.MapProjection.LAMBERT
+    s.map_projection = const.MapProjection.LAMBERT
     s.center_loc = [-125.0, 45.0]
     s.ring_number = 4
     s.ring_distance = 0.0
@@ -688,11 +691,11 @@ def test_MapProjection___init__():
 
 
 def test_MapProjection_determine_projection():
-    k_auto = plot.TrajectoryPlotSettings.MapProjection.AUTO
-    k_polar = plot.TrajectoryPlotSettings.MapProjection.POLAR
-    k_lambert = plot.TrajectoryPlotSettings.MapProjection.LAMBERT
-    k_mercator = plot.TrajectoryPlotSettings.MapProjection.MERCATOR
-    k_cylequ = plot.TrajectoryPlotSettings.MapProjection.CYL_EQU
+    k_auto = const.MapProjection.AUTO
+    k_polar = const.MapProjection.POLAR
+    k_lambert = const.MapProjection.LAMBERT
+    k_mercator = const.MapProjection.MERCATOR
+    k_cylequ = const.MapProjection.CYL_EQU
 
     assert graph.MapProjection.determine_projection(k_polar,    [-125.0, 35.0]) == k_polar
     assert graph.MapProjection.determine_projection(k_lambert,  [-125.0, 35.0]) == k_lambert
@@ -713,19 +716,19 @@ def test_MapProjection_create_instance():
     map_box.add((-120.5, 45.5))
     map_box.determine_plume_extent()
 
-    s.map_projection = s.MapProjection.POLAR
+    s.map_projection = const.MapProjection.POLAR
     m = graph.MapProjection.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
     assert isinstance(m, graph.PolarProjection)
 
-    s.map_projection = s.MapProjection.LAMBERT
+    s.map_projection = const.MapProjection.LAMBERT
     m = graph.MapProjection.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
     assert isinstance(m, graph.LambertProjection)
 
-    s.map_projection = s.MapProjection.MERCATOR
+    s.map_projection = const.MapProjection.MERCATOR
     m = graph.MapProjection.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
     assert isinstance(m, graph.MercatorProjection)
 
-    s.map_projection = s.MapProjection.CYL_EQU
+    s.map_projection = const.MapProjection.CYL_EQU
     m = graph.MapProjection.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
     assert isinstance(m, graph.CylindricalEquidistantProjection)
 
@@ -737,7 +740,7 @@ def test_MapProjection_create_instance():
     map_box.add((-120.5, 90.0))
     map_box.determine_plume_extent()
 
-    s.map_projection = s.MapProjection.LAMBERT
+    s.map_projection = const.MapProjection.LAMBERT
     m = graph.MapProjection.create_instance(s, [-125.0, 89.0], 1.3, [1.0, 1.0], map_box)
     assert isinstance(m, graph.PolarProjection)
 
@@ -747,14 +750,14 @@ def test_MapProjection_create_instance():
     map_box.add((-120.5, -90.0))
     map_box.determine_plume_extent()
 
-    s.map_projection = s.MapProjection.LAMBERT
+    s.map_projection = const.MapProjection.LAMBERT
     m = graph.MapProjection.create_instance(s, [-125.0, -89.0], 1.3, [1.0, 1.0], map_box)
     assert isinstance(m, graph.PolarProjection)
 
 
 def test_MapProjection_refine_corners__lambert():
     s = plot.TrajectoryPlotSettings()
-    s.map_projection = plot.TrajectoryPlotSettings.MapProjection.LAMBERT
+    s.map_projection = const.MapProjection.LAMBERT
     s.center_loc = [-125.0, 45.0]
     s.ring_number = 4
     s.ring_distance = 0.0
@@ -776,7 +779,7 @@ def test_MapProjection_refine_corners__lambert():
 
 def test_MapProjection_refine_corners__polar():
     s = plot.TrajectoryPlotSettings()
-    s.map_projection = plot.TrajectoryPlotSettings.MapProjection.POLAR
+    s.map_projection = const.MapProjection.POLAR
     s.center_loc = [-125.0, 85.0]
     s.ring_number = 4
     s.ring_distance = 0.0
@@ -798,7 +801,7 @@ def test_MapProjection_refine_corners__polar():
 
 def test_MapProjection_refine_corners__mercator():
     s = plot.TrajectoryPlotSettings()
-    s.map_projection = plot.TrajectoryPlotSettings.MapProjection.MERCATOR
+    s.map_projection = const.MapProjection.MERCATOR
     s.center_loc = [-125.0, 45.0]
     s.ring_number = 4
     s.ring_distance = 0.0
@@ -820,7 +823,7 @@ def test_MapProjection_refine_corners__mercator():
 
 def test_MapProjection_refine_corners__cylequ():
     s = plot.TrajectoryPlotSettings()
-    s.map_projection = plot.TrajectoryPlotSettings.MapProjection.CYL_EQU
+    s.map_projection = const.MapProjection.CYL_EQU
     s.center_loc = [-125.0, 5.0]
     s.ring_number = 4
     s.ring_distance = 0.0
@@ -905,7 +908,7 @@ def test_MapProjection_exclude_pole(lambert_proj):
 
 def test_MapProjection_do_initial_estimates():
     s = plot.TrajectoryPlotSettings()
-    s.map_projection = plot.TrajectoryPlotSettings.MapProjection.LAMBERT
+    s.map_projection = const.MapProjection.LAMBERT
     s.center_loc = [-125.0, 45.0]
     s.ring_number = 4
     s.ring_distance = 0.0
@@ -951,7 +954,7 @@ def test_LambertProjection___init__():
     s = plot.TrajectoryPlotSettings()
     m = graph.LambertProjection(s, [-125.0, 45.0], 1.3, [1.0, 1.0])
     assert m.settings is not None
-    assert m.proj_type == plot.TrajectoryPlotSettings.MapProjection.LAMBERT
+    assert m.proj_type == const.MapProjection.LAMBERT
     assert isinstance(m.coord, graph.LambertCoordinate)
 
 
@@ -988,7 +991,7 @@ def test_PolarProjection___init__():
     s = plot.TrajectoryPlotSettings()
     m = graph.PolarProjection(s, [-125.0, 85.0], 1.3, [1.0, 1.0])
     assert m.settings is not None
-    assert m.proj_type == plot.TrajectoryPlotSettings.MapProjection.POLAR
+    assert m.proj_type == const.MapProjection.POLAR
     assert isinstance(m.coord, graph.PolarCoordinate)
 
 
@@ -1007,7 +1010,7 @@ def test_MercatorProjection___init__():
     s = plot.TrajectoryPlotSettings()
     m = graph.MercatorProjection(s, [-125.0, 45.0], 1.3, [1.0, 1.0])
     assert m.settings is not None
-    assert m.proj_type == plot.TrajectoryPlotSettings.MapProjection.MERCATOR
+    assert m.proj_type == const.MapProjection.MERCATOR
     assert isinstance(m.coord, graph.MercatorCoordinate)
 
 
@@ -1033,7 +1036,7 @@ def test_CylindricalEquidistantProjection___init__():
     s = plot.TrajectoryPlotSettings()
     m = graph.CylindricalEquidistantProjection(s, [-125.0, 45.0], 1.3, [1.0, 1.0])
     assert m.settings is not None
-    assert m.proj_type == plot.TrajectoryPlotSettings.MapProjection.CYL_EQU
+    assert m.proj_type == const.MapProjection.CYL_EQU
     assert isinstance(m.coord, graph.CylindricalCoordinate)
 
 
@@ -1065,12 +1068,12 @@ def test_LabelsConfig_get_reader():
 def test_LabelsConfig_after_reading_file():
     c = graph.LabelsConfig()
     s = plot.TrajectoryPlotSettings()
-    assert s.height_unit == s.HeightUnit.METER
+    assert s.height_unit == const.HeightUnit.METER
     c.after_reading_file(s)
-    assert s.height_unit == s.HeightUnit.METER
+    assert s.height_unit == const.HeightUnit.METER
     c.cfg["VUNIT"] = "FEET"
     c.after_reading_file(s)
-    assert s.height_unit == s.HeightUnit.FEET
+    assert s.height_unit == const.HeightUnit.FEET
     
 
 def test_LabelsConfigReader_read():

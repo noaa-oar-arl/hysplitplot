@@ -4,29 +4,21 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.dates
 import cartopy.crs
-from hysplit4.traj import plot
-from hysplit4 import graph
+from hysplit4.traj import plot, model
+from hysplit4 import graph, const
 
 
 @pytest.fixture
 def plotData():
     s = plot.TrajectoryPlotSettings()
-    d = plot.TrajectoryPlotData()
-    r = plot.TrajectoryDataFileReader(d)
-    r.adjust_settings("data/tdump", s)
-    r.read("data/tdump", s)
+    d = model.TrajectoryPlotData()
+    r = model.TrajectoryDataFileReader(d)
+    r.set_end_hour_duration(s.end_hour_duration)
+    r.set_vertical_coordinate(s.vertical_coordinate, s.height_unit)
+    r.read("data/tdump")
+    s.vertical_coordinate = r.vertical_coordinate
+        
     return d
-
-
-@pytest.fixture
-def simpleTraj():
-    t = plot.TrajectoryPlotData.Trajectory()
-    t.longitudes = [0.0, 0.0]
-    t.latitudes = [0.0, 0.0]
-    t.heights = [10.0, 20.0]
-    t.diagnostic_names = []
-    t.others = dict()
-    return t
 
 
 def blank_event_handler(event):
@@ -39,16 +31,16 @@ def cleanup_plot(p):
         plt.close(p.fig)
 
 
-def test_TrajectoryPlotFileReader___init__():
+def test_TrajectoryPlotSettingsReader___init__():
     s = plot.TrajectoryPlotSettings()
-    r = plot.TrajectoryPlotFileReader(s)
+    r = plot.TrajectoryPlotSettingsReader(s)
 
     assert r.settings is s
 
 
-def test_TrajectoryPlotFileReader_read():
+def test_TrajectoryPlotSettingsReader_read():
     s = plot.TrajectoryPlotSettings()
-    r = plot.TrajectoryPlotFileReader(s)
+    r = plot.TrajectoryPlotSettingsReader(s)
 
     o = r.read("data/default_tplot")
     assert isinstance(o, plot.TrajectoryPlotSettings)
@@ -81,7 +73,7 @@ def test_TrajectoryPlotSettings___init__():
     assert s.time_label_interval == 6
     assert s.zoom_factor == 0.5
     assert s.color == 1
-    assert s.vertical_coordinate == s.Vertical.NOT_SET
+    assert s.vertical_coordinate == const.Vertical.NOT_SET
     assert s.label_source == True
     assert s.ring == False
     assert s.map_center == 0
@@ -112,7 +104,7 @@ def test_TrajectoryPlotSettings___init__():
     assert s.station_marker_color != None
     assert s.station_marker_size > 0
     assert s.color_cycle == None
-    assert s.height_unit == s.HeightUnit.METER
+    assert s.height_unit == const.HeightUnit.METER
 
 
 def test_TrajectoryPlotSettings_process_command_line_arguments():
@@ -283,36 +275,6 @@ def test_TrajectoryPlotSettings_parse_zoom_factor():
     assert s.parse_zoom_factor("120") == 0.0
 
 
-def test_TrajectoryPlotSettings_adjust_vertical_coordinate():
-    s = plot.TrajectoryPlotSettings()
-    pd = plot.TrajectoryPlotData()
-
-    s.vertical_coordinate = s.Vertical.NOT_SET
-    pd.vertical_motion = "ISOBA"
-    s.adjust_vertical_coordinate(pd)
-    assert s.vertical_coordinate == s.Vertical.PRESSURE
-
-    s.vertical_coordinate = s.Vertical.NOT_SET
-    pd.vertical_motion = "THETA"
-    s.adjust_vertical_coordinate(pd)
-    assert s.vertical_coordinate == s.Vertical.THETA
-
-    s.vertical_coordinate = s.Vertical.NOT_SET
-    pd.vertical_motion = "SOMETHING"
-    s.adjust_vertical_coordinate(pd)
-    assert s.vertical_coordinate == s.Vertical.ABOVE_GROUND_LEVEL
-
-    s.vertical_coordinate = s.Vertical.THETA
-    pd.vertical_motion = "PRESSURE"
-    s.adjust_vertical_coordinate(pd)
-    assert s.vertical_coordinate == s.Vertical.ABOVE_GROUND_LEVEL
-
-    s.vertical_coordinate = s.Vertical.THETA
-    pd.vertical_motion = "THETA"
-    s.adjust_vertical_coordinate(pd)
-    assert s.vertical_coordinate == s.Vertical.THETA
-
-
 def test_TrajectoryPlotSettings_adjust_output_filename():
     s = plot.TrajectoryPlotSettings()
 
@@ -343,7 +305,7 @@ def test_TrajectoryPlotSettings_get_reader():
     s = plot.TrajectoryPlotSettings()
     r = s.get_reader()
 
-    assert isinstance(r, plot.TrajectoryPlotFileReader)
+    assert isinstance(r, plot.TrajectoryPlotSettingsReader)
     assert r.settings is s
 
 
@@ -366,591 +328,9 @@ def test_TrajectoryPlotSettings_reset_marker_cycle():
     assert s.marker_cycle_index == -1
 
 
-def test_TrajectoryDataFileReader___init__():
-    d = plot.TrajectoryPlotData()
-    r = plot.TrajectoryDataFileReader(d)
-
-    assert r.trajectory_data is d
-
-
-def test_TrajectoryDataFileReader_read():
-    s = plot.TrajectoryPlotSettings()
-    d = plot.TrajectoryPlotData()
-    r = plot.TrajectoryDataFileReader(d)
-
-    r.adjust_settings("data/tdump", s)
-    o = r.read("data/tdump", s)
-    assert isinstance(o, plot.TrajectoryPlotData)
-
-    assert d.format_version == 1
-    assert d.IDLBL == None
-
-    assert len(d.grids) == 1
-    g = d.grids[0]
-    assert g.model == "    NGM "
-    assert g.datetime == datetime.datetime(95, 10, 16, 0, 0)
-    assert g.forecast_hour == 0
-
-    assert len(d.trajectories) == 3
-    assert d.trajectory_direction == "FORWARD "
-    assert d.vertical_motion == "OMEGA   "
-
-    assert d.uniq_start_levels == [10.0, 500.0, 1000.0]
-
-    t = d.trajectories[0]
-    assert t.starting_datetime == datetime.datetime(95, 10, 16, 0, 0)
-    assert t.starting_loc == (-90.0, 40.0)
-    assert t.starting_level == 10.0
-    assert t.starting_level_index == 0
-    assert len(t.diagnostic_names) == 1
-    assert t.diagnostic_names[0] == "PRESSURE"
-
-    t = d.trajectories[1]
-    assert t.starting_datetime == datetime.datetime(95, 10, 16, 0, 0)
-    assert t.starting_loc == (-90.0, 40.0)
-    assert t.starting_level == 500.0
-    assert t.starting_level_index == 1
-    assert len(t.diagnostic_names) == 1
-    assert t.diagnostic_names[0] == "PRESSURE"
-
-    t = d.trajectories[2]
-    assert t.starting_datetime == datetime.datetime(95, 10, 16, 0, 0)
-    assert t.starting_loc == (-90.0, 40.0)
-    assert t.starting_level == 1000.0
-    assert t.starting_level_index == 2
-    assert len(t.diagnostic_names) == 1
-    assert t.diagnostic_names[0] == "PRESSURE"
-
-    t = d.trajectories[0]
-    assert len(t.grids) == 13
-    assert len(t.datetimes) == 13
-    assert len(t.forecast_hours) == 13
-    assert len(t.ages) == 13
-    assert len(t.latitudes) == 13
-    assert len(t.longitudes) == 13
-    assert len(t.heights) == 13
-    assert len(t.vertical_coordinates) == 13
-    assert len(t.others["PRESSURE"]) == 13
-
-    k = 12
-    assert t.grids[k] is d.grids[0]
-    assert t.datetimes[k] == datetime.datetime(95, 10, 16, 12, 0)
-    assert t.forecast_hours[k] == 0
-    assert t.ages[k] == 12.0
-    assert t.latitudes[k] == 38.586
-    assert t.longitudes[k] == -88.772
-    assert t.heights[k] == 0.0
-    assert t.vertical_coordinates[k] == 0.0
-    assert t.others["PRESSURE"][k] == 1001.1
-
-    t = d.trajectories[2]
-    assert len(t.grids) == 13
-    assert len(t.datetimes) == 13
-    assert len(t.forecast_hours) == 13
-    assert len(t.ages) == 13
-    assert len(t.latitudes) == 13
-    assert len(t.longitudes) == 13
-    assert len(t.heights) == 13
-    assert len(t.vertical_coordinates) == 13
-    assert len(t.others["PRESSURE"]) == 13
-
-    k = 12
-    assert t.grids[k] is d.grids[0]
-    assert t.datetimes[k] == datetime.datetime(95, 10, 16, 12, 0)
-    assert t.forecast_hours[k] == 0
-    assert t.ages[k] == 12.0
-    assert t.latitudes[k] == 36.886
-    assert t.longitudes[k] == -85.285
-    assert t.heights[k] == 718.4
-    assert t.vertical_coordinates[k] == 718.4
-    assert t.others["PRESSURE"][k] == 905.6
-
-
-def test_TrajectoryDataFileReader_read_fmt0():
-    s = plot.TrajectoryPlotSettings()
-    d = plot.TrajectoryPlotData()
-    r = plot.TrajectoryDataFileReader(d)
-
-    r.adjust_settings("data/tdump_fmt0", s)
-    r.read("data/tdump_fmt0", s)
-
-    assert d.format_version == 0
-    assert d.IDLBL == None
-
-    assert len(d.grids) == 1
-    g = d.grids[0]
-    assert g.model == "    NGM "
-    assert g.datetime == datetime.datetime(95, 10, 16, 0, 0)
-    assert g.forecast_hour == 0
-
-    assert len(d.trajectories) == 3
-    assert d.trajectory_direction == "FORWARD "
-    assert d.vertical_motion == "OMEGA   "
-
-    assert d.uniq_start_levels == [10.0, 500.0, 1000.0]
-
-    t = d.trajectories[0]
-    assert t.starting_datetime == datetime.datetime(95, 10, 16, 0, 0)
-    assert t.starting_loc == (-90.0, 40.0)
-    assert t.starting_level == 10.0
-    assert t.starting_level_index == 0
-    assert len(t.diagnostic_names) == 1
-    assert t.diagnostic_names[0] == "PRESSURE"
-
-    t = d.trajectories[1]
-    assert t.starting_datetime == datetime.datetime(95, 10, 16, 0, 0)
-    assert t.starting_loc == (-90.0, 40.0)
-    assert t.starting_level == 500.0
-    assert t.starting_level_index == 1
-    assert len(t.diagnostic_names) == 1
-    assert t.diagnostic_names[0] == "PRESSURE"
-
-    t = d.trajectories[2]
-    assert t.starting_datetime == datetime.datetime(95, 10, 16, 0, 0)
-    assert t.starting_loc == (-90.0, 40.0)
-    assert t.starting_level == 1000.0
-    assert t.starting_level_index == 2
-    assert len(t.diagnostic_names) == 1
-    assert t.diagnostic_names[0] == "PRESSURE"
-
-    t = d.trajectories[0]
-    assert len(t.grids) == 13
-    assert len(t.datetimes) == 13
-    assert len(t.forecast_hours) == 13
-    assert len(t.ages) == 13
-    assert len(t.latitudes) == 13
-    assert len(t.longitudes) == 13
-    assert len(t.heights) == 13
-    assert len(t.vertical_coordinates) == 13
-    assert len(t.others["PRESSURE"]) == 13
-
-    k = 12
-    assert t.grids[k] is d.grids[0]
-    assert t.datetimes[k] == datetime.datetime(95, 10, 16, 12, 0)
-    assert t.forecast_hours[k] == 0
-    assert t.ages[k] == 12.0
-    assert t.latitudes[k] == 38.586
-    assert t.longitudes[k] == -88.772
-    assert t.heights[k] == 0.0
-    assert t.vertical_coordinates[k] == 0.0
-    assert t.others["PRESSURE"][k] == 1001.1
-
-    t = d.trajectories[2]
-    assert len(t.grids) == 13
-    assert len(t.datetimes) == 13
-    assert len(t.forecast_hours) == 13
-    assert len(t.ages) == 13
-    assert len(t.latitudes) == 13
-    assert len(t.longitudes) == 13
-    assert len(t.heights) == 13
-    assert len(t.vertical_coordinates) == 13
-    assert len(t.others["PRESSURE"]) == 13
-
-    k = 12
-    assert t.grids[k] is d.grids[0]
-    assert t.datetimes[k] == datetime.datetime(95, 10, 16, 12, 0)
-    assert t.forecast_hours[k] == 0
-    assert t.ages[k] == 12.0
-    assert t.latitudes[k] == 36.886
-    assert t.longitudes[k] == -85.285
-    assert t.heights[k] == 718.4
-    assert t.vertical_coordinates[k] == 718.4
-    assert t.others["PRESSURE"][k] == 905.6
-
-
-def test_TrajectoryDataFileReader_adjust_settings():
-    s = plot.TrajectoryPlotSettings()
-    d = plot.TrajectoryPlotData()
-    r = plot.TrajectoryDataFileReader(d)
-
-    assert s.vertical_coordinate == s.Vertical.NOT_SET
-
-    r.adjust_settings("data/tdump", s)
-
-    assert s.vertical_coordinate == s.Vertical.ABOVE_GROUND_LEVEL
-
-
-def test_TrajectoryPlotData___init__():
-    d = plot.TrajectoryPlotData()
-
-    assert hasattr(d, 'trajectory_direction')
-    assert hasattr(d, 'vertical_motion')
-    assert d.IDLBL == None
-    assert d.grids != None and len(d.grids) == 0
-    assert d.trajectories != None and len(d.trajectories) == 0
-    assert d.format_version == 1
-    assert d.uniq_start_levels != None and len(d.uniq_start_levels) == 0
-
-
-def test_TrajectoryPlotData_is_forward_calculation():
-    d = plot.TrajectoryPlotData()
-
-    d.trajectory_direction = "FORWARD"
-    assert d.is_forward_calculation()
-
-    d.trajectory_direction = " FORWARD "
-    assert d.is_forward_calculation()
-
-    d.trajectory_direction = "BACKWARD"
-    assert d.is_forward_calculation() == False
-
-
-def test_TrajectoryPlotData_get_reader():
-    d = plot.TrajectoryPlotData()
-    r = d.get_reader()
-
-    assert isinstance(r, plot.TrajectoryDataFileReader)
-    assert r.trajectory_data is d
-
-
-def test_TrajectoryPlotData_get_unique_start_datetimes():
-    d = plot.TrajectoryPlotData()
-
-    list = d.get_unique_start_datetimes()
-    assert len(list) == 0
-
-    # add one trajectory
-
-    t = plot.TrajectoryPlotData.Trajectory()
-    t.starting_datetime = datetime.datetime(2019, 4, 8, 13, 4)
-    d.trajectories.append(t)
-
-    list = d.get_unique_start_datetimes()
-    assert len(list) == 1
-    assert list[0] == datetime.datetime(2019, 4, 8, 13, 4)
-
-    # add one more with the same date and time.
-
-    t = plot.TrajectoryPlotData.Trajectory()
-    t.starting_datetime = datetime.datetime(2019, 4, 8, 13, 4)
-    d.trajectories.append(t)
-
-    list = d.get_unique_start_datetimes()
-    assert len(list) == 1
-    assert list[0] == datetime.datetime(2019, 4, 8, 13, 4)
-
-    # add one more with a different date and time.
-
-    t = plot.TrajectoryPlotData.Trajectory()
-    t.starting_datetime = datetime.datetime(2019, 4, 8, 13, 8)
-    d.trajectories.append(t)
-
-    list = d.get_unique_start_datetimes()
-    assert len(list) == 2
-
-
-def test_TrajectoryPlotData_get_unique_start_locations():
-    d = plot.TrajectoryPlotData()
-
-    list = d.get_unique_start_locations()
-    assert len(list) == 0
-
-    # add one trajectory
-
-    t = plot.TrajectoryPlotData.Trajectory()
-    t.starting_loc = (-90.0, 40.0)
-    d.trajectories.append(t)
-
-    list = d.get_unique_start_locations()
-    assert len(list) == 1
-    assert list[0] == (-90.0, 40.0)
-
-    # add one more with the same location.
-
-    t = plot.TrajectoryPlotData.Trajectory()
-    t.starting_loc = (-90.0, 40.0)
-    d.trajectories.append(t)
-
-    list = d.get_unique_start_locations()
-    assert len(list) == 1
-    assert list[0] == (-90.0, 40.0)
-
-    # add one more with a different location.
-
-    t = plot.TrajectoryPlotData.Trajectory()
-    t.starting_loc = (-90.0, 43.0)
-    d.trajectories.append(t)
-
-    list = d.get_unique_start_locations()
-    assert len(list) == 2
-
-
-def test_TrajectoryPlotData_get_unique_start_levels():
-    d = plot.TrajectoryPlotData()
-
-    list = d.get_unique_start_levels()
-    assert len(list) == 0
-
-    # add one trajectory
-
-    t = plot.TrajectoryPlotData.Trajectory()
-    t.starting_level = 0.0
-    d.trajectories.append(t)
-
-    list = d.get_unique_start_levels()
-    assert len(list) == 1
-    assert list[0] == 0.0
-
-    # add one more with the same level.
-
-    t = plot.TrajectoryPlotData.Trajectory()
-    t.starting_level = 0.0
-    d.trajectories.append(t)
-
-    list = d.get_unique_start_levels()
-    assert len(list) == 1
-    assert list[0] == 0.0
-
-    # add one more with a different level.
-
-    t = plot.TrajectoryPlotData.Trajectory()
-    t.starting_level = 500.0
-    d.trajectories.append(t)
-
-    list = d.get_unique_start_levels()
-    assert len(list) == 2
-    assert list[1] == 500.0
-
-
-def test_TrajectoryPlotData_get_latitude_range(plotData):
-    r = plotData.get_latitude_range()
-
-    assert r[0] == 36.886
-    assert r[1] == 40.000
-
-
-def test_TrajectoryPlotData_get_longitude_range(plotData):
-    r = plotData.get_longitude_range()
-
-    assert r[0] == -90.000
-    assert r[1] == -85.285
-
-
-def test_TrajectoryPlotData_get_age_range(plotData):
-    r = plotData.get_age_range()
-
-    assert r[0] == 0.0
-    assert r[1] == 12.0
-
-
-def test_TrajectoryPlotData_get_datetime_range(plotData):
-    r = plotData.get_datetime_range()
-
-    assert r[0] == datetime.datetime(95, 10, 16,  0, 0)
-    assert r[1] == datetime.datetime(95, 10, 16, 12, 0)
-
-
-def test_TrajectoryPlotData_get_max_forecast_hour(plotData):
-    assert 0.0 == plotData.get_max_forecast_hour()
-    
-    plotData.trajectories[0].forecast_hours[-1] = 12.0
-    assert 12.0 == plotData.get_max_forecast_hour()
-
-
-def test_TrajectoryPlotData_get_forecast_init_datetime(plotData):
-    r = plotData.get_forecast_init_datetime()
-
-    assert r == datetime.datetime(95, 10, 16,  0, 0)
-
-
-def test_TrajectoryPlotData_after_reading_file():
-    s = plot.TrajectoryPlotSettings()
-    d = plot.TrajectoryPlotData()
-    s.color = s.Color.ITEMIZED
-    s.color_codes = ['2', '3']
-
-    # add four trajectories
-
-    t = plot.TrajectoryPlotData.Trajectory()
-    t.starting_level = 10.0
-    d.trajectories.append(t)
-
-    t = plot.TrajectoryPlotData.Trajectory()
-    t.starting_level = 500.0
-    d.trajectories.append(t)
-
-    t = plot.TrajectoryPlotData.Trajectory()
-    t.starting_level = 1000.0
-    d.trajectories.append(t)
-
-    t = plot.TrajectoryPlotData.Trajectory()
-    t.starting_level = 500.0
-    d.trajectories.append(t)
-
-    # Run and check
-
-    d.after_reading_file(s)
-
-    assert d.trajectories[0].starting_level_index == 0
-    assert d.trajectories[1].starting_level_index == 1
-    assert d.trajectories[2].starting_level_index == 2
-    assert d.trajectories[3].starting_level_index == 1
-
-    assert d.trajectories[0].color == '2'
-    assert d.trajectories[1].color == '3'
-    assert d.trajectories[2].color == '1'
-    assert d.trajectories[3].color == '1'
-
-    assert d.uniq_start_levels == [10.0, 500.0, 1000.0]
-
-    assert isinstance(s.color_cycle, plot.ColorCycle)
-
-
-def test_MeteorologicalGrid___init__():
-    g = plot.TrajectoryPlotData.MeteorologicalGrid()
-
-    assert hasattr(g, 'model')
-    assert hasattr(g, 'datetime')
-    assert g.forecast_hour == 0
-
-
-def test_Trajectory___init__():
-    t = plot.TrajectoryPlotData.Trajectory()
-
-    assert hasattr(t, 'starting_datetime')
-    assert t.starting_loc == (0, 0)
-    assert t.starting_level == 0
-    assert t.starting_level_index == -1
-    assert t.diagnostic_names == None
-    assert t.color == None
-    assert t.vertical_coord == None
-    assert t.grids != None and len(t.grids) == 0
-    assert t.datetimes != None and len(t.datetimes) == 0
-    assert t.forecast_hours != None and len(t.forecast_hours) == 0
-    assert t.ages != None and len(t.ages) == 0
-    assert t.latitudes != None and len(t.latitudes) == 0
-    assert t.longitudes != None and len(t.longitudes) == 0
-    assert t.heights != None and len(t.heights) == 0
-    assert t.others != None and len(t.others) == 0
-
-
-def test_Trajectory_latitudes(plotData):
-    lats = plotData.trajectories[0].latitudes
-    assert len(lats) == 13
-    assert lats[0] == 40.0
-    assert lats[12] == 38.586
-    
-    plotData.trajectories[0].latitudes = []
-
-
-def test_Trajectory_longitudes(plotData):
-    lons = plotData.trajectories[0].longitudes
-    assert len(lons) == 13
-    assert lons[0] == -90.0
-    assert lons[12] == -88.772
-
-    plotData.trajectories[0].longitudes = []
-
-
-def test_Trajectory_ages(plotData):
-    ages = plotData.trajectories[0].ages
-    assert len(ages) == 13
-    assert ages[0] == 0.0
-    assert ages[12] == 12.0
-
-    plotData.trajectories[0].ages = []
-    
-
-def test_Trajectory_datetimes(plotData):
-    datetimes = plotData.trajectories[0].datetimes
-    assert len(datetimes) == 13
-    assert datetimes[0] == datetime.datetime(95, 10, 16, 0, 0)
-    assert datetimes[12] == datetime.datetime(95, 10, 16, 12, 0)
-
-    plotData.trajectories[0].datetimes = []
-    
-    
-def test_Trajectory_forecast_hours(plotData):
-    forecast_hours = plotData.trajectories[0].forecast_hours
-    assert len(forecast_hours) == 13
-    assert forecast_hours[0] == 0
-    assert forecast_hours[12] == 0
-
-    plotData.trajectories[0].forecast_hours = []
-    
-
-def test_Trajectory_heights(plotData):
-    p = plotData.trajectories[0].heights
-    assert len(p) == 13
-    assert p[0] == 10.0
-    assert p[12] == 0.0
-    
-    plotData.trajectories[0].heights = []
-    
-    
-def test_Trajectory_pressures(plotData):
-    p = plotData.trajectories[0].pressures
-    assert len(p) == 13
-    assert p[0] == 991.7
-    assert p[12] == 1001.1
-
-    plotData.trajectories[0].pressures = []
-    
-
-def test_Trajectory_terrain_profile(plotData):
-    t = plotData.trajectories[0]
-    p = t.terrain_profile
-
-    assert p == None
-
-    t.others["TERR_MSL"] = [10.0, 500.0]
-    p = t.terrain_profile
-
-    assert p[0] == 10.0
-    assert p[1] == 500.0
-
-    t.terrain_profile = []
-    
-
-def test_Trajectory_vertical_coordinates(plotData):
-    t = plotData.trajectories[0]
-
-    p = t.vertical_coordinates
-    assert len(p) == 13
-    assert p[0] == 10.0
-    assert p[12] == 0.0
-
-    t.vertical_coordinates = []
-    
-
-def test_Trajectory_has_terrain_profile(plotData):
-    t = plotData.trajectories[0]
-
-    assert t.has_terrain_profile() == False
-
-    t.others["TERR_MSL"] = [10.0, 500.0]
-
-    assert t.has_terrain_profile() == True
-
-
-def test_Trajectory_repair_starting_location():
-    t = plot.TrajectoryPlotData.Trajectory()
-    t.longitudes = [0, 1, 2, 3]
-    t.latitudes = [1, 2, 3, 4]
-    t.starting_loc = (0, 0)
-    
-    t.repair_starting_location(t)
-    
-    assert t.starting_loc == (2, 3)
-
-
-def test_Trajectory_repair_starting_level():
-    t = plot.TrajectoryPlotData.Trajectory()
-    t.longitudes = [0]
-    t.latitudes = [0]
-    t.vertical_coord = plot.BlankVerticalCoordinate(t)
-    t.vertical_coord.make_vertical_coordinates()
-    t.vertical_coord.values[0] = 500.0
-    t.starting_level = 0
-    
-    t.repair_starting_level()
-    
-    assert t.starting_level == 500.0
-
-
 def test_TrajectoryPlotHelper_make_ylabel():
-    plotData = plot.TrajectoryPlotData()
-    t = plot.TrajectoryPlotData.Trajectory()
+    plotData = model.TrajectoryPlotData()
+    t = model.TrajectoryPlotData.Trajectory()
     t.starting_loc = (30.0, 20.0)
     plotData.trajectories.append(t)
 
@@ -977,7 +357,7 @@ def test_TrajectoryPlotHelper_make_ylabel():
 
     # add a trajectory with a different starting location
 
-    t = plot.TrajectoryPlotData.Trajectory()
+    t = model.TrajectoryPlotData.Trajectory()
     t.starting_loc = (30.0, 25.0)
     plotData.trajectories.append(t)
 
@@ -1054,14 +434,14 @@ def test_TrajectoryPlot_get_gridline_spacing():
     p = plot.TrajectoryPlot()
     s = p.settings
 
-    s.lat_lon_label_interval_option = plot.TrajectoryPlotSettings.LatLonLabel.NONE
+    s.lat_lon_label_interval_option = const.LatLonLabel.NONE
     assert p.get_gridline_spacing([-130.0, -110.0, 45.0, 55.0]) == 0.0
 
-    s.lat_lon_label_interval_option = plot.TrajectoryPlotSettings.LatLonLabel.SET
+    s.lat_lon_label_interval_option = const.LatLonLabel.SET
     s.lat_lon_label_interval = 3.14
     assert p.get_gridline_spacing([-130.0, -110.0, 45.0, 55.0]) == 3.14
 
-    s.lat_lon_label_interval_option = plot.TrajectoryPlotSettings.LatLonLabel.AUTO
+    s.lat_lon_label_interval_option = const.LatLonLabel.AUTO
     assert p.get_gridline_spacing([-130.0, -110.0, 45.0, 55.0]) == 5.0
 
 
@@ -1079,13 +459,13 @@ def test_TrajectoryPlot__fix_map_color():
     p = plot.TrajectoryPlot()
     s = p.settings
 
-    s.color = s.Color.BLACK_AND_WHITE
+    s.color = const.Color.BLACK_AND_WHITE
     assert p._fix_map_color('#6699cc') == 'k' # black
 
-    s.color = s.Color.COLOR
+    s.color = const.Color.COLOR
     assert p._fix_map_color('#6699cc') == '#6699cc'
 
-    s.color = s.Color.ITEMIZED
+    s.color = const.Color.ITEMIZED
     assert p._fix_map_color('#6699cc') == '#6699cc'
 
 
@@ -1128,7 +508,7 @@ def test_TrajectoryPlot__determine_map_limits(plotData):
     assert mb.plume_sz == [5.0, 5.0]
     assert mb.plume_loc == [270, 126]
 
-    nil_plot_data = plot.TrajectoryPlotData()
+    nil_plot_data = model.TrajectoryPlotData()
 
     try:
         mb2 = p._determine_map_limits(nil_plot_data, 2)
@@ -1141,24 +521,22 @@ def test_TrajectoryPlot__determine_vertical_limit(plotData):
     p = plot.TrajectoryPlot()
 
     # ensure vertical coordinates are pressures
-    p.settings.vertical_coordinate = plot.TrajectoryPlotSettings.Vertical.PRESSURE
-    plotData.after_reading_file(p.settings)
-    low, high = p._determine_vertical_limit(plotData, plot.TrajectoryPlotSettings.Vertical.PRESSURE)
+    plotData.fix_vertical_coordinates(const.Vertical.PRESSURE, p.settings.height_unit)
+    low, high = p._determine_vertical_limit(plotData, const.Vertical.PRESSURE)
     assert low == 1001.1
     assert high == 879.8
 
     # ensure vertical coordinates are heights
-    p.settings.vertical_coordinate = plot.TrajectoryPlotSettings.Vertical.ABOVE_GROUND_LEVEL
-    plotData.after_reading_file(p.settings)
-    low, high = p._determine_vertical_limit(plotData, plot.TrajectoryPlotSettings.Vertical.ABOVE_GROUND_LEVEL)
+    plotData.fix_vertical_coordinates(const.Vertical.ABOVE_GROUND_LEVEL, p.settings.height_unit)
+    low, high = p._determine_vertical_limit(plotData, const.Vertical.ABOVE_GROUND_LEVEL)
     assert low == 0.0
     assert high == 1000.0
 
-    pd = plot.TrajectoryPlotData()
-    traj = plot.TrajectoryPlotData.Trajectory()
-    traj.vertical_coord = plot.BlankVerticalCoordinate(traj)
+    pd = model.TrajectoryPlotData()
+    traj = model.TrajectoryPlotData.Trajectory()
+    traj.vertical_coord = model.BlankVerticalCoordinate(traj)
     pd.trajectories.append(traj)
-    low, high = p._determine_vertical_limit(pd, plot.TrajectoryPlotSettings.Vertical.ABOVE_GROUND_LEVEL)
+    low, high = p._determine_vertical_limit(pd, const.Vertical.ABOVE_GROUND_LEVEL)
     assert low is None
     assert high is None
     
@@ -1199,7 +577,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
 
     # Add a grid
 
-    g = plot.TrajectoryPlotData.MeteorologicalGrid()
+    g = model.TrajectoryPlotData.MeteorologicalGrid()
     g.model = "TEST"
     plotData.grids.append(g)
     title = p.make_plot_title(plotData)
@@ -1401,13 +779,13 @@ def test_TrajectoryPlot_draw_trajectory_plot():
 
 def test_TrajecotryPlot__read_cluster_info_if_exists():
     p = plot.TrajectoryPlot()
-    pd = plot.TrajectoryPlotData()
+    pd = model.TrajectoryPlotData()
     pd.IDLBL = "MERGMEAN"
     # need four trajectories to match the contents of CLUSLIST_4
-    pd.trajectories.append(plot.TrajectoryPlotData.Trajectory())
-    pd.trajectories.append(plot.TrajectoryPlotData.Trajectory())
-    pd.trajectories.append(plot.TrajectoryPlotData.Trajectory())
-    pd.trajectories.append(plot.TrajectoryPlotData.Trajectory())
+    pd.trajectories.append(model.TrajectoryPlotData.Trajectory())
+    pd.trajectories.append(model.TrajectoryPlotData.Trajectory())
+    pd.trajectories.append(model.TrajectoryPlotData.Trajectory())
+    pd.trajectories.append(model.TrajectoryPlotData.Trajectory())
     p.data_list = [pd]
     
     # when CLUSLIST_4 does not exist
@@ -1655,21 +1033,21 @@ def test_HeightColorCycle_next_color():
 def test_ColorCycleFactory_create_instance():
     s = plot.TrajectoryPlotSettings()
 
-    s.color = s.Color.COLOR
+    s.color = const.Color.COLOR
     cc = plot.ColorCycleFactory.create_instance(s, 1)
     assert isinstance(cc, plot.ColorCycle)
     assert cc.max_colors == 3
 
-    s.color = s.Color.COLOR
+    s.color = const.Color.COLOR
     cc = plot.ColorCycleFactory.create_instance(s, 2)
     assert isinstance(cc, plot.HeightColorCycle)
     assert cc.max_colors == 7
 
-    s.color = s.Color.ITEMIZED
+    s.color = const.Color.ITEMIZED
     cc = plot.ColorCycleFactory.create_instance(s, 2)
     assert isinstance(cc, plot.ItemizedColorCycle)
 
-    s.color = s.Color.BLACK_AND_WHITE
+    s.color = const.Color.BLACK_AND_WHITE
     cc = plot.ColorCycleFactory.create_instance(s, 2)
     assert isinstance(cc, plot.MonoColorCycle)
 
@@ -1984,232 +1362,4 @@ def test_AgeVerticalProjection_select_xvalues(plotData):
     assert len(x) > 0
     assert x[0] == 0
     plt.close(axes.get_figure())
-    
 
-def test_AbstractVerticalCoordinate___init__():
-    t = plot.TrajectoryPlotData.Trajectory()
-    vc = plot.AbstractVerticalCoordinate(t)
-    assert vc.t is t
-    assert vc.values != None and len(vc.values) == 0
-
-
-def test_AbstractVerticalCoordinate_scale():
-    t = plot.TrajectoryPlotData.Trajectory()
-    vc = plot.AbstractVerticalCoordinate(t)
-    vc.values = [1.0, 2.0]
-    vc.scale(2.0)
-    assert vc.values == pytest.approx((2.0, 4.0))
-    
-
-def test_AbstractVerticalCoordinate_need_axis_inversion():
-    t = plot.TrajectoryPlotData.Trajectory()
-    vc = plot.AbstractVerticalCoordinate(t)
-    assert not vc.need_axis_inversion()
-
-
-def test_AbstractVerticalCoordinate_create_instance():
-    s = plot.TrajectoryPlotSettings()
-    t = plot.TrajectoryPlotData.Trajectory()
-    
-    s.vertical_coordinate = plot.TrajectoryPlotSettings.Vertical.PRESSURE
-    vc = plot.AbstractVerticalCoordinate.create_instance(s, t)
-    assert isinstance(vc, plot.PressureCoordinate)
-    
-    s.vertical_coordinate = plot.TrajectoryPlotSettings.Vertical.ABOVE_GROUND_LEVEL
-    vc = plot.AbstractVerticalCoordinate.create_instance(s, t)
-    assert isinstance(vc, plot.HeightCoordinate)
-    
-    t.others["TERR_MSL"] = [1.0, 2.0]
-    s.vertical_coordinate = plot.TrajectoryPlotSettings.Vertical.ABOVE_GROUND_LEVEL
-    vc = plot.AbstractVerticalCoordinate.create_instance(s, t)
-    assert isinstance(vc, plot.TerrainHeightCoordinate)
-    
-    t.others["THETA"] = [0.0, 1.0]
-    s.vertical_coordinate = plot.TrajectoryPlotSettings.Vertical.THETA
-    vc = plot.AbstractVerticalCoordinate.create_instance(s, t)
-    assert isinstance(vc, plot.ThetaCoordinate)
-    
-    s.vertical_coordinate = plot.TrajectoryPlotSettings.Vertical.METEO
-    vc = plot.AbstractVerticalCoordinate.create_instance(s, t)
-    assert isinstance(vc, plot.OtherVerticalCoordinate)
-    
-    s.vertical_coordinate = plot.TrajectoryPlotSettings.Vertical.NONE
-    vc = plot.AbstractVerticalCoordinate.create_instance(s, t)
-    assert isinstance(vc, plot.BlankVerticalCoordinate)
-
-
-def test_BlankVerticalCoordinate___init__(simpleTraj):
-    vc = plot.BlankVerticalCoordinate(simpleTraj)
-    assert vc.t is simpleTraj
-    
-
-def test_BlankVerticalCoordinate_make_vertical_coordinates(simpleTraj):
-    vc = simpleTraj.vertical_coord = plot.BlankVerticalCoordinate(simpleTraj)
-    vc.make_vertical_coordinates()
-    h = simpleTraj.vertical_coordinates
-    assert len(h) == 2
-    assert h[0] == 0.0
-     
-
-def test_BlankVerticalCoordinate_get_vertical_label(simpleTraj):
-    vc = simpleTraj.vertical_coord = plot.BlankVerticalCoordinate(simpleTraj)
-    assert vc.get_vertical_label() == ""
-
-
-def test_PressureCoordinate___init__(simpleTraj):
-    vc = plot.PressureCoordinate(simpleTraj)
-    assert vc.t is simpleTraj
-    
-
-def test_PressureCoordinate_make_vertical_coordinates(simpleTraj):
-    simpleTraj.diagnostic_names.append("PRESSURE")
-    simpleTraj.others["PRESSURE"] = [1001.0, 1002.0]
-    
-    vc = simpleTraj.vertical_coord = plot.PressureCoordinate(simpleTraj)
-    vc.make_vertical_coordinates()
-    
-    p = simpleTraj.vertical_coordinates
-    assert len(p) == 2
-    assert p[0] == 1001.0
-    assert p[1] == 1002.0
-    
-
-def test_PressureCoordinate_get_vertical_label(simpleTraj):
-    vc = simpleTraj.vertical_coord = plot.PressureCoordinate(simpleTraj)
-    assert vc.get_vertical_label() == "hPa"
-    
-
-def test_PressureCoordinate_need_axis_inversion(simpleTraj):
-    vc = simpleTraj.vertical_coord = plot.PressureCoordinate(simpleTraj)
-    assert vc.need_axis_inversion() == True
-
-
-def test_TerrainHeightCoordinate___init__(simpleTraj):
-    vc = simpleTraj.vertical_coord = plot.TerrainHeightCoordinate(simpleTraj)
-    assert vc.t is simpleTraj
-    assert vc.unit == plot.TrajectoryPlotSettings.HeightUnit.METER
-    
-    vc = simpleTraj.vertical_coord = plot.TerrainHeightCoordinate(simpleTraj, plot.TrajectoryPlotSettings.HeightUnit.FEET)
-    assert vc.t is simpleTraj
-    assert vc.unit == plot.TrajectoryPlotSettings.HeightUnit.FEET
-    
-
-def test_TerrainHeightCoordinate_make_vertical_coordinates(simpleTraj):
-    # with terrain
-    simpleTraj.diagnostic_names.append("TERR_MSL")
-    simpleTraj.others["TERR_MSL"] = [500.0, 550.0]
- 
-    vc = simpleTraj.vertical_coord = plot.TerrainHeightCoordinate(simpleTraj)
-    vc.make_vertical_coordinates()
-    
-    h = simpleTraj.vertical_coordinates
-    assert len(h) == 2
-    assert h[0] == 510.0
-    assert h[1] == 570.0
-    
-    # with terrain and in feet
-    vc = simpleTraj.vertical_coord = plot.TerrainHeightCoordinate(simpleTraj, plot.TrajectoryPlotSettings.HeightUnit.FEET)
-    vc.make_vertical_coordinates()
-    
-    h = simpleTraj.vertical_coordinates
-    assert len(h) == 2
-    assert h[0] == pytest.approx(510.0 * 3.28084)
-    assert h[1] == pytest.approx(570.0 * 3.28084)
-    
-
-def test_TerrainHeightCoordinate_get_vertical_label(simpleTraj):
-    vc = simpleTraj.vertical_coord = plot.TerrainHeightCoordinate(simpleTraj)
-    assert vc.get_vertical_label() == "Meters MSL"
-        
-    vc = simpleTraj.vertical_coord = plot.TerrainHeightCoordinate(simpleTraj, plot.TrajectoryPlotSettings.HeightUnit.FEET)
-    assert vc.get_vertical_label() == "Feet MSL"
-
-
-def test_HeightCoordinate___init__(simpleTraj):
-    vc = simpleTraj.vertical_coord = plot.HeightCoordinate(simpleTraj)
-    assert vc.t is simpleTraj
-    assert vc.unit == plot.TrajectoryPlotSettings.HeightUnit.METER
-    
-    vc = simpleTraj.vertical_coord = plot.HeightCoordinate(simpleTraj, plot.TrajectoryPlotSettings.HeightUnit.FEET)
-    assert vc.t is simpleTraj
-    assert vc.unit == plot.TrajectoryPlotSettings.HeightUnit.FEET
-    
-
-def test_HeightCoordinate_make_vertical_coordinates(simpleTraj):
-    # without terrain
-    vc = simpleTraj.vertical_coord = plot.HeightCoordinate(simpleTraj)
-    vc.make_vertical_coordinates()
-    
-    h = simpleTraj.vertical_coordinates
-    assert len(h) == 2
-    assert h[0] == 10.0
-    assert h[1] == 20.0
-    
-    # without terrain and in feet
-    vc = simpleTraj.vertical_coord = plot.HeightCoordinate(simpleTraj,  plot.TrajectoryPlotSettings.HeightUnit.FEET)
-    vc.make_vertical_coordinates()
-    
-    h = simpleTraj.vertical_coordinates
-    assert len(h) == 2
-    assert h[0] == pytest.approx(10.0 * 3.28084)
-    assert h[1] == pytest.approx(20.0 * 3.28084)
-
-
-def test_HeightCoordinate_get_vertical_label(simpleTraj):
-    vc = simpleTraj.vertical_coord = plot.HeightCoordinate(simpleTraj)
-    assert vc.get_vertical_label() == "Meters AGL"
-        
-    vc = simpleTraj.vertical_coord = plot.HeightCoordinate(simpleTraj, plot.TrajectoryPlotSettings.HeightUnit.FEET)
-    assert vc.get_vertical_label() == "Feet AGL"
-
-
-def test_ThetaCoordinate___init__(simpleTraj):
-    simpleTraj.vertical_coord =  vc = plot.ThetaCoordinate(simpleTraj)
-    assert vc.t is simpleTraj
-    
-
-def test_ThetaCoordinate_make_vertical_coordinates(simpleTraj):
-    # theta
-    simpleTraj.diagnostic_names.append("THETA")
-    simpleTraj.others["THETA"] = [1500.0, 1550.0]
-    
-    vc = simpleTraj.vertical_coord = plot.ThetaCoordinate(simpleTraj)
-    vc.make_vertical_coordinates()
-    
-    h = simpleTraj.vertical_coordinates
-    assert len(h) == 2
-    assert h[0] == 1500.0
-    assert h[1] == 1550.0
- 
-
-def test_ThetaCoordinate_get_vertical_label(simpleTraj):
-    vc = simpleTraj.vertical_coord = plot.ThetaCoordinate(simpleTraj)
-    assert vc.get_vertical_label() == "Theta"
-    
-
-def test_OtherVerticalCoordinate___init__(simpleTraj):
-    vc = simpleTraj.vertical_coord = plot.OtherVerticalCoordinate(simpleTraj)
-    assert vc.t is simpleTraj
-    
-
-def test_OtherVerticalCoordinate_make_vertical_coordinates(simpleTraj):
-    # something else
-    simpleTraj.diagnostic_names.append("SUN_FLUX")
-    simpleTraj.others["SUN_FLUX"] = [50.0, 55.0]
-    
-    vc = simpleTraj.vertical_coord = plot.OtherVerticalCoordinate(simpleTraj)
-    vc.make_vertical_coordinates()
-    
-    h = simpleTraj.vertical_coordinates
-    assert len(h) == 2
-    assert h[0] == 50.0
-    assert h[1] == 55.0
-    
-
-def test_OtherVerticalCoordinate_get_vertical_label(simpleTraj):
-    simpleTraj.diagnostic_names.append("SUN_FLUX")
-    simpleTraj.others["SUN_FLUX"] = [50.0, 55.0]
-    
-    vc = simpleTraj.vertical_coord = plot.OtherVerticalCoordinate(simpleTraj)
-    
-    assert vc.get_vertical_label() == "SUN_FLUX"

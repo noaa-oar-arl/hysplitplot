@@ -6,7 +6,7 @@ import math
 import geopandas
 import shapely.geometry
 import cartopy.crs
-from hysplit4 import io, util
+from hysplit4 import io, util, const
 from hysplit4.traj import plot
 
 
@@ -659,12 +659,12 @@ class MapProjection:
     @staticmethod
     def determine_projection(map_proj, center_loc):
         kproj = map_proj
-        if map_proj == plot.TrajectoryPlotSettings.MapProjection.AUTO:
-            kproj = plot.TrajectoryPlotSettings.MapProjection.LAMBERT
+        if map_proj == const.MapProjection.AUTO:
+            kproj = const.MapProjection.LAMBERT
             if center_loc[1] > 55.0 or center_loc[1] < -55.0:
-                kproj = plot.TrajectoryPlotSettings.MapProjection.POLAR
+                kproj = const.MapProjection.POLAR
             if center_loc[1] < 25.0 and center_loc[1] > -25.0:
-                kproj = plot.TrajectoryPlotSettings.MapProjection.MERCATOR
+                kproj = const.MapProjection.MERCATOR
         logger.debug("map projection %d -> %d", map_proj, kproj)
         return kproj
 
@@ -674,13 +674,13 @@ class MapProjection:
 
         kproj = MapProjection.determine_projection(settings.map_projection, center_loc)
 
-        if kproj == settings.MapProjection.POLAR:
+        if kproj == const.MapProjection.POLAR:
             obj = PolarProjection(settings, center_loc, scale, grid_deltas)
-        elif kproj == settings.MapProjection.LAMBERT:
+        elif kproj == const.MapProjection.LAMBERT:
             obj = LambertProjection(settings, center_loc, scale, grid_deltas)
-        elif kproj == settings.MapProjection.MERCATOR:
+        elif kproj == const.MapProjection.MERCATOR:
             obj = MercatorProjection(settings, center_loc, scale, grid_deltas)
-        elif kproj == settings.MapProjection.CYL_EQU:
+        elif kproj == const.MapProjection.CYL_EQU:
             obj = CylindricalEquidistantProjection(settings, center_loc, scale, grid_deltas)
         else:
             raise Exception("unknown map projection {0}".format(kproj))
@@ -818,7 +818,7 @@ class MapProjection:
         y1 = util.nearest_int(y1)
         y2 = util.nearest_int(y2)
         delx = (y2-y1)*self.scale
-        if self.proj_type == plot.TrajectoryPlotSettings.MapProjection.CYL_EQU:
+        if self.proj_type == const.MapProjection.CYL_EQU:
             delx *= 2.0
         x1 = util.nearest_int(x1)
         x2 = x1 + util.nearest_int(delx)
@@ -926,7 +926,7 @@ class LambertProjection(MapProjection):
 
     def __init__(self, settings, center_loc, scale, grid_deltas):
         MapProjection.__init__(self, settings, center_loc, scale, grid_deltas)
-        self.proj_type = plot.TrajectoryPlotSettings.MapProjection.LAMBERT
+        self.proj_type = const.MapProjection.LAMBERT
         self.coord = LambertCoordinate()
 
     def sanity_check(self):
@@ -957,7 +957,7 @@ class PolarProjection(MapProjection):
 
     def __init__(self, settings, center_loc, scale, grid_deltas):
         MapProjection.__init__(self, settings, center_loc, scale, grid_deltas)
-        self.proj_type = plot.TrajectoryPlotSettings.MapProjection.POLAR
+        self.proj_type = const.MapProjection.POLAR
         self.coord = PolarCoordinate()
 
     def create_crs(self):
@@ -971,7 +971,7 @@ class MercatorProjection(MapProjection):
 
     def __init__(self, settings, center_loc, scale, grid_deltas):
         MapProjection.__init__(self, settings, center_loc, scale, grid_deltas)
-        self.proj_type = plot.TrajectoryPlotSettings.MapProjection.MERCATOR
+        self.proj_type = const.MapProjection.MERCATOR
         self.coord = MercatorCoordinate()
 
     def need_pole_exclusion(self, corners_lonlat):
@@ -989,7 +989,7 @@ class CylindricalEquidistantProjection(MapProjection):
 
     def __init__(self, settings, center_loc, scale, grid_deltas):
         super(CylindricalEquidistantProjection, self).__init__(settings, center_loc, scale, grid_deltas)
-        self.proj_type = plot.TrajectoryPlotSettings.MapProjection.CYL_EQU
+        self.proj_type = const.MapProjection.CYL_EQU
         self.coord = CylindricalCoordinate()
 
     def create_crs(self):
@@ -1011,7 +1011,7 @@ class LabelsConfig():
 
     def after_reading_file(self, settings):
         if self.get("VUNIT") == "FEET":
-            settings.height_unit = plot.TrajectoryPlotSettings.HeightUnit.FEET
+            settings.height_unit = const.HeightUnit.FEET
 
 
 class LabelsConfigReader():
