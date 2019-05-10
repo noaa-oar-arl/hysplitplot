@@ -824,69 +824,94 @@ def test_Trajectory___init__():
     assert t.others != None and len(t.others) == 0
 
 
-def test_Trajectory_collect_latitude(plotData):
-    lats = plotData.trajectories[0].collect_latitude()
+def test_Trajectory_latitudes(plotData):
+    lats = plotData.trajectories[0].latitudes
     assert len(lats) == 13
     assert lats[0] == 40.0
     assert lats[12] == 38.586
+    
+    plotData.trajectories[0].latitudes = []
 
 
-def test_Trajectory_collect_longitude(plotData):
-    lons = plotData.trajectories[0].collect_longitude()
+def test_Trajectory_longitudes(plotData):
+    lons = plotData.trajectories[0].longitudes
     assert len(lons) == 13
     assert lons[0] == -90.0
     assert lons[12] == -88.772
 
+    plotData.trajectories[0].longitudes = []
 
-def test_Trajectory_collect_age(plotData):
-    ages = plotData.trajectories[0].collect_age()
+
+def test_Trajectory_ages(plotData):
+    ages = plotData.trajectories[0].ages
     assert len(ages) == 13
     assert ages[0] == 0.0
     assert ages[12] == 12.0
 
+    plotData.trajectories[0].ages = []
+    
 
-def test_Trajectory_collect_datetime(plotData):
-    datetimes = plotData.trajectories[0].collect_datetime()
+def test_Trajectory_datetimes(plotData):
+    datetimes = plotData.trajectories[0].datetimes
     assert len(datetimes) == 13
     assert datetimes[0] == datetime.datetime(95, 10, 16, 0, 0)
     assert datetimes[12] == datetime.datetime(95, 10, 16, 12, 0)
 
-
-def test_Trajectory_collect_forecast_hour(plotData):
-    forecast_hours = plotData.trajectories[0].collect_forecast_hour()
+    plotData.trajectories[0].datetimes = []
+    
+    
+def test_Trajectory_forecast_hours(plotData):
+    forecast_hours = plotData.trajectories[0].forecast_hours
     assert len(forecast_hours) == 13
     assert forecast_hours[0] == 0
     assert forecast_hours[12] == 0
 
+    plotData.trajectories[0].forecast_hours = []
+    
 
-def test_Trajectory_collect_pressure(plotData):
-    p = plotData.trajectories[0].collect_pressure()
+def test_Trajectory_heights(plotData):
+    p = plotData.trajectories[0].heights
+    assert len(p) == 13
+    assert p[0] == 10.0
+    assert p[12] == 0.0
+    
+    plotData.trajectories[0].heights = []
+    
+    
+def test_Trajectory_pressures(plotData):
+    p = plotData.trajectories[0].pressures
     assert len(p) == 13
     assert p[0] == 991.7
     assert p[12] == 1001.1
 
+    plotData.trajectories[0].pressures = []
+    
 
-def test_Trajectory_collect_terrain_profile(plotData):
+def test_Trajectory_terrain_profile(plotData):
     t = plotData.trajectories[0]
-    p = t.collect_terrain_profile()
+    p = t.terrain_profile
 
     assert p == None
 
     t.others["TERR_MSL"] = [10.0, 500.0]
-    p = t.collect_terrain_profile()
+    p = t.terrain_profile
 
     assert p[0] == 10.0
     assert p[1] == 500.0
 
+    t.terrain_profile = []
+    
 
-def test_Trajectory_collect_vertical_coordinate(plotData):
+def test_Trajectory_vertical_coordinates(plotData):
     t = plotData.trajectories[0]
 
-    p = t.collect_vertical_coordinate()
+    p = t.vertical_coordinates
     assert len(p) == 13
     assert p[0] == 10.0
     assert p[12] == 0.0
 
+    t.vertical_coordinates = []
+    
 
 def test_Trajectory_has_terrain_profile(plotData):
     t = plotData.trajectories[0]
@@ -899,13 +924,28 @@ def test_Trajectory_has_terrain_profile(plotData):
 
 
 def test_Trajectory_repair_starting_location():
-    # TODO
-    return
+    t = plot.TrajectoryPlotData.Trajectory()
+    t.longitudes = [0, 1, 2, 3]
+    t.latitudes = [1, 2, 3, 4]
+    t.starting_loc = (0, 0)
+    
+    t.repair_starting_location(t)
+    
+    assert t.starting_loc == (2, 3)
 
 
 def test_Trajectory_repair_starting_level():
-    # TODO
-    return
+    t = plot.TrajectoryPlotData.Trajectory()
+    t.longitudes = [0]
+    t.latitudes = [0]
+    t.vertical_coord = plot.BlankVerticalCoordinate(t)
+    t.vertical_coord.make_vertical_coordinates()
+    t.vertical_coord.values[0] = 500.0
+    t.starting_level = 0
+    
+    t.repair_starting_level()
+    
+    assert t.starting_level == 500.0
 
 
 def test_TrajectoryPlotHelper_make_ylabel():
@@ -1220,7 +1260,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
 
     # Forecast
     
-    plotData.trajectories[0].collect_forecast_hour()[0] = 13.0 # > 12
+    plotData.trajectories[0].forecast_hours[0] = 13.0 # > 12
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "112 backward trajectories\n" + \
@@ -1692,7 +1732,7 @@ def test_TimeIntervalSymbolDrawer_draw(plotData):
     t = plotData.trajectories[0]
 
     try:
-        d.draw(t, t.collect_datetime(), t.collect_pressure())
+        d.draw(t, t.datetimes, t.pressures)
     except Exception as ex:
         pytest.fail("unexpected exception {0}".format(str(ex)))
 
@@ -1705,9 +1745,9 @@ def test_TimeIntervalSymbolDrawer__filter_datadraw(plotData):
     d = plot.TimeIntervalSymbolDrawer(axes, s, 12)
 
     x24, y24, x12, y12 = d._filter_data(
-        plotData.trajectories[0].collect_datetime(),
-        plotData.trajectories[0].collect_longitude(),
-        plotData.trajectories[0].collect_latitude(),
+        plotData.trajectories[0].datetimes,
+        plotData.trajectories[0].longitudes,
+        plotData.trajectories[0].latitudes,
         12, False)
 
     assert len(x24) == 1
@@ -1743,7 +1783,7 @@ def test_AgeIntervalSymbolDrawer_draw(plotData):
     t = plotData.trajectories[0]
 
     try:
-        d.draw(t, t.collect_datetime(), t.collect_pressure())
+        d.draw(t, t.datetimes, t.pressures)
     except Exception as ex:
         pytest.fail("unexpected exception {0}".format(str(ex)))
 
@@ -1756,9 +1796,9 @@ def test_AgeIntervalSymbolDrawer__filter_datadraw(plotData):
     d = plot.AgeIntervalSymbolDrawer(axes, s, 12)
 
     x24, y24, x12, y12 = d._filter_data(
-        plotData.trajectories[0].collect_age(),
-        plotData.trajectories[0].collect_longitude(),
-        plotData.trajectories[0].collect_latitude(),
+        plotData.trajectories[0].ages,
+        plotData.trajectories[0].longitudes,
+        plotData.trajectories[0].latitudes,
         12, False)
 
     assert len(x24) == 1
@@ -2006,7 +2046,7 @@ def test_BlankVerticalCoordinate___init__(simpleTraj):
 def test_BlankVerticalCoordinate_make_vertical_coordinates(simpleTraj):
     vc = simpleTraj.vertical_coord = plot.BlankVerticalCoordinate(simpleTraj)
     vc.make_vertical_coordinates()
-    h = simpleTraj.collect_vertical_coordinate()
+    h = simpleTraj.vertical_coordinates
     assert len(h) == 2
     assert h[0] == 0.0
      
@@ -2028,7 +2068,7 @@ def test_PressureCoordinate_make_vertical_coordinates(simpleTraj):
     vc = simpleTraj.vertical_coord = plot.PressureCoordinate(simpleTraj)
     vc.make_vertical_coordinates()
     
-    p = simpleTraj.collect_vertical_coordinate()
+    p = simpleTraj.vertical_coordinates
     assert len(p) == 2
     assert p[0] == 1001.0
     assert p[1] == 1002.0
@@ -2062,7 +2102,7 @@ def test_TerrainHeightCoordinate_make_vertical_coordinates(simpleTraj):
     vc = simpleTraj.vertical_coord = plot.TerrainHeightCoordinate(simpleTraj)
     vc.make_vertical_coordinates()
     
-    h = simpleTraj.collect_vertical_coordinate()
+    h = simpleTraj.vertical_coordinates
     assert len(h) == 2
     assert h[0] == 510.0
     assert h[1] == 570.0
@@ -2071,7 +2111,7 @@ def test_TerrainHeightCoordinate_make_vertical_coordinates(simpleTraj):
     vc = simpleTraj.vertical_coord = plot.TerrainHeightCoordinate(simpleTraj, plot.TrajectoryPlotSettings.HeightUnit.FEET)
     vc.make_vertical_coordinates()
     
-    h = simpleTraj.collect_vertical_coordinate()
+    h = simpleTraj.vertical_coordinates
     assert len(h) == 2
     assert h[0] == pytest.approx(510.0 * 3.28084)
     assert h[1] == pytest.approx(570.0 * 3.28084)
@@ -2100,7 +2140,7 @@ def test_HeightCoordinate_make_vertical_coordinates(simpleTraj):
     vc = simpleTraj.vertical_coord = plot.HeightCoordinate(simpleTraj)
     vc.make_vertical_coordinates()
     
-    h = simpleTraj.collect_vertical_coordinate()
+    h = simpleTraj.vertical_coordinates
     assert len(h) == 2
     assert h[0] == 10.0
     assert h[1] == 20.0
@@ -2109,7 +2149,7 @@ def test_HeightCoordinate_make_vertical_coordinates(simpleTraj):
     vc = simpleTraj.vertical_coord = plot.HeightCoordinate(simpleTraj,  plot.TrajectoryPlotSettings.HeightUnit.FEET)
     vc.make_vertical_coordinates()
     
-    h = simpleTraj.collect_vertical_coordinate()
+    h = simpleTraj.vertical_coordinates
     assert len(h) == 2
     assert h[0] == pytest.approx(10.0 * 3.28084)
     assert h[1] == pytest.approx(20.0 * 3.28084)
@@ -2136,7 +2176,7 @@ def test_ThetaCoordinate_make_vertical_coordinates(simpleTraj):
     vc = simpleTraj.vertical_coord = plot.ThetaCoordinate(simpleTraj)
     vc.make_vertical_coordinates()
     
-    h = simpleTraj.collect_vertical_coordinate()
+    h = simpleTraj.vertical_coordinates
     assert len(h) == 2
     assert h[0] == 1500.0
     assert h[1] == 1550.0
@@ -2160,7 +2200,7 @@ def test_OtherVerticalCoordinate_make_vertical_coordinates(simpleTraj):
     vc = simpleTraj.vertical_coord = plot.OtherVerticalCoordinate(simpleTraj)
     vc.make_vertical_coordinates()
     
-    h = simpleTraj.collect_vertical_coordinate()
+    h = simpleTraj.vertical_coordinates
     assert len(h) == 2
     assert h[0] == 50.0
     assert h[1] == 55.0

@@ -45,8 +45,8 @@ def create_map_box(s):
     map_box.allocate()
     for t in d.trajectories:
         map_box.add(t.starting_loc)
-        lons = t.collect_longitude()
-        lats = t.collect_latitude()
+        lons = t.longitudes
+        lats = t.latitudes
         for k in range(len(lons)):
             map_box.add((lons[k], lats[k]))
     if s.ring_number >= 0:

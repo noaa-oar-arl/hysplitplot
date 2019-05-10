@@ -502,66 +502,66 @@ class TrajectoryPlotData:
         return all
 
     def get_latitude_range(self):
-        pts = self.trajectories[0].collect_latitude()
+        pts = self.trajectories[0].latitudes
         amin = min(pts)
         amax = max(pts)
 
         for k in range(1, len(self.trajectories)):
-            pts = self.trajectories[k].collect_latitude()
+            pts = self.trajectories[k].latitudes
             amin = min(amin, min(pts))
             amax = max(amax, max(pts))
 
         return (amin, amax)
 
     def get_longitude_range(self):
-        pts = self.trajectories[0].collect_longitude()
+        pts = self.trajectories[0].longitudes
         amin = min(pts)
         amax = max(pts)
 
         for k in range(1, len(self.trajectories)):
-            pts = self.trajectories[k].collect_longitude()
+            pts = self.trajectories[k].longitudes
             amin = min(amin, min(pts))
             amax = max(amax, max(pts))
 
         return (amin, amax)
 
     def get_age_range(self):
-        pts = self.trajectories[0].collect_age()
+        pts = self.trajectories[0].ages
         amin = min(pts)
         amax = max(pts)
 
         for k in range(1, len(self.trajectories)):
-            pts = self.trajectories[k].collect_age()
+            pts = self.trajectories[k].ages
             amin = min(amin, min(pts))
             amax = max(amax, max(pts))
 
         return (amin, amax)
 
     def get_datetime_range(self):
-        pts = self.trajectories[0].collect_datetime()
+        pts = self.trajectories[0].datetimes
         amin = min(pts)
         amax = max(pts)
 
         for k in range(1, len(self.trajectories)):
-            pts = self.trajectories[k].collect_datetime()
+            pts = self.trajectories[k].datetimes
             amin = min(amin, min(pts))
             amax = max(amax, max(pts))
 
         return (amin, amax)
 
     def get_max_forecast_hour(self):
-        pts = self.trajectories[0].collect_forecast_hour()
+        pts = self.trajectories[0].forecast_hours
         amax = max(pts)
         
         for k in range(1, len(self.trajectories)):
-            pts = self.trajectories[k].collect_forecast_hour()
+            pts = self.trajectories[k].forecast_hours
             amax = max(amax, max(pts))
         
         return amax
     
     def get_forecast_init_datetime(self):
-        dt = self.trajectories[0].collect_datetime()[0]
-        forecast_hour = self.trajectories[0].collect_forecast_hour()[0]
+        dt = self.trajectories[0].datetimes[0]
+        forecast_hour = self.trajectories[0].forecast_hours[0]
         delta = datetime.timedelta(hours=forecast_hour)
         return dt - delta
                 
@@ -623,12 +623,12 @@ class TrajectoryPlotData:
             self.vertical_coord = None      # an AbstractVerticalCoordinate instance
             # below from data points
             self.grids = []
-            self.datetimes = []
-            self.forecast_hours = []
-            self.ages = []
-            self.latitudes = []
-            self.longitudes = []
-            self.heights = []
+            self.__datetimes = []
+            self.__forecast_hours = []
+            self.__ages = []
+            self.__latitudes = []
+            self.__longitudes = []
+            self.__heights = []
             self.others = dict()
 
         def dump(self, stream):
@@ -639,39 +639,83 @@ class TrajectoryPlotData:
                     self.ages[k], self.latitudes[k], self.longitudes[k],
                     self.heights[k], self.datetimes[k], self.others["PRESSURE"][k]))
 
-        def collect_latitude(self):
-            return self.latitudes
+        @property
+        def latitudes(self):
+            return self.__latitudes
 
-        def collect_longitude(self):
-            return self.longitudes
+        @latitudes.setter
+        def latitudes(self, lats):
+            self.__latitudes = lats
+             
+        @property
+        def longitudes(self):
+            return self.__longitudes
 
-        def collect_age(self):
-            return self.ages
+        @longitudes.setter
+        def longitudes(self, lons):
+            self.__longitudes = lons
+            
+        @property
+        def ages(self):
+            return self.__ages
 
-        def collect_datetime(self):
-            return self.datetimes
-
-        def collect_forecast_hour(self):
-            return self.forecast_hours
+        @ages.setter
+        def ages(self, ages):
+            self.__ages = ages
+            
+        @property
+        def datetimes(self):
+            return self.__datetimes
+            
+        @datetimes.setter
+        def datetimes(self, dts):
+            self.__datetimes = dts
         
-        def collect_pressure(self):
+        @property
+        def forecast_hours(self):
+            return self.__forecast_hours
+        
+        @forecast_hours.setter
+        def forecast_hours(self, hrs):
+            self.__forecast_hours = hrs
+            
+        @property
+        def heights(self):
+            return self.__heights
+        
+        @heights.setter
+        def heights(self, h):
+            self.__heights = h
+            
+        @property
+        def pressures(self):
             return self.others["PRESSURE"] if "PRESSURE" in self.others else None
 
-        def collect_terrain_profile(self):
+        @pressures.setter
+        def pressures(self, p):
+            self.others["PRESSURE"] = p
+            
+        @property
+        def terrain_profile(self):
             return self.others["TERR_MSL"] if "TERR_MSL" in self.others else None
 
-        def collect_vertical_coordinate(self):
-            return self.vertical_coord.values
-
+        @terrain_profile.setter
+        def terrain_profile(self, p):
+            self.others["TERR_MSL"] = p
+            
         @property
         def vertical_coordinates(self):
             return self.vertical_coord.values
 
+        @vertical_coordinates.setter
+        def vertical_coordinates(self, vc):
+            self.vertical_coord.values = vc
+        
         def has_terrain_profile(self):
             return True if "TERR_MSL" in self.others else False
 
         def repair_starting_location(self, t):
-            self.starting_loc = (t.longitude[-2], t.latitudes[-2])
+            self.starting_loc = (t.longitudes[-2], t.latitudes[-2])
             return
 
         def repair_starting_level(self):
@@ -880,13 +924,13 @@ class TrajectoryPlot:
     def _determine_vertical_limit(self, plot_data, vertical_coordinate):
         ptop = pbot = None
         for t in plot_data.trajectories:
-            if len(t.collect_vertical_coordinate()) > 0:
+            if len(t.vertical_coordinates) > 0:
                 if ptop is None:
-                    ptop = max(t.collect_vertical_coordinate())
-                    pbot = min(t.collect_vertical_coordinate())
+                    ptop = max(t.vertical_coordinates)
+                    pbot = min(t.vertical_coordinates)
                 else:
-                    ptop = max(ptop, max(t.collect_vertical_coordinate()))
-                    pbot = min(pbot, min(t.collect_vertical_coordinate()))
+                    ptop = max(ptop, max(t.vertical_coordinates))
+                    pbot = min(pbot, min(t.vertical_coordinates))
 
         if plot_data.trajectories[0].vertical_coord.need_axis_inversion():
             ptop, pbot = pbot, ptop
@@ -1147,7 +1191,7 @@ class TrajectoryPlot:
                 ms = self.settings.next_marker()
                 # gather data points
                 ages = vert_proj.select_xvalues(t)
-                vc = t.collect_vertical_coordinate()
+                vc = t.vertical_coordinates
                 if len(vc) > 0:
                     # draw the source marker
                     axes.scatter(ages[0], vc[0],
@@ -1175,7 +1219,7 @@ class TrajectoryPlot:
                         ms = self.settings.terrain_marker
                         # gather data points
                         ages = vert_proj.select_xvalues(t)
-                        vc = t.collect_terrain_profile()
+                        vc = t.terrain_profile
                         # draw a profile
                         axes.plot(ages, vc, clr)
                         # draw interval markers if necessary
@@ -1269,8 +1313,8 @@ class TrajectoryPlot:
                                      c=self.settings.source_marker_color, clip_on=True,
                                      transform=self.data_crs)
                 # gather data points
-                lats = t.collect_latitude()
-                lons = t.collect_longitude()
+                lats = t.latitudes
+                lons = t.longitudes
                 if len(lats) == 0 or len(lons) == 0:
                     continue
                 # draw a trajectory
@@ -1470,7 +1514,7 @@ class TimeIntervalSymbolDrawer(IntervalSymbolDrawer):
         IntervalSymbolDrawer.__init__(self, axes, settings, abs(interval))
 
     def draw(self, trajectory, x, y, **kwargs):
-        dts = trajectory.collect_datetime()
+        dts = trajectory.datetimes
 
         x24, y24, x12, y12 = self._filter_data(dts, x, y, self.interval)
 
@@ -1503,7 +1547,7 @@ class AgeIntervalSymbolDrawer(IntervalSymbolDrawer):
         IntervalSymbolDrawer.__init__(self, axes, settings, abs(interval))
 
     def draw(self, trajectory, x, y, **kwargs):
-        ages = trajectory.collect_age()
+        ages = trajectory.ages
 
         x24, y24, x12, y12 = self._filter_data(ages, x, y, self.interval)
 
@@ -1597,7 +1641,7 @@ class TimeVerticalProjection(AbstractVerticalProjection):
         return ""
     
     def select_xvalues(self, t):
-        return t.collect_datetime()
+        return t.datetimes
    
     
 class AgeVerticalProjection(AbstractVerticalProjection):
@@ -1618,7 +1662,7 @@ class AgeVerticalProjection(AbstractVerticalProjection):
         return ""
     
     def select_xvalues(self, t):
-        return t.collect_age()
+        return t.ages
     
     
 class AbstractVerticalCoordinate:
@@ -1671,7 +1715,7 @@ class PressureCoordinate(AbstractVerticalCoordinate):
         AbstractVerticalCoordinate.__init__(self, traj)
     
     def make_vertical_coordinates(self):
-        self.values = self.t.collect_pressure()
+        self.values = self.t.pressures
     
     def get_vertical_label(self):
         return "hPa"
@@ -1687,7 +1731,7 @@ class TerrainHeightCoordinate(AbstractVerticalCoordinate):
         self.unit = unit
         
     def make_vertical_coordinates(self):
-        self.values = numpy.add(self.t.heights, self.t.collect_terrain_profile())             
+        self.values = numpy.add(self.t.heights, self.t.terrain_profile)
         if self.unit == TrajectoryPlotSettings.HeightUnit.FEET:
             self.scale(1.0 / 0.3048)    # meter to feet
     
