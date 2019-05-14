@@ -84,3 +84,12 @@ def test_make_file_list():
         pytest.fail("expected an exception")
     except Exception as ex:
         assert str(ex) == "FATAL ERROR - File not found: data/nonexistent_file"
+        
+
+def test_restore_year():
+    util.restore_year( 0) == 2000
+    util.restore_year(39) == 2039
+    util.restore_year(40) == 1940
+    util.restore_year(99) == 1999
+    
+    

@@ -140,7 +140,8 @@ class TrajectoryPlotData:
 
 class MeteorologicalGrid:
 
-    def __init__(self):
+    def __init__(self, parent=None):
+        self.parent = parent            # a TrajectoryPlotData instance
         self.model = None
         self.datetime = None
         self.forecast_hour = 0
@@ -151,7 +152,8 @@ class MeteorologicalGrid:
 
 class Trajectory:
 
-    def __init__(self):
+    def __init__(self, parent=None):
+        self.parent = parent            # a TrajectoryPlotData instance
         self.starting_datetime = None
         self.starting_loc = (0, 0)
         self.starting_level = 0
@@ -370,7 +372,7 @@ class TrajectoryDataFileReader(io.FormattedTextFileReader):
         # meteorological grids
         for k in range(ngrid):
             v = self.parse_line("A8, 5I6")
-            g = MeteorologicalGrid()
+            g = MeteorologicalGrid(pd)
             g.model = v[0]
             g.datetime = datetime.datetime(v[1], v[2], v[3], v[4])
             g.forecast_hour = v[5]
@@ -393,7 +395,7 @@ class TrajectoryDataFileReader(io.FormattedTextFileReader):
         fmt = "4I6,2F8.3,F8.1" if pd.format_version == 0 else "4I6,2F9.3,F8.1"
         for k in range(ntraj):
             v = self.parse_line(fmt)
-            t = Trajectory()
+            t = Trajectory(pd)
             t.starting_datetime = datetime.datetime(v[0], v[1], v[2], v[3])
             t.starting_loc = (v[5], v[4])
             t.starting_level = v[6]

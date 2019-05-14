@@ -93,3 +93,5 @@ def make_file_list(input_endpoints):
 
     return files
 
+def restore_year(yr):
+    return 2000 + yr if (yr < 40) else 1900 + yr

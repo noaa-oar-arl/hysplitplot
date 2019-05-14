@@ -270,14 +270,21 @@ def test_TrajectoryPlotData_fix_start_levels():
 def test_MeteorologicalGrid___init__():
     g = model.MeteorologicalGrid()
 
+    assert hasattr(g, 'parent')
     assert hasattr(g, 'model')
     assert hasattr(g, 'datetime')
     assert g.forecast_hour == 0
 
+    p = model.TrajectoryPlotData()
+    g = model.MeteorologicalGrid(p)
+
+    assert g.parent is p
+    
 
 def test_Trajectory___init__():
     t = model.Trajectory()
 
+    assert hasattr(t, 'parent')
     assert hasattr(t, 'starting_datetime')
     assert t.starting_loc == (0, 0)
     assert t.starting_level == 0
@@ -294,6 +301,10 @@ def test_Trajectory___init__():
     assert t.heights != None and len(t.heights) == 0
     assert t.others != None and len(t.others) == 0
 
+    p = model.TrajectoryPlotData()
+    t = model.Trajectory(p)
+
+    assert t.parent is p
 
 def test_Trajectory_latitudes(plotData):
     lats = plotData.trajectories[0].latitudes
@@ -444,6 +455,7 @@ def test_TrajectoryDataFileReader_read():
 
     assert len(d.grids) == 1
     g = d.grids[0]
+    assert g.parent is d
     assert g.model == "    NGM "
     assert g.datetime == datetime.datetime(95, 10, 16, 0, 0)
     assert g.forecast_hour == 0
@@ -455,6 +467,7 @@ def test_TrajectoryDataFileReader_read():
     assert d.uniq_start_levels == [10.0, 500.0, 1000.0]
 
     t = d.trajectories[0]
+    assert t.parent is d
     assert t.starting_datetime == datetime.datetime(95, 10, 16, 0, 0)
     assert t.starting_loc == (-90.0, 40.0)
     assert t.starting_level == 10.0
@@ -463,6 +476,7 @@ def test_TrajectoryDataFileReader_read():
     assert t.diagnostic_names[0] == "PRESSURE"
 
     t = d.trajectories[1]
+    assert t.parent is d
     assert t.starting_datetime == datetime.datetime(95, 10, 16, 0, 0)
     assert t.starting_loc == (-90.0, 40.0)
     assert t.starting_level == 500.0
@@ -471,6 +485,7 @@ def test_TrajectoryDataFileReader_read():
     assert t.diagnostic_names[0] == "PRESSURE"
 
     t = d.trajectories[2]
+    assert t.parent is d
     assert t.starting_datetime == datetime.datetime(95, 10, 16, 0, 0)
     assert t.starting_loc == (-90.0, 40.0)
     assert t.starting_level == 1000.0
@@ -538,6 +553,7 @@ def test_TrajectoryDataFileReader_read_fmt0():
 
     assert len(d.grids) == 1
     g = d.grids[0]
+    assert g.parent is d
     assert g.model == "    NGM "
     assert g.datetime == datetime.datetime(95, 10, 16, 0, 0)
     assert g.forecast_hour == 0
@@ -549,6 +565,7 @@ def test_TrajectoryDataFileReader_read_fmt0():
     assert d.uniq_start_levels == [10.0, 500.0, 1000.0]
 
     t = d.trajectories[0]
+    assert t.parent is d
     assert t.starting_datetime == datetime.datetime(95, 10, 16, 0, 0)
     assert t.starting_loc == (-90.0, 40.0)
     assert t.starting_level == 10.0
@@ -557,6 +574,7 @@ def test_TrajectoryDataFileReader_read_fmt0():
     assert t.diagnostic_names[0] == "PRESSURE"
 
     t = d.trajectories[1]
+    assert t.parent is d
     assert t.starting_datetime == datetime.datetime(95, 10, 16, 0, 0)
     assert t.starting_loc == (-90.0, 40.0)
     assert t.starting_level == 500.0
@@ -565,6 +583,7 @@ def test_TrajectoryDataFileReader_read_fmt0():
     assert t.diagnostic_names[0] == "PRESSURE"
 
     t = d.trajectories[2]
+    assert t.parent is d
     assert t.starting_datetime == datetime.datetime(95, 10, 16, 0, 0)
     assert t.starting_loc == (-90.0, 40.0)
     assert t.starting_level == 1000.0

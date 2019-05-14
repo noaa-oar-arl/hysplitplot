@@ -983,6 +983,11 @@ def test_TrajectoryPlot_draw():
         raise pytest.fail("unexpeced exception: {0}".format(ex))
 
 
+def test_TrajectoryPlot_write_gis_files():
+    # TODO:
+    return
+
+
 def test_ColorCycle___init__():
     cc = plot.ColorCycle()
     assert cc.max_colors == 7

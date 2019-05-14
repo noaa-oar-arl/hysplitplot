@@ -10,7 +10,7 @@ import matplotlib.gridspec
 import matplotlib.patches
 import matplotlib.pyplot as plt
 
-from hysplit4 import cmdline, clist, stnplot, labels, util, const, mapfile, mapproj, mapbox
+from hysplit4 import cmdline, clist, stnplot, labels, util, const, mapfile, mapproj, mapbox, gisout
 from hysplit4.traj import model
 
 
@@ -993,8 +993,14 @@ class TrajectoryPlot:
         plt.close(self.fig)
 
     def write_gis_files(self):
-        # TODO:
-        return
+        w = gisout.AbstractGISFileWriter.create_instance(self.settings.gis_output)
+        if w is not None:
+            w.output_suffix = self.settings.output_suffix
+            w.output_name = self.settings.output_postscript  
+            w.kml_option = self.settings.kml_option
+               
+            for k, plot_data in enumerate(self.data_list):
+                w.write(k + 1, plot_data)
 
 class ColorCycle:
 
