@@ -677,7 +677,7 @@ def test_TrajectoryPlot__connect_event_handlers():
         p._connect_event_handlers({"resize_event" : blank_event_handler})
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpeced exception: {0}".format(str(ex)))
 
 
 def test_TrajectoryPlot__project_extent():
@@ -712,7 +712,7 @@ def test_TrajectoryPlot_update_gridlines():
         p.update_gridlines()
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpeced exception: {0}".format(str(ex)))
 
 
 def test_TrajectoryPlot__draw_latlon_labels():
@@ -726,7 +726,7 @@ def test_TrajectoryPlot__draw_latlon_labels():
         p._draw_latlon_labels(p.traj_axes, p.projection.corners_lonlat, 1.0, 1.0)
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpeced exception: {0}".format(str(ex)))
 
 
 def test_TrajectoryPlot__draw_concentric_circles():
@@ -740,7 +740,7 @@ def test_TrajectoryPlot__draw_concentric_circles():
         p._draw_concentric_circles(p.traj_axes)
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpeced exception: {0}".format(str(ex)))
 
 
 def test_TrajectoryPlot_draw_height_profile():
@@ -756,7 +756,7 @@ def test_TrajectoryPlot_draw_height_profile():
         p.draw_height_profile(True)
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpeced exception: {0}".format(str(ex)))
 
 
 def test_TrajectoryPlot_make_stationplot_filename():
@@ -782,7 +782,7 @@ def test_TrajectoryPlot__draw_stations_if_exists():
         p._draw_stations_if_exists(p.traj_axes, "data/STATIONPLOT.CFG")
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpeced exception: {0}".format(str(ex)))
 
 
 def test_TrajectoryPlot_draw_trajectory_plot():
@@ -797,7 +797,7 @@ def test_TrajectoryPlot_draw_trajectory_plot():
         p.draw_trajectory_plot()
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpeced exception: {0}".format(str(ex)))
 
 
 def test_TrajecotryPlot__read_cluster_info_if_exists():
@@ -830,7 +830,7 @@ def test_TrajecotryPlot__read_cluster_info_if_exists():
         assert p.cluster_list is not None
         assert p.cluster_list.total_traj == 4
     except Exception as ex:
-        pytest.fail("expected no exception")
+        pytest.fail("unexpected exception: {0}".format(str(ex)))
 
     os.remove("CLUSLIST_4")
     
@@ -880,7 +880,7 @@ def test_TrajectoryPlot_draw_bottom_plot():
         p.draw_bottom_plot()
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpeced exception: {0}".format(str(ex)))
 
 
 def test_TrajectoryPlot_draw_bottom_text():
@@ -895,7 +895,7 @@ def test_TrajectoryPlot_draw_bottom_text():
         p.draw_bottom_text()
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpeced exception: {0}".format(str(ex)))
     
 
 def test_TrajectoryPlot_make_maptext_filename():
@@ -921,7 +921,7 @@ def test_TrajectoryPlot__draw_maptext_if_exists():
         p._draw_maptext_if_exists(p.text_axes, "data/MAPTEXT.CFG")
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpeced exception: {0}".format(str(ex)))
 
 
 def test_TrajectoryPlot__draw_alt_text_boxes():
@@ -936,7 +936,7 @@ def test_TrajectoryPlot__draw_alt_text_boxes():
         p._draw_alt_text_boxes(p.text_axes, ["line 1", "line 2"])
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpeced exception: {0}".format(str(ex)))
     
 
 def test_TrajectoryPlot__turn_off_spines():
@@ -951,7 +951,7 @@ def test_TrajectoryPlot__turn_off_spines():
         p._turn_off_spines(p.text_axes)
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpeced exception: {0}".format(str(ex)))
 
 
 def test_TrajectoryPlot__turn_off_ticks():
@@ -966,7 +966,7 @@ def test_TrajectoryPlot__turn_off_ticks():
         p._turn_off_ticks(p.text_axes)
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpeced exception: {0}".format(str(ex)))
 
 
 def test_TrajectoryPlot_draw():
@@ -980,7 +980,7 @@ def test_TrajectoryPlot_draw():
     try:
         p.draw(block=False)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpeced exception: {0}".format(str(ex)))
 
 
 def test_TrajectoryPlot_write_gis_files():

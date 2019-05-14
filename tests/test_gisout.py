@@ -48,14 +48,14 @@ def test_GenerateAttributeFileWriter_write(plotData):
         gisout.GenerateAttributeFileWriter.write("__gis.att", plotData)
         os.remove("__gis.att")
     except Exception as ex:
-        pytest.fail("unexpected exception: %s" % str(ex))
+        pytest.fail("unexpected exception: {0}".format(str(ex)))
 
     
 def test_PointsGenerateFileWriter___init__():
     try:
         w = gisout.PointsGenerateFileWriter()
     except Exception as ex:
-        pytest.fail("unexpected exception: %s" % str(ex))
+        pytest.fail("unexpected exception: {0}".format(str(ex)))
         
 
 def test_PointsGenerateFileWriter_write(plotData):
@@ -66,14 +66,14 @@ def test_PointsGenerateFileWriter_write(plotData):
         os.remove("GIS_traj_ps_01.txt")
         os.remove("GIS_traj_ps_01.att")
     except Exception as ex:
-        pytest.fail("unexpected exception: %s" % str(ex))
+        pytest.fail("unexpected exception: {0}".format(str(ex)))
 
     
 def test_LinesGenerateFileWriter___init__():
     try:
         w = gisout.LinesGenerateFileWriter()
     except Exception as ex:
-        pytest.fail("unexpected exception: %s" % str(ex))
+        pytest.fail("unexpected exception: {0}".format(str(ex)))
         
 
 def test_LinesGenerateFileWriter_write(plotData):
@@ -84,14 +84,14 @@ def test_LinesGenerateFileWriter_write(plotData):
         os.remove("GIS_traj_ps_01.txt")
         os.remove("GIS_traj_ps_01.att")
     except Exception as ex:
-        pytest.fail("unexpected exception: %s" % str(ex))
+        pytest.fail("unexpected exception: {0}".format(str(ex)))
 
     
 def test_KMLWriter___init__():
     try:
         w = gisout.KMLWriter()
     except Exception as ex:
-        pytest.fail("unexpected exception: %s" % str(ex))
+        pytest.fail("unexpected exception: {0}".format(str(ex)))
         
 
 def test_KMLWriter_make_filename():
@@ -121,7 +121,7 @@ def test_KMLWriter_write(plotData):
         w.write(1, plotData)
         os.remove("HYSPLITtraj_ps_01.kml")
     except Exception as ex:
-        pytest.fail("unexpected exception: %s" % str(ex))
+        pytest.fail("unexpected exception: {0}".format(str(ex)))
         
     # KML option - NO_EXTRA_OVERLAYS (1)
     try:
@@ -129,7 +129,7 @@ def test_KMLWriter_write(plotData):
         w.write(1, plotData)
         os.remove("HYSPLITtraj_ps_01.kml")
     except Exception as ex:
-        pytest.fail("unexpected exception: %s" % str(ex))
+        pytest.fail("unexpected exception: {0}".format(str(ex)))
         
     # KML option - NO_ENDPOINTS (2)
     try:
@@ -137,7 +137,7 @@ def test_KMLWriter_write(plotData):
         w.write(1, plotData)
         os.remove("HYSPLITtraj_ps_01.kml")
     except Exception as ex:
-        pytest.fail("unexpected exception: %s" % str(ex))
+        pytest.fail("unexpected exception: {0}".format(str(ex)))
         
     # KML option - BOTH_1_AND_2 (3)
     try:
@@ -145,14 +145,14 @@ def test_KMLWriter_write(plotData):
         w.write(1, plotData)
         os.remove("HYSPLITtraj_ps_01.kml")
     except Exception as ex:
-        pytest.fail("unexpected exception: %s" % str(ex))
+        pytest.fail("unexpected exception: {0}".format(str(ex)))
 
     
 def test_PartialKMLWriter___init__():
     try:
         w = gisout.PartialKMLWriter()
     except Exception as ex:
-        pytest.fail("unexpected exception: %s" % str(ex))
+        pytest.fail("unexpected exception: {0}".format(str(ex)))
         
 
 def test_PartialKMLWriter_make_filename():
@@ -172,7 +172,7 @@ def test_PartialKMLWriter_write(plotData):
         w.write(1, plotData)
         os.remove("HYSPLITtraj_ps_01.txt")
     except Exception as ex:
-        pytest.fail("unexpected exception: %s" % str(ex))
+        pytest.fail("unexpected exception: {0}".format(str(ex)))
         
     # KML option - NO_EXTRA_OVERLAYS (1)
     try:
@@ -180,7 +180,7 @@ def test_PartialKMLWriter_write(plotData):
         w.write(1, plotData)
         os.remove("HYSPLITtraj_ps_01.txt")
     except Exception as ex:
-        pytest.fail("unexpected exception: %s" % str(ex))
+        pytest.fail("unexpected exception: {0}".format(str(ex)))
         
     # KML option - NO_ENDPOINTS (2)
     try:
@@ -188,7 +188,7 @@ def test_PartialKMLWriter_write(plotData):
         w.write(1, plotData)
         os.remove("HYSPLITtraj_ps_01.txt")
     except Exception as ex:
-        pytest.fail("unexpected exception: %s" % str(ex))
+        pytest.fail("unexpected exception: {0}".format(str(ex)))
         
     # KML option - BOTH_1_AND_2 (3)
     try:
@@ -196,4 +196,4 @@ def test_PartialKMLWriter_write(plotData):
         w.write(1, plotData)
         os.remove("HYSPLITtraj_ps_01.txt")
     except Exception as ex:
-        pytest.fail("unexpected exception: %s" % str(ex))
+        pytest.fail("unexpected exception: {0}".format(str(ex)))
