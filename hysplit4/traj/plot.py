@@ -655,7 +655,7 @@ class TrajectoryPlot:
         if len(yticks) > 0:
             kwargs["ylocs"] = yticks
         gl = self.traj_axes.gridlines(**kwargs)
-
+        
         # lat/lon line labels
         self._draw_latlon_labels(self.traj_axes, lonlat_ext, deltax, deltay)
     
@@ -696,7 +696,7 @@ class TrajectoryPlot:
             axes.text(lon, lat, str, transform=self.data_crs,
                       horizontalalignment="center", verticalalignment="center",
                       color=self.settings.map_color, clip_on=True)
-
+        
     def _draw_concentric_circles(self, axes):
         lon, lat = self.data_list[0].trajectories[0].starting_loc
         R = self.settings.ring_distance/111.0
@@ -824,22 +824,19 @@ class TrajectoryPlot:
         # keep the plot size after zooming
         axes.set_aspect("equal", adjustable="datalim")
 
-        # choose where to draw ticks and tick labels
+        # turn off ticks and tick labels
         axes.tick_params(left="off", labelleft="off",
                          right="off", labelright="off",
                          top="off", labeltop="off",
                          bottom="off", labelbottom="off")
-        # place tick labels inside the plot.
-        #axes.tick_params(axis="y", pad=-22)
-        #axes.tick_params(axis="x", pad=-22)
-        # set tick label color.
-        #plt.setp(axes.get_xticklabels(), color=self.settings.map_color)
-        #plt.setp(axes.get_yticklabels(), color=self.settings.map_color)
 
         # y-label
         axes.set_ylabel(self.make_ylabel(self.data_list[0],
                                          self.settings.source_label,
                                          self.settings.time_label_interval))
+       
+        # set_yticks([]) is necessary to make the y-label visible.
+        axes.set_yticks([])
 
         # set the data range
         axes.set_extent(self.projection.corners_lonlat, self.data_crs)
