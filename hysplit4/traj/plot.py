@@ -499,8 +499,6 @@ class TrajectoryPlot:
         # cluster information
         self._read_cluster_info_if_exists(self.data_list)        
 
-        fig.suptitle(self.make_plot_title(self.data_list[0]))
-
         outer_grid = matplotlib.gridspec.GridSpec(3, 1,
                                                   wspace=0.0, hspace=0.0,  # no spaces between subplots
                                                   width_ratios=[1.0], height_ratios=[3.0, 1.0, 0.75])
@@ -817,6 +815,9 @@ class TrajectoryPlot:
     def draw_trajectory_plot(self):
         axes = self.traj_axes
 
+        # plot title
+        axes.set_title(self.make_plot_title(self.data_list[0]))
+        
         # reset line color and marker cycles to be in sync with the height profile plot
         self.settings.color_cycle.reset()
         self.settings.reset_marker_cycle()
@@ -908,7 +909,7 @@ class TrajectoryPlot:
                      w_fig, h_fig, w_dis, h_dis, pixel_aspect_ratio)
         
         # bounding box in the display coordinate
-        h = 100; w = h * pixel_aspect_ratio
+        h = 90; w = h * pixel_aspect_ratio
         box_dis = [[pt_dis[0]-w, pt_dis[1]], [pt_dis[0], pt_dis[1]+h]]
 
         # in the axes coordinate        

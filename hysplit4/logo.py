@@ -3,6 +3,7 @@ import math
 import matplotlib.patches
 import numpy
 from hysplit4 import util 
+from numpy.distutils.misc_util import cxx_ext_match
 
 
 logger = logging.getLogger(__name__)
@@ -42,26 +43,37 @@ class NOAALogoDrawer:
     _DEG2RAD = math.pi / 180.0
     
     def __init__(self):
-        return
-    
-    def draw(self, axes, bbox):
+        # logo size and center position
+        self.logo_width = 480.0
+        self.logo_height = 480.0
+        self.cx = 240.0
+        self.cy = 240.0
+        self.R = 200.0
+        self.base_font_sz = 12.0   # to be computed
+        self.font_sz1 = 2.5*12.0
+        self.font_sz2 = 1.1*12.0
         
-        R = 200.0
-                
+    def draw(self, axes, bbox):
         # bbox in the axes coordinates
-        p0, p1 = bbox
-        x0, y0 = p0
-        x1, y1 = p1
-        w = abs(x1 - x0)
-        h = abs(y1 - y0)
-        tr = matplotlib.transforms.Affine2D().scale(w/480.0, h/480.0).translate(x0, y0) + axes.transAxes
+        (x0, y0), (x1, y1) = bbox
+        w_axes = abs(x1 - x0)
+        h_axes = abs(y1 - y0)
+        tr = matplotlib.transforms.Affine2D().scale(w_axes/self.logo_width, h_axes/self.logo_height).translate(x0, y0) + axes.transAxes
+        
+        # 10% of the radius is the font size
+        pts_dis = tr.transform(((0,0), (0, 0.10*self.R)))
+        pts_fig = axes.figure.transFigure.inverted().transform(pts_dis)
+        self.base_font_sz = 72.0 * axes.figure.get_figheight() * (pts_fig[1,1] - pts_fig[0,1]) # inch to pt
+        self.font_sz1 = 2.75 * self.base_font_sz
+        self.font_sz2 = 0.8 * self.base_font_sz
+        logger.debug("base font size %f pt", self.base_font_sz)
         
         # above the seagull
         clr = util.make_color(0.0, 0.0, 0.7)
         pts = numpy.zeros((107+55, 2))
         for k in range(40,147):
-            pts[k - 40, 0] = R*math.cos(k*self._DEG2RAD) + 240.0
-            pts[k - 40, 1] = R*math.sin(k*self._DEG2RAD) + 240.0
+            pts[k - 40, 0] = self.R*math.cos(k*self._DEG2RAD) + self.cx
+            pts[k - 40, 1] = self.R*math.sin(k*self._DEG2RAD) + self.cy
         for k in range(55):
             pts[107 + k, 0] = self._top[k*2]
             pts[107 + k, 1] = self._top[k*2 + 1]
@@ -72,17 +84,55 @@ class NOAALogoDrawer:
         clr = util.make_color(0.0, 0.6, 1.0)
         pts = numpy.zeros((215+98, 2))
         for k in range(18,-198,-1):
-            pts[18 - k, 0] = R*math.cos(k*self._DEG2RAD) + 240.0
-            pts[18 - k, 1] = R*math.sin(k*self._DEG2RAD) + 240.0
+            pts[18 - k, 0] = self.R*math.cos(k*self._DEG2RAD) + self.cx
+            pts[18 - k, 1] = self.R*math.sin(k*self._DEG2RAD) + self.cy
         for k in range(98):
             pts[215 + k, 0] = self._bot[k*2]
             pts[215 + k, 1] = self._bot[k*2 + 1]
         sg2 = matplotlib.patches.Polygon(pts, color=clr, fill=True, transform=tr)
         axes.add_patch(sg2)
         
-        # font size
-        fsize = 10.0
-        axes.text(235.0, 330.0, "noaa",
+        # NOAA label above the seagull        
+        axes.text(235.0, 330.0, "noaa", fontsize=self.font_sz1, fontweight="bold",
                   horizontalalignment="center", verticalalignment="center",
                   color="w", transform=tr)
-        return
+
+        #self._draw_top_label(axes, tr)
+        #self._draw_bottom_label(axes, tr)
+        
+        #self._draw_ref_circ(axes, tr)           
+
+    def _draw_top_label(self, axes, tr):
+        # top label angular range 190 degrees
+        noaa1 = "NATIONAL OCEANIC AND ATMOSPHERIC ADMINISTRATION"
+        noaa1_len = len(noaa1)
+        delta_ang = 190.0 / noaa1_len
+        ang = 90.0 + ((noaa1_len - 1) / 2) * delta_ang; 
+        for c in noaa1:
+            xp = (self.R + 15.0) * math.cos(ang * self._DEG2RAD) + self.cx
+            yp = (self.R + 15.0) * math.sin(ang * self._DEG2RAD) + self.cy
+            axes.text(xp, yp, c, fontsize=self.font_sz2, rotation=(ang-90.0),
+                      horizontalalignment="center", verticalalignment="center",
+                      color="k", transform=tr)
+            ang -= delta_ang
+            
+    def _draw_bottom_label(self, axes, tr):
+        # bottom label angular range 130 degrees
+        noaa2 = "U.S. DEPARTMENT OF COMMERCE"
+        noaa2_len = len(noaa2)
+        delta_ang = 130.0 / noaa2_len
+        ang = 270.0 - ((noaa2_len - 1) / 2) * delta_ang;
+        for c in noaa2:
+            xp = (self.R + 15.0) * math.cos(ang * self._DEG2RAD) + self.cx
+            yp = (self.R + 15.0) * math.sin(ang * self._DEG2RAD) + self.cy
+            axes.text(xp, yp, c, fontsize=self.font_sz2, rotation=(ang+90.0),
+                      horizontalalignment="center", verticalalignment="center",
+                      color="k", transform=tr)
+            ang += delta_ang
+    
+    def _draw_ref_circ(self, axes, tr):
+        # reference circle for debugging
+        circ = matplotlib.patches.Circle((self.cx, self.cy), radius=(self.R+15),
+                                         color="r", fill=False,
+                                         transform=tr)
+        axes.add_patch(circ)
