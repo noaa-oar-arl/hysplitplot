@@ -10,7 +10,7 @@ import matplotlib.gridspec
 import matplotlib.patches
 import matplotlib.pyplot as plt
 
-from hysplit4 import cmdline, clist, stnplot, labels, util, const, mapfile, mapproj, mapbox, gisout
+from hysplit4 import cmdline, clist, stnplot, labels, util, const, mapfile, mapproj, mapbox, gisout, logo
 from hysplit4.traj import model
 
 
@@ -577,6 +577,7 @@ class TrajectoryPlot:
         else:
             y_label += " multiple locations"
 
+        logger.debug("using ylabel %s", y_label)
         return y_label
     
     def _connect_event_handlers(self, handlers):
@@ -825,15 +826,15 @@ class TrajectoryPlot:
 
         # choose where to draw ticks and tick labels
         axes.tick_params(left="off", labelleft="off",
-                         right="off", labelright="on",
-                         top="off", labeltop="on",
+                         right="off", labelright="off",
+                         top="off", labeltop="off",
                          bottom="off", labelbottom="off")
         # place tick labels inside the plot.
-        axes.tick_params(axis="y", pad=-22)
-        axes.tick_params(axis="x", pad=-22)
+        #axes.tick_params(axis="y", pad=-22)
+        #axes.tick_params(axis="x", pad=-22)
         # set tick label color.
-        plt.setp(axes.get_xticklabels(), color=self.settings.map_color)
-        plt.setp(axes.get_yticklabels(), color=self.settings.map_color)
+        #plt.setp(axes.get_xticklabels(), color=self.settings.map_color)
+        #plt.setp(axes.get_yticklabels(), color=self.settings.map_color)
 
         # y-label
         axes.set_ylabel(self.make_ylabel(self.data_list[0],
@@ -891,6 +892,33 @@ class TrajectoryPlot:
                     axes.text(lons[-1], lats[-1], cluster_label, horizontalalignment="right",
                               verticalalignment="bottom", transform=self.data_crs)
 
+        if self.settings.noaa_logo:
+            self.draw_noaa_logo(axes)
+    
+    def draw_noaa_logo(self, axes):
+        # position of the right bottom corner in the display coordinate
+        pt_dis = axes.transAxes.transform((1, 0))
+        
+        # move it by 10 pixels in each direction
+        pt_dis += [-10, +10]
+        
+        # compute the pixel aspect ratio
+        w_fig = self.fig.get_figwidth()
+        h_fig = self.fig.get_figheight()
+        w_dis, h_dis = self.fig.transFigure.transform((w_fig, h_fig))
+        pixel_aspect_ratio = h_fig * w_dis / (h_dis * w_fig)
+        logger.debug("fig size %f x %f in; display %f x %f px; pixel aspect ratio %f",
+                     w_fig, h_fig, w_dis, h_dis, pixel_aspect_ratio)
+        
+        # bounding box in the display coordinate
+        h = 100; w = h * pixel_aspect_ratio
+        box_dis = [[pt_dis[0]-w, pt_dis[1]], [pt_dis[0], pt_dis[1]+h]]
+
+        # in the axes coordinate        
+        box_axes = axes.transAxes.inverted().transform(box_dis)
+         
+        logo.NOAALogoDrawer().draw(axes, box_axes)
+        
     def _read_cluster_info_if_exists(self, data_list):
         for data in data_list:
             if data.IDLBL == "MERGMEAN":
