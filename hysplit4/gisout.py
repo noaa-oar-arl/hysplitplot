@@ -162,7 +162,6 @@ class KMLWriter(AbstractGISFileWriter):
         t = plot_data.trajectories[0]
         starting_loc = t.starting_loc
         starting_datetime = t.starting_datetime
-        starting_level = t.starting_level
         timestamp_str = self._get_iso_8601_str(starting_datetime)
 
         f.write("""\
@@ -230,9 +229,9 @@ class KMLWriter(AbstractGISFileWriter):
             self.output_suffix,
             starting_loc[0],
             starting_loc[1],
-            starting_level,
+            0,
             timestamp_str,
-            self._get_alt_mode(t)))
+            "relativeToSeaFloor"))
 
     def _write_postamble(self, f):
         f.write("""\
@@ -318,7 +317,7 @@ class KMLWriter(AbstractGISFileWriter):
           <gx:altitudeMode>{1}</gx:altitudeMode>
         </LookAt>\n""".format(
             timestamp_str,
-            self._get_alt_mode(t)))
+            "relativeToSeaFloor"))
         
         f.write("""\
         <name>{0:.1f} {1} Trajectory</name>
