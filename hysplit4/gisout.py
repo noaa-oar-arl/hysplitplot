@@ -162,6 +162,7 @@ class KMLWriter(AbstractGISFileWriter):
         t = plot_data.trajectories[0]
         starting_loc = t.starting_loc
         starting_datetime = t.starting_datetime
+        starting_level = t.starting_level
         timestamp_str = self._get_iso_8601_str(starting_datetime)
 
         f.write("""\
@@ -173,13 +174,13 @@ class KMLWriter(AbstractGISFileWriter):
     <LookAt>
       <longitude>{1:.4f}</longitude>
       <latitude>{2:.4f}</latitude>
-      <altitude>0</altitude>
+      <altitude>{3}</altitude>
       <tilt>0</tilt>
       <range>13700</range>
       <gx:TimeStamp>
-        <when>{3}</when>
+        <when>{4}</when>
       </gx:TimeStamp>
-      <gx:altitudeMode>{4}</gx:altitudeMode>
+      <gx:altitudeMode>{5}</gx:altitudeMode>
     </LookAt>
     <Style id="traj1">
       <LineStyle>
@@ -229,6 +230,7 @@ class KMLWriter(AbstractGISFileWriter):
             self.output_suffix,
             starting_loc[0],
             starting_loc[1],
+            starting_level,
             timestamp_str,
             self._get_alt_mode(t)))
 

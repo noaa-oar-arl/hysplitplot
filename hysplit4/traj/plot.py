@@ -386,7 +386,7 @@ class TrajectoryPlot:
     def _initialize_map_projection(self):
         map_opt_passes = 1 if self.settings.ring_number == 0 else 2
         map_box = self._determine_map_limits(self.data_list[0], map_opt_passes)
-        map_box.dump(sys.stdout)
+        #map_box.dump(sys.stdout)
 
         # TODO: check if we are using pbot and ptop.
         pbot, ptop = self._determine_vertical_limit(self.data_list[0], self.settings.vertical_coordinate)
@@ -398,7 +398,7 @@ class TrajectoryPlot:
             map_box.determine_plume_extent()
             map_box.clear_hit_map()
             map_box.set_ring_extent(self.settings)
-        map_box.dump(sys.stdout)
+        #map_box.dump(sys.stdout)
 
         self.projection = mapproj.MapProjectionFactory.create_instance(self.settings,
                                                                        self.settings.center_loc,
