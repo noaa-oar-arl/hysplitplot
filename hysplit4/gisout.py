@@ -1,5 +1,6 @@
 import logging
 from hysplit4 import const, util
+from hysplit4.traj import model
 
 
 logger = logging.getLogger(__name__)
@@ -272,6 +273,10 @@ class KMLWriter(AbstractGISFileWriter):
     </Folder>\n""")
 
     def _write_trajectory(self, f, t, t_index):
+        # assume the height should be in meter for now.
+        vc = model.VerticalCoordinateFactory.create_instance(const.Vertical.ABOVE_GROUND_LEVEL, const.HeightUnit.METER, t)
+        vc.make_vertical_coordinates()
+        
         is_AGL = False if t.has_terrain_profile() else True
         
         f.write("""\
@@ -316,7 +321,7 @@ class KMLWriter(AbstractGISFileWriter):
             {0:.4f},{1:.4f},{2:.1f}\n""".format(
                 t.longitudes[k],
                 t.latitudes[k],
-                debug_trunc(t.heights[k])))
+                debug_trunc(vc.values[k])))
         
         starttime_str = self._get_timestamp_str(t.starting_datetime)
         
@@ -350,12 +355,12 @@ LAT: {1:.4f} LON: {2:.4f} Hght(m {3}): {4:.1f}
             debug_trunc(t.starting_level)))
 
         if self.kml_option != const.KMLOption.NO_ENDPOINTS and self.kml_option != const.KMLOption.BOTH_1_AND_2:
-            self._write_endpts(f, t, t_index)
+            self._write_endpts(f, t, t_index, vc)
 
         f.write("""\
     </Folder>\n""")
         
-    def _write_endpts(self, f, t, t_index):
+    def _write_endpts(self, f, t, t_index, vc):
         is_AGL = False if t.has_terrain_profile() else True
         is_backward = False if t.parent.is_forward_calculation() else True
         
@@ -416,12 +421,12 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
                 t.latitudes[k],
                 t.longitudes[k],
                 "m AGL" if is_AGL else "m AMSL",
-                debug_trunc(t.heights[k]),
+                debug_trunc(vc.values[k]),
                 (t_index % 3) + 1,
                 "relativeToGround" if is_AGL else "absolute",
                 t.longitudes[k],
                 t.latitudes[k],
-                debug_trunc(t.heights[k])))
+                debug_trunc(vc.values[k])))
 
         f.write("""\
       </Folder>\n""")
