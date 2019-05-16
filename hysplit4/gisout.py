@@ -11,13 +11,7 @@ def debug_trunc(f):
     return int(f)
 
 
-class AbstractGISFileWriter:
-    
-    def __init__(self):
-        self.output_suffix = "ps"           # for backward compatibility
-        self.output_name = "trajplot.ps"    # for backward compatibility
-        self.kml_option = const.KMLOption.NONE
-        return
+class GISFileWriterFactory:
     
     @staticmethod
     def create_instance(selector):
@@ -32,6 +26,15 @@ class AbstractGISFileWriter:
         elif selector != const.GISOutput.NONE:
             logger.warning("Unknown GIS file writer type %d", selector)
         return None
+
+
+class AbstractGISFileWriter:
+    
+    def __init__(self):
+        self.output_suffix = "ps"           # for backward compatibility
+        self.output_name = "trajplot.ps"    # for backward compatibility
+        self.kml_option = const.KMLOption.NONE
+        return
 
 
 class GenerateAttributeFileWriter:

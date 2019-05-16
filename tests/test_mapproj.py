@@ -29,8 +29,8 @@ def cyl_coord():
 
 def create_map_box(s):
     # TODO: add a method in the module that does this and simplify this fixture.
-    d = model.TrajectoryPlotData()
-    r = model.TrajectoryDataFileReader(d)
+    d = model.TrajectoryDump()
+    r = model.TrajectoryDumpFileReader(d)
     r.set_end_hour_duration(s.end_hour_duration)
     r.set_vertical_coordinate(s.vertical_coordinate, s.height_unit)
     r.read("data/tdump")
@@ -59,7 +59,7 @@ def lambert_proj():
     s.ring_number = 4
     s.ring_distance = 0.0
     testMapBox = create_map_box(s)
-    m = mapproj.MapProjection.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], testMapBox)
+    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], testMapBox)
     return m
 
 
@@ -358,6 +358,52 @@ def test_CylindricalCoordinate_calc_xy(cyl_coord):
     assert lonlat == pytest.approx((-125.0, 38.0))
 
 
+def test_MapProjectionFactory_create_instance():
+    s = plot.TrajectoryPlotSettings()
+    map_box = mapbox.MapBox()
+    map_box.allocate()
+    map_box.add((-120.5, 45.5))
+    map_box.determine_plume_extent()
+
+    s.map_projection = const.MapProjection.POLAR
+    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
+    assert isinstance(m, mapproj.PolarProjection)
+
+    s.map_projection = const.MapProjection.LAMBERT
+    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
+    assert isinstance(m, mapproj.LambertProjection)
+
+    s.map_projection = const.MapProjection.MERCATOR
+    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
+    assert isinstance(m, mapproj.MercatorProjection)
+
+    s.map_projection = const.MapProjection.CYL_EQU
+    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
+    assert isinstance(m, mapproj.CylindricalEquidistantProjection)
+
+    # Lambert grid is not permitted to contain the poles
+
+    # when containing the north pole
+    map_box.clear_hit_map()
+    map_box.add((-120.5, 89.0))
+    map_box.add((-120.5, 90.0))
+    map_box.determine_plume_extent()
+
+    s.map_projection = const.MapProjection.LAMBERT
+    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 89.0], 1.3, [1.0, 1.0], map_box)
+    assert isinstance(m, mapproj.PolarProjection)
+
+    # when containing the south pole
+    map_box.clear_hit_map()
+    map_box.add((-120.5, -89.0))
+    map_box.add((-120.5, -90.0))
+    map_box.determine_plume_extent()
+
+    s.map_projection = const.MapProjection.LAMBERT
+    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, -89.0], 1.3, [1.0, 1.0], map_box)
+    assert isinstance(m, mapproj.PolarProjection)
+    
+    
 def test_MapProjection___init__():
     s = plot.TrajectoryPlotSettings()
     m = mapproj.MapProjection(s, [-125.0, 45.0], 1.3, [1.0, 1.0])
@@ -393,52 +439,6 @@ def test_MapProjection_determine_projection():
     assert mapproj.MapProjection.determine_projection(k_auto, [-125.0, 15.0]) == k_mercator
 
 
-def test_MapProjection_create_instance():
-    s = plot.TrajectoryPlotSettings()
-    map_box = mapbox.MapBox()
-    map_box.allocate()
-    map_box.add((-120.5, 45.5))
-    map_box.determine_plume_extent()
-
-    s.map_projection = const.MapProjection.POLAR
-    m = mapproj.MapProjection.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
-    assert isinstance(m, mapproj.PolarProjection)
-
-    s.map_projection = const.MapProjection.LAMBERT
-    m = mapproj.MapProjection.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
-    assert isinstance(m, mapproj.LambertProjection)
-
-    s.map_projection = const.MapProjection.MERCATOR
-    m = mapproj.MapProjection.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
-    assert isinstance(m, mapproj.MercatorProjection)
-
-    s.map_projection = const.MapProjection.CYL_EQU
-    m = mapproj.MapProjection.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
-    assert isinstance(m, mapproj.CylindricalEquidistantProjection)
-
-    # Lambert grid is not permitted to contain the poles
-
-    # when containing the north pole
-    map_box.clear_hit_map()
-    map_box.add((-120.5, 89.0))
-    map_box.add((-120.5, 90.0))
-    map_box.determine_plume_extent()
-
-    s.map_projection = const.MapProjection.LAMBERT
-    m = mapproj.MapProjection.create_instance(s, [-125.0, 89.0], 1.3, [1.0, 1.0], map_box)
-    assert isinstance(m, mapproj.PolarProjection)
-
-    # when containing the south pole
-    map_box.clear_hit_map()
-    map_box.add((-120.5, -89.0))
-    map_box.add((-120.5, -90.0))
-    map_box.determine_plume_extent()
-
-    s.map_projection = const.MapProjection.LAMBERT
-    m = mapproj.MapProjection.create_instance(s, [-125.0, -89.0], 1.3, [1.0, 1.0], map_box)
-    assert isinstance(m, mapproj.PolarProjection)
-
-
 def test_MapProjection_refine_corners__lambert():
     s = plot.TrajectoryPlotSettings()
     s.map_projection = const.MapProjection.LAMBERT
@@ -446,7 +446,7 @@ def test_MapProjection_refine_corners__lambert():
     s.ring_number = 4
     s.ring_distance = 0.0
     testMapBox = create_map_box(s)
-    m = mapproj.MapProjection.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], testMapBox)
+    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], testMapBox)
 
     m.refine_corners(testMapBox, [-125.0, 45.0])
 
@@ -468,7 +468,7 @@ def test_MapProjection_refine_corners__polar():
     s.ring_number = 4
     s.ring_distance = 0.0
     testMapBox = create_map_box(s)
-    m = mapproj.MapProjection.create_instance(s, [-125.0, 85.0], 1.3, [1.0, 1.0], testMapBox)
+    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 85.0], 1.3, [1.0, 1.0], testMapBox)
 
     m.refine_corners(testMapBox, [-125.0, 85.0])
 
@@ -490,7 +490,7 @@ def test_MapProjection_refine_corners__mercator():
     s.ring_number = 4
     s.ring_distance = 0.0
     testMapBox = create_map_box(s)
-    m = mapproj.MapProjection.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], testMapBox)
+    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], testMapBox)
 
     m.refine_corners(testMapBox, [-125.0, 45.0])
 
@@ -512,7 +512,7 @@ def test_MapProjection_refine_corners__cylequ():
     s.ring_number = 4
     s.ring_distance = 0.0
     testMapBox = create_map_box(s)
-    m = mapproj.MapProjection.create_instance(s, [-125.0, 5.0], 1.3, [1.0, 1.0], testMapBox)
+    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 5.0], 1.3, [1.0, 1.0], testMapBox)
 
     m.refine_corners(testMapBox, [-125.0, 5.0])
 

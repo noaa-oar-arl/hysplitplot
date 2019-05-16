@@ -17,7 +17,7 @@ def run(mainFunction, programName):
     """
     logging.basicConfig(
         stream=sys.stdout,
-        level=logging.DEBUG,
+        level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s - %(message)s"
     )
 
@@ -27,7 +27,6 @@ def run(mainFunction, programName):
     logging.info("exiting with code [{0}]".format(exitCode))
 
     sys.exit(exitCode)
-
 
 def myzip(xlist, ylist):
     if sys.version_info[0] >= 3:

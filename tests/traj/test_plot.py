@@ -11,8 +11,8 @@ from hysplit4 import labels, clist, mapfile, mapproj, const
 @pytest.fixture
 def plotData():
     s = plot.TrajectoryPlotSettings()
-    d = model.TrajectoryPlotData()
-    r = model.TrajectoryDataFileReader(d)
+    d = model.TrajectoryDump()
+    r = model.TrajectoryDumpFileReader(d)
     r.set_end_hour_duration(s.end_hour_duration)
     r.set_vertical_coordinate(s.vertical_coordinate, s.height_unit)
     r.read("data/tdump")
@@ -379,7 +379,7 @@ def test_TrajectoryPlot_set_trajectory_color():
     s.color_codes = ['2', '3']
 
     # add four trajectories
-    pd = model.TrajectoryPlotData()
+    pd = model.TrajectoryDump()
     pd.trajectories.append(model.Trajectory())
     pd.trajectories.append(model.Trajectory())
     pd.trajectories.append(model.Trajectory())
@@ -493,7 +493,7 @@ def test_TrajectoryPlot__determine_map_limits(plotData):
     assert mb.plume_sz == [5.0, 5.0]
     assert mb.plume_loc == [270, 126]
 
-    nil_plot_data = model.TrajectoryPlotData()
+    nil_plot_data = model.TrajectoryDump()
 
     try:
         mb2 = p._determine_map_limits(nil_plot_data, 2)
@@ -517,7 +517,7 @@ def test_TrajectoryPlot__determine_vertical_limit(plotData):
     assert low == 0.0
     assert high == 1000.0
 
-    pd = model.TrajectoryPlotData()
+    pd = model.TrajectoryDump()
     traj = model.Trajectory()
     traj.vertical_coord = model.BlankVerticalCoordinate(traj)
     pd.trajectories.append(traj)
@@ -631,7 +631,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
 
 
 def test_TrajectoryPlot_make_ylabel():
-    plotData = model.TrajectoryPlotData()
+    plotData = model.TrajectoryDump()
     t = model.Trajectory()
     t.starting_loc = (30.0, 20.0)
     plotData.trajectories.append(t)
@@ -819,7 +819,7 @@ def test_TrajectoryPlot_draw_noaa_logo():
     
 def test_TrajecotryPlot__read_cluster_info_if_exists():
     p = plot.TrajectoryPlot()
-    pd = model.TrajectoryPlotData()
+    pd = model.TrajectoryDump()
     pd.IDLBL = "MERGMEAN"
     # need four trajectories to match the contents of CLUSLIST_4
     pd.trajectories.append(model.Trajectory())
@@ -1254,9 +1254,9 @@ def test_IntervalSymbolDrawerFactory_create_instance():
     assert isinstance(d, plot.IdleIntervalSymbolDrawer)
 
     plt.close(axes.get_figure())
+ 
 
-
-def test_AbstractVerticalPosition___init__():
+def test_AbstractVerticalProjection___init__():
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
     o = plot.AbstractVerticalProjection(axes, s, 6)
@@ -1266,7 +1266,7 @@ def test_AbstractVerticalPosition___init__():
     plt.close(axes.get_figure())
     
 
-def test_AbstractVerticalPosition_calc_xrange(plotData):
+def test_AbstractVerticalProjection_calc_xrange(plotData):
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
     o = plot.AbstractVerticalProjection(axes, s, 6)
@@ -1274,7 +1274,7 @@ def test_AbstractVerticalPosition_calc_xrange(plotData):
     plt.close(axes.get_figure())
         
 
-def test_AbstractVerticalPosition_create_xlabel_formatter():
+def test_AbstractVerticalProjection_create_xlabel_formatter():
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
     o = plot.AbstractVerticalProjection(axes, s, 6)
@@ -1282,7 +1282,7 @@ def test_AbstractVerticalPosition_create_xlabel_formatter():
     plt.close(axes.get_figure())
   
 
-def test_AbstractVerticalPosition_select_xvalues(plotData):
+def test_AbstractVerticalProjection_select_xvalues(plotData):
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
     o = plot.AbstractVerticalProjection(axes, s, 6)
@@ -1290,29 +1290,12 @@ def test_AbstractVerticalPosition_select_xvalues(plotData):
     plt.close(axes.get_figure())
 
     
-def test_AbstractVerticalPosition_create_interval_symbol_drawer():
+def test_AbstractVerticalProjection_create_interval_symbol_drawer():
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
     o = plot.AbstractVerticalProjection(axes, s, 6)
     assert o.create_interval_symbol_drawer() is not None
     plt.close(axes.get_figure())
-  
-
-def test_AbstractVerticalPosition_create_instance():
-    s = plot.TrajectoryPlotSettings()
-    axes = plt.axes()
-    
-    s.time_label_interval = 6
-    o = plot.AbstractVerticalProjection.create_instance(axes, s)
-    assert isinstance(o, plot.TimeVerticalProjection)
-    
-    s.time_label_interval = -6
-    o = plot.AbstractVerticalProjection.create_instance(axes, s)
-    assert isinstance(o, plot.AgeVerticalProjection)
-    
-    s.time_label_interval = 0
-    o = plot.AbstractVerticalProjection.create_instance(axes, s)
-    assert isinstance(o, plot.TimeVerticalProjection)
 
 
 def test_TimeVerticalProjection___init__():
@@ -1407,4 +1390,20 @@ def test_AgeVerticalProjection_select_xvalues(plotData):
     assert len(x) > 0
     assert x[0] == 0
     plt.close(axes.get_figure())
+ 
 
+def test_VerticalProjectionFactory_create_instance():
+    s = plot.TrajectoryPlotSettings()
+    axes = plt.axes()
+    
+    s.time_label_interval = 6
+    o = plot.VerticalProjectionFactory.create_instance(axes, s)
+    assert isinstance(o, plot.TimeVerticalProjection)
+    
+    s.time_label_interval = -6
+    o = plot.VerticalProjectionFactory.create_instance(axes, s)
+    assert isinstance(o, plot.AgeVerticalProjection)
+    
+    s.time_label_interval = 0
+    o = plot.VerticalProjectionFactory.create_instance(axes, s)
+    assert isinstance(o, plot.TimeVerticalProjection)

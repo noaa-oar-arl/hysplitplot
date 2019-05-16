@@ -318,6 +318,36 @@ class CylindricalCoordinate(CoordinateBase):
         return plat, plon
 
 
+class MapProjectionFactory:
+    
+    @staticmethod
+    def create_instance(settings, center_loc, scale, grid_deltas, map_box):
+        obj = None
+
+        kproj = MapProjection.determine_projection(settings.map_projection, center_loc)
+
+        if kproj == const.MapProjection.POLAR:
+            obj = PolarProjection(settings, center_loc, scale, grid_deltas)
+        elif kproj == const.MapProjection.LAMBERT:
+            obj = LambertProjection(settings, center_loc, scale, grid_deltas)
+        elif kproj == const.MapProjection.MERCATOR:
+            obj = MercatorProjection(settings, center_loc, scale, grid_deltas)
+        elif kproj == const.MapProjection.CYL_EQU:
+            obj = CylindricalEquidistantProjection(settings, center_loc, scale, grid_deltas)
+        else:
+            raise Exception("unknown map projection {0}".format(kproj))
+
+        obj.do_initial_estimates(map_box, center_loc)
+
+        # Lambert grids not permitted to encompass the poles
+        if obj.sanity_check() == False:
+            proj = obj.create_proper_projection(settings, center_loc, scale, grid_deltas)
+            proj.do_initial_estimates(map_box, center_loc)
+            return proj
+
+        return obj
+
+
 class MapProjection:
     
     _WGS84 = {"init": "epsg:4326"}  # A coordinate reference system.
@@ -348,33 +378,6 @@ class MapProjection:
                 kproj = const.MapProjection.MERCATOR
         logger.debug("map projection %d -> %d", map_proj, kproj)
         return kproj
-
-    @staticmethod
-    def create_instance(settings, center_loc, scale, grid_deltas, map_box):
-        obj = None
-
-        kproj = MapProjection.determine_projection(settings.map_projection, center_loc)
-
-        if kproj == const.MapProjection.POLAR:
-            obj = PolarProjection(settings, center_loc, scale, grid_deltas)
-        elif kproj == const.MapProjection.LAMBERT:
-            obj = LambertProjection(settings, center_loc, scale, grid_deltas)
-        elif kproj == const.MapProjection.MERCATOR:
-            obj = MercatorProjection(settings, center_loc, scale, grid_deltas)
-        elif kproj == const.MapProjection.CYL_EQU:
-            obj = CylindricalEquidistantProjection(settings, center_loc, scale, grid_deltas)
-        else:
-            raise Exception("unknown map projection {0}".format(kproj))
-
-        obj.do_initial_estimates(map_box, center_loc)
-
-        # Lambert grids not permitted to encompass the poles
-        if obj.sanity_check() == False:
-            proj = obj.create_proper_projection(settings, center_loc, scale, grid_deltas)
-            proj.do_initial_estimates(map_box, center_loc)
-            return proj
-
-        return obj
 
     def refine_corners(self, map_box, center_loc):
         corners_xy = self.validate_corners(self.corners_xy)

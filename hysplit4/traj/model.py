@@ -8,7 +8,7 @@ from hysplit4 import io, const
 logger = logging.getLogger(__name__)
 
 
-class TrajectoryPlotData:
+class TrajectoryDump:
     """Holds trajectory data for plotting.
 
     """
@@ -29,7 +29,7 @@ class TrajectoryPlotData:
         """Create and return a reader instance.
 
         """
-        return TrajectoryDataFileReader(self)
+        return TrajectoryDumpFileReader(self)
 
     def get_unique_start_datetimes(self):
         all = [t.starting_datetime for t in self.trajectories]
@@ -112,7 +112,7 @@ class TrajectoryPlotData:
            
     def fix_vertical_coordinates(self, vert_coord, height_unit):
         for t in self.trajectories:
-            t.vertical_coord = AbstractVerticalCoordinate.create_instance(vert_coord, height_unit, t)
+            t.vertical_coord = VerticalCoordinateFactory.create_instance(vert_coord, height_unit, t)
             t.vertical_coord.make_vertical_coordinates()
                 
     def fix_start_levels(self):
@@ -127,7 +127,7 @@ class TrajectoryPlotData:
             t.starting_level_index = self.uniq_start_levels.index(t.starting_level)
 
     def dump(self, stream):
-        stream.write("----- begin TrajectoryPlotData\n")
+        stream.write("----- begin TrajectoryDump\n")
         for k, v in self.__dict__.items():
             stream.write("{0} = {1}\n".format(k, v))
 
@@ -136,12 +136,12 @@ class TrajectoryPlotData:
 
         for t in self.trajectories:
             t.dump(stream)
-        stream.write("----- end TrajectoryPlotData\n")
+        stream.write("----- end TrajectoryDump\n")
 
 class MeteorologicalGrid:
 
     def __init__(self, parent=None):
-        self.parent = parent            # a TrajectoryPlotData instance
+        self.parent = parent            # a TrajectoryDump instance
         self.model = None
         self.datetime = None
         self.forecast_hour = 0
@@ -153,7 +153,7 @@ class MeteorologicalGrid:
 class Trajectory:
 
     def __init__(self, parent=None):
-        self.parent = parent            # a TrajectoryPlotData instance
+        self.parent = parent            # a TrajectoryDump instance
         self.starting_datetime = None
         self.starting_loc = (0, 0)
         self.starting_level = 0
@@ -263,7 +263,7 @@ class Trajectory:
         return
 
 
-class TrajectoryDataFileReader(io.FormattedTextFileReader):
+class TrajectoryDumpFileReader(io.FormattedTextFileReader):
     """Reads a trajectory data file.
 
     """
@@ -400,8 +400,8 @@ class TrajectoryDataFileReader(io.FormattedTextFileReader):
             t.starting_loc = (v[5], v[4])
             t.starting_level = v[6]
             pd.trajectories.append(t)
-            
 
+    
 class AbstractVerticalCoordinate:
     
     def __init__(self, traj):
@@ -413,25 +413,7 @@ class AbstractVerticalCoordinate:
     
     def need_axis_inversion(self):
         return False
-    
-    @staticmethod
-    def create_instance(vert_coord, height_unit, traj):
-        
-        if vert_coord == const.Vertical.PRESSURE:
-            return PressureCoordinate(traj)
-        elif vert_coord == const.Vertical.ABOVE_GROUND_LEVEL:
-            if traj.has_terrain_profile():
-                return TerrainHeightCoordinate(traj, height_unit)
-            else:
-                return HeightCoordinate(traj, height_unit)
-        elif vert_coord == const.Vertical.THETA:
-            if "THETA" in traj.others:
-                return ThetaCoordinate(traj)
-        elif vert_coord == const.Vertical.METEO:
-                return OtherVerticalCoordinate(traj)
-        
-        return BlankVerticalCoordinate(traj)
-
+ 
     
 class BlankVerticalCoordinate(AbstractVerticalCoordinate):
     
@@ -512,3 +494,24 @@ class OtherVerticalCoordinate(AbstractVerticalCoordinate):
     
     def get_vertical_label(self):
         return self.t.diagnostic_names[-1]
+            
+
+class VerticalCoordinateFactory:
+       
+    @staticmethod
+    def create_instance(vert_coord, height_unit, traj):
+        
+        if vert_coord == const.Vertical.PRESSURE:
+            return PressureCoordinate(traj)
+        elif vert_coord == const.Vertical.ABOVE_GROUND_LEVEL:
+            if traj.has_terrain_profile():
+                return TerrainHeightCoordinate(traj, height_unit)
+            else:
+                return HeightCoordinate(traj, height_unit)
+        elif vert_coord == const.Vertical.THETA:
+            if "THETA" in traj.others:
+                return ThetaCoordinate(traj)
+        elif vert_coord == const.Vertical.METEO:
+                return OtherVerticalCoordinate(traj)
+        
+        return BlankVerticalCoordinate(traj)

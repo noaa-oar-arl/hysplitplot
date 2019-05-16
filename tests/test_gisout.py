@@ -8,13 +8,30 @@ from hysplit4.traj import plot, model
 @pytest.fixture
 def plotData():
     s = plot.TrajectoryPlotSettings()
-    d = model.TrajectoryPlotData()
-    r = model.TrajectoryDataFileReader(d)
+    d = model.TrajectoryDump()
+    r = model.TrajectoryDumpFileReader(d)
     r.set_end_hour_duration(s.end_hour_duration)
     r.set_vertical_coordinate(s.vertical_coordinate, s.height_unit)
     r.read("data/tdump")
     s.vertical_coordinate = r.vertical_coordinate
     return d
+
+
+def test_GISFileWriterFactory_create_instance():
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.GENERATE_POINTS)
+    assert isinstance(w, gisout.PointsGenerateFileWriter)
+    
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.GENERATE_LINES)
+    assert isinstance(w, gisout.LinesGenerateFileWriter)
+    
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.KML)
+    assert isinstance(w, gisout.KMLWriter)
+    
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.PARTIAL_KML)
+    assert isinstance(w, gisout.PartialKMLWriter)
+  
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.NONE)
+    assert w is None
 
 
 def test_AbstractGISFileWriter___init__():
@@ -23,23 +40,6 @@ def test_AbstractGISFileWriter___init__():
     assert w.output_suffix == "ps"
     assert w.output_name == "trajplot.ps"
     assert w.kml_option == const.KMLOption.NONE
-
-
-def test_AbstractGISFileWriter_create_instance():
-    w = gisout.AbstractGISFileWriter.create_instance(const.GISOutput.GENERATE_POINTS)
-    assert isinstance(w, gisout.PointsGenerateFileWriter)
-    
-    w = gisout.AbstractGISFileWriter.create_instance(const.GISOutput.GENERATE_LINES)
-    assert isinstance(w, gisout.LinesGenerateFileWriter)
-    
-    w = gisout.AbstractGISFileWriter.create_instance(const.GISOutput.KML)
-    assert isinstance(w, gisout.KMLWriter)
-    
-    w = gisout.AbstractGISFileWriter.create_instance(const.GISOutput.PARTIAL_KML)
-    assert isinstance(w, gisout.PartialKMLWriter)
-  
-    w = gisout.AbstractGISFileWriter.create_instance(const.GISOutput.NONE)
-    assert w is None
 
 
 def test_GenerateAttributeFileWriter_write(plotData):

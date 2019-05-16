@@ -304,7 +304,7 @@ class TrajectoryPlot:
 
         self.data_list = []
         for inp in input_files:
-            pd = model.TrajectoryPlotData()
+            pd = model.TrajectoryDump()
             r = pd.get_reader()
             r.set_end_hour_duration(self.settings.end_hour_duration)
             r.set_vertical_coordinate(self.settings.vertical_coordinate, self.settings.height_unit)
@@ -400,11 +400,11 @@ class TrajectoryPlot:
             map_box.set_ring_extent(self.settings)
         map_box.dump(sys.stdout)
 
-        self.projection = mapproj.MapProjection.create_instance(self.settings,
-                                                                self.settings.center_loc,
-                                                                1.3,
-                                                                (map_box.grid_delta, map_box.grid_delta),
-                                                                map_box)
+        self.projection = mapproj.MapProjectionFactory.create_instance(self.settings,
+                                                                       self.settings.center_loc,
+                                                                       1.3,
+                                                                       (map_box.grid_delta, map_box.grid_delta),
+                                                                       map_box)
         self.projection.refine_corners(map_box, self.settings.center_loc)
 
         # map projection might have changed.
@@ -730,7 +730,7 @@ class TrajectoryPlot:
         # Add y-gridlines
         axes.grid(True, "major", "y", linestyle="--")
 
-        vert_proj = AbstractVerticalProjection.create_instance(axes, self.settings)
+        vert_proj = VerticalProjectionFactory.create_instance(axes, self.settings)
         
         # Adjust x-range.
         x_range = None
@@ -1026,7 +1026,7 @@ class TrajectoryPlot:
         plt.close(self.fig)
 
     def write_gis_files(self):
-        w = gisout.AbstractGISFileWriter.create_instance(self.settings.gis_output)
+        w = gisout.GISFileWriterFactory.create_instance(self.settings.gis_output)
         if w is not None:
             w.output_suffix = self.settings.output_suffix
             w.output_name = self.settings.output_postscript  
@@ -1188,8 +1188,8 @@ class IntervalSymbolDrawerFactory:
             return AgeIntervalSymbolDrawer(axes, settings, -time_interval)
         else:
             return IdleIntervalSymbolDrawer(axes, settings, time_interval)
-        
 
+        
 class AbstractVerticalProjection:
  
     def __init__(self, axes, settings, time_interval):
@@ -1211,14 +1211,6 @@ class AbstractVerticalProjection:
     
     def create_interval_symbol_drawer(self):
         return IntervalSymbolDrawerFactory.create_instance(self.axes, self.settings)
-   
-    @staticmethod
-    def create_instance(axes, settings):
-        time_interval = settings.time_label_interval
-        if time_interval >= 0:
-            return TimeVerticalProjection(axes, settings, time_interval)
-        else:
-            return AgeVerticalProjection(axes, settings, time_interval)
 
     
 class TimeVerticalProjection(AbstractVerticalProjection):
@@ -1267,3 +1259,13 @@ class AgeVerticalProjection(AbstractVerticalProjection):
     def select_xvalues(self, t):
         return t.ages
     
+    
+class VerticalProjectionFactory:
+   
+    @staticmethod
+    def create_instance(axes, settings):
+        time_interval = settings.time_label_interval
+        if time_interval >= 0:
+            return TimeVerticalProjection(axes, settings, time_interval)
+        else:
+            return AgeVerticalProjection(axes, settings, time_interval)
