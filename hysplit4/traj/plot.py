@@ -893,6 +893,21 @@ class TrajectoryPlot:
         if self.settings.noaa_logo:
             self.draw_noaa_logo(axes)
     
+    @staticmethod
+    def compute_pixel_aspect_ratio(axes):
+        # compute the pixel aspect ratio
+        w_fig = axes.figure.get_figwidth()
+        h_fig = axes.figure.get_figheight()
+        w_dis, h_dis = axes.figure.transFigure.transform((w_fig, h_fig))
+        pixel_aspect_ratio = h_fig * w_dis / (h_dis * w_fig)
+        
+        # TODO: better?
+        pixel_aspect_ratio *= 1.0 / 0.953   # empirical adjustment
+        logger.debug("fig size %f x %f in; display %f x %f px; pixel aspect ratio %f",
+                     w_fig, h_fig, w_dis, h_dis, pixel_aspect_ratio)
+        
+        return pixel_aspect_ratio
+        
     def draw_noaa_logo(self, axes):
         # position of the right bottom corner in the display coordinate
         pt_dis = axes.transAxes.transform((1, 0))
@@ -900,16 +915,8 @@ class TrajectoryPlot:
         # move it by 10 pixels in each direction
         pt_dis += [-10, +10]
         
-        # compute the pixel aspect ratio
-        w_fig = self.fig.get_figwidth()
-        h_fig = self.fig.get_figheight()
-        w_dis, h_dis = self.fig.transFigure.transform((w_fig, h_fig))
-        pixel_aspect_ratio = h_fig * w_dis / (h_dis * w_fig)
-        logger.debug("fig size %f x %f in; display %f x %f px; pixel aspect ratio %f",
-                     w_fig, h_fig, w_dis, h_dis, pixel_aspect_ratio)
-        
         # bounding box in the display coordinate
-        h = 90; w = h * pixel_aspect_ratio
+        h = 90; w = h * self.compute_pixel_aspect_ratio(axes)
         box_dis = [[pt_dis[0]-w, pt_dis[1]], [pt_dis[0], pt_dis[1]+h]]
 
         # in the axes coordinate        

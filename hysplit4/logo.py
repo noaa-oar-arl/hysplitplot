@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class NOAALogoDrawer:
 
     # NOAA logo is a 400x400 bit circle sitting in a box
-    # of dimensions: 480x480 with the center at: 240,240
+    # of dimensions 480x480 with the center at (240, 240)
 
     _bot = [
          49.,300.6491,  54.,297.4863,  59.,294.2104,  63.,291.2323,  66.,288.8176,  70.,285.3888,  74.,281.7560,
@@ -50,8 +50,8 @@ class NOAALogoDrawer:
         self.cy = 240.0
         self.R = 200.0
         self.base_font_sz = 12.0   # to be computed
-        self.font_sz1 = 2.5*12.0
-        self.font_sz2 = 1.1*12.0
+        self.font_sz1 = 2.5*12.0   # to be computed
+        self.font_sz2 = 1.1*12.0   # to be computed
         
     def draw(self, axes, bbox):
         # bbox in the axes coordinates
