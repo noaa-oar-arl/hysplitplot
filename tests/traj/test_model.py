@@ -22,8 +22,8 @@ def simpleTraj():
     t.longitudes = [0.0, 0.0]
     t.latitudes = [0.0, 0.0]
     t.heights = [10.0, 20.0]
-    t.diagnostic_names = []
-    t.others = dict()
+    t.diagnostic_names = ["TERR_MSL"]
+    t.others = {"TERR_MSL": [1000.0, 1010.0]}
     return t
 
 
@@ -420,9 +420,10 @@ def test_Trajectory_repair_starting_level():
     t = model.Trajectory()
     t.longitudes = [0]
     t.latitudes = [0]
-    t.vertical_coord = model.BlankVerticalCoordinate(t)
+    t.heights = [500.0]
+    t.vertical_coord = model.HeightCoordinate(t)
     t.vertical_coord.make_vertical_coordinates()
-    t.vertical_coord.values[0] = 500.0
+    #t.vertical_coord.values[0] = 500.0
     t.starting_level = 0
     
     t.repair_starting_level()
@@ -682,6 +683,12 @@ def test_AbstractVerticalCoordinate_need_axis_inversion():
     assert not vc.need_axis_inversion()
 
 
+def test_AbstractVerticalCoordinate_repair_starting_level():
+    t = model.Trajectory()
+    vc = model.AbstractVerticalCoordinate(t)
+    assert vc.repair_starting_level(100.0) == 100.0
+
+    
 def test_BlankVerticalCoordinate___init__(simpleTraj):
     vc = model.BlankVerticalCoordinate(simpleTraj)
     assert vc.t is simpleTraj
@@ -769,6 +776,16 @@ def test_TerrainHeightCoordinate_get_vertical_label(simpleTraj):
     assert vc.get_vertical_label() == "Feet MSL"
 
 
+def test_TerrainHeightCoordinate_repair_starting_level(simpleTraj):
+    vc = simpleTraj.vertical_coord = model.TerrainHeightCoordinate(simpleTraj)
+    vc.make_vertical_coordinates()
+    assert vc.repair_starting_level(0) == pytest.approx(1010.0)
+        
+    vc = simpleTraj.vertical_coord = model.TerrainHeightCoordinate(simpleTraj, const.HeightUnit.FEET)
+    vc.make_vertical_coordinates()
+    assert vc.repair_starting_level(0) == pytest.approx(3313.65)
+
+
 def test_HeightCoordinate___init__(simpleTraj):
     vc = simpleTraj.vertical_coord = model.HeightCoordinate(simpleTraj)
     assert vc.t is simpleTraj
@@ -805,6 +822,16 @@ def test_HeightCoordinate_get_vertical_label(simpleTraj):
         
     vc = simpleTraj.vertical_coord = model.HeightCoordinate(simpleTraj, const.HeightUnit.FEET)
     assert vc.get_vertical_label() == "Feet AGL"
+
+
+def test_HeightCoordinate_repair_starting_level(simpleTraj):
+    vc = simpleTraj.vertical_coord = model.HeightCoordinate(simpleTraj)
+    vc.make_vertical_coordinates()
+    assert vc.repair_starting_level(0) == pytest.approx(10.0)
+        
+    vc = simpleTraj.vertical_coord = model.HeightCoordinate(simpleTraj, const.HeightUnit.FEET)
+    vc.make_vertical_coordinates()
+    assert vc.repair_starting_level(0) == pytest.approx(32.8084)
 
 
 def test_ThetaCoordinate___init__(simpleTraj):

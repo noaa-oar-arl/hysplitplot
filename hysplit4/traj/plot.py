@@ -1026,7 +1026,7 @@ class TrajectoryPlot:
         plt.close(self.fig)
 
     def write_gis_files(self):
-        w = gisout.GISFileWriterFactory.create_instance(self.settings.gis_output)
+        w = gisout.GISFileWriterFactory.create_instance(self.settings.gis_output, self.settings.height_unit)
         if w is not None:
             w.output_suffix = self.settings.output_suffix
             w.output_name = self.settings.output_postscript  

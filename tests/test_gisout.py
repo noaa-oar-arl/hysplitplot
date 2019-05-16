@@ -1,6 +1,7 @@
 import pytest
 import os
 import datetime
+import numpy
 from hysplit4 import gisout, const
 from hysplit4.traj import plot, model
 
@@ -26,10 +27,20 @@ def test_GISFileWriterFactory_create_instance():
     
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.KML)
     assert isinstance(w, gisout.KMLWriter)
+    assert w.height_unit == const.HeightUnit.METER
+     
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.KML, const.HeightUnit.FEET)
+    assert isinstance(w, gisout.KMLWriter)
+    assert w.height_unit == const.HeightUnit.FEET
     
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.PARTIAL_KML)
     assert isinstance(w, gisout.PartialKMLWriter)
-  
+    assert w.height_unit == const.HeightUnit.METER
+     
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.PARTIAL_KML, const.HeightUnit.FEET)
+    assert isinstance(w, gisout.PartialKMLWriter)
+    assert w.height_unit == const.HeightUnit.FEET
+    
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.NONE)
     assert w is None
 
@@ -90,6 +101,10 @@ def test_LinesGenerateFileWriter_write(plotData):
 def test_KMLWriter___init__():
     try:
         w = gisout.KMLWriter()
+        assert w.height_unit == const.HeightUnit.METER
+        
+        w = gisout.KMLWriter(const.HeightUnit.FEET)
+        assert w.height_unit == const.HeightUnit.FEET
     except Exception as ex:
         pytest.fail("unexpected exception: {0}".format(ex))
         
@@ -107,9 +122,40 @@ def test_KMLWriter__get_iso_8601_str():
     assert gisout.KMLWriter._get_iso_8601_str(dt) == "1983-10-13T00:15:00Z"
     
 
-def test_KMLWriter__get_timestamp_str(plotData):
+def test_KMLWriter__get_timestamp_str():
     dt = datetime.datetime(83, 10, 13, 0, 15)
     assert gisout.KMLWriter._get_timestamp_str(dt) == "10/13/1983 0015 UTC"
+
+
+def test_KMLWriter__get_alt_mode(plotData):
+    t = plotData.trajectories[0]
+    assert gisout.KMLWriter._get_alt_mode(t) == "relativeToGround"
+    
+    # now add TERR_MSL
+    t.diagnostic_names.append("TERR_MSL")
+    t.others["TERR_MSL"] = numpy.zeros(len(t.latitudes))
+    
+    assert gisout.KMLWriter._get_alt_mode(t) == "absolute"
+    
+
+def test_KMLWriter__get_level_type(plotData):
+    t = plotData.trajectories[0]
+    
+    w = gisout.KMLWriter(const.HeightUnit.METER)
+    assert w._get_level_type(t) == "m AGL"
+    
+    w = gisout.KMLWriter(const.HeightUnit.FEET)
+    assert w._get_level_type(t) == "ft AGL"
+    
+    # now add TERR_MSL
+    t.diagnostic_names.append("TERR_MSL")
+    t.others["TERR_MSL"] = numpy.zeros(len(t.latitudes))
+   
+    w = gisout.KMLWriter(const.HeightUnit.METER)
+    assert w._get_level_type(t) == "m AMSL"
+    
+    w = gisout.KMLWriter(const.HeightUnit.FEET)
+    assert w._get_level_type(t) == "ft AMSL"
 
 
 def test_KMLWriter_write(plotData):
@@ -151,6 +197,10 @@ def test_KMLWriter_write(plotData):
 def test_PartialKMLWriter___init__():
     try:
         w = gisout.PartialKMLWriter()
+        assert w.height_unit == const.HeightUnit.METER
+        
+        w = gisout.PartialKMLWriter(const.HeightUnit.FEET)
+        assert w.height_unit == const.HeightUnit.FEET
     except Exception as ex:
         pytest.fail("unexpected exception: {0}".format(ex))
         

@@ -15,15 +15,15 @@ def debug_trunc(f):
 class GISFileWriterFactory:
     
     @staticmethod
-    def create_instance(selector):
+    def create_instance(selector, height_unit=const.HeightUnit.METER):
         if selector == const.GISOutput.GENERATE_POINTS:
             return PointsGenerateFileWriter()
         elif selector == const.GISOutput.GENERATE_LINES:
             return LinesGenerateFileWriter()
         elif selector == const.GISOutput.KML:
-            return KMLWriter()
+            return KMLWriter(height_unit)
         elif selector == const.GISOutput.PARTIAL_KML:
-            return PartialKMLWriter()
+            return PartialKMLWriter(height_unit)
         elif selector != const.GISOutput.NONE:
             logger.warning("Unknown GIS file writer type %d", selector)
         return None
@@ -104,8 +104,9 @@ class LinesGenerateFileWriter(AbstractGISFileWriter):
 
 class KMLWriter(AbstractGISFileWriter):
     
-    def __init__(self):
+    def __init__(self, height_unit=const.HeightUnit.METER):
         AbstractGISFileWriter.__init__(self)
+        self.height_unit = height_unit
     
     @staticmethod
     def make_filename(output_name, output_suffix, file_no):
@@ -130,7 +131,19 @@ class KMLWriter(AbstractGISFileWriter):
         year = util.restore_year(dt.year)
         return "{1:02d}/{2:02d}/{0:04d} {3:02d}{4:02d} UTC".format(
             year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
-        
+    
+    @staticmethod
+    def _get_alt_mode(t):
+        return "absolute" if t.has_terrain_profile() else "relativeToGround"
+    
+    def _get_level_type(self, t):
+        if self.height_unit == const.HeightUnit.METER:
+            return "m AMSL" if t.has_terrain_profile() else "m AGL"
+        elif self.height_unit == const.HeightUnit.FEET:
+            return "ft AMSL" if t.has_terrain_profile() else "ft AGL"
+        else:
+            return "AMSL" if t.has_terrain_profile() else "AGL"
+
     def write(self, file_no, plot_data):
         file_name = self.make_filename(self.output_name, self.output_suffix, file_no)
         
@@ -146,8 +159,9 @@ class KMLWriter(AbstractGISFileWriter):
             self._write_postamble(f)
     
     def _write_preamble(self, f, plot_data):
-        starting_loc = plot_data.trajectories[0].starting_loc
-        starting_datetime = plot_data.trajectories[0].starting_datetime
+        t = plot_data.trajectories[0]
+        starting_loc = t.starting_loc
+        starting_datetime = t.starting_datetime
         timestamp_str = self._get_iso_8601_str(starting_datetime)
 
         f.write("""\
@@ -165,7 +179,7 @@ class KMLWriter(AbstractGISFileWriter):
       <gx:TimeStamp>
         <when>{3}</when>
       </gx:TimeStamp>
-      <gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+      <gx:altitudeMode>{4}</gx:altitudeMode>
     </LookAt>
     <Style id="traj1">
       <LineStyle>
@@ -215,7 +229,8 @@ class KMLWriter(AbstractGISFileWriter):
             self.output_suffix,
             starting_loc[0],
             starting_loc[1],
-            timestamp_str))
+            timestamp_str,
+            self._get_alt_mode(t)))
 
     def _write_postamble(self, f):
         f.write("""\
@@ -273,22 +288,19 @@ class KMLWriter(AbstractGISFileWriter):
     </Folder>\n""")
 
     def _write_trajectory(self, f, t, t_index):
-        # assume the height should be in meter for now.
-        vc = model.VerticalCoordinateFactory.create_instance(const.Vertical.ABOVE_GROUND_LEVEL, const.HeightUnit.METER, t)
+        vc = model.VerticalCoordinateFactory.create_instance(const.Vertical.ABOVE_GROUND_LEVEL, self.height_unit, t)
         vc.make_vertical_coordinates()
-        
-        is_AGL = False if t.has_terrain_profile() else True
         
         f.write("""\
     <Folder>
-      <name>{0:.1f} m {1} Trajectory</name>
+      <name>{0:.1f} {1} Trajectory</name>
       <open>1</open>
       <Placemark>
         <LookAt>
           <longitude>{2:.4f}</longitude>
           <latitude>{3:.4f}</latitude>\n""".format(
     		debug_trunc(t.starting_level),
-    		"AGL" if is_AGL else "AMSL",
+            self._get_level_type(t),
     		t.starting_loc[0],
     		t.starting_loc[1]))
 
@@ -301,20 +313,22 @@ class KMLWriter(AbstractGISFileWriter):
           <gx:TimeStamp>
             <when>{0}</when>
           </gx:TimeStamp>
-          <gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
-        </LookAt>\n""".format(timestamp_str))
+          <gx:altitudeMode>{1}</gx:altitudeMode>
+        </LookAt>\n""".format(
+            timestamp_str,
+            self._get_alt_mode(t)))
         
         f.write("""\
-        <name>{0:.1f} m {1} Trajectory</name>
+        <name>{0:.1f} {1} Trajectory</name>
         <styleUrl>#traj{2:1d}</styleUrl>
         <LineString>
           <extrude>1</extrude>
           <altitudeMode>{3}</altitudeMode>
           <coordinates>\n""".format(
             debug_trunc(t.starting_level),
-            "AGL" if is_AGL else "AMSL",
+            self._get_level_type(t),
 	        (t_index % 3) + 1,
-            "relativeToGround" if is_AGL else "absolute"))
+            self._get_alt_mode(t)))
 
         for k in range(len(t.longitudes)):
             f.write("""\
@@ -335,7 +349,7 @@ class KMLWriter(AbstractGISFileWriter):
         <visibility>1</visibility>
         <description><![CDATA[<pre>Start Time
 {0}
-LAT: {1:.4f} LON: {2:.4f} Hght(m {3}): {4:.1f}
+LAT: {1:.4f} LON: {2:.4f} Hght({3}): {4:.1f}
 </pre>]]></description>
         <styleUrl>#traj{5:1d}</styleUrl>
         <Point>
@@ -346,10 +360,10 @@ LAT: {1:.4f} LON: {2:.4f} Hght(m {3}): {4:.1f}
             starttime_str,
             t.starting_loc[1],
             t.starting_loc[0],
-            "AGL" if is_AGL else "AMSL",
+            self._get_level_type(t),
             debug_trunc(t.starting_level),
             (t_index % 3) + 1,
-            "relativeToGround" if is_AGL else "absolute",
+            self._get_alt_mode(t),
             t.starting_loc[0],
             t.starting_loc[1],
             debug_trunc(t.starting_level)))
@@ -361,7 +375,6 @@ LAT: {1:.4f} LON: {2:.4f} Hght(m {3}): {4:.1f}
     </Folder>\n""")
         
     def _write_endpts(self, f, t, t_index, vc):
-        is_AGL = False if t.has_terrain_profile() else True
         is_backward = False if t.parent.is_forward_calculation() else True
         
         f.write("""\
@@ -420,10 +433,10 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
                 self._get_timestamp_str(t.datetimes[k]),
                 t.latitudes[k],
                 t.longitudes[k],
-                "m AGL" if is_AGL else "m AMSL",
+                self._get_level_type(t),
                 debug_trunc(vc.values[k]),
                 (t_index % 3) + 1,
-                "relativeToGround" if is_AGL else "absolute",
+                self._get_alt_mode(t),
                 t.longitudes[k],
                 t.latitudes[k],
                 debug_trunc(vc.values[k])))
@@ -434,8 +447,8 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
  
 class PartialKMLWriter(KMLWriter):
     
-    def __init__(self):
-        KMLWriter.__init__(self)
+    def __init__(self, height_unit=const.HeightUnit.METER):
+        KMLWriter.__init__(self, height_unit)
     
     @staticmethod
     def make_filename(output_name, output_suffix, file_no):

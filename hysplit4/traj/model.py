@@ -116,10 +116,10 @@ class TrajectoryDump:
             t.vertical_coord.make_vertical_coordinates()
                 
     def fix_start_levels(self):
-        # TODO: when does the starting level need to be fixed?
-#         for t in self.trajectories:
-#             if len(t.vertical_coordinates) > 0:
-#                 t.repair_starting_level()
+        # The starting level needs to be fixed when the terrain height is added.
+        # Or its unit is other than meter.
+        for t in self.trajectories:
+            t.repair_starting_level()
                 
         # determine the starting level index
         self.uniq_start_levels = self.get_unique_start_levels()
@@ -259,7 +259,7 @@ class Trajectory:
         return
 
     def repair_starting_level(self):
-        self.starting_level = self.vertical_coord.values[0]
+        self.starting_level = self.vertical_coord.repair_starting_level(self.starting_level)
         return
 
 
@@ -413,6 +413,9 @@ class AbstractVerticalCoordinate:
     
     def need_axis_inversion(self):
         return False
+    
+    def repair_starting_level(self, v):
+        return v
  
     
 class BlankVerticalCoordinate(AbstractVerticalCoordinate):
@@ -455,7 +458,10 @@ class TerrainHeightCoordinate(AbstractVerticalCoordinate):
     
     def get_vertical_label(self):
         return "Meters MSL" if self.unit == const.HeightUnit.METER else "Feet MSL"
-
+    
+    def repair_starting_level(self, v):
+        return self.values[0]
+ 
 
 class HeightCoordinate(AbstractVerticalCoordinate):
     
@@ -470,7 +476,10 @@ class HeightCoordinate(AbstractVerticalCoordinate):
      
     def get_vertical_label(self):
         return "Meters AGL" if self.unit == const.HeightUnit.METER else "Feet AGL"
-   
+       
+    def repair_starting_level(self, v):
+        return self.values[0]
+ 
     
 class ThetaCoordinate(AbstractVerticalCoordinate):
     
