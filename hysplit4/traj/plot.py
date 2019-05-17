@@ -680,10 +680,14 @@ class TrajectoryPlot:
         lat = (clat - 0.5 * deltay) if (clat > 80.0) else clat + 0.5 * deltay
         for k in range(-(1800-ideltax), 1800, ideltax):
             lon = 0.1 * k
-            if deltax < 1.0:
-                str = "{0:.1f}".format(lon)
-            else:
-                str = "{0}".format(int(lon))
+            
+            # 5/17/2019
+            # The clip_on option does not work with the eps/ps renderer. It is done here.
+            ax, ay = axes.transLimits.transform(self.crs.transform_point(lon, lat, self.data_crs))
+            if ax < 0.0 or ax > 1.0 or ay < 0.0 or ay > 1.0:
+                continue
+            
+            str = "{0:.1f}".format(lon) if deltax < 1.0 else "{0}".format(int(lon))
             axes.text(lon, lat, str, transform=self.data_crs,
                       horizontalalignment="center", verticalalignment="center",
                       color=self.settings.map_color, clip_on=True)
@@ -692,10 +696,14 @@ class TrajectoryPlot:
         lon = clon + 0.5 * deltax
         for k in range(-(900-ideltay), 900, ideltay):
             lat = 0.1 * k
-            if deltay < 1.0:
-                str = "{0:.1f}".format(lat)
-            else:
-                str = "{0}".format(int(lat))
+                        
+            # 5/17/2019
+            # The clip_on option does not work with the eps/ps renderer. It is done here.
+            ax, ay = axes.transLimits.transform(self.crs.transform_point(lon, lat, self.data_crs))
+            if ax < 0.0 or ax > 1.0 or ay < 0.0 or ay > 1.0:
+                continue
+            
+            str = "{0:.1f}".format(lat) if deltay < 1.0 else "{0}".format(int(lat))
             axes.text(lon, lat, str, transform=self.data_crs,
                       horizontalalignment="center", verticalalignment="center",
                       color=self.settings.map_color, clip_on=True)
