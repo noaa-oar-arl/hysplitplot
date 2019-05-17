@@ -14,9 +14,11 @@ directory.  If it is installed somewhere else, use that path to run
 trajplot.py.  The command-line arguments for the trajplot.py script have the
 same format and meaning as the TRAJPLOT program in HYSPLIT.
 
-Unit tests are written using the pytest framework. To run the unit tests, do
+Unit tests are written using the pytest framework. You will need to install
+pytest if it is not.  To run the unit tests, do
 
-    $ cd tests; pytest
+    $ cd tests
+    $ pytest
     
 To update the HTML documentation, go to the docs/ directory and execute
 
@@ -25,4 +27,3 @@ To update the HTML documentation, go to the docs/ directory and execute
 The updated document can be accessed by pointing a web browser to
 docs/build/html/index.html.  Please note that the documentation is a working
 progress and it will stay incomplete until the source code matures.
-

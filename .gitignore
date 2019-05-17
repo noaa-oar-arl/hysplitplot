@@ -1,4 +1,7 @@
 .idea/
-__pycache__/
 .project
 .pydevproject
+__pycache__/
+build/
+dist/
+hysplit4.egg-info/
