@@ -105,6 +105,7 @@ def test_TrajectoryPlotSettings___init__():
     assert s.station_marker_size > 0
     assert s.color_cycle == None
     assert s.height_unit == const.HeightUnit.METER
+    assert s.interactive_mode == True
 
 
 def test_TrajectoryPlotSettings_process_command_line_arguments():
@@ -123,6 +124,9 @@ def test_TrajectoryPlotSettings_process_command_line_arguments():
     assert s.label_source == False
     assert s.vertical_coordinate == 1
     assert s.zoom_factor == 0.90
+    
+    # The -o option implies non-interactive mode
+    assert s.interactive_mode == False
 
     # test +n
     s.noaa_logo = False

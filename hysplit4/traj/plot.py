@@ -118,6 +118,7 @@ class TrajectoryPlotSettings:
         self.station_marker_size = 6*6
         self.color_cycle = None
         self.height_unit = const.HeightUnit.METER
+        self.interactive_mode = True    # becomes False if the -o or -O option is specified.
 
     def dump(self, stream):
         """Dumps the settings to an output stream.
@@ -185,7 +186,11 @@ class TrajectoryPlotSettings:
                 self.lat_lon_label_interval_option = max(0, min(1, self.lat_lon_label_interval_option))
 
         self.map_projection         = args.get_integer_value(["-m", "-M"], self.map_projection)
+        
         self.output_postscript      = args.get_string_value(["-o", "-O"], self.output_postscript)
+        if args.has_arg(["-o", "-O"]):
+            self.interactive_mode = False
+
         self.output_suffix          = args.get_string_value(["-p", "-P"], self.output_suffix)
         self.label_source           = args.get_boolean_value(["-s", "-S"], self.label_source)
 
@@ -1019,10 +1024,21 @@ class TrajectoryPlot:
         axes.set_yticks([])
         
     def draw(self, *args, **kw):
+        if self.settings.interactive_mode == False:
+            plt.ioff()
+            
         self.draw_trajectory_plot()
         self.draw_bottom_plot()
         self.draw_bottom_text()
-        plt.show(*args, **kw)
+        
+        if self.settings.interactive_mode:
+            plt.show(*args, **kw)
+        else:
+            self.fig.canvas.draw()  # to get the plot spines right.
+            self.update_gridlines()
+            plt.savefig(self.settings.output_postscript,
+                        papertype="letter")
+            
         plt.close(self.fig)
 
     def write_gis_files(self):
