@@ -10,11 +10,11 @@ def test_myzip():
     assert a[1] == (2, 4)
 
 
-def test_convert_integer_to_boolean():
-    assert util.convert_integer_to_boolean(-1) == False # strange but it is to retain the existing capability.
-    assert util.convert_integer_to_boolean(0) == False
-    assert util.convert_integer_to_boolean(1) == True
-    assert util.convert_integer_to_boolean(2) == True
+def test_convert_int_to_bool():
+    assert util.convert_int_to_bool(-1) == False # strange but it is to retain the existing capability.
+    assert util.convert_int_to_bool(0) == False
+    assert util.convert_int_to_bool(1) == True
+    assert util.convert_int_to_bool(2) == True
 
 
 def test_sign():
@@ -47,6 +47,11 @@ def test_make_int_if_same():
     assert util.make_int_if_same(45.0) == 45
     assert util.make_int_if_same(45.1) == 45.1
    
+
+def test_is_valid_lonlat():
+    assert util.is_valid_lonlat((99.0, 99.0)) == False
+    assert util.is_valid_lonlat((99.0,  0.0)) == True
+    
     
 def test_union_ranges():
     r = util.union_ranges(None, None)
@@ -84,12 +89,34 @@ def test_make_file_list():
         pytest.fail("expected an exception")
     except Exception as ex:
         assert str(ex) == "FATAL ERROR - File not found: data/nonexistent_file"
-        
+
+
+def test_normalize_output_filename():
+    n, x = util.normalize_output_filename("output.PS", "ps")
+    assert n, x == ("output.PS", "PS")
+
+    n, x = util.normalize_output_filename("output.pdf", "ps")
+    assert n, x == ("output.pdf", "pdf")
+
+    n, x = util.normalize_output_filename("output.", "ps")
+    assert n, x == ("output.ps", "pdf")
+
+    n, x = util.normalize_output_filename("output", "ps")
+    assert n, x == ("output.ps", "ps")
+
 
 def test_restore_year():
     util.restore_year( 0) == 2000
     util.restore_year(39) == 2039
     util.restore_year(40) == 1940
     util.restore_year(99) == 1999
-    
-    
+
+
+def test_calc_ring_distance():
+    kspan, ring_distance = util.calc_ring_distance((40.0, 10.0),
+                                                   1.0,
+                                                   (0, 0), # TODO: check this??
+                                                   5,
+                                                   105.0)
+    assert kspan == 5
+    assert ring_distance == 100.0

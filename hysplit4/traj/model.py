@@ -25,6 +25,12 @@ class TrajectoryDump:
     def is_forward_calculation(self):
         return True if self.trajectory_direction.strip() == "FORWARD" else False
 
+    def has_terrain_profile(self):
+        for t in self.trajectories:
+            if t.has_terrain_profile():
+                return True
+        return False
+    
     def get_reader(self):
         """Create and return a reader instance.
 

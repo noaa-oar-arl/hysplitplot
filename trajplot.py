@@ -53,7 +53,7 @@ def main():
     the_plot = hysplit4.TrajectoryPlot()
 
     the_plot.merge_plot_settings(None, sys.argv[1:])
-    the_plot.read_custom_labels_if_exists(the_plot.make_labels_filename())
+    the_plot.read_custom_labels_if_exists()
     the_plot.read_data_files()
 
     logger.info("Started Trajectory Drawing")

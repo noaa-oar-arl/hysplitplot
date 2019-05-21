@@ -321,19 +321,19 @@ class CylindricalCoordinate(CoordinateBase):
 class MapProjectionFactory:
     
     @staticmethod
-    def create_instance(settings, center_loc, scale, grid_deltas, map_box):
+    def create_instance(map_proj, zoom_factor, center_loc, scale, grid_deltas, map_box):
         obj = None
 
-        kproj = MapProjection.determine_projection(settings.map_projection, center_loc)
+        kproj = MapProjection.determine_projection(map_proj, center_loc)
 
         if kproj == const.MapProjection.POLAR:
-            obj = PolarProjection(settings, center_loc, scale, grid_deltas)
+            obj = PolarProjection(kproj, zoom_factor, center_loc, scale, grid_deltas)
         elif kproj == const.MapProjection.LAMBERT:
-            obj = LambertProjection(settings, center_loc, scale, grid_deltas)
+            obj = LambertProjection(kproj, zoom_factor, center_loc, scale, grid_deltas)
         elif kproj == const.MapProjection.MERCATOR:
-            obj = MercatorProjection(settings, center_loc, scale, grid_deltas)
+            obj = MercatorProjection(kproj, zoom_factor, center_loc, scale, grid_deltas)
         elif kproj == const.MapProjection.CYL_EQU:
-            obj = CylindricalEquidistantProjection(settings, center_loc, scale, grid_deltas)
+            obj = CylindricalEquidistantProjection(kproj, zoom_factor, center_loc, scale, grid_deltas)
         else:
             raise Exception("unknown map projection {0}".format(kproj))
 
@@ -341,7 +341,7 @@ class MapProjectionFactory:
 
         # Lambert grids not permitted to encompass the poles
         if obj.sanity_check() == False:
-            proj = obj.create_proper_projection(settings, center_loc, scale, grid_deltas)
+            proj = obj.create_proper_projection(kproj, zoom_factor, center_loc, scale, grid_deltas)
             proj.do_initial_estimates(map_box, center_loc)
             return proj
 
@@ -355,12 +355,12 @@ class MapProjection:
     TOLERANCE = 0.5 #xy2ll->ll2xy allows difference <= TOLERANCE*grid
     CONTRACTION = 0.2 #contraction factor when corners are outside map
 
-    def __init__(self, settings, center_loc, scale, grid_deltas):
-        self.settings = settings
+    def __init__(self, proj_type, zoom_factor, center_loc, scale, grid_deltas):
+        self.proj_type = proj_type
+        self.zoom_factor = zoom_factor
         self.scale = scale
         self.deltas = grid_deltas       # (dlon, dlat)
         #
-        self.proj_type = None
         self.coord = None # set by a child class
         self.center_loc = center_loc    # (lon, lat)
         self.corners_xy = None # [x1, x2, y1, y2]
@@ -379,7 +379,7 @@ class MapProjection:
         logger.debug("map projection %d -> %d", map_proj, kproj)
         return kproj
 
-    def refine_corners(self, map_box, center_loc):
+    def refine_corners(self, center_loc):
         corners_xy = self.validate_corners(self.corners_xy)
 
         # scale map per aspect ratio
@@ -390,7 +390,7 @@ class MapProjection:
 
         # projection zoom factor
         corners_saved = corners_xy
-        corners_xy = self.zoom_corners(corners_xy, self.settings.zoom_factor)
+        corners_xy = self.zoom_corners(corners_xy, self.zoom_factor)
         corners_xy = self.choose_corners(corners_xy, corners_saved)
         logger.debug("X, Y zum-adj: %s", corners_xy)
 
@@ -597,7 +597,7 @@ class MapProjection:
         # A child class may override this.
         return True
 
-    def create_proper_projection(self, settings, center_loc, scale, grid_deltas):
+    def create_proper_projection(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
         # A child class should override this.
         raise Exception("This should not happen")
 
@@ -608,8 +608,8 @@ class MapProjection:
 
 class LambertProjection(MapProjection):
 
-    def __init__(self, settings, center_loc, scale, grid_deltas):
-        MapProjection.__init__(self, settings, center_loc, scale, grid_deltas)
+    def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
+        MapProjection.__init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas)
         self.proj_type = const.MapProjection.LAMBERT
         self.coord = LambertCoordinate()
 
@@ -622,8 +622,8 @@ class LambertProjection(MapProjection):
             return False
         return True
 
-    def create_proper_projection(self, settings, center_loc, scale, grid_deltas):
-        obj = PolarProjection(settings, center_loc, scale, grid_deltas)
+    def create_proper_projection(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
+        obj = PolarProjection(map_proj, zoom_factor, center_loc, scale, grid_deltas)
         return obj
 
     def need_pole_exclusion(self, corners_lonlat):
@@ -639,8 +639,8 @@ class LambertProjection(MapProjection):
 
 class PolarProjection(MapProjection):
 
-    def __init__(self, settings, center_loc, scale, grid_deltas):
-        MapProjection.__init__(self, settings, center_loc, scale, grid_deltas)
+    def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
+        MapProjection.__init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas)
         self.proj_type = const.MapProjection.POLAR
         self.coord = PolarCoordinate()
 
@@ -653,8 +653,8 @@ class PolarProjection(MapProjection):
 
 class MercatorProjection(MapProjection):
 
-    def __init__(self, settings, center_loc, scale, grid_deltas):
-        MapProjection.__init__(self, settings, center_loc, scale, grid_deltas)
+    def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
+        MapProjection.__init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas)
         self.proj_type = const.MapProjection.MERCATOR
         self.coord = MercatorCoordinate()
 
@@ -671,8 +671,8 @@ class MercatorProjection(MapProjection):
 
 class CylindricalEquidistantProjection(MapProjection):
 
-    def __init__(self, settings, center_loc, scale, grid_deltas):
-        super(CylindricalEquidistantProjection, self).__init__(settings, center_loc, scale, grid_deltas)
+    def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
+        super(CylindricalEquidistantProjection, self).__init__(map_proj, zoom_factor, center_loc, scale, grid_deltas)
         self.proj_type = const.MapProjection.CYL_EQU
         self.coord = CylindricalCoordinate()
 

@@ -1,6 +1,8 @@
 import logging
-import sys
+import math
 import os
+import sys
+from hysplit4 import const
 
 
 logger = logging.getLogger(__name__)
@@ -36,7 +38,7 @@ def myzip(xlist, ylist):
         # Python 1 and 2
         return zip(xlist, ylist)
 
-def convert_integer_to_boolean(val):
+def convert_int_to_bool(val):
     # limit the integer value to 0 or 1 for historical reasons.
     return False if max(0, min(1, int(val))) == 0 else True
 
@@ -92,5 +94,36 @@ def make_file_list(input_endpoints):
 
     return files
 
+def normalize_output_filename(pathname, ext="ps"):
+    n, x = os.path.splitext(pathname)
+
+    if ext == "ps":  # still default
+        if len(x) > 1:
+            ext = x[1:]  # skip the dot
+
+    return n + "." + ext, ext
+    
 def restore_year(yr):
     return 2000 + yr if (yr < 40) else 1900 + yr
+
+def calc_ring_distance(ext_sz, grid_delta, center_loc, ring_number, ring_distance):
+    ext_lon, ext_lat = ext_sz
+    if ring_distance == 0.0:
+        # max radius extent adjusted for latitude
+        logger.debug("QLON %f, HLAT %f", ext_lon, center_loc[1])
+        ext_lon = ext_lon * math.cos(center_loc[1] / 57.3)
+        kspan = nearest_int(math.sqrt(ext_lon*ext_lon + ext_lat*ext_lat))
+        # circle distance interval in km
+        ring_distance = 111.0 * grid_delta * kspan / max(ring_number, 1)
+    else:
+        kspan = nearest_int(ring_distance * max(ring_number,1) / (111.0 * grid_delta))
+    logger.debug("lon %f, lat %f, delta %f, kspan %d", ext_lon, ext_lat, grid_delta, kspan)
+
+    if ring_distance <= 10.0:
+        ring_distance = int(ring_distance) * 1.0
+    elif ring_distance <= 100.0:
+        ring_distance = int(ring_distance/10.0) * 10.0
+    else:
+        ring_distance = int(ring_distance/100.0) * 100.0
+
+    return kspan, ring_distance

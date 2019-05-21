@@ -31,37 +31,6 @@ def cleanup_plot(p):
         plt.close(p.fig)
 
 
-def test_TrajectoryPlotSettingsReader___init__():
-    s = plot.TrajectoryPlotSettings()
-    r = plot.TrajectoryPlotSettingsReader(s)
-
-    assert r.settings is s
-
-
-def test_TrajectoryPlotSettingsReader_read():
-    s = plot.TrajectoryPlotSettings()
-    r = plot.TrajectoryPlotSettingsReader(s)
-
-    o = r.read("data/default_tplot")
-    assert isinstance(o, plot.TrajectoryPlotSettings)
-
-    assert s.gis_output == 0
-    assert s.view == 1
-    assert s.output_postscript == "trajplot"
-    assert s.map_background == "../graphics/arlmap"
-    assert s.map_projection == 0
-    assert s.time_label_interval == 12
-    assert s.zoom_factor == 0.50
-    assert s.color == 1
-    assert s.vertical_coordinate == 0
-    assert s.label_source == False
-    assert s.ring == False
-    assert s.map_center == 1
-    assert s.ring_number == 4
-    assert s.ring_distance == 100.0
-    assert s.center_loc == [-90.0, 40.0]
-
-
 def test_TrajectoryPlotSettings___init__():
     s = plot.TrajectoryPlotSettings()
 
@@ -231,80 +200,6 @@ def test_TrajectoryPlotSettings_process_command_line_arguments():
     assert s.output_suffix == "png"
 
 
-def test_TrajectoryPlotSettings_parse_color_codes():
-    s = plot.TrajectoryPlotSettings()
-
-    codes = s.parse_color_codes("3:abc")
-
-    assert len(codes) == 3
-    assert codes[0] == "a"
-    assert codes[1] == "b"
-    assert codes[2] == "c"
-
-    try:
-        codes = s.parse_color_codes("3:ab")
-        pytest.fail("expected an exception")
-    except Exception as ex:
-        assert str(ex) == "FATAL ERROR: Mismatch in option (-kn:m) n=3 m=2"
-
-
-def test_TrajectoryPlotSettings_parse_lat_lon_label_interval():
-    s = plot.TrajectoryPlotSettings()
-
-    mapdel = s.parse_lat_lon_label_interval("2:50")
-    assert mapdel == 5.0
-
-
-def test_TrajectoryPlotSettings_parse_ring_option():
-    s = plot.TrajectoryPlotSettings()
-
-    count, distance = s.parse_ring_option("2:50")
-    assert count == 2
-    assert distance == 50.0
-
-
-def test_TrajectoryPlotSettings_parse_map_center():
-    s = plot.TrajectoryPlotSettings()
-
-    loc = s.parse_map_center("45.0:-120.0")
-    assert loc == [-120.0, 45.0]
-
-
-def test_TrajectoryPlotSettings_parse_zoom_factor():
-    s = plot.TrajectoryPlotSettings()
-
-    assert s.parse_zoom_factor("-10") == 1.0
-    assert s.parse_zoom_factor("10") == .90
-    assert s.parse_zoom_factor("90") == .10
-    assert s.parse_zoom_factor("120") == 0.0
-
-
-def test_TrajectoryPlotSettings_adjust_output_filename():
-    s = plot.TrajectoryPlotSettings()
-
-    n, x = s.adjust_output_filename("output.PS", "ps")
-    assert n, x == ("output.PS", "PS")
-
-    n, x = s.adjust_output_filename("output.pdf", "ps")
-    assert n, x == ("output.pdf", "pdf")
-
-    n, x = s.adjust_output_filename("output.", "ps")
-    assert n, x == ("output.ps", "pdf")
-
-    n, x = s.adjust_output_filename("output", "ps")
-    assert n, x == ("output.ps", "ps")
-
-
-def test_TrajectoryPlotSettings_adjust_ring_distance():
-    s = plot.TrajectoryPlotSettings()
-    s.ring_number = 5
-    s.ring_distance = 105.0
-
-    kspan = s.adjust_ring_distance((40.0, 10.0), 1.0)
-    assert kspan == 5
-    assert s.ring_distance == 100.0
-
-
 def test_TrajectoryPlotSettings_get_reader():
     s = plot.TrajectoryPlotSettings()
     r = s.get_reader()
@@ -322,6 +217,37 @@ def test_TrajectoryPlotSettings_next_marker():
     assert s.next_marker() == s.marker_cycle[0]
 
 
+def test_TrajectoryPlotSettingsReader___init__():
+    s = plot.TrajectoryPlotSettings()
+    r = plot.TrajectoryPlotSettingsReader(s)
+
+    assert r.settings is s
+
+
+def test_TrajectoryPlotSettingsReader_read():
+    s = plot.TrajectoryPlotSettings()
+    r = plot.TrajectoryPlotSettingsReader(s)
+
+    o = r.read("data/default_tplot")
+    assert isinstance(o, plot.TrajectoryPlotSettings)
+
+    assert s.gis_output == 0
+    assert s.view == 1
+    assert s.output_postscript == "trajplot"
+    assert s.map_background == "../graphics/arlmap"
+    assert s.map_projection == 0
+    assert s.time_label_interval == 12
+    assert s.zoom_factor == 0.50
+    assert s.color == 1
+    assert s.vertical_coordinate == 0
+    assert s.label_source == False
+    assert s.ring == False
+    assert s.map_center == 1
+    assert s.ring_number == 4
+    assert s.ring_distance == 100.0
+    assert s.center_loc == [-90.0, 40.0]
+
+
 def test_TrajectoryPlotSettings_reset_marker_cycle():
     s = plot.TrajectoryPlotSettings()
 
@@ -337,14 +263,11 @@ def test_TrapjectoyPlot___init__():
 
     assert hasattr(p, "settings")
     assert hasattr(p, "data_list")
-    assert hasattr(p, "projection")
-    assert hasattr(p, "crs")
-    assert hasattr(p, "data_crs")
-    assert hasattr(p, "background_maps")
     assert hasattr(p, "traj_axes")
     assert hasattr(p, "height_axes")
     assert hasattr(p, "height_axes_outer")
     assert isinstance(p.labels, labels.LabelsConfig)
+    assert hasattr(p, "cluster_list")
 
 
 def test_TrajectoryPlot_merge_plot_settings():
@@ -397,21 +320,19 @@ def test_TrajectoryPlot_set_trajectory_color():
     assert pd.trajectories[3].color == '1'
     
     
-def test_TrajectoryPlot_make_labels_filename():
-    p = plot.TrajectoryPlot()
-    s = p.settings
-
-    s.output_suffix = "ps"
-    assert p.make_labels_filename() == "LABELS.CFG"
-
-    s.output_suffix = "pdf"
-    assert p.make_labels_filename() == "LABELS.pdf"
+def test_TrajectoryPlot__make_labels_filename():
+    assert plot.TrajectoryPlot._make_labels_filename("ps") == "LABELS.CFG"
+    assert plot.TrajectoryPlot._make_labels_filename("pdf") == "LABELS.pdf"
 
 
 def test_TrajectoryPlot_read_custom_labels_if_exists():
     p = plot.TrajectoryPlot()
     assert p.labels.get("TITLE") == "NOAA HYSPLIT MODEL"
 
+    # Without the filename argument, it will try to read LABELS.CFG.
+    p.read_custom_labels_if_exists()
+    assert p.labels.get("TITLE") == "NOAA HYSPLIT MODEL"
+    
     p.read_custom_labels_if_exists("data/nonexistent")
     assert p.labels.get("TITLE") == "NOAA HYSPLIT MODEL"
 
@@ -419,43 +340,110 @@ def test_TrajectoryPlot_read_custom_labels_if_exists():
     assert p.labels.get("TITLE") == "Sagebrush Exp #5"
 
 
-def test_TrajectoryPlot_get_gridline_spacing():
+def test_TrajectoryPlot__make_stationplot_filename():
+    assert plot.TrajectoryPlot._make_stationplot_filename("ps") == "STATIONPLOT.CFG"
+    assert plot.TrajectoryPlot._make_stationplot_filename("pdf") == "STATIONPLOT.pdf"
+
+
+def test_TrajectoryPlot__draw_stations_if_exists():
     p = plot.TrajectoryPlot()
-    s = p.settings
+    p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
+    p.read_data_files()
+    p.read_background_map()
+    p.layout()
 
-    s.lat_lon_label_interval_option = const.LatLonLabel.NONE
-    assert p.get_gridline_spacing([-130.0, -110.0, 45.0, 55.0]) == 0.0
-
-    s.lat_lon_label_interval_option = const.LatLonLabel.SET
-    s.lat_lon_label_interval = 3.14
-    assert p.get_gridline_spacing([-130.0, -110.0, 45.0, 55.0]) == 3.14
-
-    s.lat_lon_label_interval_option = const.LatLonLabel.AUTO
-    assert p.get_gridline_spacing([-130.0, -110.0, 45.0, 55.0]) == 5.0
+    # See if no exception is thrown.
+    try:
+        p._draw_stations_if_exists(p.traj_axes, "data/STATIONPLOT.CFG")
+        cleanup_plot(p)
+    except Exception as ex:
+        raise pytest.fail("unexpeced exception: {0}".format(ex))
 
 
-def test_TrajectoryPlot_calc_gridline_spacing():
+def test_TrajectoryPlot__make_clusterlist_filename():
     p = plot.TrajectoryPlot()
-    assert p.calc_gridline_spacing([-130.0, -110.0, 45.0, 55.0]) == 5.0
-    assert p.calc_gridline_spacing([-120.0, -110.0, 35.0, 55.0]) == 5.0
-    # across the dateline
-    assert p.calc_gridline_spacing([+350.0, -10.0, 35.0, 55.0]) == 5.0
-    # test min.
-    assert p.calc_gridline_spacing([0.0, 0.1, 0.0, 0.1]) == 0.2
+    
+    # create a test file
+    with open("CLUSLIST_4", "wt") as f:
+        f.write("line")
+    
+    fn, start_index, candidates = p._make_clusterlist_filename(4)
+    assert fn == "CLUSLIST_4"
+    assert start_index == 1
+    
+    os.remove("CLUSLIST_4")
+    
+    # create another test file
+    with open("CLUSLIST_3", "wt") as f:
+        f.write("line")
+    
+    fn, start_index, candidates = p._make_clusterlist_filename(4)
+    assert fn == "CLUSLIST_3"
+    assert start_index == 0
+    
+    os.remove("CLUSLIST_3")
 
+    # otherwise
+    fn, start_index, candidates = p._make_clusterlist_filename(4)
+    assert fn is None
+    assert start_index == 1
+    assert candidates[0] == "CLUSLIST_4"
+    assert candidates[1] == "CLUSLIST_3"
 
-def test_TrajectoryPlot__fix_map_color():
+    
+def test_TrajecotryPlot__read_cluster_info_if_exists():
     p = plot.TrajectoryPlot()
-    s = p.settings
+    pd = model.TrajectoryDump()
+    pd.IDLBL = "MERGMEAN"
+    # need four trajectories to match the contents of CLUSLIST_4
+    pd.trajectories.append(model.Trajectory())
+    pd.trajectories.append(model.Trajectory())
+    pd.trajectories.append(model.Trajectory())
+    pd.trajectories.append(model.Trajectory())
+    p.data_list = [pd]
+    
+    # when CLUSLIST_4 does not exist
+    try:
+        p._read_cluster_info_if_exists(p.data_list)
+        pytest.fail("expected an exception")
+    except Exception as ex:
+        assert str(ex) == "file not found CLUSLIST_4 or CLUSLIST_3"
+    
+    # create CLUSLIST_4
+    with open("CLUSLIST_4", "wt") as f:
+        f.write("1 1\n")
+        f.write("2 1\n")
+        f.write("3 1\n")
+        f.write("4 1\n")
+    
+    try:
+        p._read_cluster_info_if_exists(p.data_list)
+        assert p.cluster_list is not None
+        assert p.cluster_list.total_traj == 4
+    except Exception as ex:
+        pytest.fail("unexpected exception: {0}".format(ex))
 
-    s.color = const.Color.BLACK_AND_WHITE
-    assert p._fix_map_color('#6699cc') == 'k' # black
+    os.remove("CLUSLIST_4")
+   
 
-    s.color = const.Color.COLOR
-    assert p._fix_map_color('#6699cc') == '#6699cc'
+def test_TrajectoryPlot_make_maptext_filename():
+    assert plot.TrajectoryPlot._make_maptext_filename("ps") == "MAPTEXT.CFG"
+    assert plot.TrajectoryPlot._make_maptext_filename("pdf") == "MAPTEXT.pdf"
 
-    s.color = const.Color.ITEMIZED
-    assert p._fix_map_color('#6699cc') == '#6699cc'
+
+def test_TrajectoryPlot__draw_maptext_if_exists():
+    p = plot.TrajectoryPlot()
+    p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
+    p.read_data_files()
+    p.read_background_map()
+    p.layout()
+
+    # See if no exception is thrown.
+    try:
+        p._draw_maptext_if_exists(p.text_axes, "data/MAPTEXT.CFG")
+        cleanup_plot(p)
+    except Exception as ex:
+        raise pytest.fail("unexpeced exception: {0}".format(ex))
 
 
 def test_TrajectoryPlot__initialize_map_projection():
@@ -479,11 +467,6 @@ def test_TrajectoryPlot_read_background_map():
     assert len(p.background_maps) > 0
     assert isinstance(p.background_maps[0], mapfile.DrawableBackgroundMap)
     assert p.background_maps[0].map.crs == mapproj.MapProjection._WGS84
-
-
-def test_TrajectoryPlot__fix_arlmap_filename():
-    assert plot.TrajectoryPlot._fix_arlmap_filename("data/arlmap_truncated") == "data/arlmap_truncated"
-    assert plot.TrajectoryPlot._fix_arlmap_filename("data/nonexistent") == None
 
 
 def test_TrajectoryPlot__determine_map_limits(plotData):
@@ -669,42 +652,8 @@ def test_TrajectoryPlot_make_ylabel():
 
     label = plot.TrajectoryPlot.make_ylabel(plotData, "*", 6)
     assert label == "Source * at multiple locations"
-
-
-def test_TrajectoryPlot__connect_event_handlers():
-    p = plot.TrajectoryPlot()
-    p.merge_plot_settings("data/default_tplot", ["-idata/tdump"])
-    p.read_data_files()
-    p.layout()
-
-    try:
-        p._connect_event_handlers({"resize_event" : blank_event_handler})
-        cleanup_plot(p)
-    except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
-
-
-def test_TrajectoryPlot__project_extent():
-    data_crs = cartopy.crs.PlateCarree()
-    data_ext = [-120.0, -80.0, 35.0, 55.0] # x1, x2, y1, y2
-    crs = cartopy.crs.LambertConformal()
-    axes = plt.subplot(111, projection=crs)
-
-    ext = plot.TrajectoryPlot._project_extent(data_ext, data_crs, axes)
-
-    assert ext[0] == pytest.approx(-2159075.665180272)
-    assert ext[1] == pytest.approx( 1448741.4180984693)
-    assert ext[2] == pytest.approx( -432644.9997258249)
-    assert ext[3] == pytest.approx( 2002857.3004982674)
-
-    plt.close(axes.get_figure())
-
-
-def test_TrajectoryPlot__collect_tick_values():
-    t = plot.TrajectoryPlot._collect_tick_values(-1800, 1800, 100, 0.1, (-120, -80))
-    assert t == pytest.approx((-130, -120, -110, -100, -90, -80, -70))
-
-
+    
+    
 def test_TrajectoryPlot_update_gridlines():
     p = plot.TrajectoryPlot()
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
@@ -712,40 +661,13 @@ def test_TrajectoryPlot_update_gridlines():
     p.read_background_map()
     p.layout()
 
+    # See if no exception is thrown.
     try:
         p.update_gridlines()
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
-
-
-def test_TrajectoryPlot__draw_latlon_labels():
-    p = plot.TrajectoryPlot()
-    p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
-    p.read_data_files()
-    p.read_background_map()
-    p.layout()
-
-    try:
-        p._draw_latlon_labels(p.traj_axes, p.projection.corners_lonlat, 1.0, 1.0)
-        cleanup_plot(p)
-    except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
-
-
-def test_TrajectoryPlot__draw_concentric_circles():
-    p = plot.TrajectoryPlot()
-    p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated", "-g4:100"])
-    p.read_data_files()
-    p.read_background_map()
-    p.layout()
-
-    try:
-        p._draw_concentric_circles(p.traj_axes)
-        cleanup_plot(p)
-    except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
-
+    
 
 def test_TrajectoryPlot_draw_height_profile():
     p = plot.TrajectoryPlot()
@@ -758,32 +680,6 @@ def test_TrajectoryPlot_draw_height_profile():
     try:
         p.draw_height_profile(False)
         p.draw_height_profile(True)
-        cleanup_plot(p)
-    except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
-
-
-def test_TrajectoryPlot_make_stationplot_filename():
-    p = plot.TrajectoryPlot()
-    s = p.settings
-
-    s.output_suffix = "ps"
-    assert p.make_stationplot_filename() == "STATIONPLOT.CFG"
-
-    s.output_suffix = "pdf"
-    assert p.make_stationplot_filename() == "STATIONPLOT.pdf"
-
-
-def test_TrajectoryPlot__draw_stations_if_exists():
-    p = plot.TrajectoryPlot()
-    p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
-    p.read_data_files()
-    p.read_background_map()
-    p.layout()
-
-    # See if no exception is thrown.
-    try:
-        p._draw_stations_if_exists(p.traj_axes, "data/STATIONPLOT.CFG")
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
@@ -802,91 +698,6 @@ def test_TrajectoryPlot_draw_trajectory_plot():
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
-
-
-def test_TrajectoryPlot_compute_pixel_aspect_ratio():
-    axes = plt.axes()
-    assert plot.TrajectoryPlot.compute_pixel_aspect_ratio(axes) == pytest.approx(1.39909)
-    plt.close(axes.figure)
-    
-    
-def test_TrajectoryPlot_draw_noaa_logo():
-    p = plot.TrajectoryPlot()
-    axes = plt.axes()
-    
-    try:
-        p.draw_noaa_logo(axes)
-        plt.close(axes.figure)
-    except Exception as ex:
-        raise pytest.fail("unexpected exception: {0}".format(ex))
-
-    
-def test_TrajecotryPlot__read_cluster_info_if_exists():
-    p = plot.TrajectoryPlot()
-    pd = model.TrajectoryDump()
-    pd.IDLBL = "MERGMEAN"
-    # need four trajectories to match the contents of CLUSLIST_4
-    pd.trajectories.append(model.Trajectory())
-    pd.trajectories.append(model.Trajectory())
-    pd.trajectories.append(model.Trajectory())
-    pd.trajectories.append(model.Trajectory())
-    p.data_list = [pd]
-    
-    # when CLUSLIST_4 does not exist
-    try:
-        p._read_cluster_info_if_exists(p.data_list)
-        pytest.fail("expected an exception")
-    except Exception as ex:
-        assert str(ex) == "file not found CLUSLIST_4 or CLUSLIST_3"
-    
-    # create CLUSLIST_4
-    with open("CLUSLIST_4", "wt") as f:
-        f.write("1 1\n")
-        f.write("2 1\n")
-        f.write("3 1\n")
-        f.write("4 1\n")
-    
-    try:
-        p._read_cluster_info_if_exists(p.data_list)
-        assert p.cluster_list is not None
-        assert p.cluster_list.total_traj == 4
-    except Exception as ex:
-        pytest.fail("unexpected exception: {0}".format(ex))
-
-    os.remove("CLUSLIST_4")
-    
-    return
-
-
-def test_TrajectoryPlot_make_clusterlist_filename():
-    p = plot.TrajectoryPlot()
-    
-    # create a test file
-    with open("CLUSLIST_4", "wt") as f:
-        f.write("line")
-    
-    fn, start_index, candidates = p.make_clusterlist_filename(4)
-    assert fn == "CLUSLIST_4"
-    assert start_index == 1
-    
-    os.remove("CLUSLIST_4")
-    
-    # create another test file
-    with open("CLUSLIST_3", "wt") as f:
-        f.write("line")
-    
-    fn, start_index, candidates = p.make_clusterlist_filename(4)
-    assert fn == "CLUSLIST_3"
-    assert start_index == 0
-    
-    os.remove("CLUSLIST_3")
-
-    # otherwise
-    fn, start_index, candidates = p.make_clusterlist_filename(4)
-    assert fn is None
-    assert start_index == 1
-    assert candidates[0] == "CLUSLIST_4"
-    assert candidates[1] == "CLUSLIST_3"
 
 
 def test_TrajectoryPlot_draw_bottom_plot():
@@ -917,33 +728,7 @@ def test_TrajectoryPlot_draw_bottom_text():
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
-    
-
-def test_TrajectoryPlot_make_maptext_filename():
-    p = plot.TrajectoryPlot()
-    s = p.settings
-
-    s.output_suffix = "ps"
-    assert p.make_maptext_filename() == "MAPTEXT.CFG"
-
-    s.output_suffix = "pdf"
-    assert p.make_maptext_filename() == "MAPTEXT.pdf"
-
-
-def test_TrajectoryPlot__draw_maptext_if_exists():
-    p = plot.TrajectoryPlot()
-    p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
-    p.read_data_files()
-    p.read_background_map()
-    p.layout()
-
-    # See if no exception is thrown.
-    try:
-        p._draw_maptext_if_exists(p.text_axes, "data/MAPTEXT.CFG")
-        cleanup_plot(p)
-    except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
-
+ 
 
 def test_TrajectoryPlot__draw_alt_text_boxes():
     p = plot.TrajectoryPlot()
@@ -958,37 +743,7 @@ def test_TrajectoryPlot__draw_alt_text_boxes():
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
-    
-
-def test_TrajectoryPlot__turn_off_spines():
-    p = plot.TrajectoryPlot()
-    p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
-    p.read_data_files()
-    p.read_background_map()
-    p.layout()
-
-    # See if no exception is thrown.
-    try:
-        p._turn_off_spines(p.text_axes)
-        cleanup_plot(p)
-    except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
-
-
-def test_TrajectoryPlot__turn_off_ticks():
-    p = plot.TrajectoryPlot()
-    p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
-    p.read_data_files()
-    p.read_background_map()
-    p.layout()
-
-    # See if no exception is thrown.
-    try:
-        p._turn_off_ticks(p.text_axes)
-        cleanup_plot(p)
-    except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
-
+ 
 
 def test_TrajectoryPlot_draw():
     p = plot.TrajectoryPlot()

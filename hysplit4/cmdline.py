@@ -123,7 +123,7 @@ class CommandLineArguments:
             return default_value
         else:
             try:
-                return util.convert_integer_to_boolean(val)
+                return util.convert_int_to_bool(val)
             except ValueError:
                 logger.error("ignored non-boolean value %s for command-line option %s", val, option)
                 return default_value

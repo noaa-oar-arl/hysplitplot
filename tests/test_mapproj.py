@@ -59,7 +59,7 @@ def lambert_proj():
     s.ring_number = 4
     s.ring_distance = 0.0
     testMapBox = create_map_box(s)
-    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], testMapBox)
+    m = mapproj.MapProjectionFactory.create_instance(s.map_projection, s.zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0], testMapBox)
     return m
 
 
@@ -359,26 +359,27 @@ def test_CylindricalCoordinate_calc_xy(cyl_coord):
 
 
 def test_MapProjectionFactory_create_instance():
-    s = plot.TrajectoryPlotSettings()
+    zoom_factor = 0.50
+    
     map_box = mapbox.MapBox()
     map_box.allocate()
     map_box.add((-120.5, 45.5))
     map_box.determine_plume_extent()
 
-    s.map_projection = const.MapProjection.POLAR
-    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
+    map_proj = const.MapProjection.POLAR
+    m = mapproj.MapProjectionFactory.create_instance(map_proj, zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
     assert isinstance(m, mapproj.PolarProjection)
 
-    s.map_projection = const.MapProjection.LAMBERT
-    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
+    map_proj = const.MapProjection.LAMBERT
+    m = mapproj.MapProjectionFactory.create_instance(map_proj, zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
     assert isinstance(m, mapproj.LambertProjection)
 
-    s.map_projection = const.MapProjection.MERCATOR
-    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
+    map_proj = const.MapProjection.MERCATOR
+    m = mapproj.MapProjectionFactory.create_instance(map_proj, zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
     assert isinstance(m, mapproj.MercatorProjection)
 
-    s.map_projection = const.MapProjection.CYL_EQU
-    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
+    map_proj = const.MapProjection.CYL_EQU
+    m = mapproj.MapProjectionFactory.create_instance(map_proj, zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
     assert isinstance(m, mapproj.CylindricalEquidistantProjection)
 
     # Lambert grid is not permitted to contain the poles
@@ -389,8 +390,8 @@ def test_MapProjectionFactory_create_instance():
     map_box.add((-120.5, 90.0))
     map_box.determine_plume_extent()
 
-    s.map_projection = const.MapProjection.LAMBERT
-    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 89.0], 1.3, [1.0, 1.0], map_box)
+    map_proj = const.MapProjection.LAMBERT
+    m = mapproj.MapProjectionFactory.create_instance(map_proj, zoom_factor, [-125.0, 89.0], 1.3, [1.0, 1.0], map_box)
     assert isinstance(m, mapproj.PolarProjection)
 
     # when containing the south pole
@@ -399,20 +400,19 @@ def test_MapProjectionFactory_create_instance():
     map_box.add((-120.5, -90.0))
     map_box.determine_plume_extent()
 
-    s.map_projection = const.MapProjection.LAMBERT
-    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, -89.0], 1.3, [1.0, 1.0], map_box)
+    map_proj = const.MapProjection.LAMBERT
+    m = mapproj.MapProjectionFactory.create_instance(map_proj, zoom_factor, [-125.0, -89.0], 1.3, [1.0, 1.0], map_box)
     assert isinstance(m, mapproj.PolarProjection)
     
     
 def test_MapProjection___init__():
-    s = plot.TrajectoryPlotSettings()
-    m = mapproj.MapProjection(s, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    m = mapproj.MapProjection(const.MapProjection.AUTO, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
 
-    assert m.settings is s
+    assert m.proj_type == const.MapProjection.AUTO
+    assert m.zoom_factor == 0.5
     assert m.scale == 1.3
     assert m.deltas == [1.0, 1.0]
 
-    assert m.proj_type == None
     assert m.coord == None
     assert m.center_loc == [-125.0, 45.0]
     assert m.corners_xy == None
@@ -446,9 +446,10 @@ def test_MapProjection_refine_corners__lambert():
     s.ring_number = 4
     s.ring_distance = 0.0
     testMapBox = create_map_box(s)
-    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], testMapBox)
+    
+    m = mapproj.MapProjectionFactory.create_instance(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0], testMapBox)
 
-    m.refine_corners(testMapBox, [-125.0, 45.0])
+    m.refine_corners([-125.0, 45.0])
 
     assert m.corners_xy[0] == pytest.approx( 1.0)
     assert m.corners_xy[1] == pytest.approx(27.0)
@@ -468,9 +469,10 @@ def test_MapProjection_refine_corners__polar():
     s.ring_number = 4
     s.ring_distance = 0.0
     testMapBox = create_map_box(s)
-    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 85.0], 1.3, [1.0, 1.0], testMapBox)
+    
+    m = mapproj.MapProjectionFactory.create_instance(const.MapProjection.POLAR, 0.5, [-125.0, 85.0], 1.3, [1.0, 1.0], testMapBox)
 
-    m.refine_corners(testMapBox, [-125.0, 85.0])
+    m.refine_corners([-125.0, 85.0])
 
     assert m.corners_xy[0] == pytest.approx( 1.0)
     assert m.corners_xy[1] == pytest.approx(19.0)
@@ -490,9 +492,9 @@ def test_MapProjection_refine_corners__mercator():
     s.ring_number = 4
     s.ring_distance = 0.0
     testMapBox = create_map_box(s)
-    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0], testMapBox)
+    m = mapproj.MapProjectionFactory.create_instance(const.MapProjection.MERCATOR, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0], testMapBox)
 
-    m.refine_corners(testMapBox, [-125.0, 45.0])
+    m.refine_corners([-125.0, 45.0])
 
     assert m.corners_xy[0] == pytest.approx( 1.0)
     assert m.corners_xy[1] == pytest.approx(37.0)
@@ -512,9 +514,9 @@ def test_MapProjection_refine_corners__cylequ():
     s.ring_number = 4
     s.ring_distance = 0.0
     testMapBox = create_map_box(s)
-    m = mapproj.MapProjectionFactory.create_instance(s, [-125.0, 5.0], 1.3, [1.0, 1.0], testMapBox)
+    m = mapproj.MapProjectionFactory.create_instance(const.MapProjection.CYL_EQU, 0.5, [-125.0, 5.0], 1.3, [1.0, 1.0], testMapBox)
 
-    m.refine_corners(testMapBox, [-125.0, 5.0])
+    m.refine_corners([-125.0, 5.0])
 
     assert m.corners_xy[0] == pytest.approx( 1.0)
     assert m.corners_xy[1] == pytest.approx(53.0)
@@ -534,7 +536,7 @@ def test_MapProjection_validate_corners(lambert_proj):
 
 def test_MapProjection_scale_per_aspect_ratio():
     s = plot.TrajectoryPlotSettings()
-    m = mapproj.MapProjection(s, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    m = mapproj.MapProjection(s.map_projection, s.zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0])
     cnr = [ 498.888000, 501.112000, 493.328094, 506.671906 ]
     cnr2 = m.scale_per_aspect_ratio(cnr, 1.3)
     assert cnr2 == pytest.approx((491.326538, 508.673462, 493.328094, 506.671906))
@@ -553,14 +555,14 @@ def test_MapProjection_choose_corners(lambert_proj):
 
 def test_MapProjection_zoom_corners():
     s = plot.TrajectoryPlotSettings()
-    m = mapproj.MapProjection(s, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    m = mapproj.MapProjection(s.map_projection, s.zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0])
     cnr = [ 491.326538, 508.673462, 493.328094, 506.671906 ]
     assert m.zoom_corners(cnr, 0.5) == pytest.approx((486.989807, 513.010193, 489.992126, 510.007874))
 
 
 def test_MapProjection_round_map_corners():
     s = plot.TrajectoryPlotSettings()
-    m = mapproj.MapProjection(s, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    m = mapproj.MapProjection(s.map_projection, s.zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0])
     cnr = [486.989807, 513.010193, 489.992126, 510.007874]
     assert m.round_map_corners(cnr) == pytest.approx((487.0, 513.0, 490.0, 510.0))
 
@@ -572,7 +574,7 @@ def test_MapProjection_calc_corners_lonlat(lambert_proj):
 
 def test_MapProjection_need_pole_exclusion():
     s = plot.TrajectoryPlotSettings()
-    m = mapproj.MapProjection(s, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    m = mapproj.MapProjection(s.map_projection, s.zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0])
     assert m.need_pole_exclusion([]) == False
 
 
@@ -597,7 +599,7 @@ def test_MapProjection_do_initial_estimates():
     s.ring_number = 4
     s.ring_distance = 0.0
     map_box = create_map_box(s)
-    proj = mapproj.LambertProjection(s, s.center_loc, 1.3, [1.0, 1.0])
+    proj = mapproj.LambertProjection(s.map_projection, s.zoom_factor, s.center_loc, 1.3, [1.0, 1.0])
 
     proj.do_initial_estimates(map_box, [-125.0, 45.0])
 
@@ -609,24 +611,21 @@ def test_MapProjection_do_initial_estimates():
 
 
 def test_MapProjection_sanity_check():
-    s = plot.TrajectoryPlotSettings()
-    m = mapproj.MapProjection(s, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    m = mapproj.MapProjection(const.MapProjection.AUTO, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
     assert m.sanity_check() == True
 
 
 def test_MapProjection_create_proper_projection():
-    s = plot.TrajectoryPlotSettings()
-    m = mapproj.MapProjection(s, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    m = mapproj.MapProjection(const.MapProjection.AUTO, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
     try:
-        m.create_proper_instance(s, [-125.0, 45.0], 1.3, [1.0, 1.0])
+        m.create_proper_instance(const.MapProjection.AUTO, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
         pytest.fail("expected an exception")
     except Exception as ex:
         str(ex) == "This should not happen"
 
 
 def test_MapProjection_create_crs():
-    s = plot.TrajectoryPlotSettings()
-    m = mapproj.MapProjection(s, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    m = mapproj.MapProjection(const.MapProjection.AUTO, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
     try:
         m.create_crs()
         pytest.fail("expected an exception")
@@ -635,9 +634,8 @@ def test_MapProjection_create_crs():
 
 
 def test_LambertProjection___init__():
-    s = plot.TrajectoryPlotSettings()
-    m = mapproj.LambertProjection(s, [-125.0, 45.0], 1.3, [1.0, 1.0])
-    assert m.settings is not None
+    m = mapproj.LambertProjection(const.MapProjection.AUTO, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    assert m.zoom_factor == 0.5
     assert m.proj_type == const.MapProjection.LAMBERT
     assert isinstance(m.coord, mapproj.LambertCoordinate)
 
@@ -653,7 +651,11 @@ def test_LambertProjection_sanity_check(lambert_proj):
 
 def test_LambertProjection_create_proper_projection(lambert_proj):
     m = lambert_proj
-    o = lambert_proj.create_proper_projection(m.settings, m.center_loc, m.scale, m.deltas)
+    o = lambert_proj.create_proper_projection(const.MapProjection.LAMBERT,
+                                              0.5,
+                                              m.center_loc,
+                                              m.scale,
+                                              m.deltas)
     assert isinstance(o, mapproj.PolarProjection)
 
 
@@ -673,34 +675,32 @@ def test_LambertProjection_create_crs(lambert_proj):
 
 def test_PolarProjection___init__():
     s = plot.TrajectoryPlotSettings()
-    m = mapproj.PolarProjection(s, [-125.0, 85.0], 1.3, [1.0, 1.0])
-    assert m.settings is not None
+    m = mapproj.PolarProjection(s.map_projection, s.zoom_factor, [-125.0, 85.0], 1.3, [1.0, 1.0])
     assert m.proj_type == const.MapProjection.POLAR
     assert isinstance(m.coord, mapproj.PolarCoordinate)
 
 
 def test_PolarProjection_create_crs():
     s = plot.TrajectoryPlotSettings()
-    m = mapproj.PolarProjection(s, [-125.0, 85.0], 1.3, [1.0, 1.0])
+    m = mapproj.PolarProjection(s.map_projection, s.zoom_factor, [-125.0, 85.0], 1.3, [1.0, 1.0])
     o = m.create_crs()
     assert isinstance(o, cartopy.crs.NorthPolarStereo)
 
-    m = mapproj.PolarProjection(s, [-125.0, -85.0], 1.3, [1.0, 1.0])
+    m = mapproj.PolarProjection(s.map_projection, s.zoom_factor, [-125.0, -85.0], 1.3, [1.0, 1.0])
     o = m.create_crs()
     assert isinstance(o, cartopy.crs.SouthPolarStereo)
 
 
 def test_MercatorProjection___init__():
     s = plot.TrajectoryPlotSettings()
-    m = mapproj.MercatorProjection(s, [-125.0, 45.0], 1.3, [1.0, 1.0])
-    assert m.settings is not None
+    m = mapproj.MercatorProjection(s.map_projection, s.zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0])
     assert m.proj_type == const.MapProjection.MERCATOR
     assert isinstance(m.coord, mapproj.MercatorCoordinate)
 
 
 def test_MercatorProjection_need_pole_exclusion():
     s = plot.TrajectoryPlotSettings()
-    m = mapproj.MercatorProjection(s, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    m = mapproj.MercatorProjection(s.map_projection, s.zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0])
     assert m.need_pole_exclusion([-135.0, -115.0,-81.0, 55.0]) == True
     assert m.need_pole_exclusion([-135.0, -115.0,-80.0, 55.0]) == False
     assert m.need_pole_exclusion([-135.0, -115.0,-35.0, 55.0]) == False
@@ -711,21 +711,21 @@ def test_MercatorProjection_need_pole_exclusion():
 
 def test_MercatorProjection_create_crs():
     s = plot.TrajectoryPlotSettings()
-    m = mapproj.MercatorProjection(s, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    m = mapproj.MercatorProjection(s.map_projection, s.zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0])
     o = m.create_crs()
     assert isinstance(o, cartopy.crs.Mercator)
 
 
 def test_CylindricalEquidistantProjection___init__():
     s = plot.TrajectoryPlotSettings()
-    m = mapproj.CylindricalEquidistantProjection(s, [-125.0, 45.0], 1.3, [1.0, 1.0])
-    assert m.settings is not None
+    m = mapproj.CylindricalEquidistantProjection(s.map_projection, s.zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    assert m.zoom_factor == 0.5
     assert m.proj_type == const.MapProjection.CYL_EQU
     assert isinstance(m.coord, mapproj.CylindricalCoordinate)
 
 
 def test_CylindricalEquidistantProjection_create_crs():
     s = plot.TrajectoryPlotSettings()
-    m = mapproj.CylindricalEquidistantProjection(s, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    m = mapproj.CylindricalEquidistantProjection(s.map_projection, s.zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0])
     o = m.create_crs()
     assert isinstance(o, cartopy.crs.LambertCylindrical)

@@ -52,6 +52,16 @@ def test_TrajectoryDump_is_forward_calculation():
     assert d.is_forward_calculation() == False
 
 
+
+def test_TrajectoryDump_has_terrain_profile(plotData):
+    d = model.TrajectoryDump()
+    assert d.has_terrain_profile() == False
+    
+    t = plotData.trajectories[0]
+    t.others["TERR_MSL"] = [10.0, 500.0]
+    assert plotData.has_terrain_profile() == True
+    
+
 def test_TrajectoryDump_get_reader():
     d = model.TrajectoryDump()
     r = d.get_reader()

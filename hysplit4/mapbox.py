@@ -1,5 +1,6 @@
 import logging
 import numpy
+from hysplit4 import util
 
 
 logger = logging.getLogger(__name__)
@@ -78,8 +79,13 @@ class MapBox:
         self.hit_count = 0
 
     def set_ring_extent(self, settings):
-        kspan = settings.adjust_ring_distance(self.plume_sz, self.grid_delta)
-        logger.debug("set_ring_extent: span %d, distance %g", kspan, settings.ring_distance)
+        kspan, ring_distance = util.calc_ring_distance(self.plume_sz,
+                                                       self.grid_delta,
+                                                       settings.center_loc,
+                                                       settings.ring_number,
+                                                       settings.ring_distance)
+        settings.ring_distance = ring_distance
+        logger.debug("set_ring_extent: span %d, distance %g", kspan, ring_distance)
         # plots should be centered about the source point
         self.add(settings.center_loc)
         # set vertical extent of the rings
