@@ -126,7 +126,7 @@ class TrajectoryPlotSettingsReader:
         s.map_background = lines[3]
         s.map_projection = int(lines[4])
         s.time_label_interval = int(lines[5])
-        s.zoom_factor = util.parse_zoom_factor(lines[6])
+        s.zoom_factor = s.parse_zoom_factor(lines[6])
         s.color = int(lines[7]) # 1 or 0
         s.vertical_coordinate = int(lines[8])
         s.label_source = util.convert_int_to_bool(int(lines[9])) # 1 or 0
