@@ -17,11 +17,17 @@ class Frames:
     ALL_FILES_ON_ONE = 0
     ONE_PER_FILE = 1
 
-class Color:
+class Color: # TODO: rename this to TrajectoryPlotColor
     BLACK_AND_WHITE = 0
     COLOR = 1
     ITEMIZED = 2
 
+class ConcentrationPlotColor: # KOLOR
+    BLACK_AND_WHITE = 0
+    COLOR = 1
+    VAL_2 = 2
+    VAL_3 = 3
+    
 class LatLonLabel:
     NONE = 0
     AUTO = 1
@@ -49,3 +55,42 @@ class ZoomFactor:
 class HeightUnit:
     METER = 0
     FEET = 1
+    
+class ContourLevelGenerator:
+    EXPONENTIAL_DYNAMIC = 0
+    EXPONENTIAL_FIXED = 1
+    LINEAR_DYNAMIC = 2
+    LINEAR_FIXED = 3
+    USER_SPECIFIED = 4
+    
+    MAX_LEVELS = 32
+
+class ExposureUnit:
+    CONC = 0
+    EXPOSURE = 1
+    CHEM_THRESHOLDS = 2
+    VA = 3
+    VAL_4 = 4 # TODO: spell it out
+
+class ConcentrationType: # KAVG
+    EACH_LEVEL = 1
+    VERTICAL_AVERAGE = 2
+    
+class DepositionSum: # NDEP
+    NONE = 0
+    TIME = 1
+    SUM = 2
+    TOTAL = 3
+
+class ConcentrationMapType: # KMAP
+    CONCENTRATION = 1
+    EXPOSURE = 2
+    DEPOSITION = 3
+    THRESHOLD_LEVELS = 4
+    VOCANIC_ERUPTION = 5
+    DEPOSITION_6 = 6        # TODO: spell it out
+    MASS_LOADING = 7
+
+class SmoothingKernel:
+    SIMPLE = 0
+

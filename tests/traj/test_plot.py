@@ -34,33 +34,42 @@ def cleanup_plot(p):
 def test_TrajectoryPlotSettings___init__():
     s = plot.TrajectoryPlotSettings()
 
-    assert s.gis_output == 0
-    assert s.view == 1
-    assert s.output_postscript == "trajplot.ps"
+    # base class
     assert s.map_background == "../graphics/arlmap"
     assert s.map_projection == 0
-    assert s.time_label_interval == 6
     assert s.zoom_factor == 0.5
-    assert s.color == 1
-    assert s.vertical_coordinate == const.Vertical.NOT_SET
-    assert s.label_source == True
     assert s.ring == False
-    assert s.map_center == 0
     assert s.ring_number == -1
     assert s.ring_distance == 0.0
     assert s.center_loc == [0.0, 0.0]
-
+    #assert s.output_postscript == "trajplot.ps"
+    assert s.output_suffix == "ps"
+    #assert s.output_basename == "trajplot"
     assert s.noaa_logo == False
-    assert s.kml_option == 0
-    assert s.end_hour_duration == 0
-    assert s.frames_per_file == 0
     assert s.lat_lon_label_interval_option == 1
     assert s.lat_lon_label_interval == 1.0
-    assert s.input_files == "tdump"
-    assert s.output_suffix == "ps"
+    assert s.frames_per_file == 0
+    assert s.interactive_mode == True
+    assert s.map_color == "#1f77b4"
+    assert s.station_marker != None
+    assert s.station_marker_color != None
+    assert s.station_marker_size > 0
+    
+    assert s.gis_output == 0
+    assert s.view == 1
+    assert s.output_postscript == "trajplot.ps"
+    assert s.output_basename == "trajplot"
+    assert s.time_label_interval == 6
+    assert s.vertical_coordinate == const.Vertical.NOT_SET
+    assert s.label_source == True
+    assert s.map_center == 0
+    assert s.color == 1
     assert s.color_codes == None
+    
+    assert s.kml_option == 0
+    assert s.end_hour_duration == 0
+    assert s.input_files == "tdump"
 
-    assert s.map_color != None
     assert len(s.marker_cycle) > 0
     assert s.marker_cycle_index == -1
     assert s.source_label != None
@@ -69,12 +78,10 @@ def test_TrajectoryPlotSettings___init__():
     assert s.source_marker_size > 0
     assert s.major_hour_marker_size > 0
     assert s.minor_hour_marker_size > 0
-    assert s.station_marker != None
-    assert s.station_marker_color != None
-    assert s.station_marker_size > 0
+    assert s.terrain_line_color != None
+    assert s.terrain_marker != None
     assert s.color_cycle == None
     assert s.height_unit == const.HeightUnit.METER
-    assert s.interactive_mode == True
 
 
 def test_TrajectoryPlotSettings_process_command_line_arguments():
@@ -200,6 +207,21 @@ def test_TrajectoryPlotSettings_process_command_line_arguments():
     assert s.output_suffix == "png"
 
 
+def test_TrajectoryPlotSettings_parse_color_codes():
+    codes = plot.TrajectoryPlotSettings.parse_color_codes("3:abc")
+
+    assert len(codes) == 3
+    assert codes[0] == "a"
+    assert codes[1] == "b"
+    assert codes[2] == "c"
+
+    try:
+        codes = plot.TrajectoryPlotSettings.parse_color_codes("3:ab")
+        pytest.fail("expected an exception")
+    except Exception as ex:
+        assert str(ex) == "FATAL ERROR: Mismatch in option (-kn:m) n=3 m=2"
+
+
 def test_TrajectoryPlotSettings_get_reader():
     s = plot.TrajectoryPlotSettings()
     r = s.get_reader()
@@ -215,6 +237,17 @@ def test_TrajectoryPlotSettings_next_marker():
         assert s.next_marker() == m
 
     assert s.next_marker() == s.marker_cycle[0]
+
+
+def test_TrajectoryPlotSettings_reset_marker_cycle():
+    s = plot.TrajectoryPlotSettings()
+
+    s.next_marker()
+    assert s.marker_cycle_index != -1
+
+    s.reset_marker_cycle()
+    assert s.marker_cycle_index == -1
+
 
 
 def test_TrajectoryPlotSettingsReader___init__():
@@ -246,16 +279,6 @@ def test_TrajectoryPlotSettingsReader_read():
     assert s.ring_number == 4
     assert s.ring_distance == 100.0
     assert s.center_loc == [-90.0, 40.0]
-
-
-def test_TrajectoryPlotSettings_reset_marker_cycle():
-    s = plot.TrajectoryPlotSettings()
-
-    s.next_marker()
-    assert s.marker_cycle_index != -1
-
-    s.reset_marker_cycle()
-    assert s.marker_cycle_index == -1
 
 
 def test_TrapjectoyPlot___init__():
@@ -299,6 +322,19 @@ def test_TrajectoryPlot_has_terrain_profile(plotData):
     assert plot.TrajectoryPlot.has_terrain_profile([plotData]) == True
 
 
+def test_TrajectoryPlot__fix_map_color():
+    p = plot.TrajectoryPlot()
+
+    color_mode = const.Color.BLACK_AND_WHITE
+    assert p._fix_map_color('#6699cc', color_mode) == 'k' # black
+
+    color_mode = const.Color.COLOR
+    assert p._fix_map_color('#6699cc', color_mode) == '#6699cc'
+
+    color_mode = const.Color.ITEMIZED
+    assert p._fix_map_color('#6699cc', color_mode) == '#6699cc'
+
+
 def test_TrajectoryPlot_set_trajectory_color():
     p = plot.TrajectoryPlot()
     s = p.settings
@@ -318,46 +354,6 @@ def test_TrajectoryPlot_set_trajectory_color():
     assert pd.trajectories[1].color == '3'
     assert pd.trajectories[2].color == '1'
     assert pd.trajectories[3].color == '1'
-    
-    
-def test_TrajectoryPlot__make_labels_filename():
-    assert plot.TrajectoryPlot._make_labels_filename("ps") == "LABELS.CFG"
-    assert plot.TrajectoryPlot._make_labels_filename("pdf") == "LABELS.pdf"
-
-
-def test_TrajectoryPlot_read_custom_labels_if_exists():
-    p = plot.TrajectoryPlot()
-    assert p.labels.get("TITLE") == "NOAA HYSPLIT MODEL"
-
-    # Without the filename argument, it will try to read LABELS.CFG.
-    p.read_custom_labels_if_exists()
-    assert p.labels.get("TITLE") == "NOAA HYSPLIT MODEL"
-    
-    p.read_custom_labels_if_exists("data/nonexistent")
-    assert p.labels.get("TITLE") == "NOAA HYSPLIT MODEL"
-
-    p.read_custom_labels_if_exists("data/LABELS.CFG")
-    assert p.labels.get("TITLE") == "Sagebrush Exp #5"
-
-
-def test_TrajectoryPlot__make_stationplot_filename():
-    assert plot.TrajectoryPlot._make_stationplot_filename("ps") == "STATIONPLOT.CFG"
-    assert plot.TrajectoryPlot._make_stationplot_filename("pdf") == "STATIONPLOT.pdf"
-
-
-def test_TrajectoryPlot__draw_stations_if_exists():
-    p = plot.TrajectoryPlot()
-    p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
-    p.read_data_files()
-    p.read_background_map()
-    p.layout()
-
-    # See if no exception is thrown.
-    try:
-        p._draw_stations_if_exists(p.traj_axes, "data/STATIONPLOT.CFG")
-        cleanup_plot(p)
-    except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
 
 
 def test_TrajectoryPlot__make_clusterlist_filename():

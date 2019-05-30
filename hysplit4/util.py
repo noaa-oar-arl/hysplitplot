@@ -1,5 +1,6 @@
 import logging
 import math
+import numpy
 import os
 import sys
 from hysplit4 import const
@@ -19,7 +20,7 @@ def run(mainFunction, programName):
     """
     logging.basicConfig(
         stream=sys.stdout,
-        level=logging.INFO,
+        level=logging.DEBUG,
         format="%(asctime)s %(levelname)s %(name)s - %(message)s"
     )
 
@@ -101,7 +102,7 @@ def normalize_output_filename(pathname, ext="ps"):
         if len(x) > 1:
             ext = x[1:]  # skip the dot
 
-    return n + "." + ext, ext
+    return n + "." + ext, n, ext
     
 def restore_year(yr):
     return 2000 + yr if (yr < 40) else 1900 + yr
@@ -127,3 +128,9 @@ def calc_ring_distance(ext_sz, grid_delta, center_loc, ring_number, ring_distanc
         ring_distance = int(ring_distance/100.0) * 100.0
 
     return kspan, ring_distance
+
+def nonzero_min(a):
+    if numpy.count_nonzero(a) == 0:
+        return None
+    
+    return numpy.min(numpy.ma.masked_where(a==0, a))

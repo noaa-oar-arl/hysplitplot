@@ -7,7 +7,7 @@ import matplotlib.gridspec
 import matplotlib.patches
 import matplotlib.pyplot as plt
 
-from hysplit4 import cmdline, clist, stnplot, labels, util, const, mapfile, mapproj, mapbox, gisout, logo, plotbase
+from hysplit4 import cmdline, clist, stnplot, util, const, mapproj, mapbox, gisout, plotbase
 from hysplit4.traj import model
 
 
@@ -30,21 +30,23 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
         self.gis_output = const.GISOutput.NONE
         self.view = 1
         self.output_postscript = "trajplot.ps"
+        self.output_basename = "trajplot"
         self.time_label_interval = 6
         self.vertical_coordinate = const.Vertical.NOT_SET
         self.label_source = True
         self.map_center = 0
-
+        self.color = const.Color.COLOR
+        self.color_codes = None
+        
         # command-line option only
         self.kml_option = const.KMLOption.NONE
         self.end_hour_duration = 0
-        self.frames_per_file = const.Frames.ALL_FILES_ON_ONE
         self.input_files = "tdump"
 
         # internally defined
         self.marker_cycle = ["^", "s", "o"]   # triangle, square, circle
         self.marker_cycle_index = -1
-        self.source_label = "\u2605" # TODO: would this work for Python 2 and 3?
+        self.source_label = "\u2605" # filled star
         self.source_marker = "*"
         self.source_marker_color= "k"     # black
         self.source_marker_size = 8*8
@@ -75,19 +77,42 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
         args = cmdline.CommandLineArguments(args0)
         
         # process options common to trajplot, concplot, etc.
-        self._process_cmdline_args(args)
+        self._process_cmdline_args(args0)
         
         self.gis_output             = args.get_integer_value("-a", self.gis_output)
         self.kml_option             = args.get_integer_value("-A", self.kml_option)
         self.end_hour_duration      = args.get_integer_value(["-e", "-E"], self.end_hour_duration)
-        self.frames_per_file        = args.get_integer_value(["-f", "-F"], self.frames_per_file)
+        self.input_files            = args.get_string_value(["-i", "-I"], self.input_files)
         self.time_label_interval    = args.get_integer_value("-l", self.time_label_interval)
         self.label_source           = args.get_boolean_value(["-s", "-S"], self.label_source)
-
+        
+        if args.has_arg(["-k", "-K"]):
+            str = args.get_value(["-k", "-K"])
+            if str.count(":") > 0:
+                self.color_codes    = self.parse_color_codes(str)
+                self.color          = const.Color.ITEMIZED
+            else:
+                self.color          = args.get_integer_value(["-k", "-K"], self.color)
+                self.color          = max(0, min(1, self.color))
+                
         if args.has_arg(["-v", "-V"]):
             self.vertical_coordinate= args.get_integer_value(["-v", "-V"], self.vertical_coordinate)
             self.vertical_coordinate= max(0, min(4, self.vertical_coordinate))
 
+    @staticmethod
+    def parse_color_codes(str):
+        color_codes = []
+    
+        divider = str.index(":")
+        ntraj = int(str[:divider])
+        ncolors = len(str) - divider - 1
+        if ntraj != ncolors:
+            raise Exception("FATAL ERROR: Mismatch in option (-kn:m) n={0} m={1}".format(ntraj, ncolors))
+        for c in str[divider+1:]:
+            color_codes.append(c)
+    
+        return color_codes
+    
     def get_reader(self):
         return TrajectoryPlotSettingsReader(self)
 
@@ -149,7 +174,6 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         self.traj_axes = None
         self.height_axes = None
         self.height_axes_outer = None
-        self.labels = labels.LabelsConfig()
         self.cluster_list = None
 
     def merge_plot_settings(self, filename, args):
@@ -181,6 +205,10 @@ class TrajectoryPlot(plotbase.AbstractPlot):
             if tdump.has_terrain_profile():
                 return True
         return False
+
+    @staticmethod
+    def _fix_map_color(clr, color_mode):
+        return clr if color_mode != const.Color.BLACK_AND_WHITE else 'k'
     
     def set_trajectory_color(self, plot_data, settings):
         if settings.color == const.Color.ITEMIZED:
@@ -191,41 +219,6 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                 else:
                     t.color = settings.color_codes[k]
 
-    @staticmethod
-    def _make_labels_filename(output_suffix):
-        return "LABELS.CFG" if output_suffix == "ps" else "LABELS." + output_suffix
-
-    def read_custom_labels_if_exists(self, filename=None):
-        if filename is None:
-            filename = self._make_labels_filename(self.settings.output_suffix)
-            
-        if os.path.exists(filename):
-            self.labels.get_reader().read(filename)
-            self.labels.after_reading_file(self.settings)
-
-    @staticmethod
-    def _make_stationplot_filename(output_suffix):
-        return "STATIONPLOT.CFG" if output_suffix == "ps" else "STATIONPLOT." + output_suffix
-
-    def _draw_stations_if_exists(self, axes, filename=None):
-        if filename is None:
-            filename = self._make_stationplot_filename(self.settings.output_suffix)
-            
-        if os.path.exists(filename):
-            cfg = stnplot.StationPlotConfig().get_reader().read(filename)
-            for stn in cfg.stations:
-                if len(stn.label) > 0:
-                    axes.text(stn.longitude, stn.latitude, stn.label,
-                              horizontalalignment="center",
-                              verticalalignment="center",
-                              transform=self.data_crs)
-                else:
-                    axes.scatter(stn.longitude, stn.latitude,
-                                 s=self.settings.station_marker_size,
-                                 marker=self.settings.station_marker,
-                                 c=self.settings.station_marker_color, clip_on=True,
-                                 transform=self.data_crs)
-     
     def _make_clusterlist_filename(self, traj_count):
         f1 = "CLUSLIST_{0}".format(traj_count)
         if os.path.exists(f1):
@@ -577,7 +570,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                                           self.settings.ring_distance)
 
         # place station locations
-        self._draw_stations_if_exists(axes)
+        self._draw_stations_if_exists(axes, self.settings)
 
         # See if the data time span is longer than the specified interval
         interval_symbol_drawer = IntervalSymbolDrawerFactory.create_instance(axes, self.settings)

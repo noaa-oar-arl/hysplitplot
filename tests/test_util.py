@@ -1,4 +1,5 @@
 import pytest
+import numpy
 from hysplit4 import util
 
 
@@ -92,17 +93,17 @@ def test_make_file_list():
 
 
 def test_normalize_output_filename():
-    n, x = util.normalize_output_filename("output.PS", "ps")
-    assert n, x == ("output.PS", "PS")
+    n, b, x = util.normalize_output_filename("output.PS", "ps")
+    assert (n, b, x) == ("output.PS", "output", "PS")
 
-    n, x = util.normalize_output_filename("output.pdf", "ps")
-    assert n, x == ("output.pdf", "pdf")
+    n, b, x = util.normalize_output_filename("output.pdf", "ps")
+    assert (n, b, x) == ("output.pdf", "output", "pdf")
 
-    n, x = util.normalize_output_filename("output.", "ps")
-    assert n, x == ("output.ps", "pdf")
+    n, b, x = util.normalize_output_filename("output.", "ps")
+    assert (n, b, x) == ("output.ps", "output", "ps")
 
-    n, x = util.normalize_output_filename("output", "ps")
-    assert n, x == ("output.ps", "ps")
+    n, b, x = util.normalize_output_filename("output", "ps")
+    assert (n, b, x) == ("output.ps", "output", "ps")
 
 
 def test_restore_year():
@@ -120,3 +121,11 @@ def test_calc_ring_distance():
                                                    105.0)
     assert kspan == 5
     assert ring_distance == 100.0
+
+
+def test_nonzero_min():
+    a = numpy.zeros((3, 3))
+    assert util.nonzero_min(a) == None
+    
+    a[1, 1] = 1.0
+    assert util.nonzero_min(a) == 1.0

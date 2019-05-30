@@ -74,7 +74,7 @@ def main():
     the_plot = hysplit4.ConcentrationPlot()
 
     the_plot.merge_plot_settings(None, sys.argv[1:])
-    #the_plot.read_custom_labels_if_exists(the_plot.make_labels_filename())
+    the_plot.read_custom_labels_if_exists()
     the_plot.read_data_files()
 
     logger.info("Started Concentration Drawing")
@@ -83,8 +83,7 @@ def main():
     #the_plot.write_gis_files()
     
     the_plot.read_background_map()
-    the_plot.layout({"resize_event" : on_resize})
-    the_plot.draw()
+    the_plot.draw({"resize_event" : on_resize})
 
     return 0
 

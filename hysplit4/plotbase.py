@@ -3,7 +3,7 @@ import os
 import cartopy.crs
 import matplotlib.patches
 
-from hysplit4 import util, const, mapfile, logo
+from hysplit4 import util, const, mapfile, logo, labels, cmdline, stnplot
 from abc import abstractmethod
 
 
@@ -16,8 +16,6 @@ class AbstractPlotSettings:
         self.map_background = "../graphics/arlmap"
         self.map_projection = const.MapProjection.AUTO
         self.zoom_factor = 0.50
-        self.color = const.Color.COLOR
-        self.color_codes = None
         self.ring = False
         self.ring_number = -1
         # ring_number values:
@@ -27,19 +25,28 @@ class AbstractPlotSettings:
         self.ring_distance = 0.0
         self.center_loc = [0.0, 0.0]    # lon, lat
         self.output_postscript = "output.ps"
-        self.output_suffix = "ps"    
+        self.output_suffix = "ps"
+        self.output_basename = "output"
         self.noaa_logo = False
         self.lat_lon_label_interval_option = const.LatLonLabel.AUTO
         self.lat_lon_label_interval = 1.0
-        self.input_files = "dump"
+        self.frames_per_file = const.Frames.ALL_FILES_ON_ONE
         
         # internally defined
         self.interactive_mode = True    # becomes False if the -o or -O option is specified.
         self.map_color = "#1f77b4"
+        self.station_marker = "o"
+        self.station_marker_color= "k"     # black
+        self.station_marker_size = 6*6
     
-    def _process_cmdline_args(self, args):
+    def _process_cmdline_args(self, args0):
+        
+        args = cmdline.CommandLineArguments(args0)
+        
         self.noaa_logo              = True if args.has_arg(["+n", "+N"]) else self.noaa_logo
 
+        self.frames_per_file        = args.get_integer_value(["-f", "-F"], self.frames_per_file)
+        
         if args.has_arg(["-g", "-G"]):
             self.ring = True
             str = args.get_value(["-g", "-G"])
@@ -57,20 +64,9 @@ class AbstractPlotSettings:
                 if self.ring_number < 0:
                     self.ring_number = 0
 
-        self.input_files            = args.get_string_value(["-i", "-I"], self.input_files)
-
         self.map_background         = args.get_string_value(["-j", "-J"], self.map_background)
         if self.map_background.startswith(".") and self.map_background.endswith("shapefiles"):
             logger.warning("enter -jshapefiles... not -j./shapefiles...")
-        
-        if args.has_arg(["-k", "-K"]):
-            str = args.get_value(["-k", "-K"])
-            if str.count(":") > 0:
-                self.color_codes    = self.parse_color_codes(str)
-                self.color          = const.Color.ITEMIZED
-            else:
-                self.color          = args.get_integer_value(["-k", "-K"], self.color)
-                self.color          = max(0, min(1, self.color))
                        
         if args.has_arg("-L"):
             str = args.get_value("-L")
@@ -89,25 +85,11 @@ class AbstractPlotSettings:
 
         self.output_suffix          = args.get_string_value(["-p", "-P"], self.output_suffix)    
         
-        self.output_postscript, self.output_suffix = util.normalize_output_filename(self.output_postscript,
-                                                                                    self.output_suffix)
+        self.output_postscript, self.output_basename, self.output_suffix = \
+            util.normalize_output_filename(self.output_postscript, self.output_suffix)
                 
         if args.has_arg(["-z", "-Z"]):
             self.zoom_factor        = self.parse_zoom_factor(args.get_value(["-z", "-Z"]))
-
-    @staticmethod
-    def parse_color_codes(str):
-        color_codes = []
-    
-        divider = str.index(":")
-        ntraj = int(str[:divider])
-        ncolors = len(str) - divider - 1
-        if ntraj != ncolors:
-            raise Exception("FATAL ERROR: Mismatch in option (-kn:m) n={0} m={1}".format(ntraj, ncolors))
-        for c in str[divider+1:]:
-            color_codes.append(c)
-    
-        return color_codes
     
     @staticmethod
     def parse_lat_lon_label_interval(str):
@@ -147,6 +129,7 @@ class AbstractPlot:
         self.crs = None
         self.data_crs = cartopy.crs.PlateCarree()
         self.background_maps = []
+        self.labels = labels.LabelsConfig()
         
     def _connect_event_handlers(self, handlers):
         for ev in handlers:
@@ -285,10 +268,6 @@ class AbstractPlot:
         return delta
 
     @staticmethod
-    def _fix_map_color(clr, color_mode):
-        return clr if color_mode != const.Color.BLACK_AND_WHITE else 'k'
-
-    @staticmethod
     def _fix_arlmap_filename(filename):
         if os.path.exists(filename):
             return filename
@@ -316,7 +295,19 @@ class AbstractPlot:
                 for m in mapfile.ARLMapConverter.convert(arlmap):
                     background_maps.append(m)
         return background_maps
-    
+
+    @staticmethod
+    def _make_labels_filename(output_suffix):
+        return "LABELS.CFG" if output_suffix == "ps" else "LABELS." + output_suffix
+
+    def read_custom_labels_if_exists(self, filename=None):
+        if filename is None:
+            filename = self._make_labels_filename(self.settings.output_suffix)
+            
+        if os.path.exists(filename):
+            self.labels.get_reader().read(filename)
+            self.labels.after_reading_file(self.settings)
+
     def _draw_latlon_labels(self, axes, lonlat_ext, deltax, deltay, map_color):
         logger.debug("latlon labels at intervals %f, %f", deltax, deltay)
         ideltax = int(deltax*10.0)
@@ -363,6 +354,29 @@ class AbstractPlot:
                       horizontalalignment="center", verticalalignment="center",
                       color=map_color, clip_on=True)
 
+    @staticmethod
+    def _make_stationplot_filename(output_suffix):
+        return "STATIONPLOT.CFG" if output_suffix == "ps" else "STATIONPLOT." + output_suffix
+
+    def _draw_stations_if_exists(self, axes, settings, filename=None):
+        if filename is None:
+            filename = self._make_stationplot_filename(settings.output_suffix)
+            
+        if os.path.exists(filename):
+            cfg = stnplot.StationPlotConfig().get_reader().read(filename)
+            for stn in cfg.stations:
+                if len(stn.label) > 0:
+                    axes.text(stn.longitude, stn.latitude, stn.label,
+                              horizontalalignment="center",
+                              verticalalignment="center",
+                              transform=self.data_crs)
+                else:
+                    axes.scatter(stn.longitude, stn.latitude,
+                                 s=settings.station_marker_size,
+                                 marker=settings.station_marker,
+                                 c=settings.station_marker_color, clip_on=True,
+                                 transform=self.data_crs)
+                    
     def _draw_concentric_circles(self, axes, starting_loc, ring_number, ring_distance):
         lon, lat = starting_loc
         R = ring_distance/111.0
@@ -390,3 +404,13 @@ class AbstractPlot:
         box_axes = axes.transAxes.inverted().transform(box_dis)
          
         logo.NOAALogoDrawer().draw(axes, box_axes)
+    
+    def make_plot_filename(self, settings, current_frame=1):
+        if settings.frames_per_file == const.Frames.ONE_PER_FILE:
+            filename = "{0}{1:04d}.{2}".format(settings.output_basename,
+                                               current_frame,
+                                               settings.output_suffix)
+        else:
+            filename = settings.output_postscript
+
+        return filename
