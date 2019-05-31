@@ -42,7 +42,20 @@ class SmoothingKernel:
                 
         return b
     
-
+    def smooth_with_max_preserved(self, xconc):
+        v = numpy.amax(xconc)
+        if v > 0:
+            loc = numpy.where(xconc == v)
+            
+        conc = self.smooth(xconc)
+        
+        if v > 0:
+            for c in list(zip(loc[0], loc[1])):
+                conc[c] = v
+                
+        return conc
+        
+        
 class SimpleSmoothingKernel(SmoothingKernel):
     
     def __init__(self, half_sz):

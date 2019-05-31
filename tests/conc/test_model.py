@@ -63,36 +63,7 @@ def test_ConcentrationDump_get_pollutant():
     assert m.get_pollutant(-1) == "SUM"
     assert m.get_pollutant( 0) == "TEST"
     assert m.get_pollutant( 1) == "TRCR"
-    
-    
-def test_ConcentrationDump_find_conc_grids_by_pollutant(cdump):
-    list = cdump.find_conc_grids_by_pollutant("SO2")
-    assert len(list) == 0
-    
-    # TEST at two release levels
-    list = cdump.find_conc_grids_by_pollutant("TEST")
-    assert len(list) == 2
-    
-    
-def test_ConcentrationDump_find_conc_grids_by_pollutant_index(cdump):
-    # two pollutants, 2 levels
-    list = cdump.find_conc_grids_by_pollutant_index(-1)
-    assert len(list) == 4
-    
-    # one pollutant, 2 levels
-    list = cdump.find_conc_grids_by_pollutant_index(0)
-    assert len(list) == 2
-    
-    
-def test_ConcentrationDump_find_conc_grids_by_time_index(cdump):
-    # none
-    list = cdump.find_conc_grids_by_time_index(-1)
-    assert len(list) == 0
-    
-    # two pollutants, 2 levels
-    list = cdump.find_conc_grids_by_time_index(0)
-    assert len(list) == 4
-    
+
     
 def test_ConcentrationDump_latitudes(cdump):
     assert len(cdump.latitudes) == 601
@@ -135,7 +106,7 @@ def test_ConcentrationGrid___init__():
     assert hasattr(g, "conc")
 
 
-def test_ConcentrationGrid___init__():
+def test_ConcentrationGrid_is_forward_calculation():
     m = model.ConcentrationDump()
     g = model.ConcentrationGrid(m)
     
@@ -166,11 +137,9 @@ def test_ConcentrationGrid_longitudes(cdump):
     assert len(g.longitudes) == 601
     
 
-def test_ConcentrationGrid_copy_properties_except_conc(cdump):
+def test_ConcentrationGrid_clone(cdump):
     target = cdump.conc_grids[0]
-    g = model.ConcentrationGrid(None)
-    
-    g.copy_properties_except_conc(target)
+    g = target.clone()
     
     assert g.parent is cdump
     assert g.time_index == 0
@@ -313,233 +282,3 @@ def test_ConcentrationDumpFileReader_read():
     assert g.vert_level_index == 1
     assert g.conc.shape == (601, 601)
     assert g.conc[300, 300] * 1.e+13 == pytest.approx(7.608168)    
-    
-
-def test_LazyGridFilter___init__(cdump):
-    sel = model.PollutantSelector(-1)
-    f = model.LazyGridFilter(cdump, 0, sel)
-    assert f.cdump is cdump
-    assert f.time_index == 0
-    assert f.pollutant_selector is sel
-    assert f.grids is None
-        
-
-def test_LazyGridFilter__fetch(cdump):
-    sel = model.PollutantSelector(0)
-    f = model.LazyGridFilter(cdump, 0, sel)
-    g = f._fetch()
-    assert len(g) == 2
-    assert g[0].time_index == 0
-    assert g[0].pollutant_index == 0
-    assert g[0].pollutant == "TEST"
-
-
-def test_LazyGridFilter___iter__(cdump):
-    sel = model.PollutantSelector(0)
-    f = model.LazyGridFilter(cdump, 0, sel)
-    try:
-        for g in f:
-            assert g.time_index == 0
-            assert g.pollutant_index == 0
-    except Exception as ex:
-        pytest.fail("unexpected exception: {0}".format(ex))
-
-
-def test_LazyGridFilter___getitem__(cdump):
-    sel = model.PollutantSelector(0)
-    f = model.LazyGridFilter(cdump, 0, sel)
-    try:
-        g = f[0]
-        assert g.time_index == 0
-        assert g.pollutant_index == 0
-    except Exception as ex:
-        pytest.fail("unexpected exception: {0}".format(ex))    
-        
-
-def test_LazyGridFilter_filter_grids(cdump):
-    sel = model.PollutantSelector(0)
-    g = model.LazyGridFilter.filter_grids(cdump, 0, sel)
-    assert len(g) == 2
-    assert g[0].time_index == 0
-    assert g[0].pollutant_index == 0
-    
-    # all pollutants
-    sel = model.PollutantSelector(-1)
-    g = model.LazyGridFilter.filter_grids(cdump, 0, sel)
-    assert len(g) == 2 # averaged
-    assert g[0].time_index == 0
-    assert g[0].pollutant_index == -1
-
-
-def test_GridSelector___init__():
-    try:
-        o = model.GridSelector()
-    except Exception as ex:
-        pytest.fail("unexpected exception: {0}".format(x))
-        
-
-def test_GridSelector_is_selected():
-    o = model.GridSelector()
-    assert o.is_selected(None) == True
-    
-
-def test_VerticalLevelSelector___init__(cdump):
-    s = model.VerticalLevelSelector(500, 1000)
-    assert s.min == 500
-    assert s.max == 1000
-
-
-def test_VerticalLevelSelector___contains__():
-    s = model.VerticalLevelSelector(500, 1000)
-    assert ( 250 in s) == False
-    assert ( 500 in s) == True
-    assert ( 750 in s) == True
-    assert (1000 in s) == True
-    assert (1100 in s) == False
-
-
-def test_VerticalLevelSelector_is_selected(cdump):
-    s = model.VerticalLevelSelector(500, 1000)
-    g = cdump.conc_grids[0]
-    
-    g.vert_level = 0
-    assert s.is_selected(g) == False
-    
-    g.vert_level = 500
-    assert s.is_selected(g) == True
-    
-    g.vert_level = 1000
-    assert s.is_selected(g) == True
-    
-    g.vert_level = 1500
-    assert s.is_selected(g) == False
-  
-
-def test_TimeIndexSelector___init__(cdump):
-    s = model.TimeIndexSelector()
-    assert s.first == 0
-    assert s.last == 99999
-    assert s.step == 1
-
-    s = model.TimeIndexSelector(1, 10, 2)
-    assert s.first == 1
-    assert s.last == 10
-    assert s.step == 2
-   
-
-def test_TimeIndexSelector___iter__():
-    s = model.TimeIndexSelector(0, 4, 2)
-    a = []
-    for t_index in s:
-        a.append(t_index)
-    assert a == [0, 2, 4]    
-    
-
-def test_TimeIndexSelector___contains__():
-    s = model.TimeIndexSelector(0, 10)
-    assert ( -1 in s) == False
-    assert (  0 in s) == True
-    assert (  5 in s) == True
-    assert ( 10 in s) == True
-    assert ( 11 in s) == False
-
-
-def test_TimeIndexSelector_is_selected(cdump):
-    s = model.TimeIndexSelector(0, 10)
-    g = cdump.conc_grids[0]
-    
-    g.time_index = -1
-    assert s.is_selected(g) == False
-    
-    g.time_index = 0
-    assert s.is_selected(g) == True
-    
-    g.time_index = 10
-    assert s.is_selected(g) == True
-    
-    g.time_index = 15
-    assert s.is_selected(g) == False
-
-
-def test_TimeIndexSelector_first():
-    s = model.TimeIndexSelector(0, 4, 2)
-    assert s.first == 0
-    
-    
-def test_TimeIndexSelector_last():
-    s = model.TimeIndexSelector(0, 4, 2)
-    assert s.last == 4
-    
-    
-def test_TimeIndexSelector_normalize():
-    s = model.TimeIndexSelector(-50, 99999)
-    
-    s.normalize(10)
-    assert s.first == 0
-    assert s.last == 10
-    
-    
-def test_PollutantSelector___init__():
-    s = model.PollutantSelector()
-    assert s.index == -1
-    
-    s = model.PollutantSelector(0)
-    assert s.index == 0
-    
-    
-def test_PollutantSelector___contains__():
-    s = model.PollutantSelector(-1)
-    # -1 indicates any pollutant
-    assert (-1 in s) == True
-    assert ( 0 in s) == True
-    assert ( 1 in s) == True
-    
-    s = model.PollutantSelector(0)
-    assert (-1 in s) == False
-    assert ( 0 in s) == True
-    assert ( 1 in s) == False
-    
-
-def test_TimeIndexSelector_is_selected(cdump):
-    s = model.PollutantSelector(-1)
-    g = cdump.conc_grids[0]
-    
-    g.pollutant_index = -1
-    assert s.is_selected(g) == True
-    
-    g.pollutant_index = 0
-    assert s.is_selected(g) == True
-    
-    g.pollutant_index = 10
-    assert s.is_selected(g) == True
-    
-    # with pollutant index = 0
-    s = model.PollutantSelector(0)
-
-    g.pollutant_index = -1
-    assert s.is_selected(g) == False
-    
-    g.pollutant_index = 0
-    assert s.is_selected(g) == True
-    
-    g.pollutant_index = 10
-    assert s.is_selected(g) == False
-    
-    
-def test_PollutantSelector_index():
-    s = model.PollutantSelector(1)
-    assert s.index == 1
-    
-    
-def test_PollutantSelector_normalize():
-    s = model.PollutantSelector(-2)
-    s.normalize(2)
-    assert s.index == -1
-    
-    s = model.PollutantSelector(50)
-    s.normalize(1)
-    assert s.index == 1
-    
-    
-    
-    

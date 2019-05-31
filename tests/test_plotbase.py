@@ -228,6 +228,11 @@ def test_AbstractPlot__turn_off_ticks():
         plt.close(axes.figure)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
+     
+
+def test_AbstractPlot__collect_tick_values():
+    t = plotbase.AbstractPlot._collect_tick_values(-1800, 1800, 100, 0.1, (-120, -80))
+    assert t == pytest.approx((-130, -120, -110, -100, -90, -80, -70))
 
 
 def test_AbstractPlot__update_gridlines():
@@ -243,11 +248,6 @@ def test_AbstractPlot__update_gridlines():
         plt.close(axes.figure)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
-     
-
-def test_AbstractPlot__collect_tick_values():
-    t = plotbase.AbstractPlot._collect_tick_values(-1800, 1800, 100, 0.1, (-120, -80))
-    assert t == pytest.approx((-130, -120, -110, -100, -90, -80, -70))
 
 
 def test_AbstractPlot__get_gridline_spacing():

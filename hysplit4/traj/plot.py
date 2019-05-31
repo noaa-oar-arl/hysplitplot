@@ -300,7 +300,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
 
             # add source points
             for t in plot_data.trajectories:
-                if t.starting_loc != (99.0, 99.0):
+                if util.is_valid_lonlat(t.starting_loc):
                     mb.add(t.starting_loc)
 
             # find trajectory hits

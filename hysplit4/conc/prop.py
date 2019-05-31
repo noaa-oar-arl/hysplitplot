@@ -2,20 +2,169 @@ import logging
 import numpy
 import sys
 
+from hysplit4.conc import model
 from hysplit4 import util, const
 
 
 logger = logging.getLogger(__name__)
 
 
+def sum_over_pollutants_per_level(grids, level_selector, pollutant_selector):
+    """Returns an array of concentration grids at each vertical level.
+    
+    Summation of concentration over pollutants is performed if necessary.
+    All concentration grids specified by the grids argument are assumed to have
+    the same time index.
+    """
+    
+    # select grids
+    fn = lambda g: g.vert_level in level_selector and g.pollutant_index in pollutant_selector
+    grids = list(filter(fn, grids))
+    
+    # obtain unique level indices
+    level_indices = list(set([g.vert_level_index for g in grids]))
+    if len(level_indices) == 0:
+        return []
+    
+    v_grids = []
+    for k in level_indices:
+        a = list(filter(lambda g: g.vert_level_index == k, grids))
+        if len(a) == 1:
+            v_grids.append(a[0])
+        elif len(a) > 1:
+            # summation over pollutants at the same vertical level
+            g = a[0].clone()
+            g.repair_pollutant(pollutant_selector.index)
+            for b in a[1:]:
+                g.conc += b.conc
+            v_grids.append(g)
+            
+    return v_grids
+
+
+def find_nonzero_min_max(mat):
+    """Find the non-zero minimum value and the maximum value of a numpy matrix"""
+    vmax = None
+    vmin = None
+        
+    if mat is not None:
+        vmax = mat.max()
+        vmin = util.nonzero_min(mat)    # may return None.
+
+    return vmin, vmax
+   
+
+class TimeIndexSelector:
+    
+    def __init__(self, first_index=0, last_index=9999, step=1):
+        self.__min = first_index
+        self.__max = last_index
+        self.step = step
+ 
+    def __iter__(self):
+        return iter(range(self.first, self.last + 1, self.step))
+ 
+    def __contains__(self, time_index):
+        return True if (time_index >= self.__min and time_index <= self.__max) else False
+       
+    @property
+    def first(self):
+        return self.__min
+    
+    @property
+    def last(self):
+        return self.__max    
+
+    def normalize(self, max_index):
+        self.__max = min(self.__max, max_index)
+        self.__min = max(0, self.__min)
+    
+        
+class PollutantSelector:
+    
+    def __init__(self, pollutant_index=-1):
+        self.__index = pollutant_index
+    
+    def __contains__(self, pollutant_index):
+        return True if (self.__index < 0 or self.__index == pollutant_index) else False
+
+    @property
+    def index(self):
+        return self.__index
+    
+    def normalize(self, max_index):
+        if self.__index > max_index:
+            self.__index = max_index
+        if self.__index < -1:
+            self.__index = -1
+    
+
+class VerticalLevelSelector:
+    
+    def __init__(self, level_min=0, level_max=99999):
+        self.__min = level_min  # level in meters
+        self.__max = level_max  # level in meters
+
+    def __contains__(self, level):
+        return True if (level >= self.__min and level <= self.__max) else False
+ 
+    @property
+    def min(self):
+        return self.__min
+    
+    @property
+    def max(self):
+        return self.__max
+
+
+class AbstractGridFilter:
+    
+    def __init__(self):
+        self.grids = None
+        
+    def __iter__(self):
+        return iter(self.grids)
+    
+    def __getitem__(self, key):
+        return self.grids[key]
+    
+    @staticmethod
+    def _filter(grids, fn):
+        return list(filter(fn, grids))
+        
+        
+class TimeIndexGridFilter(AbstractGridFilter):
+    
+    def __init__(self, grids, time_index_selector):
+        AbstractGridFilter.__init__(self)
+        self.grids = self._filter(grids, time_index_selector)
+    
+    @staticmethod
+    def _filter(grids, time_index_selector):
+        fn = lambda g: g.time_index in time_index_selector
+        return AbstractGridFilter._filter(grids, fn)
+    
+
+class VerticalLevelGridFilter(AbstractGridFilter):
+    
+    def __init__(self, grids, level_selector):
+        AbstractGridFilter.__init__(self)
+        self.grids = self._filter(grids, level_selector)
+        
+    @staticmethod
+    def _filter(grids, level_selector):
+        fn = lambda g: g.vert_level in level_selector
+        return AbstractGridFilter._filter(grids, fn)
+
+
 class ConcentrationDumpProperty:
     
     def __init__(self, cdump):
         self.cdump = cdump
-        self.min_average = 0.0
+        self.min_average = 1.0e+25
         self.max_average = 0.0
-        self.min_concs = []   # at each vertical level
-        self.max_concs = []   # at each vertical level 
+        self.min_concs = [1.0e+25] * len(cdump.vert_levels)  # at each vertical level
+        self.max_concs = [0.0] * len(cdump.vert_levels)   # at each vertical level 
         return
     
     def dump(self, stream):
@@ -25,11 +174,19 @@ class ConcentrationDumpProperty:
 
         stream.write("----- end ConcentrationDumpProperty\n")
         
-    def get_vertical_average_analyzer(self):
-        return VerticalAverageAnalyzer(self)
+    def update_average_min_max(self, vmin, vmax):
+        if vmin is not None:
+            self.min_average = min(self.min_average, vmin)
+            
+        if vmax is not None:
+            self.max_average = max(self.max_average, vmax)
 
-    def get_vertical_level_analyzer(self):
-        return VerticalLevelAnalyzer(self)
+    def update_min_max_at_level(self, vmin, vmax, level_index):
+        if vmin is not None:
+            self.min_concs[level_index] = min(self.min_concs[level_index], vmin)
+            
+        if vmax is not None:
+            self.max_concs[level_index] = max(self.max_concs[level_index], vmax)
 
     # TODO: refactor using classes
     def scale_conc(self, KAVG, CONADJ, DEPADJ):
@@ -59,38 +216,16 @@ class ConcentrationDumpProperty:
             self.min_average *= factor
             self.max_average *= factor
                 
-# TODO: split to classes                
-class VerticalAverageAnalyzer:
+
+class VerticalAverageCalculator:
     
-    def __init__(self, cdump_prop):
-        self.cdump_prop = cdump_prop
+    def __init__(self, cdump, level_selector):
         self.selected_level_indices = []
-        self.delta_z = []
+        self.delta_z = dict()               # the dictionary key is a vertical level index.
         self.inverse_weight = 1.0
-    
-    def analyze(self, time_selector, pollutant_selector, level_selector):
-        cdump = self.cdump_prop.cdump
         
-        # prepare weights and return if there is an error
-        if not self._prepare_weighted_averaging(cdump, level_selector):
-            return
-        
-        avgmax = 0.0
-        avgmin = 1.0e+25
-        
-        for t_index in time_selector:
-            avg = self._average_vertically(t_index, pollutant_selector)
-       
-            if avg is not None:
-                avgmax = max(avgmax, avg.max())
-                nz_min = util.nonzero_min(avg)
-                if nz_min is not None:
-                    avgmin = min(avgmin, nz_min)
-    
-        self.cdump_prop.max_average = avgmax
-        self.cdump_prop.min_average = avgmin
-                
-        return self.cdump_prop
+        # prepare weights
+        self._prepare_weighted_averaging(cdump, level_selector)
     
     def _prepare_weighted_averaging(self, cdump, level_selector):
 
@@ -105,75 +240,27 @@ class VerticalAverageAnalyzer:
         last = 0
         for k in self.selected_level_indices:
             level = cdump.vert_levels[k]
-            self.delta_z.append(level - last)
+            self.delta_z[k] = level - last
             last = level
-            
-        w = sum(self.delta_z)
+
+        w = 0
+        for v in self.delta_z.values():
+            w += v            
+
         if w == 0:
-            logger.error("No concentration grids found for vertical averaging between levels {0} and {1}.".format(level_min, level_max))
+            logger.error("No concentration grids found for vertical averaging between levels {0} and {1}.".format(level_selector.min, level_selector.max))
             return False
         
         self.inverse_weight = 1.0 / w
         return True
             
-    def _average_vertically(self, time_index, pollutant_selector):
-        cdump = self.cdump_prop.cdump
+    def average(self, grids):
 
-        # allocate workspace
-        grids = []
-        for k in self.selected_level_indices:
-            grids.append(numpy.zeros(cdump.grid_sz))
-        
-        # summation across pollutants
-        k = 0
-        for level_index in self.selected_level_indices:
-            fn = lambda g: \
-                    g.time_index == time_index and \
-                    g.vert_level_index == level_index and \
-                    g.pollutant_index in pollutant_selector
-                       
-            for g in list(filter(fn, cdump.conc_grids)):
-                grids[k] += g.conc
-
-            k += 1
-            
         # vertical average
-        avg = numpy.empty(cdump.grid_sz)
-        for i in range(cdump.grid_sz[0]):
-            for j in range(cdump.grid_sz[1]):
-                # stardard layer weighted vertical average
-                vsum = 0.0
-                    
-                for k, c in enumerate(grids):
-                    vsum += c[i, j] * self.delta_z[k]
-                    
-                avg[i, j] = vsum * self.inverse_weight
-
-        return avg
-
-
-   
-class VerticalLevelAnalyzer:
-    
-    def __init__(self, cdump_prop):
-        self.cdump_prop = cdump_prop
-    
-    def analyze(self, time_selector, pollutant_selector=None):
-        cdump = self.cdump_prop.cdump
-
-        level_count = len(cdump.vert_levels)
-        cmin = numpy.full(level_count, 1.0e+25)
-        cmax = numpy.full(level_count, 0.0)
+        avg = numpy.zeros(grids[0].conc.shape)
         
-        for t_index in time_selector:
-            grids = cdump.find_conc_grids_by_time_index(t_index)
-            for g in grids:
-                if (pollutant_selector is None) or (g.pollutant_index in pollutant_selector):
-                    k = g.vert_level_index
-                    cmin[k] = min(cmin[k], util.nonzero_min(g.conc))
-                    cmax[k] = max(cmax[k], g.conc.max())
-    
-        self.cdump_prop.min_concs = cmin
-        self.cdump_prop.max_concs = cmax
-                
-        return self.cdump_prop
+        for g in grids:
+            avg += g.conc * self.delta_z[g.vert_level_index]
+        
+        return (avg * self.inverse_weight)
+

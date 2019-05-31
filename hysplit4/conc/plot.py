@@ -182,7 +182,7 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
                 self.user_color = True
         else:
             l = self.parse_simple_contour_levels(str)
-            self.contour_levels = [ContourLevel(v) for v in l]
+            self.contour_levels = [LabelledContourLevel(v) for v in l]
       
         self.contour_level_count = len(self.contour_levels)
         
@@ -234,7 +234,7 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
                 
             a = s.split(":")
             
-            o = ContourLevel()
+            o = LabelledContourLevel()
             o.level = float(a[0])
             o.label = a[1]
             if len(a) > 2:
@@ -291,7 +291,6 @@ class ConcentrationPlotSettingsReader:
 class ConcentrationPlot(plotbase.AbstractPlot):
 
     MAX_CONTOUR_LEVELS = 32
-    COLOR_TABLE_FILE_NAMES = ["CLRTBL.CFG", "../graphics/CLRTBL.CFG"]
     
     def __init__(self):
         plotbase.AbstractPlot.__init__(self)
@@ -331,11 +330,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         r.read(self.settings.input_file)
        
         # create selectors               
-        self.time_selector = model.TimeIndexSelector(self.settings.first_time_index,
-                                                     self.settings.last_time_index,
-                                                     self.settings.time_index_step)
-        self.pollutant_selector = model.PollutantSelector(self.settings.pollutant_index)
-        self.level_selector = model.VerticalLevelSelector(self.settings.LEVEL1, self.settings.LEVEL2)
+        self.time_selector = prop.TimeIndexSelector(self.settings.first_time_index,
+                                                    self.settings.last_time_index,
+                                                    self.settings.time_index_step)
+        self.pollutant_selector = prop.PollutantSelector(self.settings.pollutant_index)
+        self.level_selector = prop.VerticalLevelSelector(self.settings.LEVEL1, self.settings.LEVEL2)
 
         # limit time indices. assume that last conc grid is the largest time index.
         self.time_selector.normalize(c.conc_grids[-1].time_index)
@@ -369,13 +368,24 @@ class ConcentrationPlot(plotbase.AbstractPlot):
     def _post_file_processing(self, cdump):
         
         p = prop.ConcentrationDumpProperty(cdump)
+        vavg_calc = prop.VerticalAverageCalculator(cdump, self.level_selector)
         
-        if self.settings.KAVG == const.ConcentrationType.VERTICAL_AVERAGE:
-            p.get_vertical_average_analyzer().analyze(self.time_selector,
-                                                  self.pollutant_selector,
-                                                  self.level_selector)
-        
-        p.get_vertical_level_analyzer().analyze(self.time_selector)
+        # find min and max values
+        for t_index in self.time_selector:
+            t_grids = prop.TimeIndexGridFilter(cdump.conc_grids,
+                                               prop.TimeIndexSelector(t_index, t_index))
+            
+            if self.settings.KAVG == const.ConcentrationType.VERTICAL_AVERAGE:
+                v_grids = prop.sum_over_pollutants_per_level(t_grids,
+                                                             self.level_selector,
+                                                             self.pollutant_selector)
+                v_avg = vavg_calc.average(v_grids)
+                min, max = prop.find_nonzero_min_max(v_avg)
+                p.update_average_min_max(min, max)
+            
+            for g in t_grids:
+                min, max = prop.find_nonzero_min_max(g.conc)
+                p.update_min_max_at_level(min, max, g.vert_level_index)
         
         p.scale_conc(self.settings.KAVG,
                      self.settings.CONADJ,
@@ -519,15 +529,14 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
             # add release points
             for loc in cdump.release_locs:
-                if loc != (99.0, 99.0):     # TODO: need this? check with FORTRAN code
+                if util.is_valid_lonlat(loc):
                     mb.add(loc)
 
             # find trajectory hits
             mb.hit_count = 0
             for cg in cdump.conc_grids:
-                # TODO: check storage convention. to loop efficiently.
-                for j in range(len(cg.latitudes)):
-                    for i in range(len(cg.longitudes)):
+                for i in range(len(cg.longitudes)):
+                    for j in range(len(cg.latitudes)):
                         if cg.conc[i, j] > 0:
                             mb.add((cg.longitudes[i], cg.latitudes[j]))
 
@@ -642,76 +651,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 #         else:
 #             top_spineQ = self.settings.vertical_coordinate != const.Vertical.NONE
 #             self._turn_off_spines(self.text_axes, top=top_spineQ)
-    
-    # TODO: move
-    def get_conc_grids(self, time_index, pollutant_selector):
-        cdump = self.cdump
-        
-        grids = []
-        for k in cdump.vert_levels:
-            g = model.ConcentrationGrid(cdump)
-            g.conc = numpy.zeros(cdump.grid_sz)
-            grids.append(g)
-        
-        # summation across pollutants
-        for k, level in enumerate(cdump.vert_levels):
-            fn = lambda g: \
-                    g.time_index == time_index and \
-                    g.vert_level_index == k and \
-                    g.pollutant_index in pollutant_selector
-                       
-            firstQ = True
-            for g in list(filter(fn, cdump.conc_grids)):
-                if firstQ:
-                    grids[k].copy_properties_except_conc(g)
-                    grids[k].repair_pollutant(pollutant_selector.index)
-                    firstQ = False
-                grids[k].conc += g.conc
-
-        return grids
-    
-    def _get_color_table_filename(self):      
-        for s in self.COLOR_TABLE_FILE_NAMES:
-            if os.path.exists(s):
-                return s
-            
-        return None
-    
-    # TODO: move this to a color factory class?
-    def _make_color_table(self):
-        if self.settings.KMAP == const.ConcentrationMapType.THRESHOLD_LEVELS and self.settings.KHEMIN == 1:
-            ct = DefaultChemicalThresholdColorTable()
-        elif self.settings.user_color:
-            ct = UserColorTable(self.settings.contour_levels)
-        else:
-            ct = DefaultColorTable()
-            f = self._get_color_table_filename()
-            if f is not None:
-                ct.get_reader().read(f)
-                if self.settings.contour_level_generator == const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC and self.settings.IDYNC != 0:
-                    # TODO: move if st. to a class?
-                    for k in range(5):
-                        ct.set_rgb(k, (1.0, 1.0, 1.0))
-        
-        if self.settings.color == const.ConcentrationPlotColor.BLACK_AND_WHITE or self.settings.color == const.ConcentrationPlotColor.VAL_3:
-            ct.change_to_grayscale()
-        
-        return ct
-    
-    # TODO: move to smooth().
-    def smooth_conc_with_max_preserved(self, xconc):
-        v = numpy.amax(xconc)
-        if v > 0:
-            loc = numpy.where(xconc == v)
-            
-        conc = self.smoothing_kernel.smooth(xconc)
-        
-        if v > 0:
-            for c in list(zip(loc[0], loc[1])):
-                conc[c] = v
-                
-        return conc
-    
+     
     def draw(self, ev_handlers=None, *args, **kw):
         if self.settings.interactive_mode == False:
             plt.ioff()
@@ -722,17 +662,26 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         clg = ContourLevelGeneratorFactory.create_instance(self.settings.contour_level_generator,
                                                            self.settings.contour_levels,
                                                            self.settings.user_color)
-        ct = self._make_color_table()
+        ct = ColorTableFactory.create_instance(self.settings)
         cc = ContourColorFactory.create_instance(ct,
                                                  self.settings.KMAP,
                                                  self.settings.contour_level_generator,
                                                  self.settings.KHEMIN,
                                                  self.settings.IDYNC)
+        vavg_calc = prop.VerticalAverageCalculator(self.cdump, self.level_selector)
 
         for t_index in self.time_selector:
-
-            # TODO: move?
-            grids = model.LazyGridFilter(self.cdump, t_index, self.pollutant_selector)
+            t_grids = prop.TimeIndexGridFilter(self.cdump.conc_grids,
+                                               prop.TimeIndexSelector(t_index, t_index))
+            
+            if self.settings.KAVG == const.ConcentrationType.VERTICAL_AVERAGE:
+                v_grids = prop.sum_over_pollutants_per_level(t_grids,
+                                                             self.level_selector,
+                                                             self.pollutant_selector)
+                v_avg = vavg_calc.average(v_grids)
+                grids = [v_avg]
+            else:
+                grids = prop.VerticalLevelGridFilter(t_grids, self.level_selector)
 
             # TODO: move?
             if self.settings.exposure_unit == const.ExposureUnit.EXPOSURE:
@@ -768,7 +717,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 xconc *= TFACT
                 
                 if self.smoothing_kernel is not None:
-                    xconc = self.smooth_conc_with_max_preserved(xconc)
+                    xconc = self.smoothing_kernel.smooth_with_max_preserved(xconc)
                 
                 self.draw_concentration_plot(g, xconc, contour_levels, cc.colors)
                 self.draw_contour_legends()
@@ -787,8 +736,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 plt.close(self.fig)
                 current_frame += 1
     
-#TODO: rename to LabelledContourLevel
-class ContourLevel:
+
+class LabelledContourLevel:
     
     def __init__(self, level=0.0, label="NONAME", r=1.0, g=1.0, b=1.0):
         self.level = level
@@ -888,7 +837,40 @@ class UserSpecifiedLevelGenerator(AbstractContourLevelGenerator):
     def make_levels(self, cmin, cmax, max_levels):
         return self.contour_levels
     
+    
+class ColorTableFactory:
+    
+    COLOR_TABLE_FILE_NAMES = ["CLRTBL.CFG", "../graphics/CLRTBL.CFG"]
 
+    @staticmethod
+    def create_instance(settings):
+        if settings.KMAP == const.ConcentrationMapType.THRESHOLD_LEVELS and settings.KHEMIN == 1:
+            ct = DefaultChemicalThresholdColorTable()
+        elif settings.user_color:
+            ct = UserColorTable(settings.contour_levels)
+        else:
+            ct = DefaultColorTable()
+            f = ColorTableFactory._get_color_table_filename()
+            if f is not None:
+                ct.get_reader().read(f)
+                if settings.contour_level_generator == const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC and settings.IDYNC != 0:
+                    for k in range(5):
+                        ct.set_rgb(k, (1.0, 1.0, 1.0))
+        
+        if settings.color == const.ConcentrationPlotColor.BLACK_AND_WHITE or settings.color == const.ConcentrationPlotColor.VAL_3:
+            ct.change_to_grayscale()
+        
+        return ct
+    
+    @staticmethod
+    def _get_color_table_filename():      
+        for s in ColorTableFactory.COLOR_TABLE_FILE_NAMES:
+            if os.path.exists(s):
+                return s
+            
+        return None
+    
+    
 class ColorTable:
     
     def __init__(self):

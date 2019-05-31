@@ -1,7 +1,7 @@
 import pytest
 import matplotlib.pyplot as plt
 import numpy
-from hysplit4.conc import plot, model
+from hysplit4.conc import plot, model, prop
 from hysplit4 import const, mapfile, mapproj, labels, smooth
 
 
@@ -26,10 +26,10 @@ def cdump2():
 @pytest.fixture
 def contourLevels():
     c = []
-    c.append(plot.ContourLevel(10.0, "L1", 0.4, 0.4, 0.4))
-    c.append(plot.ContourLevel(15.0, "L2", 0.6, 0.6, 0.6))
-    c.append(plot.ContourLevel(20.0, "L3", 0.8, 0.8, 0.8))
-    c.append(plot.ContourLevel(25.0, "L4", 1.0, 1.0, 1.0))
+    c.append(plot.LabelledContourLevel(10.0, "L1", 0.4, 0.4, 0.4))
+    c.append(plot.LabelledContourLevel(15.0, "L2", 0.6, 0.6, 0.6))
+    c.append(plot.LabelledContourLevel(20.0, "L3", 0.8, 0.8, 0.8))
+    c.append(plot.LabelledContourLevel(25.0, "L4", 1.0, 1.0, 1.0))
     return c
     
     
@@ -321,12 +321,12 @@ def test_ConcentrationPlotSettings_parse_contour_levels():
     assert len(a) == 2
     assert s.contour_level_count == 2
     k = 0
-    assert isinstance(a[k], plot.ContourLevel)
+    assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == "USER1"
     assert (a[k].r, a[k].g, a[k].b) == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
     k += 1
-    assert isinstance(a[k], plot.ContourLevel)
+    assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == "USER2"
     assert (a[k].r, a[k].g, a[k].b) == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
@@ -342,13 +342,13 @@ def test_ConcentrationPlotSettings_parse_labeled_contour_levels():
     assert len(a) == 2
     
     k = 0
-    assert isinstance(a[k], plot.ContourLevel)
+    assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == "USER1"
     assert (a[k].r, a[k].g, a[k].b) == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
     
     k += 1
-    assert isinstance(a[k], plot.ContourLevel)
+    assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == "USER2"
     assert (a[k].r, a[k].g, a[k].b) == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
@@ -358,13 +358,13 @@ def test_ConcentrationPlotSettings_parse_labeled_contour_levels():
     assert len(a) == 2
     
     k = 0
-    assert isinstance(a[k], plot.ContourLevel)
+    assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == ""
     assert (a[k].r, a[k].g, a[k].b) == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
     
     k += 1
-    assert isinstance(a[k], plot.ContourLevel)
+    assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == ""
     assert (a[k].r, a[k].g, a[k].b) == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
@@ -374,13 +374,13 @@ def test_ConcentrationPlotSettings_parse_labeled_contour_levels():
     assert len(a) == 2
     
     k = 0
-    assert isinstance(a[k], plot.ContourLevel)
+    assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == "USER1"
     assert (a[k].r, a[k].g, a[k].b) == pytest.approx((1.0, 1.0, 1.0), 1.0e-5)
     
     k += 1
-    assert isinstance(a[k], plot.ContourLevel)
+    assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == "USER2"
     assert (a[k].r, a[k].g, a[k].b) == pytest.approx((1.0, 1.0, 1.0), 1.0e-5)
@@ -434,7 +434,6 @@ def test_ConcentrationPlot___init__():
     p = plot.ConcentrationPlot()
 
     assert p.MAX_CONTOUR_LEVELS == 32
-    assert len(p.COLOR_TABLE_FILE_NAMES) == 2
     
     assert hasattr(p, "settings")
     assert hasattr(p, "cdump")
@@ -494,7 +493,7 @@ def test_ConcentrationPlot_read_data_files():
     assert p.level_selector.max == 99999
     assert p.data_properties is not None
     assert p.data_properties.max_average == 0.0 # not set for -d1
-    assert p.data_properties.min_average == 0.0 # not set for -d1
+    assert p.data_properties.min_average == 1.0e+25 # not set for -d1
     assert p.data_properties.max_concs[0] * 1.e+12 == pytest.approx(2.152324)
     assert p.data_properties.min_concs[0] * 1.e+16 == pytest.approx(9.429794)
     assert p.smoothing_kernel is not None
@@ -508,11 +507,11 @@ def test_ConcentrationPlot__post_file_processing(cdump2):
     p.settings.pollutant_index = 0
     p.settings.KAVG = const.ConcentrationType.VERTICAL_AVERAGE
     
-    p.time_selector = model.TimeIndexSelector(p.settings.first_time_index,
-                                              p.settings.last_time_index,
-                                              p.settings.time_index_step)
-    p.pollutant_selector = model.PollutantSelector(p.settings.pollutant_index)
-    p.level_selector = model.VerticalLevelSelector(p.settings.LEVEL1, p.settings.LEVEL2)
+    p.time_selector = prop.TimeIndexSelector(p.settings.first_time_index,
+                                             p.settings.last_time_index,
+                                             p.settings.time_index_step)
+    p.pollutant_selector = prop.PollutantSelector(p.settings.pollutant_index)
+    p.level_selector = prop.VerticalLevelSelector(p.settings.LEVEL1, p.settings.LEVEL2)
 
     q = p._post_file_processing(cdump2)
     
@@ -718,109 +717,6 @@ def test_ConcentrationPlot_draw_bottom_text():
         raise pytest.fail("unexpeced exception: {0}".format(ex))
 
 
-def test_ConcentrationPlot_get_conc_grids(cdump2):
-    p = plot.ConcentrationPlot()
-    p.cdump = cdump2
-
-    # two vertical grids for pollutant 0 at time index 0.
-    ps = model.PollutantSelector(0)
-    grids = p.get_conc_grids(0, ps)
-
-    assert len(grids) == 2
-    
-    g = grids[0]
-    assert g.vert_level == 100
-    assert g.pollutant_index == 0
-    assert g.vert_level_index == 0
-    assert g.conc.shape == (601, 601)
-    assert g.conc[300, 300] * 1.e+13 == pytest.approx(8.047535)
-    
-    g = grids[1]
-    assert g.vert_level == 300
-    assert g.pollutant_index == 0
-    assert g.vert_level_index == 1
-    assert g.conc.shape == (601, 601)
-    assert g.conc[300, 300] * 1.e+13 == pytest.approx(7.963810)
-
-    # two vertical grids for all pollutant at time index 0.
-    ps = model.PollutantSelector()
-    grids = p.get_conc_grids(0, ps)
-
-    assert len(grids) == 2
-    
-    g = grids[0]
-    assert g.vert_level == 100
-    assert g.pollutant_index == -1
-    assert g.vert_level_index == 0
-    assert g.conc.shape == (601, 601)
-    assert g.conc[300, 300] * 1.e+13 == pytest.approx(8.047535 + 8.173024)
-    
-    g = grids[1]
-    assert g.vert_level == 300
-    assert g.pollutant_index == -1
-    assert g.vert_level_index == 1
-    assert g.conc.shape == (601, 601)
-    assert g.conc[300, 300] * 1.e+13 == pytest.approx(7.9638097 + 7.608168)
-    
-
-def test_ConcentrationPlot__get_color_table_filename():
-    p = plot.ConcentrationPlot()
-    assert p._get_color_table_filename() == None
-
-    saved = p.COLOR_TABLE_FILE_NAMES
-    p.COLOR_TABLE_FILE_NAMES = ["data/CLRTBL.CFG"]
-    assert p._get_color_table_filename() == "data/CLRTBL.CFG"
-    p.COLOR_TABLE_FILE_NAMES = saved
-    
-
-def test_ConcentrationPlot__make_color_table():
-    p = plot.ConcentrationPlot()
-    s = p.settings
-    
-    saved = p.COLOR_TABLE_FILE_NAMES
-    p.COLOR_TABLE_FILE_NAMES = ["data/CLRTBL.CFG"]
-
-    s.KMAP = const.ConcentrationMapType.THRESHOLD_LEVELS
-    s.KHEMIN = 1
-    ct = p._make_color_table()
-    assert isinstance(ct, plot.DefaultChemicalThresholdColorTable)
-    
-    s.KMAP = const.ConcentrationMapType.CONCENTRATION
-    s.user_color = True
-    s.parse_contour_levels("10E+2:USER1:100050200+10E+3:USER2:100070200")
-    ct = p._make_color_table()
-    assert isinstance(ct, plot.UserColorTable)
-    
-    s.user_color = False
-    ct = p._make_color_table()
-    assert isinstance(ct, plot.DefaultColorTable)
-    
-    # check conversion to grayscale table
-    s.color = const.ConcentrationPlotColor.BLACK_AND_WHITE
-    ct = p._make_color_table()
-    assert isinstance(ct, plot.DefaultColorTable)
-    for rgb in ct.rgbs:
-        r, g, b = rgb
-        assert r == g and g == b
-        
-    p.COLOR_TABLE_FILE_NAMES = saved
-    
-    
-def test_ConcentrationPlot_smooth_conc_with_max_preserved(cdump2):
-    p = plot.ConcentrationPlot()
-    p.smoothing_kernel = smooth.SmoothingKernelFactory.create_instance(0, 1)
-    
-    # check max before smoothing
-    xconc = cdump2.conc_grids[0].conc
-    max_value = numpy.amax(xconc)
-    assert max_value * 1.0e+13 == pytest.approx(8.047535)
-    assert xconc[301, 300] * 1.0e+13 == pytest.approx(5.189939)
-    
-    sconc = p.smooth_conc_with_max_preserved(xconc)
-    assert sconc.max() * 1.0e+13 == pytest.approx(8.047535)
-    assert sconc[301, 300] * 1.0e+13 == pytest.approx(3.333596)
- 
-
 def test_ConcentrationPlot_draw():
     p = plot.ConcentrationPlot()
     p.merge_plot_settings(None, ["-idata/cdump", "-jdata/arlmap_truncated"])
@@ -831,12 +727,13 @@ def test_ConcentrationPlot_draw():
     try:
         p.layout({"resize_event" : blank_event_handler})
         p.draw(block=False)
+        cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
 
 
-def test_ContourLevel___init__():
-    o = plot.ContourLevel(10.0, "USER1", 0.5, 0.6, 0.7)
+def test_LabelledContourLevel___init__():
+    o = plot.LabelledContourLevel(10.0, "USER1", 0.5, 0.6, 0.7)
     assert o.level == 10.0
     assert o.label == "USER1"
     assert o.r == 0.5
@@ -940,6 +837,54 @@ def test_UserSpecifiedLevelGenerator_make_levels(contourLevels):
     
     assert levels == pytest.approx((10., 15., 20., 25.))
     
+
+def test_ColorTableFactory():
+    p = plot.ColorTableFactory()
+    assert len(p.COLOR_TABLE_FILE_NAMES) == 2
+
+
+def test_ColorTableFactory_create_instance():
+    p = plot.ConcentrationPlot()
+    s = p.settings
+    
+    saved = plot.ColorTableFactory.COLOR_TABLE_FILE_NAMES
+    plot.ColorTableFactory.COLOR_TABLE_FILE_NAMES = ["data/CLRTBL.CFG"]
+
+    s.KMAP = const.ConcentrationMapType.THRESHOLD_LEVELS
+    s.KHEMIN = 1
+    ct = plot.ColorTableFactory.create_instance(s)
+    assert isinstance(ct, plot.DefaultChemicalThresholdColorTable)
+    
+    s.KMAP = const.ConcentrationMapType.CONCENTRATION
+    s.user_color = True
+    s.parse_contour_levels("10E+2:USER1:100050200+10E+3:USER2:100070200")
+    ct = plot.ColorTableFactory.create_instance(s)
+    assert isinstance(ct, plot.UserColorTable)
+    
+    s.user_color = False
+    ct = plot.ColorTableFactory.create_instance(s)
+    assert isinstance(ct, plot.DefaultColorTable)
+    
+    # check conversion to grayscale table
+    s.color = const.ConcentrationPlotColor.BLACK_AND_WHITE
+    ct = plot.ColorTableFactory.create_instance(s)
+    assert isinstance(ct, plot.DefaultColorTable)
+    for rgb in ct.rgbs:
+        r, g, b = rgb
+        assert r == g and g == b
+
+    plot.ColorTableFactory.COLOR_TABLE_FILE_NAMES = saved
+
+
+def test_ConcentrationPlot__get_color_table_filename():
+    p = plot.ColorTableFactory()
+    assert p._get_color_table_filename() == None
+
+    saved = plot.ColorTableFactory.COLOR_TABLE_FILE_NAMES
+    plot.ColorTableFactory.COLOR_TABLE_FILE_NAMES = ["data/CLRTBL.CFG"]
+    assert p._get_color_table_filename() == "data/CLRTBL.CFG"
+    plot.ColorTableFactory.COLOR_TABLE_FILE_NAMES = saved
+
     
 def test_ColorTable___init__():
     o = plot.ColorTable()
@@ -1028,4 +973,11 @@ def test_ContourColorFactory_create_instance():
     tbl = plot.ColorTable().get_reader().read("data/CLRTBL.CFG")
     o = plot.ContourColorFactory.create_instance(tbl)
     assert isinstance(o, plot.ContourColor)
+    assert len(o.colors) == 4
+
+
+def test_ContourColor___init__():
+    tbl = plot.ColorTable().get_reader().read("data/CLRTBL.CFG")
+
+    o = plot.ContourColor(tbl)    
     assert len(o.colors) == 4
