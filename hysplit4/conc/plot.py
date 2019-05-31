@@ -783,7 +783,7 @@ class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
         levels[1] = math.pow(10.0, nexp)
         levels[0] = 10.0 * levels[1]
         for k in range(2, len(levels)):
-            levels[k] = 0.1 * levels[k - 1] * 0.1
+            levels[k] = 0.1 * levels[k - 1]
         return numpy.flip(levels)
 
 

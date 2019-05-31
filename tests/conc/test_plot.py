@@ -780,7 +780,7 @@ def test_ExponentialDynamicLevelGenerator_make_levels():
     levels = o.make_levels(1.0e-16, 1.0e-13, 4)
     
     levels *= 1.e+16
-    assert levels == pytest.approx((0.01, 1.0, 100.0, 1000.0))
+    assert levels == pytest.approx((1.0, 10.0, 100.0, 1000.0))
     
 
 def test_EExponentialFixedLevelGenerator___init__():
@@ -794,7 +794,7 @@ def test_ExponentialFixedLevelGenerator_make_levels():
     levels = o.make_levels(1.0e-16, 1.0e-13, 4)
     
     levels *= 1.e+16
-    assert levels == pytest.approx((0.01, 1.0, 100.0, 1000.0))
+    assert levels == pytest.approx((1.0, 10.0, 100.0, 1000.0))
     
 
 def test_LinearDynamicLevelGenerator___init__():
