@@ -8,7 +8,7 @@ import matplotlib.gridspec
 import matplotlib.pyplot as plt
 
 from hysplit4 import cmdline, util, const, plotbase, mapbox, mapproj, io, smooth
-from hysplit4.conc import model, prop
+from hysplit4.conc import model, helper
 from builtins import str
 
 
@@ -325,30 +325,28 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             raise Exception("File not found: {0}".format(self.settings.input_file))
         
         # read only one file.
-        self.cdump = c = model.ConcentrationDump()
-        r = c.get_reader()
-        r.read(self.settings.input_file)
+        self.cdump = cdump = model.ConcentrationDump().get_reader().read(self.settings.input_file)
        
         # create selectors               
-        self.time_selector = prop.TimeIndexSelector(self.settings.first_time_index,
-                                                    self.settings.last_time_index,
-                                                    self.settings.time_index_step)
-        self.pollutant_selector = prop.PollutantSelector(self.settings.pollutant_index)
-        self.level_selector = prop.VerticalLevelSelector(self.settings.LEVEL1, self.settings.LEVEL2)
+        self.time_selector = helper.TimeIndexSelector(self.settings.first_time_index,
+                                                      self.settings.last_time_index,
+                                                      self.settings.time_index_step)
+        self.pollutant_selector = helper.PollutantSelector(self.settings.pollutant_index)
+        self.level_selector = helper.VerticalLevelSelector(self.settings.LEVEL1, self.settings.LEVEL2)
 
         # limit time indices. assume that last conc grid is the largest time index.
-        self.time_selector.normalize(c.conc_grids[-1].time_index)
+        self.time_selector.normalize(cdump.grids[-1].time_index)
         logger.debug("time iteration is limited to index range [%d, %d]",
                      self.time_selector.first, self.time_selector.last)
 
-        # normalize pollutant index
-        self.pollutant_selector.normalize(len(c.pollutants) - 1)
+        # normalize pollutant index and name
+        self.pollutant_selector.normalize(len(cdump.pollutants) - 1)
         self.settings.pollutant_index = self.pollutant_selector.index
-        self.settings.pollutant = "SUM" if self.settings.pollutant_index == -1 else c.pollutants[self.settings.pollutant_index]
+        self.settings.pollutant = cdump.get_pollutant(self.settings.pollutant_index)
 
-        if len(c.pollutants) > 1:
+        if len(cdump.pollutants) > 1:
             logger.info("Multiple pollutant species in file")
-            for k, name in enumerate(c.pollutants):
+            for k, name in enumerate(cdump.pollutants):
                 if k == self.settings.pollutant_index:
                     logger.info("%d - %s <--- selected", k+1, name)
                 else:
@@ -356,7 +354,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         
         # if only one non-depositing level, change -d2 to -d1.
         if self.settings.KAVG == const.ConcentrationType.VERTICAL_AVERAGE:
-            if len(c.release_heights) == 1 or (len(c.release_heights) == 2 and c.release_heights[0] == 0):
+            if len(cdump.release_heights) == 1 or (len(cdump.release_heights) == 2 and cdump.release_heights[0] == 0):
                 logger.warning("Changing -d2 to -d1 since single layer")
                 self.settings.KAVG = const.ConcentrationType.EACH_LEVEL
         
@@ -367,24 +365,24 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             
     def _post_file_processing(self, cdump):
         
-        p = prop.ConcentrationDumpProperty(cdump)
-        vavg_calc = prop.VerticalAverageCalculator(cdump, self.level_selector)
+        p = helper.ConcentrationDumpProperty(cdump)
+        vavg_calc = helper.VerticalAverageCalculator(cdump, self.level_selector)
         
         # find min and max values
         for t_index in self.time_selector:
-            t_grids = prop.TimeIndexGridFilter(cdump.conc_grids,
-                                               prop.TimeIndexSelector(t_index, t_index))
+            t_grids = helper.TimeIndexGridFilter(cdump.grids,
+                                                 helper.TimeIndexSelector(t_index, t_index))
             
             if self.settings.KAVG == const.ConcentrationType.VERTICAL_AVERAGE:
-                v_grids = prop.sum_over_pollutants_per_level(t_grids,
-                                                             self.level_selector,
-                                                             self.pollutant_selector)
+                v_grids = helper.sum_over_pollutants_per_level(t_grids,
+                                                               self.level_selector,
+                                                               self.pollutant_selector)
                 v_avg = vavg_calc.average(v_grids)
-                min, max = prop.find_nonzero_min_max(v_avg)
+                min, max = helper.find_nonzero_min_max(v_avg)
                 p.update_average_min_max(min, max)
             
             for g in t_grids:
-                min, max = prop.find_nonzero_min_max(g.conc)
+                min, max = helper.find_nonzero_min_max(g.conc)
                 p.update_min_max_at_level(min, max, g.vert_level_index)
         
         p.scale_conc(self.settings.KAVG,
@@ -534,7 +532,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
             # find trajectory hits
             mb.hit_count = 0
-            for cg in cdump.conc_grids:
+            for cg in cdump.grids:
                 for i in range(len(cg.longitudes)):
                     for j in range(len(cg.latitudes)):
                         if cg.conc[i, j] > 0:
@@ -659,29 +657,29 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         initial_time = None
         current_frame = 1
         
-        clg = ContourLevelGeneratorFactory.create_instance(self.settings.contour_level_generator,
-                                                           self.settings.contour_levels,
-                                                           self.settings.user_color)
-        ct = ColorTableFactory.create_instance(self.settings)
-        cc = ContourColorFactory.create_instance(ct,
-                                                 self.settings.KMAP,
-                                                 self.settings.contour_level_generator,
-                                                 self.settings.KHEMIN,
-                                                 self.settings.IDYNC)
-        vavg_calc = prop.VerticalAverageCalculator(self.cdump, self.level_selector)
+        lgen = ContourLevelGeneratorFactory.create_instance(self.settings.contour_level_generator,
+                                                            self.settings.contour_levels,
+                                                            self.settings.user_color)
+        ctbl = ColorTableFactory.create_instance(self.settings)
+        cclr = ContourColorFactory.create_instance(ctbl,
+                                                   self.settings.KMAP,
+                                                   self.settings.contour_level_generator,
+                                                   self.settings.KHEMIN,
+                                                   self.settings.IDYNC)
+        vavg_calc = helper.VerticalAverageCalculator(self.cdump, self.level_selector)
 
         for t_index in self.time_selector:
-            t_grids = prop.TimeIndexGridFilter(self.cdump.conc_grids,
-                                               prop.TimeIndexSelector(t_index, t_index))
+            t_grids = helper.TimeIndexGridFilter(self.cdump.grids,
+                                                 helper.TimeIndexSelector(t_index, t_index))
             
             if self.settings.KAVG == const.ConcentrationType.VERTICAL_AVERAGE:
-                v_grids = prop.sum_over_pollutants_per_level(t_grids,
-                                                             self.level_selector,
-                                                             self.pollutant_selector)
+                v_grids = helper.sum_over_pollutants_per_level(t_grids,
+                                                               self.level_selector,
+                                                               self.pollutant_selector)
                 v_avg = vavg_calc.average(v_grids)
                 grids = [v_avg]
             else:
-                grids = prop.VerticalLevelGridFilter(t_grids, self.level_selector)
+                grids = helper.VerticalLevelGridFilter(t_grids, self.level_selector)
 
             # TODO: move?
             if self.settings.exposure_unit == const.ExposureUnit.EXPOSURE:
@@ -708,9 +706,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 self._turn_off_ticks(self.conc_outer)
                 self.conc_outer.set_title(self.make_plot_title(g))
                 
-                contour_levels = clg.make_levels(self.data_properties.min_concs[-1],
-                                                 self.data_properties.max_concs[-1],
-                                                 self.settings.contour_level_count)
+                contour_levels = lgen.make_levels(self.data_properties.min_concs[-1],
+                                                  self.data_properties.max_concs[-1],
+                                                  self.settings.contour_level_count)
                 
                 # TODO: correction for mapping.
                 xconc = numpy.copy(g.conc)
@@ -719,7 +717,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 if self.smoothing_kernel is not None:
                     xconc = self.smoothing_kernel.smooth_with_max_preserved(xconc)
                 
-                self.draw_concentration_plot(g, xconc, contour_levels, cc.colors)
+                self.draw_concentration_plot(g, xconc, contour_levels, cclr.colors)
                 self.draw_contour_legends()
                 self.draw_bottom_text()
                 

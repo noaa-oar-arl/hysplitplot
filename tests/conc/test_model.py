@@ -24,7 +24,7 @@ def test_ConcentrationDump___init__():
     assert hasattr(m, "grid_sz")
     assert hasattr(m, "vert_levels")
     assert hasattr(m, "pollutants")
-    assert hasattr(m, "conc_grids")
+    assert hasattr(m, "grids")
     assert hasattr(m, "pollutants")
     assert hasattr(m, "latitudes")
     assert hasattr(m, "longitudes")
@@ -128,17 +128,17 @@ def test_ConcentrationGrid_conc():
    
 
 def test_ConcentrationGrid_latitudes(cdump):
-    g = cdump.conc_grids[0]
+    g = cdump.grids[0]
     assert len(g.latitudes) == 601
    
 
 def test_ConcentrationGrid_longitudes(cdump):
-    g = cdump.conc_grids[0]
+    g = cdump.grids[0]
     assert len(g.longitudes) == 601
     
 
 def test_ConcentrationGrid_clone(cdump):
-    target = cdump.conc_grids[0]
+    target = cdump.grids[0]
     g = target.clone()
     
     assert g.parent is cdump
@@ -154,7 +154,7 @@ def test_ConcentrationGrid_clone(cdump):
     
     
 def test_ConcentrationGrid_repair_pollutant(cdump):
-    g = cdump.conc_grids[0]
+    g = cdump.grids[0]
     
     # test before repair
     assert g.pollutant_index == 0
@@ -217,11 +217,11 @@ def test_ConcentrationDumpFileReader_read():
     assert m.vert_levels == pytest.approx((100, 300))
     assert m.pollutants == ["TEST", "MORE"]
     
-    assert len(m.conc_grids) == 4
+    assert len(m.grids) == 4
     
     # grid 0
     
-    g = m.conc_grids[0]
+    g = m.grids[0]
     assert g.time_index == 0
     assert g.starting_datetime == datetime.datetime(83, 9, 25, 17, 0)
     assert g.ending_datetime == datetime.datetime(83, 9, 26, 5, 0)
@@ -237,7 +237,7 @@ def test_ConcentrationDumpFileReader_read():
     
     # grid 1
     
-    g = m.conc_grids[1]
+    g = m.grids[1]
     assert g.time_index == 0
     assert g.starting_datetime == datetime.datetime(83, 9, 25, 17, 0)
     assert g.ending_datetime == datetime.datetime(83, 9, 26, 5, 0)
@@ -253,7 +253,7 @@ def test_ConcentrationDumpFileReader_read():
 
     # grid 2
     
-    g = m.conc_grids[2]
+    g = m.grids[2]
     assert g.time_index == 0
     assert g.starting_datetime == datetime.datetime(83, 9, 25, 17, 0)
     assert g.ending_datetime == datetime.datetime(83, 9, 26, 5, 0)
@@ -269,7 +269,7 @@ def test_ConcentrationDumpFileReader_read():
     
     # grid 3
     
-    g = m.conc_grids[3]
+    g = m.grids[3]
     assert g.time_index == 0
     assert g.starting_datetime == datetime.datetime(83, 9, 25, 17, 0)
     assert g.ending_datetime == datetime.datetime(83, 9, 26, 5, 0)

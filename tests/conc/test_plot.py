@@ -1,7 +1,7 @@
 import pytest
 import matplotlib.pyplot as plt
 import numpy
-from hysplit4.conc import plot, model, prop
+from hysplit4.conc import plot, model, helper
 from hysplit4 import const, mapfile, mapproj, labels, smooth
 
 
@@ -507,11 +507,11 @@ def test_ConcentrationPlot__post_file_processing(cdump2):
     p.settings.pollutant_index = 0
     p.settings.KAVG = const.ConcentrationType.VERTICAL_AVERAGE
     
-    p.time_selector = prop.TimeIndexSelector(p.settings.first_time_index,
-                                             p.settings.last_time_index,
-                                             p.settings.time_index_step)
-    p.pollutant_selector = prop.PollutantSelector(p.settings.pollutant_index)
-    p.level_selector = prop.VerticalLevelSelector(p.settings.LEVEL1, p.settings.LEVEL2)
+    p.time_selector = helper.TimeIndexSelector(p.settings.first_time_index,
+                                               p.settings.last_time_index,
+                                               p.settings.time_index_step)
+    p.pollutant_selector = helper.PollutantSelector(p.settings.pollutant_index)
+    p.level_selector = helper.VerticalLevelSelector(p.settings.LEVEL1, p.settings.LEVEL2)
 
     q = p._post_file_processing(cdump2)
     
@@ -598,7 +598,7 @@ def test_ConcentrationPlot_layout():
 
 
 def test_ConcentrationPlot_make_plot_title(cdump):
-    plotData = cdump.conc_grids[0]
+    plotData = cdump.grids[0]
     p = plot.ConcentrationPlot()
     p.labels = labels.LabelsConfig()
     
@@ -678,8 +678,8 @@ def test_ConcentrationPlot_draw_concentration_plot():
     # See if no exception is thrown.
     try:
         p.layout({"resize_event" : blank_event_handler})
-        p.draw_concentration_plot(p.cdump.conc_grids[0],
-                                  p.cdump.conc_grids[0].conc,
+        p.draw_concentration_plot(p.cdump.grids[0],
+                                  p.cdump.grids[0].conc,
                                   [1.0e-16, 1.0e-15, 1.0e-14],
                                   ["g", "b", "r"])
         cleanup_plot(p)

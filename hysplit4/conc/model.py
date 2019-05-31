@@ -24,7 +24,7 @@ class ConcentrationDump:
         self.grid_sz = None
         self.vert_levels = []
         self.pollutants = []
-        self.conc_grids = []        # index by pollutants
+        self.grids = []        # orderred first by pollutants and then by vertical levels
         self.__latitudes = []
         self.__longitudes = []
         
@@ -38,7 +38,7 @@ class ConcentrationDump:
         for k, v in self.__dict__.items():
             stream.write("{0} = {1}\n".format(k, v))
 
-        for g in self.conc_grids:
+        for g in self.grids:
             g.dump(stream)
         
         stream.write("----- end ConcentrationDump\n")
@@ -221,31 +221,31 @@ class ConcentrationDumpFileReader:
         
                 for p_idx in range(pollutant_count):
                     for l_idx in range(vert_level_count):
-                        cg = ConcentrationGrid(cdump)
-                        cdump.conc_grids.append(cg)
+                        g = ConcentrationGrid(cdump)
+                        cdump.grids.append(g)
                         
-                        cg.time_index = current_time_index
-                        cg.starting_datetime = sample_start_time
-                        cg.ending_datetime = sample_end_time
-                        cg.starting_forecast_hr = sample_start_forecast
-                        cg.ending_forecast_hr = sample_end_forecast
+                        g.time_index = current_time_index
+                        g.starting_datetime = sample_start_time
+                        g.ending_datetime = sample_end_time
+                        g.starting_forecast_hr = sample_start_forecast
+                        g.ending_forecast_hr = sample_end_forecast
                         
                         cur += 4;
                         v = struct.unpack_from('>4si', buff, cur); cur += 8;
-                        cg.pollutant = v[0].decode(str_code)
-                        cg.vert_level = v[1]
-                        cg.pollutant_index = pollutant_dict[cg.pollutant]
-                        cg.vert_level_index = level_dict[v[1]]
-                        logger.debug("grid for pollutant %s, height %d", cg.pollutant, cg.vert_level)
+                        g.pollutant = v[0].decode(str_code)
+                        g.vert_level = v[1]
+                        g.pollutant_index = pollutant_dict[g.pollutant]
+                        g.vert_level_index = level_dict[v[1]]
+                        logger.debug("grid for pollutant %s, height %d", g.pollutant, g.vert_level)
             
                         if packing_flag == 0:
                             count = lon_cnt * lat_cnt
                             fmt = ">{0}f".format(count)
                             v = struct.unpack_from(fmt, buff, cur); cur += 4 * count
                             # TODO: test this line. may need to transpose it.
-                            cg.conc = numpy.array(v).reshape(lon_cnt, lat_cnt)
+                            g.conc = numpy.array(v).reshape(lon_cnt, lat_cnt)
                         else:
-                            cg.conc = numpy.zeros((lon_cnt, lat_cnt))
+                            g.conc = numpy.zeros((lon_cnt, lat_cnt))
                             v = struct.unpack_from('>i', buff, cur); cur += 4;
                             count = v[0]
                             chunk = int(count / chunk_sz)
@@ -253,12 +253,12 @@ class ConcentrationDumpFileReader:
                                 v = pre.unpack_from(buff, cur); cur += 8 * chunk_sz;
                                 for j in range(chunk_sz):
                                     i = (j << 1) + j
-                                    cg.conc[v[i+1]-1, v[i]-1] = v[i+2]
+                                    g.conc[v[i+1]-1, v[i]-1] = v[i+2]
                             left = count % chunk_sz
                             if left > 0:
                                 for k in range(left):
                                     v = struct.unpack_from('>hhf', buff, cur); cur += 8;
-                                    cg.conc[v[1]-1, v[0]-1] = v[2]
+                                    g.conc[v[1]-1, v[0]-1] = v[2]
                         cur += 4;
                         
                 current_time_index += 1
