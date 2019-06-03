@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 
 from hysplit4 import cmdline, util, const, plotbase, mapbox, mapproj, io, smooth
 from hysplit4.conc import model, helper
-from builtins import str
 
 
 logger = logging.getLogger(__name__)
@@ -377,13 +376,15 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 v_grids = helper.sum_over_pollutants_per_level(t_grids,
                                                                self.level_selector,
                                                                self.pollutant_selector)
+                logger.debug("VERT GRIDS %s", v_grids)
                 v_avg = vavg_calc.average(v_grids)
-                min, max = helper.find_nonzero_min_max(v_avg)
-                p.update_average_min_max(min, max)
+                logger.debug("VERT AVG %s", v_avg)
+                vmin, vmax = helper.find_nonzero_min_max(v_avg)
+                p.update_average_min_max(vmin, vmax)
             
             for g in t_grids:
-                min, max = helper.find_nonzero_min_max(g.conc)
-                p.update_min_max_at_level(min, max, g.vert_level_index)
+                vmin, vmax = helper.find_nonzero_min_max(g.conc)
+                p.update_min_max_at_level(vmin, vmax, g.vert_level_index)
         
         p.scale_conc(self.settings.KAVG,
                      self.settings.CONADJ,
@@ -556,7 +557,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                         mb.add((cdump.longitudes[i], cdump.latitudes[j]))
 
             if mb.hit_count == 0:
-                raise Exception("no concentration data to plot")
+                raise Exception("ALL concentrations are ZERO - no maps")
 
             # first pass only refines grid for small plumes
             if ipass == 0 and map_opt_passes == 2:
@@ -690,19 +691,28 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         self._initialize_map_projection(self.cdump)
 
+        contour_levels = None
+        
         for t_index in self.time_selector:
             t_grids = helper.TimeIndexGridFilter(self.cdump.grids,
                                                  helper.TimeIndexSelector(t_index, t_index))
             
+            v_grids = helper.sum_over_pollutants_per_level(t_grids,
+                                                           self.level_selector,
+                                                           self.pollutant_selector)
+            
+            # TODO: better
             if self.settings.KAVG == const.ConcentrationType.VERTICAL_AVERAGE:
-                v_grids = helper.sum_over_pollutants_per_level(t_grids,
-                                                               self.level_selector,
-                                                               self.pollutant_selector)
                 v_avg = vavg_calc.average(v_grids)
-                grids = [v_avg]
+                
+                g = v_grids[0].clone_except_conc()
+                g.conc = v_avg
+                grids = [g]
             else:
-                grids = helper.VerticalLevelGridFilter(t_grids, self.level_selector)
-                # TODO: remove grids with vert_level = 0 m.
+                # remove grids with vertical level = 0 m.
+                grids = list(filter(lambda g: g.vert_level > 0, v_grids))
+                # sort by vertical level
+                grids = sorted(grids, key=lambda g: g.vert_level)
 
             # TODO: move?
             if self.settings.exposure_unit == const.ExposureUnit.EXPOSURE:
@@ -712,15 +722,16 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 TFACT = self.settings.CONADJ * abs(g.get_duration_in_sec())
                 if t_index == self.time_selector.first:
                     f = abs(g.get_duration_in_sec())
-                    p.scale_exposure(self.settings.KAVG, f)
+                    self.data_properties.scale_exposure(self.settings.KAVG, f)
             else:
                 # conc unit conversion factor
                 TFACT = self.settings.CONADJ
+            logger.debug("CONADJ %g, TFACT %g", self.settings.CONADJ, TFACT)
             
             # save the initial time for internal summation
             if t_index == self.time_selector.first:
                 initial_time = grids[0].starting_datetime
-                
+            
             for g in grids:
                 self.layout(g, ev_handlers)
                 
@@ -729,11 +740,20 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 self._turn_off_ticks(self.conc_outer)
                 self.conc_outer.set_title(self.make_plot_title(g))
                 
-                contour_levels = lgen.make_levels(self.data_properties.min_concs[-1],
-                                                  self.data_properties.max_concs[-1],
-                                                  self.settings.contour_level_count)
+                if contour_levels is None:
+                    contour_levels = lgen.make_levels(self.data_properties.min_concs[-1],
+                                                      self.data_properties.max_concs[-1],
+                                                      self.settings.contour_level_count)
                 
-                # TODO: correction for mapping.
+                LEVEL0 = helper.get_lower_level(g.vert_level, self.cdump.vert_levels)
+                
+                # TODO: better
+                if self.settings.KAVG == 1 and self.settings.exposure_unit == 4:
+                    # mass loading
+                    f = float(g.vert_level - LEVEL0)
+                    TFACT *= f
+                    self.data_properties.scale_exposure(self.settings.KAVG, f)
+                    
                 xconc = numpy.copy(g.conc)
                 xconc *= TFACT
                 
@@ -744,6 +764,13 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 self.draw_contour_legends()
                 self.draw_bottom_text()
                 
+                # TODO: better
+                if self.settings.KAVG == 1 and self.settings.exposure_unit == 4:
+                    # mass unloading
+                    f = 1.0 / float(g.vert_level - LEVEL0)
+                    TFACT *= f
+                    self.data_properties.scale_exposure(self.settings.KAVG, f)
+                    
                 if self.settings.interactive_mode:
                     plt.show(*args, **kw)
                 else:
@@ -756,7 +783,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 #self.fig.clf()
                 plt.close(self.fig)
                 current_frame += 1
-    
+                    
 
 class LabelledContourLevel:
     

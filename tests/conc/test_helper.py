@@ -76,6 +76,16 @@ def test_find_nonzero_min_max(cdump2):
     assert vmax * 1.0e+13 == pytest.approx(8.047535)
   
 
+def test_get_lower_level():
+    assert helper.get_lower_level(300.0, [100.0, 300.0]) == 100.0
+    assert helper.get_lower_level(100.0, [100.0, 300.0]) == 0.0
+    
+    assert helper.get_lower_level(300.0, [300.0, 100.0]) == 100.0
+    assert helper.get_lower_level(100.0, [300.0, 100.0]) == 0.0   
+    
+    assert helper.get_lower_level(100.0, [0.0, 100.0, 300.0]) == 0.0
+    
+    
 def test_TimeIndexSelector___init__():
     s = helper.TimeIndexSelector()
     assert s.first == 0

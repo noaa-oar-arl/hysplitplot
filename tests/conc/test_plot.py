@@ -710,7 +710,7 @@ def test_ConcentrationPlot__determine_map_limits(cdump):
         mb2 = p._determine_map_limits(nil_plot_data, 2)
         pytest.fail("expected an exception")
     except Exception as ex:
-        assert str(ex) == "no concentration data to plot"
+        assert str(ex) == "ALL concentrations are ZERO - no maps"
 
 
 def test_ConcentrationPlot_draw_concentration_plot():

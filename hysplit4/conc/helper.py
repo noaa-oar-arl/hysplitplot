@@ -38,7 +38,7 @@ def sum_over_pollutants_per_level(grids, level_selector, pollutant_selector):
             for b in a[1:]:
                 g.conc += b.conc
             v_grids.append(g)
-            
+       
     return v_grids
 
 
@@ -67,7 +67,17 @@ def find_nonzero_min_max(mat):
         vmin = util.nonzero_min(mat)    # may return None.
 
     return vmin, vmax
-   
+
+
+def get_lower_level(current_level, levels):
+    sorted_levels = sorted(levels)
+
+    k = sorted_levels.index(current_level)
+    if k > 0:
+        return sorted_levels[k - 1]
+    else:
+        return 0.0
+    
 
 class TimeIndexSelector:
     
@@ -195,6 +205,8 @@ class ConcentrationDumpProperty:
             
         if vmax is not None:
             self.max_average = max(self.max_average, vmax)
+            
+        logger.debug("average min %g, max %g", self.min_average, self.max_average)
 
     def update_min_max_at_level(self, vmin, vmax, level_index):
         if vmin is not None:
@@ -203,6 +215,11 @@ class ConcentrationDumpProperty:
         if vmax is not None:
             self.max_concs[level_index] = max(self.max_concs[level_index], vmax)
 
+        logger.debug("level %d: min %g, max %g",
+                     level_index,
+                     self.min_concs[level_index],
+                     self.max_concs[level_index])
+        
     # TODO: refactor using classes
     def scale_conc(self, KAVG, CONADJ, DEPADJ):
         if self.cdump.vert_levels[0] == 0:
@@ -227,9 +244,12 @@ class ConcentrationDumpProperty:
         if KAVG == const.ConcentrationType.EACH_LEVEL:
             self.min_concs[:] = [x * factor for x in self.min_concs]
             self.max_concs[:] = [x * factor for x in self.max_concs]
+            logger.debug("exposure scaling factor %g, min_concs %s", factor, self.min_concs)
+            logger.debug("exposure scaling factor %g, max_concs %s", factor, self.max_concs)
         else:
             self.min_average *= factor
             self.max_average *= factor
+            logger.debug("exposure scaling factor %g, min avg %g, max avg %g", factor, self.min_average, self.max_average)
                 
 
 class VerticalAverageCalculator:

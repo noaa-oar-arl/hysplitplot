@@ -110,7 +110,7 @@ class ConcentrationGrid:
     def longitudes(self):
         return self.parent.longitudes
     
-    def clone(self):
+    def clone(self, deep_copy_conc=True):
         o = ConcentrationGrid(self.parent)
         o.time_index = self.time_index
         o.pollutant_index = self.pollutant_index
@@ -123,7 +123,11 @@ class ConcentrationGrid:
         o.ending_forecast_hr = self.ending_forecast_hr
         o.conc = copy.deepcopy(self.conc)
         return o
-
+    
+    def clone_except_conc(self):
+        o = self.clone(False)
+        return o
+    
     def repair_pollutant(self, pollutant_index):
         self.pollutant_index = pollutant_index
         self.pollutant = self.parent.get_pollutant(pollutant_index)
