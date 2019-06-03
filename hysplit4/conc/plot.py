@@ -424,8 +424,6 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
     def layout(self, grid, ev_handlers=None):
 
-        self._initialize_map_projection(grid)
-
         fig = plt.figure(
             figsize=(8.5, 11.0),  # letter size
             clear=True,  # clear an existing figure
@@ -494,9 +492,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         logger.debug("using ylabel %s", y_label)
         return y_label
     
-    def _initialize_map_projection(self, grid):
+    def _initialize_map_projection(self, cdump):
         map_opt_passes = 1 if self.settings.ring_number == 0 else 2
-        map_box = self._determine_map_limits(grid, map_opt_passes)
+        map_box = self._determine_map_limits(cdump, map_opt_passes)
 
         if self.settings.center_loc == [0.0, 0.0]:
             self.settings.center_loc = self.cdump.release_locs[0]
@@ -523,6 +521,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         lat_span = cdump.grid_sz[1] * cdump.grid_deltas[1]
         lon_span = cdump.grid_sz[0] * cdump.grid_deltas[0]
         
+        # use finer grids for small maps
         if lat_span < 2.0 and lon_span < 2.0:
             mb = mapbox.MapBox(grid_corner=cdump.grid_loc, grid_size=(lon_span, lat_span), grid_delta=0.10)
         elif lat_span < 5.0 and lon_span < 5.0:
@@ -532,11 +531,15 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         
         return mb
     
-    def _determine_map_limits(self, grid, map_opt_passes):
-        # for small maps set up a finer grid.
-        cdump = grid.parent
+    def _determine_map_limits(self, cdump, map_opt_passes):
         mb = self._create_map_box_instance(cdump)
 
+        # summation of all concentration grids of interest
+        conc = helper.sum_conc_grids_of_interest(cdump.grids,
+                                                 self.level_selector,
+                                                 self.pollutant_selector,
+                                                 self.time_selector)
+        
         for ipass in range(map_opt_passes):
             mb.allocate()
 
@@ -547,10 +550,10 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
             # find trajectory hits
             mb.hit_count = 0
-            for i in range(len(grid.longitudes)):
-                for j in range(len(grid.latitudes)):
-                    if grid.conc[i, j] > 0:
-                        mb.add((grid.longitudes[i], grid.latitudes[j]))
+            for i in range(len(cdump.longitudes)):
+                for j in range(len(cdump.latitudes)):
+                    if conc[i, j] > 0:
+                        mb.add((cdump.longitudes[i], cdump.latitudes[j]))
 
             if mb.hit_count == 0:
                 raise Exception("no concentration data to plot")
@@ -684,6 +687,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                                    self.settings.KHEMIN,
                                                    self.settings.IDYNC)
         vavg_calc = helper.VerticalAverageCalculator(self.cdump, self.level_selector)
+
+        self._initialize_map_projection(self.cdump)
 
         for t_index in self.time_selector:
             t_grids = helper.TimeIndexGridFilter(self.cdump.grids,

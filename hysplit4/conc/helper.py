@@ -42,6 +42,21 @@ def sum_over_pollutants_per_level(grids, level_selector, pollutant_selector):
     return v_grids
 
 
+def sum_conc_grids_of_interest(grids, level_selector, pollutant_selector, time_selector): 
+    fn = lambda g: \
+            g.time_index in time_selector and \
+            g.pollutant_index in pollutant_selector and \
+            g.vert_level in level_selector
+            
+    filtered = list(filter(fn, grids))
+    
+    sum = numpy.copy(filtered[0].conc)
+    for g in filtered[1:]:
+        sum += g.conc
+        
+    return sum
+    
+    
 def find_nonzero_min_max(mat):
     """Find the non-zero minimum value and the maximum value of a numpy matrix"""
     vmax = None

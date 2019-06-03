@@ -462,8 +462,9 @@ def test_ConcentrationPlot_update_gridlines():
     p.merge_plot_settings(None, ["-idata/cdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
     p.read_background_map()
+    p._initialize_map_projection(p.cdump)
     p.layout(p.cdump.grids[0])
-
+    
     # See if no exception is thrown.
     try:
         p.update_gridlines()
@@ -585,6 +586,7 @@ def test_ConcentrationPlot_layout():
     p = plot.ConcentrationPlot()
     p.merge_plot_settings(None, ["-idata/cdump"])
     p.read_data_files()
+    p._initialize_map_projection(p.cdump)
 
     p.layout( p.cdump.grids[0], {"resize_event" : blank_event_handler} )
 
@@ -643,11 +645,12 @@ def test_ConcentrationPlot__initialize_map_projection():
     p.merge_plot_settings(None, ["-idata/cdump"])
     p.read_data_files()
 
-    p._initialize_map_projection( p.cdump.grids[0] )
+    p._initialize_map_projection( p.cdump )
 
     assert isinstance(p.projection, mapproj.MapProjection)
     assert p.crs is not None
     assert p.settings.center_loc == pytest.approx((-84.22, 39.90))
+
 
 def test_ConcentrationPlot__create_map_box_instance():
     p = plot.ConcentrationPlot()
@@ -681,8 +684,11 @@ def test_ConcentrationPlot__create_map_box_instance():
 
 def test_ConcentrationPlot__determine_map_limits(cdump):
     p = plot.ConcentrationPlot()
-
-    mb = p._determine_map_limits(cdump.grids[0], 2)
+    p.time_selector = helper.TimeIndexSelector()
+    p.pollutant_selector = helper.PollutantSelector()
+    p.level_selector = helper.VerticalLevelSelector()    
+    
+    mb = p._determine_map_limits(cdump, 2)
 
     assert mb.grid_corner== [0.0, -90.0]
     assert mb.grid_delta == 1.0
@@ -695,9 +701,13 @@ def test_ConcentrationPlot__determine_map_limits(cdump):
     nil_plot_data.grid_loc = (-84.0, 22.0)
     nil_plot_data.grid_sz = (2, 2)
     g = model.ConcentrationGrid(nil_plot_data)
+    g.time_index = 0
+    g.pollutant_index = 0
+    g.vert_level_index = 0
+    g.conc = numpy.zeros((2, 2))
     nil_plot_data.grids.append(g)
     try:
-        mb2 = p._determine_map_limits(nil_plot_data.grids[0], 2)
+        mb2 = p._determine_map_limits(nil_plot_data, 2)
         pytest.fail("expected an exception")
     except Exception as ex:
         assert str(ex) == "no concentration data to plot"
@@ -711,6 +721,7 @@ def test_ConcentrationPlot_draw_concentration_plot():
     
     # See if no exception is thrown.
     try:
+        p._initialize_map_projection(p.cdump)
         p.layout(p.cdump.grids[0], {"resize_event" : blank_event_handler})
         p.draw_concentration_plot(p.cdump.grids[0],
                                   p.cdump.grids[0].conc,
@@ -726,9 +737,10 @@ def test_ConcentrationPlot_draw_contour_legends():
     p.merge_plot_settings(None, ["-idata/cdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
     p.read_background_map()
-
+    
     # See if no exception is thrown.
     try:
+        p._initialize_map_projection(p.cdump)
         p.layout(p.cdump.grids[0], {"resize_event" : blank_event_handler})
         p.draw_contour_legends()
         cleanup_plot(p)
@@ -744,6 +756,7 @@ def test_ConcentrationPlot_draw_bottom_text():
 
     # See if no exception is thrown.
     try:
+        p._initialize_map_projection(p.cdump)
         p.layout(p.cdump.grids[0], {"resize_event" : blank_event_handler})
         p.draw_bottom_text()
         cleanup_plot(p)
@@ -759,6 +772,7 @@ def test_ConcentrationPlot_draw():
     
     # See if no exception is thrown.
     try:
+        p._initialize_map_projection(p.cdump)
         p.layout(p.cdump.grids[0], {"resize_event" : blank_event_handler})
         p.draw(block=False)
         cleanup_plot(p)
