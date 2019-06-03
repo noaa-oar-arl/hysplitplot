@@ -16,7 +16,12 @@ def test_MapBox___init__():
     assert mb._i == 0
     assert mb._j == 0
 
-
+    mb = mapbox.MapBox(grid_corner=[-84.0, 23.0], grid_size=[10.0, 5.0], grid_delta=0.5)
+    assert mb.sz == [20, 10]
+    assert mb.grid_delta == 0.5
+    assert mb.grid_corner == [-84.0, 23.0]
+    
+    
 def test_MapBox_allocate():
     mb = mapbox.MapBox();
 
@@ -32,23 +37,23 @@ def test_MapBox_add():
     mb = mapbox.MapBox()
     mb.allocate()
 
-    mb.add((-120.5, 45.5))
+    mb.add((-120.3, 45.3))
 
-    assert mb.hit_map[239, 135] == 1
-    assert mb.hit_count == 1
-    assert mb._i == 239
+    # hit at the nearest grid indices.
+    assert mb._i == 240
     assert mb._j == 135
-
+    assert mb.hit_map[240, 135] == 1
+    assert mb.hit_count == 1
 
 def test_MapBox_determine_plume_extent():
     mb = mapbox.MapBox()
     mb.allocate()
 
-    mb.add((-120.5, 45.5))
+    mb.add((-120.3, 45.3))
     mb.determine_plume_extent()
 
     assert mb.plume_sz == [1.0, 1.0]
-    assert mb.plume_loc == [239, 135]
+    assert mb.plume_loc == [240, 135]
 
 
 def test_MapBox_need_to_refine_grid():
@@ -68,11 +73,11 @@ def test_MapBox_refine_grid():
     mb = mapbox.MapBox()
     mb.allocate()
 
-    mb.add((-120.5, 45.5))
+    mb.add((-120.3, 45.3))
     mb.determine_plume_extent()
     mb.refine_grid()
 
-    assert mb.grid_corner == [239.0, 45.0]
+    assert mb.grid_corner == [240.0, 45.0]
     assert mb.grid_delta == 0.10
     assert mb.sz == [10, 10]
     assert mb.hit_map is None
@@ -81,13 +86,13 @@ def test_MapBox_refine_grid():
 def test_MapBox_clear_hit_map():
     mb = mapbox.MapBox()
     mb.allocate()
-    mb.add((-120.5, 45.5))
-    assert mb.hit_map[239, 135] == 1
+    mb.add((-120.3, 45.3))
+    assert mb.hit_map[240, 135] == 1
     assert mb.hit_count == 1
 
     mb.clear_hit_map()
 
-    assert mb.hit_map[239, 135] == 0
+    assert mb.hit_map[240, 135] == 0
     assert mb.hit_count == 0
 
 
@@ -96,17 +101,17 @@ def test_MapBox_set_ring_extent():
     mb.allocate()
     mb.plume_sz = [40.0, 10.0]
     s = plot.TrajectoryPlotSettings()
-    s.center_loc = (-120.5, 45.5)
+    s.center_loc = (-120.3, 45.3)
     s.ring_number = 4
     s.ring_distance = 101.0
 
     mb.set_ring_extent(s)
 
     assert s.ring_distance == 100.0
-    assert mb.hit_map[239, 138] == 0
-    assert mb.hit_map[239, 137] == 1
-    assert mb.hit_map[239, 136] == 1
-    assert mb.hit_map[239, 135] == 2
-    assert mb.hit_map[239, 134] == 1
-    assert mb.hit_map[239, 133] == 1
-    assert mb.hit_map[239, 132] == 0
+    assert mb.hit_map[240, 138] == 0
+    assert mb.hit_map[240, 137] == 1
+    assert mb.hit_map[240, 136] == 1
+    assert mb.hit_map[240, 135] == 2
+    assert mb.hit_map[240, 134] == 1
+    assert mb.hit_map[240, 133] == 1
+    assert mb.hit_map[240, 132] == 0

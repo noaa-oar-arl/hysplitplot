@@ -470,11 +470,11 @@ def test_TrajectoryPlot__determine_map_limits(plotData):
 
     mb = p._determine_map_limits(plotData, 2)
 
-    assert mb.grid_corner== [0.0, -90.0]
+    assert mb.grid_corner == [0.0, -90.0]
     assert mb.grid_delta == 1.0
     assert mb.sz == [360, 181]
-    assert mb.plume_sz == [5.0, 5.0]
-    assert mb.plume_loc == [270, 126]
+    assert mb.plume_sz == [6.0, 4.0]
+    assert mb.plume_loc == [270, 127]
 
     nil_plot_data = model.TrajectoryDump()
 

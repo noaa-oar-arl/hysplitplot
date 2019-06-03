@@ -422,9 +422,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
     def read_background_map(self):
         self.background_maps = self.load_background_map(self.settings.map_background)
 
-    def layout(self, ev_handlers=None):
+    def layout(self, grid, ev_handlers=None):
 
-        self._initialize_map_projection()
+        self._initialize_map_projection(grid)
 
         fig = plt.figure(
             figsize=(8.5, 11.0),  # letter size
@@ -494,9 +494,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         logger.debug("using ylabel %s", y_label)
         return y_label
     
-    def _initialize_map_projection(self):
+    def _initialize_map_projection(self, grid):
         map_opt_passes = 1 if self.settings.ring_number == 0 else 2
-        map_box = self._determine_map_limits(self.cdump, map_opt_passes)
+        map_box = self._determine_map_limits(grid, map_opt_passes)
 
         if self.settings.center_loc == [0.0, 0.0]:
             self.settings.center_loc = self.cdump.release_locs[0]
@@ -510,7 +510,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                                                        self.settings.zoom_factor,
                                                                        self.settings.center_loc,
                                                                        self.settings.SCALE,
-                                                                       (map_box.grid_delta, map_box.grid_delta),
+                                                                       self.cdump.grid_deltas,
                                                                        map_box)
         self.projection.refine_corners(self.settings.center_loc)
 
@@ -519,8 +519,23 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         self.crs = self.projection.create_crs()
 
-    def _determine_map_limits(self, cdump, map_opt_passes):
-        mb = mapbox.MapBox()
+    def _create_map_box_instance(self, cdump):
+        lat_span = cdump.grid_sz[1] * cdump.grid_deltas[1]
+        lon_span = cdump.grid_sz[0] * cdump.grid_deltas[0]
+        
+        if lat_span < 2.0 and lon_span < 2.0:
+            mb = mapbox.MapBox(grid_corner=cdump.grid_loc, grid_size=(lon_span, lat_span), grid_delta=0.10)
+        elif lat_span < 5.0 and lon_span < 5.0:
+            mb = mapbox.MapBox(grid_corner=cdump.grid_loc, grid_size=(lon_span, lat_span), grid_delta=0.20)
+        else:
+            mb = mapbox.MapBox()
+        
+        return mb
+    
+    def _determine_map_limits(self, grid, map_opt_passes):
+        # for small maps set up a finer grid.
+        cdump = grid.parent
+        mb = self._create_map_box_instance(cdump)
 
         for ipass in range(map_opt_passes):
             mb.allocate()
@@ -532,11 +547,10 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
             # find trajectory hits
             mb.hit_count = 0
-            for cg in cdump.grids:
-                for i in range(len(cg.longitudes)):
-                    for j in range(len(cg.latitudes)):
-                        if cg.conc[i, j] > 0:
-                            mb.add((cg.longitudes[i], cg.latitudes[j]))
+            for i in range(len(grid.longitudes)):
+                for j in range(len(grid.latitudes)):
+                    if grid.conc[i, j] > 0:
+                        mb.add((grid.longitudes[i], grid.latitudes[j]))
 
             if mb.hit_count == 0:
                 raise Exception("no concentration data to plot")
@@ -585,7 +599,10 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         # draw optional concentric circles
         if self.settings.ring and self.settings.ring_number > 0:
-            self._draw_concentric_circles(axes)
+            self._draw_concentric_circles(axes,
+                                          self.cdump.release_locs[0],
+                                          self.settings.ring_number,
+                                          self.settings.ring_distance)
 
         # place station locations
         self._draw_stations_if_exists(axes, self.settings)
@@ -680,6 +697,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 grids = [v_avg]
             else:
                 grids = helper.VerticalLevelGridFilter(t_grids, self.level_selector)
+                # TODO: remove grids with vert_level = 0 m.
 
             # TODO: move?
             if self.settings.exposure_unit == const.ExposureUnit.EXPOSURE:
@@ -699,7 +717,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 initial_time = grids[0].starting_datetime
                 
             for g in grids:
-                self.layout(ev_handlers)
+                self.layout(g, ev_handlers)
                 
                 # plot title
                 self._turn_off_spines(self.conc_outer)

@@ -8,11 +8,12 @@ logger = logging.getLogger(__name__)
 
 class MapBox:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.hit_map = None
-        self.sz = [360, 181]
-        self.grid_delta = 1.0
-        self.grid_corner = [0.0, -90.0] # (lon, lat)
+        self.grid_delta = kwargs.get("grid_delta", 1.0)
+        self.grid_corner = kwargs.get("grid_corner", [0.0, -90.0]) # (lon, lat)
+        grid_size = kwargs.get("grid_size", (360.0, 181.0))
+        self.sz = [util.nearest_int(v / self.grid_delta) for v in grid_size]
         self.plume_sz = [0.0, 0.0]      # (lon, lat)
         self.plume_loc = [0, 0]         # lon-, lat-indices
         self.hit_count = 0
@@ -35,8 +36,8 @@ class MapBox:
         lon, lat = lonlat
         if lon < 0.0:
             lon += 360.0
-        self._i = min(self.sz[0], int((lon - self.grid_corner[0]) / self.grid_delta))
-        self._j = min(self.sz[1], int((lat - self.grid_corner[1]) / self.grid_delta))
+        self._i = min(self.sz[0], util.nearest_int((lon - self.grid_corner[0]) / self.grid_delta))
+        self._j = min(self.sz[1], util.nearest_int((lat - self.grid_corner[1]) / self.grid_delta))
         # count hits
         self.hit_map[self._i, self._j] += 1
         self.hit_count += 1
@@ -60,6 +61,13 @@ class MapBox:
                     self.plume_loc[0] = min(self.plume_loc[0], i)
                     break
 
+        logger.debug("plume location: index (%d, %d), lonlat (%f, %f)",
+                     self.plume_loc[0], self.plume_loc[1],
+                     self.grid_corner[0] + self.plume_loc[0] * self.grid_delta,
+                     self.grid_corner[1] + self.plume_loc[1] * self.grid_delta);
+        logger.debug("plume size in degs: %f x %f",
+                     self.plume_sz[0],
+                     self.plume_sz[1])
         return
 
     def need_to_refine_grid(self):
