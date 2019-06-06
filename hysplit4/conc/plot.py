@@ -6,9 +6,11 @@ import math
 import numpy
 import matplotlib.gridspec
 import matplotlib.pyplot as plt
+import copy
 
 from hysplit4 import cmdline, util, const, plotbase, mapbox, mapproj, io, smooth
 from hysplit4.conc import model, helper
+from ctypes.macholib.dyld import dyld_default_search
 
 
 logger = logging.getLogger(__name__)
@@ -175,10 +177,8 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
 
     def parse_contour_levels(self, str):
         if str.count(":") > 0:
-            self.contour_levels = self.parse_labeled_contour_levels(str)
+            self.contour_levels, self.user_color = self.parse_labeled_contour_levels(str)
             self.user_label = True
-            if len(self.contour_levels) > 1:
-                self.user_color = True
         else:
             l = self.parse_simple_contour_levels(str)
             self.contour_levels = [LabelledContourLevel(v) for v in l]
@@ -186,8 +186,8 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.contour_level_count = len(self.contour_levels)
         
         # sort by contour level
-        if self.user_color:
-            self.contour_levels = sorted(self.contour_levels, key=lambda o: o.level)
+        self.contour_levels = sorted(self.contour_levels, key=lambda o: o.level)
+        logger.debug("sorted contour levels: %s", self.contour_levels)
                 
     @staticmethod
     def parse_simple_contour_levels(str):
@@ -220,6 +220,7 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         two ContourLevel objects with respective contour levels 1000.0 and 10000.0.
         """
         list = []
+        color_set = True
         
         tokens = str.split("+")
         
@@ -240,11 +241,13 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
                 o.r = int(a[2][0:3]) / 255.0
                 o.g = int(a[2][3:6]) / 255.0
                 o.b = int(a[2][6:9]) / 255.0
+            else:
+                color_set = False
             
             list.append(o)    
             k += 1
             
-        return list
+        return list, color_set
 
     def get_reader(self):
         return ConcentrationPlotSettingsReader(self)
@@ -295,11 +298,12 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         plotbase.AbstractPlot.__init__(self)
         self.settings = ConcentrationPlotSettings()
         self.cdump = None
-        self.data_properties = None
         self.time_selector = None
         self.level_selector = None
         self.pollutant_selector = None
         self.smoothing_kernel = None
+        self.conc_type = None
+        self.conc_map = None
         
         self.fig = None
         self.conc_outer = None
@@ -357,43 +361,31 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 logger.warning("Changing -d2 to -d1 since single layer")
                 self.settings.KAVG = const.ConcentrationType.EACH_LEVEL
         
-        self.data_properties = self._post_file_processing(self.cdump)
+        self.conc_type = helper.ConcentrationTypeFactory.create_instance(self.settings.KAVG)
+        
+        self._post_file_processing(self.cdump)
+        
+        self.conc_map = helper.ConcentrationMapFactory.create_instance(self.settings.KMAP, self.settings.KHEMIN)
         
         if self.settings.smoothing_distance > 0:
             self.smoothing_kernel = smooth.SmoothingKernelFactory.create_instance(const.SmoothingKernel.SIMPLE, self.settings.smoothing_distance)
             
     def _post_file_processing(self, cdump):
         
-        p = helper.ConcentrationDumpProperty(cdump)
-        vavg_calc = helper.VerticalAverageCalculator(cdump, self.level_selector)
+        self.conc_type.initialize(cdump,
+                                  self.level_selector,
+                                  self.pollutant_selector)
         
         # find min and max values
         for t_index in self.time_selector:
             t_grids = helper.TimeIndexGridFilter(cdump.grids,
                                                  helper.TimeIndexSelector(t_index, t_index))
+            self.conc_type.update_min_max(t_grids)
             
-            if self.settings.KAVG == const.ConcentrationType.VERTICAL_AVERAGE:
-                v_grids = helper.sum_over_pollutants_per_level(t_grids,
-                                                               self.level_selector,
-                                                               self.pollutant_selector)
-                logger.debug("VERT GRIDS %s", v_grids)
-                v_avg = vavg_calc.average(v_grids)
-                logger.debug("VERT AVG %s", v_avg)
-                vmin, vmax = helper.find_nonzero_min_max(v_avg)
-                p.update_average_min_max(vmin, vmax)
-            
-            for g in t_grids:
-                vmin, vmax = helper.find_nonzero_min_max(g.conc)
-                p.update_min_max_at_level(vmin, vmax, g.vert_level_index)
-        
-        p.scale_conc(self.settings.KAVG,
-                     self.settings.CONADJ,
-                     self.settings.DEPADJ)
-        
+        self.conc_type.scale_conc(self.settings.CONADJ,
+                                  self.settings.DEPADJ)
         self._normalize_settings(cdump)
             
-        return p
-
     def _normalize_settings(self, cdump):
         s = self.settings
         
@@ -410,7 +402,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         if s.exposure_unit == const.ExposureUnit.CHEM_THRESHOLDS:
             s.KMAP = const.ConcentrationMapType.THRESHOLD_LEVELS #4
         elif s.exposure_unit == const.ExposureUnit.VA:
-            s.KMAP = const.ConcentrationMapType.VOCANIC_ERUPTION #5
+            s.KMAP = const.ConcentrationMapType.VOLCANIC_ERUPTION #5
         elif s.exposure_unit == const.ExposureUnit.VAL_4:
             s.KMAP = const.ConcentrationMapType.MASS_LOADING #7
         else:
@@ -436,8 +428,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                                   width_ratios=[1.0], height_ratios=[3.25, 1.50])
 
         inner_grid = matplotlib.gridspec.GridSpecFromSubplotSpec(1, 2,
-                                                                 wspace=0.05, hspace=0.0,
-                                                                 width_ratios=[8, 2], height_ratios=[1],
+                                                                 wspace=0.02, hspace=0.0,
+                                                                 width_ratios=[2, 1], height_ratios=[1],
                                                                  subplot_spec=outer_grid[0, 0])
 
         self.fig = fig
@@ -643,20 +635,99 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         if self.settings.noaa_logo:
             self._draw_noaa_logo(axes)
 
-    def draw_contour_legends(self):
-        self._turn_off_ticks(self.legends_axes)
-#                         
-#         alt_text_lines = self.labels.get("TXBOXL")
-#         
-#         maptext_fname = self.make_maptext_filename()
-#         if os.path.exists(maptext_fname):
-#             self._draw_maptext_if_exists(self.text_axes, maptext_fname)
-#         elif (alt_text_lines is not None) and (len(alt_text_lines) > 0):
-#             self._draw_alt_text_boxes(self.text_axes, alt_text_lines)
-#         else:
-#             top_spineQ = self.settings.vertical_coordinate != const.Vertical.NONE
-#             self._turn_off_spines(self.text_axes, top=top_spineQ)
+    def draw_contour_legends(self, contour_labels, contour_levels, contour_colors, cmin, cmax):
+        axes = self.legends_axes
+        s = self.settings
+        
+        self._turn_off_ticks(axes)
+        
+        font_sz = 9.0 # TODO: to be computed
+        small_font_sz = 0.8 * font_sz
+        
+        line_skip = 1 / 20.0
+        small_line_skip = 0.8 * line_skip
+        
+        x = 0.05
+        y = 1.0 - small_line_skip * 0.5;
+        
+        # TODO: unit?
+        conc_unit = "{0}/m$^3$".format(s.default_mass_unit)
+        
+        if self.conc_map.has_banner():
+            str = self.conc_map.get_banner()
+            axes.text(0.5, y, str, color="r", fontsize=small_font_sz,
+                      horizontalalignment="center", verticalalignment="top",
+                      transform=axes.transAxes)
+            y -= small_line_skip
+    
+        dy = line_skip if s.contour_level_count <= 16 else line_skip * 0.65
+        dx = 0.3
+        
+        logger.debug("contour_level_count %d", s.contour_level_count)
+        logger.debug("contour levels %s", contour_levels)
+        logger.debug("contour colors %s", contour_colors)
+        logger.debug("contour labels %s", contour_labels)
 
+        labels = copy.deepcopy(contour_labels)
+        labels.reverse()
+        
+        colors = copy.deepcopy(contour_colors)
+        colors.reverse()
+        
+        for k, level in enumerate(reversed(contour_levels)):
+            clr = colors[k]
+                        
+            box = matplotlib.patches.Rectangle((x, y-dy), dx, dy, color=clr,
+                                               transform=axes.transAxes)
+            axes.add_patch(box)
+            
+            label = labels[k] if k < len(labels) else ""
+            axes.text(x+0.5*dx, y-0.5*dy, label, color="k", fontsize=font_sz,
+                      horizontalalignment="center", verticalalignment="center",
+                      transform=axes.transAxes)
+            
+            v = self.conc_map.format_conc(level)
+            str = ">{0} {1}".format(v, conc_unit)
+            axes.text(x + dx + x, y-0.5*dy, str, color="k", fontsize=font_sz,
+                      horizontalalignment="left", verticalalignment="center",
+                      transform=axes.transAxes)
+            
+            y -= dy
+            
+        if cmax > 0 and (s.show_max_conc ==1 or s.show_max_conc == 2):
+            y -= line_skip * 0.5
+            
+            str = "Maximum: {0:.1e} {1}".format(cmax, conc_unit)
+            axes.text(x, y, str, color="k", fontsize=font_sz,
+                      horizontalalignment="left", verticalalignment="top",
+                      transform=axes.transAxes)
+            y -= line_skip
+            
+            str = "Minimum: {0:.1e} {1}".format(cmin, conc_unit)
+            axes.text(x, y, str, color="k", fontsize=font_sz,
+                      horizontalalignment="left", verticalalignment="top",
+                      transform=axes.transAxes)
+            y -= line_skip
+     
+        y = self.conc_map.draw_explanation_text(axes, x, y, small_font_sz, small_line_skip, labels)
+        
+        if self.settings.this_is_test:
+            y -= small_line_skip * 1.5
+            axes.hlines(y-small_line_skip * 0.5, 0.05, 0.95,
+                    color="k",
+                    linewidth=0.125, 
+                    transform=axes.transAxes)
+            
+            y -= small_line_skip
+            axes.text(0.5, y, "THIS IS A TEST", color="r", fontsize=small_font_sz,
+                      horizontalalignment="center", verticalalignment="top",
+                      transform=axes.transAxes)
+            
+            axes.hlines(y-small_line_skip, 0.05, 0.95,
+                    color="k",
+                    linewidth=0.125, 
+                    transform=axes.transAxes)
+        
     def draw_bottom_text(self):
         self._turn_off_ticks(self.text_axes)
 #                         
@@ -680,40 +751,23 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         
         lgen = ContourLevelGeneratorFactory.create_instance(self.settings.contour_level_generator,
                                                             self.settings.contour_levels,
+                                                            self.settings.UCMIN,
                                                             self.settings.user_color)
         ctbl = ColorTableFactory.create_instance(self.settings)
-        cclr = ContourColorFactory.create_instance(ctbl,
-                                                   self.settings.KMAP,
-                                                   self.settings.contour_level_generator,
-                                                   self.settings.KHEMIN,
-                                                   self.settings.IDYNC)
+     
         vavg_calc = helper.VerticalAverageCalculator(self.cdump, self.level_selector)
 
         self._initialize_map_projection(self.cdump)
 
         contour_levels = None
+        contour_labels = None
         
         for t_index in self.time_selector:
             t_grids = helper.TimeIndexGridFilter(self.cdump.grids,
                                                  helper.TimeIndexSelector(t_index, t_index))
             
-            v_grids = helper.sum_over_pollutants_per_level(t_grids,
-                                                           self.level_selector,
-                                                           self.pollutant_selector)
-            
-            # TODO: better
-            if self.settings.KAVG == const.ConcentrationType.VERTICAL_AVERAGE:
-                v_avg = vavg_calc.average(v_grids)
-                
-                g = v_grids[0].clone_except_conc()
-                g.conc = v_avg
-                grids = [g]
-            else:
-                # remove grids with vertical level = 0 m.
-                grids = list(filter(lambda g: g.vert_level > 0, v_grids))
-                # sort by vertical level
-                grids = sorted(grids, key=lambda g: g.vert_level)
-
+            grids = self.conc_type.prepare_grids_for_plotting(t_grids)
+          
             # TODO: move?
             if self.settings.exposure_unit == const.ExposureUnit.EXPOSURE:
                 g = grids[0]
@@ -722,7 +776,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 TFACT = self.settings.CONADJ * abs(g.get_duration_in_sec())
                 if t_index == self.time_selector.first:
                     f = abs(g.get_duration_in_sec())
-                    self.data_properties.scale_exposure(self.settings.KAVG, f)
+                    self.conc_type.scale_exposure(f)
             else:
                 # conc unit conversion factor
                 TFACT = self.settings.CONADJ
@@ -741,10 +795,17 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 self.conc_outer.set_title(self.make_plot_title(g))
                 
                 if contour_levels is None:
-                    contour_levels = lgen.make_levels(self.data_properties.min_concs[-1],
-                                                      self.data_properties.max_concs[-1],
+                    contour_levels = lgen.make_levels(self.conc_type.contour_min_conc,
+                                                      self.conc_type.contour_max_conc,
                                                       self.settings.contour_level_count)
                 
+                if contour_labels is None:
+                    # TODO: better
+                    if self.settings.contour_levels is not None:
+                        contour_labels = [c.label for c in self.settings.contour_levels]
+                    else:
+                        contour_labels = [""] * self.settings.contour_level_count
+                    
                 LEVEL0 = helper.get_lower_level(g.vert_level, self.cdump.vert_levels)
                 
                 # TODO: better
@@ -752,7 +813,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                     # mass loading
                     f = float(g.vert_level - LEVEL0)
                     TFACT *= f
-                    self.data_properties.scale_exposure(self.settings.KAVG, f)
+                    self.conc_type.scale_exposure(f)
                     
                 xconc = numpy.copy(g.conc)
                 xconc *= TFACT
@@ -760,8 +821,12 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 if self.smoothing_kernel is not None:
                     xconc = self.smoothing_kernel.smooth_with_max_preserved(xconc)
                 
-                self.draw_concentration_plot(g, xconc, contour_levels, cclr.colors)
-                self.draw_contour_legends()
+                cmin, cmax = self.conc_type.get_plot_conc_range(g.vert_level_index)
+                #cmin *= TFACT
+                #cmax *= TFACT
+                    
+                self.draw_concentration_plot(g, xconc, contour_levels, ctbl.colors)
+                self.draw_contour_legends(contour_labels, contour_levels, ctbl.colors, cmin, cmax)
                 self.draw_bottom_text()
                 
                 # TODO: better
@@ -769,7 +834,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                     # mass unloading
                     f = 1.0 / float(g.vert_level - LEVEL0)
                     TFACT *= f
-                    self.data_properties.scale_exposure(self.settings.KAVG, f)
+                    self.conc_type.scale_exposure(f)
                     
                 if self.settings.interactive_mode:
                     plt.show(*args, **kw)
@@ -793,16 +858,23 @@ class LabelledContourLevel:
         self.r = r
         self.g = g
         self.b = b
-    
+        
+    def __repr__(self):
+        return "LabelledContourLevel({0}, {1}, r{2}, g{3}, b{4})".format(self.label, self.level, self.r, self.g, self.b)
+
     
 class ContourLevelGeneratorFactory:
     
     @staticmethod
-    def create_instance(generator, cntr_levels, user_colorQ):
+    def create_instance(generator, cntr_levels, UCMIN, user_colorQ):
         if generator == const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC:
-            return ExponentialDynamicLevelGenerator()
+            return ExponentialDynamicLevelGenerator(UCMIN)
+        elif generator == const.ContourLevelGenerator.CLG_50:
+            return ExponentialDynamicLevelGenerator(UCMIN, force_base_ten=True)
+        elif generator == const.ContourLevelGenerator.CLG_51:
+            return ExponentialDynamicLevelGenerator(UCMIN, force_base_ten=True)
         elif generator == const.ContourLevelGenerator.EXPONENTIAL_FIXED:
-            return ExponentialFixedLevelGenerator()
+            return ExponentialFixedLevelGenerator(UCMIN)
         elif generator == const.ContourLevelGenerator.LINEAR_DYNAMIC:
             return LinearDynamicLevelGenerator()
         elif generator == const.ContourLevelGenerator.LINEAR_FIXED:
@@ -815,36 +887,45 @@ class ContourLevelGeneratorFactory:
 
 class AbstractContourLevelGenerator:
     
-    def __init__(self):
+    def __init__(self, **kwargs):
         return
 
 
 class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
     
-    def __init__(self):
-        AbstractContourLevelGenerator.__init__(self)
-    
-    @staticmethod
-    def make_levels(cmin, cmax, max_levels):
+    def __init__(self, UCMIN, **kwargs):
+        AbstractContourLevelGenerator.__init__(self, **kwargs)
+        self.UCMIN = UCMIN
+        self.force_base_10 = kwargs.get("force_base_10", False)
+
+    def make_levels(self, cmin, cmax, max_levels):
+        cint = 10.0; cint_inverse = 0.1
+        if (not self.force_base_10) and cmax > 1.0e+8 * cmin:
+            cint = 100.0; cint_inverse = 0.01
+
         nexp = int(math.log10(cmax))
         if nexp < 0:
             nexp -= 1
+        
         levels = numpy.empty(max_levels, dtype=float)
-        levels[1] = math.pow(10.0, nexp)
-        levels[0] = 10.0 * levels[1]
-        for k in range(2, len(levels)):
-            levels[k] = 0.1 * levels[k - 1]
+        a = math.pow(10.0, nexp)
+        if a < self.UCMIN:
+            levels[0] = self.UCMIN
+            levels[1:] = 0.0
+        else:
+            levels[0] = a
+            for k in range(1, max_levels):
+                a = levels[k - 1] * cint_inverse
+                levels[k] = 0.0 if a < self.UCMIN else a
+        
+        logger.debug("contour levels: %s using max %g, levels %d", levels, cmax, max_levels)
         return numpy.flip(levels)
 
 
-class ExponentialFixedLevelGenerator(AbstractContourLevelGenerator):
+class ExponentialFixedLevelGenerator(ExponentialDynamicLevelGenerator):
     
-    def __init__(self):
-        AbstractContourLevelGenerator.__init__(self)
-
-    @staticmethod
-    def make_levels(cmin, cmax, max_levels):
-        return ExponentialDynamicLevelGenerator.make_levels(cmin, cmax, max_levels)
+    def __init__(self, UCMIN, **kwargs):
+        ExponentialDynamicLevelGenerator.__init__(self, UCMIN, **kwargs)
         
         
 class LinearDynamicLevelGenerator(AbstractContourLevelGenerator):
@@ -858,22 +939,21 @@ class LinearDynamicLevelGenerator(AbstractContourLevelGenerator):
         if nexp < 0:
             nexp -= 1
         cint = math.pow(10.0, nexp)
-        if cmax / cint > 6:
+        if cmax > 6 * cint:
             cint *= 2.0
+            
         levels = numpy.empty(max_levels, dtype=float)
         for k in range(len(levels)):
             levels[k] = cint * (k + 1)
+            
+        logger.debug("contour levels: %s using max %g, levels %d", levels, cmax, max_levels)
         return levels
 
 
-class LinearFixedLevelGenerator(AbstractContourLevelGenerator):
+class LinearFixedLevelGenerator(LinearDynamicLevelGenerator):
     
     def __init__(self):
-        AbstractContourLevelGenerator.__init__(self)
-
-    @staticmethod
-    def make_levels(cmin, cmax, max_levels):
-        return LinearDynamicLevelGenerator.make_levels(cmin, cmax, max_levels)
+        LinearDynamicLevelGenerator.__init__(self)
     
     
 class UserSpecifiedLevelGenerator(AbstractContourLevelGenerator):
@@ -892,12 +972,21 @@ class ColorTableFactory:
 
     @staticmethod
     def create_instance(settings):
+        ncolors = settings.contour_level_count
+        logger.debug("ColorTableFactory::create_instance: color count %d", ncolors)
+        
+        skip_std_colors = False
+        if settings.contour_level_generator == const.ContourLevelGenerator.USER_SPECIFIED:
+            skip_std_colors = True
+        elif settings.contour_level_generator == const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC and settings.IDYNC != 0:
+            skip_std_colors = True
+        
         if settings.KMAP == const.ConcentrationMapType.THRESHOLD_LEVELS and settings.KHEMIN == 1:
-            ct = DefaultChemicalThresholdColorTable()
+            ct = DefaultChemicalThresholdColorTable(ncolors, skip_std_colors)
         elif settings.user_color:
             ct = UserColorTable(settings.contour_levels)
         else:
-            ct = DefaultColorTable()
+            ct = DefaultColorTable(ncolors, skip_std_colors)
             f = ColorTableFactory._get_color_table_filename()
             if f is not None:
                 ct.get_reader().read(f)
@@ -908,6 +997,7 @@ class ColorTableFactory:
         if settings.color == const.ConcentrationPlotColor.BLACK_AND_WHITE or settings.color == const.ConcentrationPlotColor.VAL_3:
             ct.change_to_grayscale()
         
+        logger.debug("using color table: %s", ct)
         return ct
     
     @staticmethod
@@ -921,9 +1011,9 @@ class ColorTableFactory:
     
 class ColorTable:
     
-    def __init__(self):
-        self.__colors = None
+    def __init__(self, ncolors):
         self.rgbs = []
+        self.ncolors = ncolors
         return
     
     def get_reader(self):
@@ -941,14 +1031,7 @@ class ColorTable:
     def get_luminance(rgb):
         r, g, b = rgb
         return 0.299*r + 0.587*b + 0.114*b
-    
-    @property
-    def colors(self):
-        if self.__colors is None:
-            self.__colors = self.create_plot_colors(self.rgbs)
-            
-        return self.__colors
-    
+       
     @staticmethod
     def create_plot_colors(rgbs):
         return [util.make_color(o[0], o[1], o[2]) for o in rgbs]
@@ -956,8 +1039,9 @@ class ColorTable:
         
 class DefaultColorTable(ColorTable):
     
-    def __init__(self):
-        ColorTable.__init__(self)
+    def __init__(self, ncolors, skip_std_colors):
+        ColorTable.__init__(self, ncolors)
+        self.skip_std_colors = skip_std_colors
         self.rgbs = [
             (1.0, 1.0, 1.0), (1.0, 1.0, 0.0), (0.0, 0.0, 1.0), (0.0, 1.0, 0.0),
             (0.0, 1.0, 1.0), (1.0, 0.0, 0.0), (1.0, 0.6, 0.0), (1.0, 1.0, 0.0),
@@ -967,12 +1051,25 @@ class DefaultColorTable(ColorTable):
             (0.6, 0.0, 0.0), (1.0, 0.8, 1.0), (0.4, 0.4, 1.0), (1.0, 1.0, 1.0),
             (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
             (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0)]
-
+        self.__colors = None
+                
+    @property
+    def colors(self):
+        if self.__colors is None:
+            clrs = self.create_plot_colors(self.rgbs)
+            if self.skip_std_colors:
+                self.__colors = clrs[5 + self.ncolors - 1:4:-1]
+            else:
+                self.__colors = clrs[1 + self.ncolors - 1:0:-1]
+            
+        return self.__colors
 
 class DefaultChemicalThresholdColorTable(ColorTable):
     
-    def __init__(self):
-        ColorTable.__init__(self)
+    def __init__(self, ncolors, skip_std_colors):
+        ColorTable.__init__(self, ncolors)
+        self.skip_std_colors = skip_std_colors
+        self.__colors = None
         self.rgbs = [
             (1.0, 1.0, 1.0), (0.8, 0.8, 0.8), (1.0, 1.0, 0.0), (1.0, 0.5, 0.0),
             (1.0, 0.0, 0.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
@@ -982,14 +1079,32 @@ class DefaultChemicalThresholdColorTable(ColorTable):
             (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
             (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
             (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0)]
+    
+    @property
+    def colors(self):
+        if self.__colors is None:
+            clrs = self.create_plot_colors(self.rgbs)
+            if self.skip_std_colors:
+                self.__colors = clrs[5 + self.ncolors - 1:4:-1]
+            else:
+                self.__colors = clrs[1 + self.ncolors - 1:0:-1]
         
+        return self.__colors
+
 
 class UserColorTable(ColorTable):
     
     def __init__(self, contour_levels):
-        ColorTable.__init__(self)
+        ColorTable.__init__(self, len(contour_levels))
         self.rgbs = [(o.r, o.g, o.b) for o in contour_levels]
-
+        self.__colors = None
+        
+    @property
+    def colors(self):
+        if self.__colors is None:
+            self.__colors = self.create_plot_colors(self.rgbs)
+            
+        return self.__colors
 
 class ColorTableReader(io.FormattedTextFileReader):
     
@@ -1017,17 +1132,6 @@ class ColorTableReader(io.FormattedTextFileReader):
         self.close()
         
         return self.color_table
-    
-    
-class ContourColorFactory:
-    
-    @staticmethod
-    def create_instance(color_table, *args):
-        return ContourColor(color_table)
-    
-
-class ContourColor:
-    
-    def __init__(self, color_table):
-        c = color_table.colors
-        self.colors = [c[8], c[7], c[6], c[5]]
+ 
+ 
+ 

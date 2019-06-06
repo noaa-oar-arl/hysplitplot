@@ -62,6 +62,8 @@ class ContourLevelGenerator:
     LINEAR_DYNAMIC = 2
     LINEAR_FIXED = 3
     USER_SPECIFIED = 4
+    CLG_50 = 50 # TODO: what is this called?
+    CLG_51 = 51 # TODO: what is this called?
     
     MAX_LEVELS = 32
 
@@ -85,10 +87,10 @@ class DepositionSum: # NDEP
 class ConcentrationMapType: # KMAP
     CONCENTRATION = 1
     EXPOSURE = 2
-    DEPOSITION = 3
+    DEPOSITION = 3          # NOT USED
     THRESHOLD_LEVELS = 4
-    VOCANIC_ERUPTION = 5
-    DEPOSITION_6 = 6        # TODO: spell it out
+    VOLCANIC_ERUPTION = 5
+    DEPOSITION_6 = 6        # TODO: spell it out # NOT USED
     MASS_LOADING = 7
 
 class SmoothingKernel:
