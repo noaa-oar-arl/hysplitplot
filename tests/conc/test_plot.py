@@ -2,7 +2,7 @@ import pytest
 import matplotlib.pyplot as plt
 import numpy
 from hysplit4.conc import plot, model, helper
-from hysplit4 import const, mapfile, mapproj, labels, smooth
+from hysplit4 import const, mapfile, mapproj, labels, smooth, util
 
 
 @pytest.fixture
@@ -85,7 +85,8 @@ def test_ConcentrationPlotSettings___init__():
     assert s.KAVG == const.ConcentrationType.EACH_LEVEL
     assert s.NDEP == const.DepositionSum.TIME
     assert s.show_max_conc == 1
-    assert s.default_mass_unit == "mass"
+    assert s.mass_unit == "mass"
+    assert s.mass_unit_by_user == False
     assert s.smoothing_distance == 0
     assert s.CONADJ == 1.0 
     assert s.DEPADJ == 1.0
@@ -227,12 +228,17 @@ def test_ConcentrationPlotSettings_process_command_line_arguments():
     assert s.show_max_conc == 2   
     
     # test -u or -U
-    s.default_mass_unit = None
+    s.mass_unit = None
+    s.mass_unit_by_user = False
     s.process_command_line_arguments(["-ukg"])
-    assert s.default_mass_unit == "kg"
+    assert s.mass_unit == "kg"
+    assert s.mass_unit_by_user == True
     
+    s.mass_unit = None
+    s.mass_unit_by_user = False
     s.process_command_line_arguments(["-Umg"])
-    assert s.default_mass_unit == "mg"
+    assert s.mass_unit == "mg"
+    assert s.mass_unit_by_user == True
     
     # test -w or -W
     s.smoothing_distance = None
@@ -467,6 +473,8 @@ def test_ConcentrationPlot___init__():
     assert hasattr(p, "smoothing_kernel")
     assert hasattr(p, "conc_type")
     assert hasattr(p, "conc_map")
+    assert hasattr(p, "prev_forecast_time")
+    assert hasattr(p, "length_factory")
 
     assert hasattr(p, "fig")
     assert hasattr(p, "conc_outer")
@@ -580,6 +588,32 @@ def test_ConcentrationPlot__normalize_settings(cdump2):
     assert s.KMAP == const.ConcentrationMapType.MASS_LOADING #
 
 
+def test_ConcentrationPlot_update_height_unit():
+    p = plot.ConcentrationPlot()
+    o = labels.LabelsConfig()
+    
+    # check the default
+    assert p.settings.height_unit == const.HeightUnit.METERS
+    
+    # test with "feet"
+    o.cfg["ALTTD"] = "feet"
+    p.update_height_unit(o)
+    assert p.settings.height_unit == const.HeightUnit.FEET
+
+    # test with "meters"
+    o.cfg["ALTTD"] = "meters"
+    p.update_height_unit(o)
+    assert p.settings.height_unit == const.HeightUnit.METERS
+
+    # test with "kg"
+    o.cfg["ALTTD"] = "kg"
+    try:
+        p.update_height_unit(o)
+        pytest.fail("expected an exception")
+    except Exception as ex:
+        assert str(ex).startswith("ALTTD units must be meters or feet")
+
+        
 def test_ConcentrationPlot__fix_map_color():
     p = plot.ConcentrationPlot()
 
@@ -623,42 +657,64 @@ def test_ConcentrationPlot_make_plot_title(cdump):
     plotData = cdump.grids[0]
     p = plot.ConcentrationPlot()
     p.labels = labels.LabelsConfig()
+    p.conc_type = helper.LevelConcentration()
+    p.conc_map = helper.ThresholdLevelsMap(4)
+    level1 = util.LengthInMeters(1.0)
+    level2 = util.LengthInMeters(2.0)
     
-    title = p.make_plot_title(plotData)
+    title = p.make_plot_title(plotData, level1, level2)
     assert title == "NOAA HYSPLIT MODEL\n" + \
-            "TODO\n" + \
+            "Concentration ($mass/m^3$) at level 2 m\n" + \
             "Integrated from 1700 25 Sep to 0500 26 Sep 83 (UTC)\n" + \
             "TEST Release started at 1700 25 Sep 83 (UTC)"
 
     # swap start and end datetimes
     plotData.starting_datetime, plotData.ending_datetime = plotData.ending_datetime, plotData.starting_datetime
     
-    title = p.make_plot_title(plotData)
+    title = p.make_plot_title(plotData, level1, level2)
     assert title == "NOAA HYSPLIT MODEL\n" + \
-            "TODO\n" + \
+            "Concentration ($mass/m^3$) at level 2 m\n" + \
             "Integrated from 0500 26 Sep to 1700 25 Sep 83 (UTC) [backward]\n" + \
             "TEST Calculation started at 1700 25 Sep 83 (UTC)"
 
 
 def test_ConcentrationPlot_make_ylabel(cdump):
     p = plot.ConcentrationPlot()
+    p.length_factory = util.LengthInMetersFactory()
     plotData = cdump
     
     # with one release location
     plotData.release_locs = [(30.00, 20.00)]
-    label = plot.ConcentrationPlot.make_ylabel(plotData, "*")
+    label = p.make_ylabel(plotData, "*")
     assert label == "Source * at  20.00 N   30.00 E      from 10 m"
 
     # more than one release location
     plotData.release_locs = [(30.00, 20.00), (31.00, 21.00)]
-    label = plot.ConcentrationPlot.make_ylabel(plotData, "*")
+    label = p.make_ylabel(plotData, "*")
     assert label == "Source * at multiple locations      from 10 m"
 
     # add release heights
     plotData.release_heights = [10, 500]
-    label = plot.ConcentrationPlot.make_ylabel(plotData, "*")
-    assert label == "Source * at multiple locations      from 10 to 500 m"
+    label = p.make_ylabel(plotData, "*")
+    assert label == "Source * at multiple locations      from 10 m to 500 m"
 
+
+def test_ConcentrationPlot_make_xlabel(cdump):
+    p = plot.ConcentrationPlot()
+    p.cdump = cdump
+    g = cdump.grids[0]
+    
+    assert p.make_xlabel(g) == "NARR METEOROLOGICAL DATA"
+
+    g.ending_forecast_hr = 24
+    p.prev_forecast_time = None
+    assert p.make_xlabel(g) == "0500 25 Sep 83 NARR FORECAST INITIALIZATION"
+    
+    g.ending_forecast_hr = 23
+    assert p.make_xlabel(g) == "NARR METEOROLOGICAL DATA"
+
+    assert p.make_xlabel(g) == "0600 25 Sep 83 NARR FORECAST INITIALIZATION"
+    
 
 def test_ConcentrationPlot__initialize_map_projection():
     p = plot.ConcentrationPlot()
@@ -713,7 +769,7 @@ def test_ConcentrationPlot__determine_map_limits(cdump):
     assert mb.grid_corner== [0.0, -90.0]
     assert mb.grid_delta == 1.0
     assert mb.sz == [360, 181]
-    assert mb.plume_sz == [3.0, 4.0]
+    assert mb.plume_sz == [4.0, 4.0]
     assert mb.plume_loc == [276, 130]
 
     nil_plot_data = model.ConcentrationDump()
@@ -752,6 +808,30 @@ def test_ConcentrationPlot_draw_concentration_plot():
         raise pytest.fail("unexpeced exception: {0}".format(ex))
 
 
+def test_ConcentrationPlot_get_conc_unit():
+    p = plot.ConcentrationPlot()
+    p.labels = labels.LabelsConfig()
+    p.conc_map = helper.ThresholdLevelsMap(1)
+    s = p.settings
+    
+    # when both mass units and volume are specified in the labels.cfg
+    p.labels.cfg["UNITS"] = "pg"
+    p.labels.cfg["VOLUM"] = "/cm^3"
+    s.mass_unit_by_user = False
+    assert p.get_conc_unit(s) == "pg/cm^3"
+    
+    # when the mass unit is specified by the user
+    s.mass_unit = "kg"
+    s.mass_unit_by_user = True
+    assert p.get_conc_unit(s) == "kg/cm^3"
+    
+    # no labels params.
+    p.labels.cfg.clear()
+    s.mass_unit = "ppm"
+    s.mass_unit_by_user = False
+    assert p.get_conc_unit(s) == "ppm"
+    
+    
 def test_ConcentrationPlot_draw_contour_legends():
     p = plot.ConcentrationPlot()
     p.merge_plot_settings(None, ["-idata/cdump", "-jdata/arlmap_truncated"])

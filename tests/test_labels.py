@@ -11,8 +11,15 @@ def test_LabelsConfig___init__():
 
 def test_LabelsConfig_get():
     c = labels.LabelsConfig()
+    assert c.has("TITLE") == True
+    assert c.has("NONEXISTENT") == False
+
+
+def test_LabelsConfig_get():
+    c = labels.LabelsConfig()
     assert c.get("TITLE") == "NOAA HYSPLIT MODEL"
     assert c.get("NONEXISTENT") == ""
+    assert c.get("NONEXISTENT", "default") == "default"
 
 
 def test_LabelsConfig_get_reader():
@@ -25,9 +32,9 @@ def test_LabelsConfig_get_reader():
 def test_LabelsConfig_after_reading_file():
     c = labels.LabelsConfig()
     s = plot.TrajectoryPlotSettings()
-    assert s.height_unit == const.HeightUnit.METER
+    assert s.height_unit == const.HeightUnit.METERS
     c.after_reading_file(s)
-    assert s.height_unit == const.HeightUnit.METER
+    assert s.height_unit == const.HeightUnit.METERS
     c.cfg["VUNIT"] = "FEET"
     c.after_reading_file(s)
     assert s.height_unit == const.HeightUnit.FEET

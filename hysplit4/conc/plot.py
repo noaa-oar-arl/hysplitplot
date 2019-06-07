@@ -7,10 +7,12 @@ import numpy
 import matplotlib.gridspec
 import matplotlib.pyplot as plt
 import copy
+import datetime
 
 from hysplit4 import cmdline, util, const, plotbase, mapbox, mapproj, io, smooth
 from hysplit4.conc import model, helper
 from ctypes.macholib.dyld import dyld_default_search
+from pandas.core.common import index_labels_to_array
 
 
 logger = logging.getLogger(__name__)
@@ -42,7 +44,8 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.KAVG = const.ConcentrationType.EACH_LEVEL
         self.NDEP = const.DepositionSum.TIME
         self.show_max_conc = 1
-        self.default_mass_unit = "mass"
+        self.mass_unit = "mass"
+        self.mass_unit_by_user = False
         self.smoothing_distance = 0
         self.CONADJ = 1.0   # conc unit conversion multiplication factor
         self.DEPADJ = 1.0   # deposition unit conversion multiplication factor
@@ -134,7 +137,9 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.show_max_conc = args.get_integer_value(["+m", "+M"], self.show_max_conc)
         self.show_max_conc = max(0, min(3, self.show_max_conc))
         
-        self.default_mass_unit = args.get_string_value(["-u", "-U"], self.default_mass_unit)
+        if args.has_arg(["-u", "-U"]):
+            self.mass_unit = args.get_value(["-u", "-U"])
+            self.mass_unit_by_user = True
         
         self.smoothing_distance = args.get_integer_value(["-w", "-W"], self.smoothing_distance)
         self.smoothing_distance = max(0, min(99, self.smoothing_distance))
@@ -304,6 +309,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.smoothing_kernel = None
         self.conc_type = None
         self.conc_map = None
+        self.prev_forecast_time = None
+        self.length_factory = None
         
         self.fig = None
         self.conc_outer = None
@@ -342,6 +349,10 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         logger.debug("time iteration is limited to index range [%d, %d]",
                      self.time_selector.first, self.time_selector.last)
 
+        logger.debug("level iteration is limited to height range [%.1f, %.1f] in meters",
+                     self.level_selector.min,
+                     self.level_selector.max)
+                
         # normalize pollutant index and name
         self.pollutant_selector.normalize(len(cdump.pollutants) - 1)
         self.settings.pollutant_index = self.pollutant_selector.index
@@ -376,16 +387,20 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                   self.level_selector,
                                   self.pollutant_selector)
         
-        # find min and max values
+        # find min and max values by examining all grids of interest
         for t_index in self.time_selector:
             t_grids = helper.TimeIndexGridFilter(cdump.grids,
                                                  helper.TimeIndexSelector(t_index, t_index))
             self.conc_type.update_min_max(t_grids)
-            
+
+        self.conc_type.normalize_min_max()
+        
         self.conc_type.scale_conc(self.settings.CONADJ,
                                   self.settings.DEPADJ)
         self._normalize_settings(cdump)
-            
+           
+        self.length_factory = util.AbstractLengthFactory.create_factory(self.settings.height_unit)
+
     def _normalize_settings(self, cdump):
         s = self.settings
         
@@ -408,6 +423,19 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         else:
             s.KMAP = s.exposure_unit + 1
 
+        self.update_height_unit(self.labels)
+        
+    def update_height_unit(self, labels):
+        # default values from labels.cfg  
+        if labels.has("ALTTD"):
+            alttd = labels.get("ALTTD")
+            if alttd == "feet":
+                self.settings.height_unit = const.HeightUnit.FEET
+            elif alttd == "meters":
+                self.settings.height_unit = const.HeightUnit.METERS
+            else:
+                raise Exception("ALTTD units must be meters or feet in labels.cfg or its equivalent file: {0}".format(alttd))
+
     @staticmethod
     def _fix_map_color(clr, color_mode):
         return clr if color_mode != const.ConcentrationPlotColor.BLACK_AND_WHITE else 'k'
@@ -424,7 +452,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         )
 
         outer_grid = matplotlib.gridspec.GridSpec(2, 1,
-                                                  wspace=0.0, hspace=0.05,
+                                                  wspace=0.0, hspace=0.075,
                                                   width_ratios=[1.0], height_ratios=[3.25, 1.50])
 
         inner_grid = matplotlib.gridspec.GridSpecFromSubplotSpec(1, 2,
@@ -441,10 +469,14 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         if ev_handlers is not None:
             self._connect_event_handlers(ev_handlers)
     
-    def make_plot_title(self, conc_grid):
+    def make_plot_title(self, conc_grid, level1, level2):
+        s = self.settings
+        
         fig_title = self.labels.get("TITLE")
         
-        fig_title += "\nTODO"
+        conc_unit = self.get_conc_unit(s)
+        fig_title += "\n"
+        fig_title += self.conc_map.get_map_id_line(self.conc_type, conc_unit, level1, level2)
         
         fig_title += conc_grid.starting_datetime.strftime("\nIntegrated from %H%M %d %b to")
         fig_title += conc_grid.ending_datetime.strftime(" %H%M %d %b %y (UTC)")
@@ -461,8 +493,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         
         return fig_title
     
-    @staticmethod
-    def make_ylabel(cdump, marker):
+    def make_ylabel(self, cdump, marker):
         y_label = "Source {0} at".format(marker)
 
         release_locs = cdump.get_unique_start_locations()
@@ -475,15 +506,29 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         release_heights = cdump.get_unique_start_levels()
         if len(release_heights) == 1:
-            height_min = util.nearest_int(release_heights[0])
-            y_label += "      from {0} m".format(height_min) # TODO: m or ft
+            height_min = self.length_factory.create_instance(release_heights[0])
+            y_label += "      from {0}".format(height_min)
         else:
-            height_min = util.nearest_int(min(release_heights))
-            height_max = util.nearest_int(max(release_heights))
-            y_label += "      from {0} to {1} m".format(height_min, height_max) # TODO: m or ft
+            height_min = self.length_factory.create_instance(min(release_heights))
+            height_max = self.length_factory.create_instance(max(release_heights))
+            y_label += "      from {0} to {1}".format(height_min, height_max)
         
         logger.debug("using ylabel %s", y_label)
         return y_label
+       
+    def make_xlabel(self, g):
+        curr_forecast_time = g.ending_datetime - datetime.timedelta(hours=g.ending_forecast_hr)
+        
+        if g.ending_forecast_hr > 12 and (self.prev_forecast_time is None or self.prev_forecast_time == curr_forecast_time):
+            ts = curr_forecast_time.strftime("%H%M %d %b %y")
+            x_label = "{0} {1} FORECAST INITIALIZATION".format(ts, self.cdump.meteo_model)
+        else:
+            x_label = "{0} METEOROLOGICAL DATA".format(self.cdump.meteo_model)
+            
+        self.prev_forecast_time = curr_forecast_time
+        
+        logger.debug("using xlabel %s", x_label)
+        return x_label
     
     def _initialize_map_projection(self, cdump):
         map_opt_passes = 1 if self.settings.ring_number == 0 else 2
@@ -543,9 +588,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
             # find trajectory hits
             mb.hit_count = 0
-            for i in range(len(cdump.longitudes)):
-                for j in range(len(cdump.latitudes)):
-                    if conc[i, j] > 0:
+            for j in range(len(cdump.latitudes)):
+                for i in range(len(cdump.longitudes)):
+                    if conc[j, i] > 0:
                         mb.add((cdump.longitudes[i], cdump.latitudes[j]))
 
             if mb.hit_count == 0:
@@ -624,17 +669,30 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                              transform=self.data_crs)
 
         # draw filled contours
-        axes.contourf(conc_grid.longitudes,
-                      conc_grid.latitudes,
-                      scaled_conc,
-                      contour_levels,
-                      colors=contour_colors,
-                      extend="max",
-                      transform=self.data_crs)
+        if conc_grid.nonzero_conc_count > 0:
+            axes.contourf(conc_grid.longitudes, conc_grid.latitudes, scaled_conc,
+                          contour_levels,
+                          colors=contour_colors, extend="max",
+                          transform=self.data_crs)
         
         if self.settings.noaa_logo:
             self._draw_noaa_logo(axes)
 
+    def get_conc_unit(self, settings):
+        # default values from labels.cfg  
+        mass_unit = self.labels.get("UNITS")
+        volume_unit = self.labels.get("VOLUM")
+                                      
+        if settings.mass_unit_by_user:
+            mass_unit = settings.mass_unit
+        elif not self.labels.has("UNITS"):
+            mass_unit = self.conc_map.guess_mass_unit(settings.mass_unit)
+            
+        if not self.labels.has("VOLUM"):
+            volume_unit = self.conc_map.guess_volume_unit(settings.mass_unit)
+            
+        return "{0}{1}".format(mass_unit, volume_unit)
+        
     def draw_contour_legends(self, contour_labels, contour_levels, contour_colors, cmin, cmax):
         axes = self.legends_axes
         s = self.settings
@@ -649,9 +707,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         
         x = 0.05
         y = 1.0 - small_line_skip * 0.5;
-        
-        # TODO: unit?
-        conc_unit = "{0}/m$^3$".format(s.default_mass_unit)
+                
+        conc_unit = self.get_conc_unit(s)
         
         if self.conc_map.has_banner():
             str = self.conc_map.get_banner()
@@ -661,7 +718,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             y -= small_line_skip
     
         dy = line_skip if s.contour_level_count <= 16 else line_skip * 0.65
-        dx = 0.3
+        dx = 0.25
         
         logger.debug("contour_level_count %d", s.contour_level_count)
         logger.debug("contour levels %s", contour_levels)
@@ -687,7 +744,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                       transform=axes.transAxes)
             
             v = self.conc_map.format_conc(level)
-            str = ">{0} {1}".format(v, conc_unit)
+            str = ">{0} ${1}$".format(v, conc_unit)
             axes.text(x + dx + x, y-0.5*dy, str, color="k", fontsize=font_sz,
                       horizontalalignment="left", verticalalignment="center",
                       transform=axes.transAxes)
@@ -697,13 +754,13 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         if cmax > 0 and (s.show_max_conc ==1 or s.show_max_conc == 2):
             y -= line_skip * 0.5
             
-            str = "Maximum: {0:.1e} {1}".format(cmax, conc_unit)
+            str = "Maximum: {0:.1e} ${1}$".format(cmax, conc_unit)
             axes.text(x, y, str, color="k", fontsize=font_sz,
                       horizontalalignment="left", verticalalignment="top",
                       transform=axes.transAxes)
             y -= line_skip
             
-            str = "Minimum: {0:.1e} {1}".format(cmin, conc_unit)
+            str = "Minimum: {0:.1e} ${1}$".format(cmin, conc_unit)
             axes.text(x, y, str, color="k", fontsize=font_sz,
                       horizontalalignment="left", verticalalignment="top",
                       transform=axes.transAxes)
@@ -730,6 +787,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         
     def draw_bottom_text(self):
         self._turn_off_ticks(self.text_axes)
+        self._turn_off_spines(self.text_axes)
 #                         
 #         alt_text_lines = self.labels.get("TXBOXL")
 #         
@@ -789,10 +847,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             for g in grids:
                 self.layout(g, ev_handlers)
                 
-                # plot title
                 self._turn_off_spines(self.conc_outer)
                 self._turn_off_ticks(self.conc_outer)
-                self.conc_outer.set_title(self.make_plot_title(g))
                 
                 if contour_levels is None:
                     contour_levels = lgen.make_levels(self.conc_type.contour_min_conc,
@@ -805,9 +861,20 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                         contour_labels = [c.label for c in self.settings.contour_levels]
                     else:
                         contour_labels = [""] * self.settings.contour_level_count
-                    
+                
                 LEVEL0 = helper.get_lower_level(g.vert_level, self.cdump.vert_levels)
                 
+                # TODO: better
+                if self.settings.KAVG == 1:
+                    
+                    level1 = self.length_factory.create_instance(LEVEL0)
+                    level2 = self.length_factory.create_instance(g.vert_level)
+                    self.conc_type.set_alt_KAVG(3)
+                else:
+                    # TODO: better
+                    level1 = self.length_factory.create_instance(LEVEL0)
+                    level2 = self.length_factory.create_instance(self.settings.LEVEL2)
+                    
                 # TODO: better
                 if self.settings.KAVG == 1 and self.settings.exposure_unit == 4:
                     # mass loading
@@ -821,12 +888,19 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 if self.smoothing_kernel is not None:
                     xconc = self.smoothing_kernel.smooth_with_max_preserved(xconc)
                 
-                cmin, cmax = self.conc_type.get_plot_conc_range(g.vert_level_index)
+                cmin, cmax = self.conc_type.get_plot_conc_range(g)
+                logger.debug("concentration plot min %g, max %g", cmin, cmax)
                 #cmin *= TFACT
                 #cmax *= TFACT
-                    
-                self.draw_concentration_plot(g, xconc, contour_levels, ctbl.colors)
-                self.draw_contour_legends(contour_labels, contour_levels, ctbl.colors, cmin, cmax)
+
+                # plot title
+                self.conc_outer.set_title(self.make_plot_title(g, level1, level2))
+                self.conc_outer.set_xlabel(self.make_xlabel(g))
+                
+                self.draw_concentration_plot(g, xconc,
+                                             contour_levels, ctbl.colors)
+                self.draw_contour_legends(contour_labels, contour_levels, ctbl.colors,
+                                          cmin, cmax)
                 self.draw_bottom_text()
                 
                 # TODO: better

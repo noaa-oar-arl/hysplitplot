@@ -1,9 +1,11 @@
 import logging
 import numpy
 import sys
+import copy
 
 from hysplit4.conc import model
 from hysplit4 import util, const
+from _operator import concat
 
 
 logger = logging.getLogger(__name__)
@@ -182,6 +184,19 @@ class VerticalLevelGridFilter(AbstractGridFilter):
         return AbstractGridFilter._filter(grids, fn)
 
 
+class GridProperties:
+    
+    def __init__(self):
+        self.min_conc = None
+        self.max_conc = None
+        self.min_vert_avg_conc = None   # across pollutants and vertical levels of interest
+        self.max_vert_avg_conc = None   # across pollutants and vertical levels of interest
+
+    def clone(self):
+        o = copy.copy(self)             # shallow copy since there is no objects
+        return o
+    
+
 class VerticalAverageCalculator:
     
     def __init__(self, cdump, level_selector):
@@ -292,6 +307,12 @@ class VerticalAverageConcentration(ConcentrationType):
         vmin, vmax = find_nonzero_min_max(v_avg)
         self.update_average_min_max(vmin, vmax)
         
+        # set extended grid properties
+        for g in t_grids:
+            g.extension = GridProperties()
+            g.extension.min_vert_avg_conc = vmin if vmin is not None else 0.0
+            g.extension.max_vert_avg_conc = vmax
+            
     def update_average_min_max(self, vmin, vmax):
         if vmin is not None:
             self.min_average = min(self.min_average, vmin)
@@ -310,6 +331,11 @@ class VerticalAverageConcentration(ConcentrationType):
         self.max_average *= factor
         logger.debug("exposure scaling factor %g, min avg %g, max avg %g", factor, self.min_average, self.max_average)
   
+    def normalize_min_max(self):
+        if self.min_average > self.max_average:
+            # This happens if all concentration values are zero.
+            self.min_average, self.max_average = self.max_average, self.min_average
+            
     @property
     def contour_min_conc(self):
         return self.min_average
@@ -318,17 +344,26 @@ class VerticalAverageConcentration(ConcentrationType):
     def contour_max_conc(self):
         return self.max_average
     
-    def get_plot_conc_range(self, vert_level_index):
-        return self.min_average, self.max_average
+    def get_plot_conc_range(self, grid):
+        return grid.extension.min_vert_avg_conc, grid.extension.max_vert_avg_conc
 
-    
+    def get_level_range_str(self, level1, level2):
+        """level1 and level2 are instances of the LengthInFeet or LengthInMeters class."""
+        return "averaged between {0} and {1}".format(level1, level2)
+
+
 class LevelConcentration(ConcentrationType):
     
     def __init__(self):
         ConcentrationType.__init__(self)
-        self.min_concs = None  # at each vertical level
-        self.max_concs = None  # at each vertical level 
+        self.min_concs = None  # per vertical level, across all grids of interest
+        self.max_concs = None  # per vertical level, across all grids of interest
+        self.KAVG = 1
+        self.alt_KAVG = 1
     
+    def set_alt_KAVG(self, KAVG):
+        self.alt_KAVG = KAVG
+ 
     def initialize(self, cdump, level_selector, pollutant_selector):
         ConcentrationType.initialize(self, cdump, level_selector, pollutant_selector)
         self.min_concs = [1.0e+25] * len(cdump.vert_levels)  # at each vertical level
@@ -338,6 +373,10 @@ class LevelConcentration(ConcentrationType):
         for g in t_grids:
             vmin, vmax = find_nonzero_min_max(g.conc)
             self.update_min_max_at_level(vmin, vmax, g.vert_level_index)
+            
+            g.extension = GridProperties()
+            g.extension.min_conc = vmin if vmin is not None else 0.0
+            g.extension.max_conc = vmax
     
     def update_min_max_at_level(self, vmin, vmax, level_index):
         if vmin is not None:
@@ -351,6 +390,29 @@ class LevelConcentration(ConcentrationType):
                      self.min_concs[level_index],
                      self.max_concs[level_index])
 
+    def normalize_min_max(self):
+        logger.debug("before normalization: min %s, max %s", self.min_concs, self.max_concs)
+        
+        for k in range(len(self.min_concs) - 1, -1, -1):
+            if self.max_concs[k] < self.min_concs[k]:
+                # This happens when concentration values at this level are all zeros.
+                
+                repairedQ = False
+                
+                # copy min and max values at a lower level
+                for j in range(k - 1, 0, -1):
+                    if self.max_concs[j] >= self.min_concs[j]:
+                        self.max_concs[k] = self.max_concs[j]
+                        self.min_concs[k] = self.min_concs[j]
+                        repairedQ = True
+                        break
+                    
+                if not repairedQ:
+                    self.min_concs[k] = 0.0
+                    self.max_concs[k] = 1.0e+25
+                    
+        logger.debug("after normalization: min %s, max %s", self.min_concs, self.max_concs)
+        
     def prepare_grids_for_plotting(self, t_grids):
         
         v_grids = sum_over_pollutants_per_level(t_grids,
@@ -374,6 +436,9 @@ class LevelConcentration(ConcentrationType):
         else:
             self.min_concs = [x * CONADJ for x in self.min_concs]
             self.max_concs = [x * CONADJ for x in self.max_concs]
+        logger.debug("scaled conc using CONADJ %g, DEPADJ %g to min %s, max %s",
+                     CONADJ, DEPADJ,
+                     self.min_concs, self.max_concs)
 
     def scale_exposure(self, factor):
         self.min_concs[:] = [x * factor for x in self.min_concs]
@@ -389,30 +454,56 @@ class LevelConcentration(ConcentrationType):
     def contour_max_conc(self):
         return self.max_concs[-1]
     
-    def get_plot_conc_range(self, vert_level_index):
-        return self.min_concs[vert_level_index], self.max_concs[vert_level_index]
+    def get_plot_conc_range(self, grid):
+        logger.debug("conc plot: min %g, max %g, at level %g",
+                     grid.extension.min_conc,
+                     grid.extension.max_conc,
+                     grid.vert_level)
+        return grid.extension.min_conc, grid.extension.max_conc
+
+    def get_level_range_str(self, level1, level2):
+        # TODO: better
+        if self.alt_KAVG == 3:
+            return "averaged between {0} and {1}".format(level1, level2)
+        else:
+            return "at level {0}".format(level2)
 
 
 class ConcentrationMapFactory:
     
     @staticmethod
     def create_instance(KMAP, KHEMIN):
-        if KMAP == const.ConcentrationMapType.THRESHOLD_LEVELS:
-            return ThresholdLevelsMap(KMAP, KHEMIN)
+        if KMAP == const.ConcentrationMapType.CONCENTRATION:
+            return ConcentrationMap(KHEMIN)
+        elif KMAP == const.ConcentrationMapType.EXPOSURE:
+            return ExposureMap(KHEMIN)
+        elif KMAP == const.ConcentrationMapType.DEPOSITION:
+            return DepositionMap(KHEMIN)
+        elif KMAP == const.ConcentrationMapType.THRESHOLD_LEVELS:
+            return ThresholdLevelsMap(KHEMIN)
         elif KMAP == const.ConcentrationMapType.VOLCANIC_ERUPTION:
-            return VolcanicEruptionMap(KMAP, KHEMIN)
+            return VolcanicEruptionMap(KHEMIN)
+        elif KMAP == const.ConcentrationMapType.MASS_LOADING:
+            return MassLoadingMap(KHEMIN)
         else:
-            return ConcentrationMap(KMAP, KHEMIN)
+            return AbstractConcentrationMap(KMAP, KHEMIN)
         
 
-class ConcentrationMap:
+class AbstractConcentrationMap:
     
-    def __init__(self, KMAP, KHEMIN):
+    def __init__(self, KMAP, KHEMIN, map_id="Unspecified"):
         self.KMAP = KMAP
         self.KHEMIN = KHEMIN
+        self.map_id = map_id
 
     def has_banner(self):
         return False
+    
+    def guess_mass_unit(self, mass_unit):
+        return mass_unit
+        
+    def guess_volume_unit(self, mass_unit):
+        return ""
     
     def format_conc(self, v):
         if v >= 100000.0:
@@ -443,18 +534,90 @@ class ConcentrationMap:
     def draw_explanation_text(self, axes, x, y, font_sz, line_skip, contour_labels):
         return y
     
-   
-class ThresholdLevelsMap(ConcentrationMap):
+    def set_map_id(self, str):
+        self.map_id = str
+        
+
+class ConcentrationMap(AbstractConcentrationMap):
     
-    def __init__(self, KMAP, KHEMIN):
-        ConcentrationMap.__init__(self, KMAP, KHEMIN)
+    def __init__(self, KHEMIN):
+        AbstractConcentrationMap.__init__(self,
+                                          const.ConcentrationMapType.CONCENTRATION,
+                                          KHEMIN,
+                                          "Concentration")
+
+    def guess_volume_unit(self, mass_unit):
+        if mass_unit.startswith("ppm"):
+            return ""
+        else:
+            return "/m^3"
+
+    def get_map_id_line(self, conc_type, conc_unit, level1, level2):
+        return self.map_id
+    
+
+class ExposureMap(AbstractConcentrationMap):
+    
+    def __init__(self, KHEMIN):
+        AbstractConcentrationMap.__init__(self,
+                                          const.ConcentrationMapType.EXPOSURE,
+                                          KHEMIN,
+                                          "Exposure")
+    
+    def guess_volume_unit(self, mass_unit):
+        if mass_unit.startswith("rem") or mass_unit.startswith("Sv"):
+            # rem, rem/hr, Sv, or Sv/hr
+            return ""
+        else:
+            return "\u2013s/m^3" # \u2013 is an en-dash
+    
+    def get_map_id_line(self, conc_type, conc_unit, level1, level2):
+        return "{0} (${1}$) {2}".format(self.map_id,
+                                        conc_unit,
+                                        conc_type.get_level_range_str(level1, level2))
+    
+        
+class DepositionMap(AbstractConcentrationMap):
+    
+    def __init__(self, KHEMIN):
+        AbstractConcentrationMap.__init__(self,
+                                          const.ConcentrationMapType.DEPOSITION,
+                                          KHEMIN,
+                                          "Deposition")
+        
+    def guess_volume_unit(self, mass_unit):
+        return "/m^2"
+        
+    def get_map_id_line(self, conc_type, conc_unit, level1, level2):
+        return "{0} (${1}$) at ground-level".format(self.map_id,
+                                                    conc_unit)
+
+        
+class ThresholdLevelsMap(AbstractConcentrationMap):
+    
+    def __init__(self, KHEMIN):
+        AbstractConcentrationMap.__init__(self,
+                                          const.ConcentrationMapType.THRESHOLD_LEVELS,
+                                          KHEMIN,
+                                          "Concentration")
     
     def has_banner(self):
         return True
     
     def get_banner(self):
         return "Not for Public Dissemination"
-
+    
+    def guess_volume_unit(self, mass_unit):
+        if mass_unit.startswith("ppm"):
+            return ""
+        else:
+            return "/m^3"
+        
+    def get_map_id_line(self, conc_type, conc_unit, level1, level2):
+        return "{0} (${1}$) {2}".format(self.map_id,
+                                        conc_unit,
+                                        conc_type.get_level_range_str(level1, level2))
+    
     def format_conc(self, v):
         if v >= 100000.0:
             f = "{:.1e}".format(v)
@@ -531,10 +694,13 @@ class ThresholdLevelsMap(ConcentrationMap):
         return y
 
 
-class VolcanicEruptionMap(ConcentrationMap):
+class VolcanicEruptionMap(AbstractConcentrationMap):
     
-    def __init__(self, KMAP, KHEMIN):
-        ConcentrationMap.__init__(self, KMAP, KHEMIN)
+    def __init__(self, KHEMIN):
+        AbstractConcentrationMap.__init__(self,
+                                          const.ConcentrationMapType.VOLCANIC_ERUPTION,
+                                          KHEMIN,
+                                          "Concentration")
         
     def has_banner(self):
         return True
@@ -542,6 +708,14 @@ class VolcanicEruptionMap(ConcentrationMap):
     def get_banner(self):
         return "*** Hypothetical eruption ***"
 
+    def guess_volume_unit(self, mass_unit):
+        return "/m^3"
+    
+    def get_map_id_line(self, conc_type, conc_unit, level1, level2):
+        return "{0} (${1}$) {2}".format(self.map_id,
+                                        conc_unit,
+                                        conc_type.get_level_range_str(level1, level2))
+ 
     def draw_explanation_text(self, axes, x, y, font_sz, line_skip, contour_labels):
         lines = ["Initial ash mass, see below", "For real eruption, see", "    SIGMET and VAAC products"]
         
@@ -563,3 +737,21 @@ class VolcanicEruptionMap(ConcentrationMap):
                     linewidth=0.125, transform=axes.transAxes)
         
         return y
+        
+        
+class MassLoadingMap(AbstractConcentrationMap):
+    
+    def __init__(self, KHEMIN):
+        AbstractConcentrationMap.__init__(self,
+                                          const.ConcentrationMapType.MASS_LOADING,
+                                          KHEMIN,
+                                          "Mass loading")
+    
+    def guess_volume_unit(self, mass_unit):
+        return "/m^2"
+        
+    def get_map_id_line(self, conc_type, conc_unit, level1, level2):
+        return "{0} (${1}$) {2}".format(self.map_id,
+                                        conc_unit,
+                                        conc_type.get_level_range_str(level1, level2))
+    

@@ -3,6 +3,7 @@ import math
 import numpy
 import os
 import sys
+import abc
 from hysplit4 import const
 
 
@@ -134,3 +135,57 @@ def nonzero_min(a):
         return None
     
     return numpy.min(numpy.ma.masked_where(a==0, a))
+
+
+class AbstractLengthFactory():
+    
+    @staticmethod
+    def create_factory(len_unit):
+        if len_unit == const.HeightUnit.METERS:
+            return LengthInMetersFactory()
+        elif len_unit == const.HeightUnit.FEET:
+            return LengthInFeetFactory()
+        else:
+            raise Exception("unknown length unit type {0}".format(len_unit))
+        
+    @abc.abstractmethod
+    def create_instance(self, v, unit):
+        """Returns a concrete factory for length instances."""
+        
+        
+class LengthInMetersFactory():
+    
+    def create_instance(self, v, unit=const.HeightUnit.METERS):
+        if unit == const.HeightUnit.FEET:
+            v *= 0.3048
+            
+        return LengthInMeters(v)
+    
+
+class LengthInFeetFactory():
+    
+    def create_instance(self, v, unit=const.HeightUnit.METERS):
+        if unit == const.HeightUnit.METERS:
+            v *= 3.28084
+            
+        return LengthInFeet(v)
+    
+
+class LengthInMeters():
+    
+    def __init__(self, v, truncated=True):
+        self.v = v
+        self.truncated = truncated
+        
+    def __repr__(self):
+        return "{0} m".format(nearest_int(self.v)) if self.truncated else "{0:.1f} m".format(self.v)
+    
+
+class LengthInFeet():
+    
+    def __init__(self, v, truncated=True):
+        self.v = v
+        self.truncated = truncated
+        
+    def __repr__(self):
+        return "{0} ft".format(nearest_int(self.v)) if self.truncated else "{0:.1f} ft".format(self.v)

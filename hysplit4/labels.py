@@ -12,8 +12,11 @@ class LabelsConfig():
         self.cfg["TITLE"] = "NOAA HYSPLIT MODEL"
         return
 
-    def get(self, name):
-        return self.cfg[name] if name in self.cfg else ""
+    def has(self, name):
+        return name in self.cfg
+    
+    def get(self, name, default_value=""):
+        return self.cfg[name] if name in self.cfg else default_value
 
     def get_reader(self):
         return LabelsConfigReader(self)

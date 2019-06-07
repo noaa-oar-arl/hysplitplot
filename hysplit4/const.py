@@ -53,7 +53,7 @@ class ZoomFactor:
     MOST_ZOOM = 100
 
 class HeightUnit:
-    METER = 0
+    METERS = 0
     FEET = 1
     
 class ContourLevelGenerator:

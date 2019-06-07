@@ -104,6 +104,8 @@ def test_ConcentrationGrid___init__():
     assert g.starting_forecast_hr == 0
     assert g.ending_forecast_hr == 0
     assert hasattr(g, "conc")
+    assert g.nonzero_conc_count == None
+    assert g.extension == None
 
 
 def test_ConcentrationGrid_is_forward_calculation():
@@ -151,6 +153,8 @@ def test_ConcentrationGrid_clone(cdump):
     assert g.ending_datetime == datetime.datetime(83, 9, 26, 5, 0)
     assert g.starting_forecast_hr == 0
     assert g.ending_forecast_hr == 0
+    assert g.nonzero_conc_count == 854
+    assert g.extension == None
     
     
 def test_ConcentrationGrid_repair_pollutant(cdump):

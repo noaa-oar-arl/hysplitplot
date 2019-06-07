@@ -279,7 +279,7 @@ class TrajectoryDumpFileReader(io.FormattedTextFileReader):
         self.trajectory_data = trajectoryData
         self.end_hour_duration = 0
         self.vertical_coordinate = const.Vertical.PRESSURE
-        self.height_unit = const.HeightUnit.METER
+        self.height_unit = const.HeightUnit.METERS
     
     def set_end_hour_duration(self, v):
         self.end_hour_duration = v
@@ -453,7 +453,7 @@ class PressureCoordinate(AbstractVerticalCoordinate):
     
 class TerrainHeightCoordinate(AbstractVerticalCoordinate):
     
-    def __init__(self, traj, unit=const.HeightUnit.METER):
+    def __init__(self, traj, unit=const.HeightUnit.METERS):
         AbstractVerticalCoordinate.__init__(self, traj)
         self.unit = unit
         
@@ -463,7 +463,7 @@ class TerrainHeightCoordinate(AbstractVerticalCoordinate):
             self.scale(1.0 / 0.3048)    # meter to feet
     
     def get_vertical_label(self):
-        return "Meters MSL" if self.unit == const.HeightUnit.METER else "Feet MSL"
+        return "Meters MSL" if self.unit == const.HeightUnit.METERS else "Feet MSL"
     
     def repair_starting_level(self, v):
         return self.values[0]
@@ -471,7 +471,7 @@ class TerrainHeightCoordinate(AbstractVerticalCoordinate):
 
 class HeightCoordinate(AbstractVerticalCoordinate):
     
-    def __init__(self, traj, unit=const.HeightUnit.METER):
+    def __init__(self, traj, unit=const.HeightUnit.METERS):
         AbstractVerticalCoordinate.__init__(self, traj)
         self.unit = unit
 
@@ -481,7 +481,7 @@ class HeightCoordinate(AbstractVerticalCoordinate):
             self.scale(1.0 / 0.3048)    # meter to feet
      
     def get_vertical_label(self):
-        return "Meters AGL" if self.unit == const.HeightUnit.METER else "Feet AGL"
+        return "Meters AGL" if self.unit == const.HeightUnit.METERS else "Feet AGL"
        
     def repair_starting_level(self, v):
         return self.values[0]

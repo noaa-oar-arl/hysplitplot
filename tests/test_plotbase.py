@@ -37,6 +37,7 @@ def test_AbstractPlotSettings___init__():
     assert s.station_marker != None
     assert s.station_marker_color != None
     assert s.station_marker_size > 0
+    assert s.height_unit == const.HeightUnit.METERS
     
 
 def test_AbstractPlotSettings__process_cmdline_args():

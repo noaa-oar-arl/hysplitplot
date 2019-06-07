@@ -1,6 +1,6 @@
 import pytest
 import numpy
-from hysplit4 import util
+from hysplit4 import util, const
 
 
 def test_myzip():
@@ -129,3 +129,57 @@ def test_nonzero_min():
     
     a[1, 1] = 1.0
     assert util.nonzero_min(a) == 1.0
+
+
+def test_AbstractLengthFactory_create_factory():
+    f = util.AbstractLengthFactory.create_factory(const.HeightUnit.METERS)
+    assert isinstance(f, util.LengthInMetersFactory)
+    
+    f = util.AbstractLengthFactory.create_factory(const.HeightUnit.FEET)
+    assert isinstance(f, util.LengthInFeetFactory)
+    
+    try:
+        f = util.AbstractLengthFactory.create_factory(99999)
+        pytest.fail("expected an exception")
+    except Exception as ex:
+        assert str(ex) == "unknown length unit type 99999"
+
+
+def test_LengthInMetersFactory_create_instance():
+    f = util.LengthInMetersFactory()
+    
+    o = f.create_instance(1.0)
+    assert isinstance(o, util.LengthInMeters)
+    assert o.v == 1.0
+    
+    o = f.create_instance(1.0, const.HeightUnit.FEET)
+    assert isinstance(o, util.LengthInMeters)
+    assert o.v == 0.3048
+
+
+def test_LengthInFeetFactory_create_instance():
+    f = util.LengthInFeetFactory()
+    
+    o = f.create_instance(1.0)
+    assert isinstance(o, util.LengthInFeet)
+    assert o.v == 3.28084
+    
+    o = f.create_instance(1.0, const.HeightUnit.FEET)
+    assert isinstance(o, util.LengthInFeet)
+    assert o.v == 1.0
+    
+
+def test_LengthInMeters___init__():
+    o = util.LengthInMeters(1.0)
+    assert str(o) == "1 m"
+    
+    o = util.LengthInMeters(1.0, False)
+    assert str(o) == "1.0 m"
+
+
+def test_LengthInFeet___init__():
+    o = util.LengthInFeet(1.0)
+    assert str(o) == "1 ft"
+    
+    o = util.LengthInFeet(1.0, False)
+    assert str(o) == "1.0 ft"

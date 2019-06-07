@@ -54,6 +54,7 @@ def test_TrajectoryPlotSettings___init__():
     assert s.station_marker != None
     assert s.station_marker_color != None
     assert s.station_marker_size > 0
+    assert s.height_unit == const.HeightUnit.METERS
     
     assert s.gis_output == 0
     assert s.view == 1
@@ -81,7 +82,6 @@ def test_TrajectoryPlotSettings___init__():
     assert s.terrain_line_color != None
     assert s.terrain_marker != None
     assert s.color_cycle == None
-    assert s.height_unit == const.HeightUnit.METER
 
 
 def test_TrajectoryPlotSettings_process_command_line_arguments():

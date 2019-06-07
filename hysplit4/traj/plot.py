@@ -58,7 +58,7 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
         self.station_marker_color= "k"     # black
         self.station_marker_size = 6*6
         self.color_cycle = None
-        self.height_unit = const.HeightUnit.METER
+        
 
     def dump(self, stream):
         """Dumps the settings to an output stream.

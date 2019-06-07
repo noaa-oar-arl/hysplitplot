@@ -15,7 +15,7 @@ def debug_trunc(f):
 class GISFileWriterFactory:
     
     @staticmethod
-    def create_instance(selector, height_unit=const.HeightUnit.METER):
+    def create_instance(selector, height_unit=const.HeightUnit.METERS):
         if selector == const.GISOutput.GENERATE_POINTS:
             return PointsGenerateFileWriter()
         elif selector == const.GISOutput.GENERATE_LINES:
@@ -104,7 +104,7 @@ class LinesGenerateFileWriter(AbstractGISFileWriter):
 
 class KMLWriter(AbstractGISFileWriter):
     
-    def __init__(self, height_unit=const.HeightUnit.METER):
+    def __init__(self, height_unit=const.HeightUnit.METERS):
         AbstractGISFileWriter.__init__(self)
         self.height_unit = height_unit
     
@@ -137,7 +137,7 @@ class KMLWriter(AbstractGISFileWriter):
         return "absolute" if t.has_terrain_profile() else "relativeToGround"
     
     def _get_level_type(self, t):
-        if self.height_unit == const.HeightUnit.METER:
+        if self.height_unit == const.HeightUnit.METERS:
             return "m AMSL" if t.has_terrain_profile() else "m AGL"
         elif self.height_unit == const.HeightUnit.FEET:
             return "ft AMSL" if t.has_terrain_profile() else "ft AGL"
@@ -448,7 +448,7 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
  
 class PartialKMLWriter(KMLWriter):
     
-    def __init__(self, height_unit=const.HeightUnit.METER):
+    def __init__(self, height_unit=const.HeightUnit.METERS):
         KMLWriter.__init__(self, height_unit)
     
     @staticmethod

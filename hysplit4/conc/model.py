@@ -78,14 +78,16 @@ class ConcentrationGrid:
         self.time_index = -1
         self.pollutant_index = -1
         self.vert_level_index = -1
-        self.pollutant = None       # name of the pollutant
-        self.vert_level = 0         # height in meters above ground
+        self.pollutant = None           # name of the pollutant
+        self.vert_level = 0             # height in meters above ground
         self.starting_datetime = None
         self.ending_datetime = None
         self.starting_forecast_hr = 0
         self.ending_forecast_hr = 0
-        self.__conc = None            # conc[lon_index, lat_index]
-    
+        self.__conc = None              # conc[lat_index, lon_index]
+        self.nonzero_conc_count = None  # number of non-zero conc. values. None if no counting was done.
+        self.extension = None           # for extending the data structure
+
     def dump(self, stream):
         stream.write("conc grid: pollutant {0}, level {1}, start {2}, end {3}, grid {4}\n".format(
             self.pollutant, self.vert_level, self.starting_datetime, self.ending_datetime,
@@ -122,6 +124,8 @@ class ConcentrationGrid:
         o.starting_forecast_hr = self.starting_forecast_hr
         o.ending_forecast_hr = self.ending_forecast_hr
         o.conc = copy.deepcopy(self.conc)
+        o.nonzero_conc_count = self.nonzero_conc_count
+        o.extension = None if self.extension is None else self.extension.clone()
         return o
     
     def clone_except_conc(self):
@@ -247,11 +251,11 @@ class ConcentrationDumpFileReader:
                             fmt = ">{0}f".format(count)
                             v = struct.unpack_from(fmt, buff, cur); cur += 4 * count
                             # TODO: test this line. may need to transpose it.
-                            g.conc = numpy.array(v).reshape(lon_cnt, lat_cnt)
+                            g.conc = numpy.array(v).reshape(lat_cnt, lon_cnt)
                         else:
-                            g.conc = numpy.zeros((lon_cnt, lat_cnt))
+                            g.conc = numpy.zeros((lat_cnt, lon_cnt))
                             v = struct.unpack_from('>i', buff, cur); cur += 4;
-                            count = v[0]
+                            g.nonzero_conc_count = count = v[0]
                             chunk = int(count / chunk_sz)
                             for k in range(chunk):
                                 v = pre.unpack_from(buff, cur); cur += 8 * chunk_sz;

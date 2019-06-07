@@ -27,7 +27,7 @@ def test_GISFileWriterFactory_create_instance():
     
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.KML)
     assert isinstance(w, gisout.KMLWriter)
-    assert w.height_unit == const.HeightUnit.METER
+    assert w.height_unit == const.HeightUnit.METERS
      
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.KML, const.HeightUnit.FEET)
     assert isinstance(w, gisout.KMLWriter)
@@ -35,7 +35,7 @@ def test_GISFileWriterFactory_create_instance():
     
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.PARTIAL_KML)
     assert isinstance(w, gisout.PartialKMLWriter)
-    assert w.height_unit == const.HeightUnit.METER
+    assert w.height_unit == const.HeightUnit.METERS
      
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.PARTIAL_KML, const.HeightUnit.FEET)
     assert isinstance(w, gisout.PartialKMLWriter)
@@ -101,7 +101,7 @@ def test_LinesGenerateFileWriter_write(plotData):
 def test_KMLWriter___init__():
     try:
         w = gisout.KMLWriter()
-        assert w.height_unit == const.HeightUnit.METER
+        assert w.height_unit == const.HeightUnit.METERS
         
         w = gisout.KMLWriter(const.HeightUnit.FEET)
         assert w.height_unit == const.HeightUnit.FEET
@@ -141,7 +141,7 @@ def test_KMLWriter__get_alt_mode(plotData):
 def test_KMLWriter__get_level_type(plotData):
     t = plotData.trajectories[0]
     
-    w = gisout.KMLWriter(const.HeightUnit.METER)
+    w = gisout.KMLWriter(const.HeightUnit.METERS)
     assert w._get_level_type(t) == "m AGL"
     
     w = gisout.KMLWriter(const.HeightUnit.FEET)
@@ -151,7 +151,7 @@ def test_KMLWriter__get_level_type(plotData):
     t.diagnostic_names.append("TERR_MSL")
     t.others["TERR_MSL"] = numpy.zeros(len(t.latitudes))
    
-    w = gisout.KMLWriter(const.HeightUnit.METER)
+    w = gisout.KMLWriter(const.HeightUnit.METERS)
     assert w._get_level_type(t) == "m AMSL"
     
     w = gisout.KMLWriter(const.HeightUnit.FEET)
@@ -197,7 +197,7 @@ def test_KMLWriter_write(plotData):
 def test_PartialKMLWriter___init__():
     try:
         w = gisout.PartialKMLWriter()
-        assert w.height_unit == const.HeightUnit.METER
+        assert w.height_unit == const.HeightUnit.METERS
         
         w = gisout.PartialKMLWriter(const.HeightUnit.FEET)
         assert w.height_unit == const.HeightUnit.FEET

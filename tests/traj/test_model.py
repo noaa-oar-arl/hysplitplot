@@ -232,7 +232,7 @@ def test_TrajectoryDump_fix_vertical_coordinates():
     d.trajectories.append(t)
 
     # Run and check
-    d.fix_vertical_coordinates(const.Vertical.PRESSURE, const.HeightUnit.METER)
+    d.fix_vertical_coordinates(const.Vertical.PRESSURE, const.HeightUnit.METERS)
 
     assert isinstance(t.vertical_coord, model.PressureCoordinate)
     assert t.vertical_coord.values[0] == 700.0
@@ -264,7 +264,7 @@ def test_TrajectoryDump_fix_start_levels():
     t.pressures = [600.0]
     d.trajectories.append(t)
 
-    d.fix_vertical_coordinates(const.Vertical.PRESSURE, const.HeightUnit.METER)
+    d.fix_vertical_coordinates(const.Vertical.PRESSURE, const.HeightUnit.METERS)
     
     # Run and check
     d.fix_start_levels()
@@ -748,7 +748,7 @@ def test_PressureCoordinate_need_axis_inversion(simpleTraj):
 def test_TerrainHeightCoordinate___init__(simpleTraj):
     vc = simpleTraj.vertical_coord = model.TerrainHeightCoordinate(simpleTraj)
     assert vc.t is simpleTraj
-    assert vc.unit == const.HeightUnit.METER
+    assert vc.unit == const.HeightUnit.METERS
     
     vc = simpleTraj.vertical_coord = model.TerrainHeightCoordinate(simpleTraj, const.HeightUnit.FEET)
     assert vc.t is simpleTraj
@@ -799,7 +799,7 @@ def test_TerrainHeightCoordinate_repair_starting_level(simpleTraj):
 def test_HeightCoordinate___init__(simpleTraj):
     vc = simpleTraj.vertical_coord = model.HeightCoordinate(simpleTraj)
     assert vc.t is simpleTraj
-    assert vc.unit == const.HeightUnit.METER
+    assert vc.unit == const.HeightUnit.METERS
     
     vc = simpleTraj.vertical_coord = model.HeightCoordinate(simpleTraj, const.HeightUnit.FEET)
     assert vc.t is simpleTraj

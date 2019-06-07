@@ -38,6 +38,8 @@ class AbstractPlotSettings:
         self.station_marker = "o"
         self.station_marker_color= "k"     # black
         self.station_marker_size = 6*6
+        self.height_unit = const.HeightUnit.METERS
+        
     
     def _process_cmdline_args(self, args0):
         

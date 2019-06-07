@@ -2,7 +2,7 @@ import pytest
 import logging
 import matplotlib.pyplot as plt
 from hysplit4.conc import helper, model
-from hysplit4 import const
+from hysplit4 import const, util
 
 
 logger = logging.getLogger(__name__)
@@ -257,6 +257,28 @@ def test_VerticalLevelGridFilter__filter(cdump2):
     assert grids[1].vert_level == 100    
 
 
+def test_GridProperties___init__():
+    p = helper.GridProperties()
+    assert p.min_conc is None
+    assert p.max_conc is None
+    assert p.min_vert_avg_conc is None
+    assert p.max_vert_avg_conc is None
+
+
+def test_GridProperties_clone():
+    p = helper.GridProperties()
+    p.min_conc = 0.4
+    p.max_conc = 0.6
+    p.min_vert_avg_conc = 0.2
+    p.max_vert_avg_conc = 0.8
+    
+    o = p.clone()
+    assert o.min_conc == 0.4
+    assert o.max_conc == 0.6
+    assert o.min_vert_avg_conc == 0.2
+    assert o.max_vert_avg_conc == 0.8
+    
+    
 def test_VerticalAverageCalculator___init__():
     cdump = model.ConcentrationDump()
     ls = helper.VerticalLevelSelector()
@@ -411,7 +433,21 @@ def test_VerticalAverageConcentration_update_min_max(cdump2):
     assert p.max_average * 1.e+13 == pytest.approx(8.047535/3.0 + 7.963810*2.0/3.0)
     assert p.min_average * 1.e+15 == pytest.approx(0.6242119)
     
+    # check extended properties
+    ext = cdump2.grids[0].extension
+    assert ext is not None
+    assert ext.max_vert_avg_conc * 1.e+13 == pytest.approx(8.047535/3.0 + 7.963810*2.0/3.0)
+    assert ext.min_vert_avg_conc * 1.e+15 == pytest.approx(0.6242119)
     
+    ext2 = cdump2.grids[1].extension
+    assert ext2.max_vert_avg_conc == ext.max_vert_avg_conc
+    assert ext2.min_vert_avg_conc == ext.min_vert_avg_conc
+    
+    ext2 = cdump2.grids[3].extension
+    assert ext2.max_vert_avg_conc == ext.max_vert_avg_conc
+    assert ext2.min_vert_avg_conc == ext.min_vert_avg_conc
+
+
 def test_VerticalAverageConcentration_update_average_min_max():
     p = helper.VerticalAverageConcentration()
     p.min_average = 0.25
@@ -469,6 +505,17 @@ def test_VerticalAverageConcentration_scale_exposure():
     assert p.max_average == pytest.approx(3*0.75)
 
 
+def test_VerticalAverageConcentration_normalize_min_max():
+    p = helper.VerticalAverageConcentration()
+    assert p.min_average == 1.0e+25
+    assert p.max_average == 0.0
+    
+    p.normalize_min_max()
+    
+    assert p.min_average == 0.0
+    assert p.max_average == 1.0e+25
+    
+
 def test_VerticalAverageConcentration_contour_min_conc():
     p = helper.VerticalAverageConcentration()
     p.min_average = 0.25
@@ -485,8 +532,22 @@ def test_VerticalAverageConcentration_get_plot_conc_range():
     p = helper.VerticalAverageConcentration()
     p.min_average = 0.25
     p.max_average = 0.75
-    assert p.get_plot_conc_range(0) == pytest.approx((0.25, 0.75))     
-
+    
+    g = model.ConcentrationGrid(None)
+    g.extension = helper.GridProperties()
+    g.extension.min_vert_avg_conc = 0.4
+    g.extension.max_vert_avg_conc = 0.6
+    
+    assert p.get_plot_conc_range(g) == pytest.approx((0.40, 0.60))     
+     
+    
+def test_VerticalAverageConcentration_get_level_range_str():
+    p = helper.VerticalAverageConcentration()
+    level1 = util.LengthInMeters(1.0)
+    level2 = util.LengthInMeters(2.0)
+    
+    assert p.get_level_range_str(level1, level2) == "averaged between 1 m and 2 m"
+    
 
 def test_LevelConcentration___init__():
     p = helper.LevelConcentration()
@@ -497,7 +558,16 @@ def test_LevelConcentration___init__():
     
     assert p.min_concs is None
     assert p.max_concs is None
+    assert p.KAVG == 1
+    assert p.alt_KAVG == 1
+
     
+def test_LevelConcentration_set_alt_KAVG():
+    p = helper.LevelConcentration()
+    p.set_alt_KAVG(13)
+    assert p.alt_KAVG == 13
+    assert p.KAVG == 1
+        
 
 def test_LevelConcentration_initialize(cdump2):
     p = helper.LevelConcentration()
@@ -522,6 +592,20 @@ def test_LevelConcentration_update_min_max(cdump2):
     assert p.min_concs[1] * 1.0e+15 == pytest.approx(0.935228347)
     assert p.max_concs[0] * 1.0e+13 == pytest.approx(8.173024)
     assert p.max_concs[1] * 1.0e+13 == pytest.approx(7.963810)
+   
+    # check extended properties
+    ext = cdump2.grids[0].extension
+    assert ext is not None
+    assert ext.max_conc * 1.e+13 == pytest.approx(8.047535)
+    assert ext.min_conc * 1.e+15 == pytest.approx(1.871257)
+    
+    ext = cdump2.grids[1].extension
+    assert ext.max_conc * 1.e+13 == pytest.approx(7.9638097)
+    assert ext.min_conc * 1.e+15 == pytest.approx(0.93631784)
+    
+    ext = cdump2.grids[3].extension
+    assert ext.max_conc * 1.e+13 == pytest.approx(7.6081687)
+    assert ext.min_conc * 1.e+15 == pytest.approx(0.93522835)
 
 
 def test_LevelConcentration_update_min_max_at_level(cdump2):
@@ -547,6 +631,28 @@ def test_LevelConcentration_update_min_max_at_level(cdump2):
     assert p.max_concs[k] == 1.50
     
     
+def test_LevelConcentration_normalize_min_max():
+    p = helper.LevelConcentration()
+    
+    # The min and max values at the last level are not set properly.
+    p.min_concs = [1.0, 10.0, 1.0e+15]
+    p.max_concs = [5.0, 15.0, 0.0    ]
+
+    p.normalize_min_max()
+    
+    assert p.min_concs == pytest.approx((1.0, 10.0, 10.0))
+    assert p.max_concs == pytest.approx((5.0, 15.0, 15.0))
+           
+    # None of the min and max values are properly set.
+    p.min_concs = [1.0e+25, 1.0e+25, 1.0e+25]
+    p.max_concs = [0.0    , 0.0    , 0.0    ]
+
+    p.normalize_min_max()
+    
+    assert p.min_concs == pytest.approx((0.0, 0.0, 0.0))
+    assert p.max_concs == pytest.approx((1.0e+25, 1.0e+25, 1.0e+25))
+
+
 def test_LevelConcentration_prepare_grids_for_plotting(cdump2):
     p = helper.LevelConcentration()
     # limit to one pollutant and one vertical level
@@ -616,11 +722,40 @@ def test_LevelConcentration_get_plot_conc_range():
     p = helper.LevelConcentration()
     p.min_concs = [0.1, 0.2, 0.4]
     p.max_concs = [0.2, 0.4, 0.75]
-    assert p.get_plot_conc_range(0) == pytest.approx((0.1, 0.20))
-    assert p.get_plot_conc_range(2) == pytest.approx((0.4, 0.75))
+    
+    g = model.ConcentrationGrid(None)
+    g.vert_level = 10.0
+    g.extension = helper.GridProperties()
+    g.extension.min_conc = 0.314
+    g.extension.max_conc = 3.141
+    
+    assert p.get_plot_conc_range(g) == pytest.approx((0.314, 3.141))
 
+     
+def test_LevelConcentration_get_level_range_str():
+    p = helper.LevelConcentration()
+    level1 = util.LengthInMeters(1.0)
+    level2 = util.LengthInMeters(2.0)
+    
+    assert p.get_level_range_str(level1, level2) == "at level 2 m"
+    
+    p.alt_KAVG = 3
+    assert p.get_level_range_str(level1, level2) == "averaged between 1 m and 2 m"
+    
 
 def test_ConcentrationMapFactory_create_instance():
+    p = helper.ConcentrationMapFactory.create_instance(const.ConcentrationMapType.CONCENTRATION, 1)
+    assert isinstance(p, helper.ConcentrationMap)
+    assert p.KHEMIN == 1
+    
+    p = helper.ConcentrationMapFactory.create_instance(const.ConcentrationMapType.EXPOSURE, 1)
+    assert isinstance(p, helper.ExposureMap)
+    assert p.KHEMIN == 1
+    
+    p = helper.ConcentrationMapFactory.create_instance(const.ConcentrationMapType.DEPOSITION, 1)
+    assert isinstance(p, helper.DepositionMap)
+    assert p.KHEMIN == 1
+    
     p = helper.ConcentrationMapFactory.create_instance(const.ConcentrationMapType.THRESHOLD_LEVELS, 1)
     assert isinstance(p, helper.ThresholdLevelsMap)
     assert p.KHEMIN == 1
@@ -628,25 +763,40 @@ def test_ConcentrationMapFactory_create_instance():
     p = helper.ConcentrationMapFactory.create_instance(const.ConcentrationMapType.VOLCANIC_ERUPTION, 1)
     assert isinstance(p, helper.VolcanicEruptionMap)
     assert p.KHEMIN == 1
-    
+     
+    p = helper.ConcentrationMapFactory.create_instance(const.ConcentrationMapType.MASS_LOADING, 1)
+    assert isinstance(p, helper.MassLoadingMap)
+    assert p.KHEMIN == 1
+       
     p = helper.ConcentrationMapFactory.create_instance(99999, 1)
-    assert isinstance(p, helper.ConcentrationMap)
+    assert isinstance(p, helper.AbstractConcentrationMap)
     assert p.KHEMIN == 1
     
     
-def test_ConcentrationMap___init__():
-    p = helper.ConcentrationMap(2, 4)
+def test_AbstractConcentrationMap___init__():
+    p = helper.AbstractConcentrationMap(2, 4, "MAP ID")
     assert p.KMAP == 2
     assert p.KHEMIN == 4
+    assert p.map_id == "MAP ID"
     
     
-def test_ConcentrationMap_has_banner():
-    p = helper.ConcentrationMap(2, 4)
+def test_AbstractConcentrationMap_has_banner():
+    p = helper.AbstractConcentrationMap(2, 4)
     assert p.has_banner() == False
 
+
+def test_AbstractConcentrationMap_guess_mass_unit():
+    p = helper.AbstractConcentrationMap(2, 4)
+    assert p.guess_mass_unit("mass") == "mass"
     
-def test_ConcentrationMap_format_conc():
-    p = helper.ConcentrationMap(2, 4)
+
+def test_AbstractConcentrationMap_guess_volume_unit():
+    p = helper.AbstractConcentrationMap(2, 4)
+    assert p.guess_volume_unit("mass") == ""
+ 
+   
+def test_AbstractConcentrationMap_format_conc():
+    p = helper.AbstractConcentrationMap(2, 4)
     assert p.format_conc(2.56789e+5) == "2.6e+05"
     assert p.format_conc(2.56789e+4) == "25678"
     assert p.format_conc(2.56789e+3) == "2567"
@@ -661,29 +811,123 @@ def test_ConcentrationMap_format_conc():
     assert p.format_conc(-0.1) == " "
 
     
-def test_ConcentrationMap_draw_explanation_text():
-    p = helper.ConcentrationMap(2, 4)
+def test_AbstractConcentrationMap_draw_explanation_text():
+    p = helper.AbstractConcentrationMap(2, 4)
     assert p.draw_explanation_text(None, 0, 1.25, None, None, None) == 1.25
    
+
+def test_AbstractConcentrationMap_set_map_id():
+    p = helper.AbstractConcentrationMap(2, 4)
+    p.set_map_id("Conc")
+    assert p.map_id == "Conc"
     
-def test_ThresholdLevelsMap___init__():
-    p = helper.ThresholdLevelsMap(2, 4)
-    assert p.KMAP == 2
+
+def test_ConcentrationMap___init__():
+    p = helper.ConcentrationMap(4)
+    assert p.KMAP == 1
     assert p.KHEMIN == 4
+    assert p.map_id == "Concentration"
+    
+
+def test_ConcentrationMap_guess_volume_unit():
+    p = helper.ConcentrationMap(4)
+    assert p.guess_volume_unit("mass") == "/m^3"
+    assert p.guess_volume_unit("ppm") == ""
+    
+        
+def test_ConcentrationMap_get_map_id_line():
+    p = helper.ConcentrationMap(4)
+    conc_type = helper.LevelConcentration()
+    conc_unit = "mass/m^3"
+    level1 = util.LengthInMeters(1.0)
+    level2 = util.LengthInMeters(2.0)
+    
+    p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Concentration"
+    
+
+def test_ExposureMap___init__():
+    p = helper.ExposureMap(3)
+    assert p.KMAP == 2
+    assert p.KHEMIN == 3
+    assert p.map_id == "Exposure"
+    
+
+def test_ExposureMap_guess_volume_unit():
+    p = helper.ExposureMap(4)
+    assert p.guess_volume_unit("rem") == ""
+    assert p.guess_volume_unit("rem/hr") == ""
+    assert p.guess_volume_unit("Sv") == ""
+    assert p.guess_volume_unit("Sv/hr") == ""
+    assert p.guess_volume_unit("mass") == "\u2013s/m^3"
+    
+        
+def test_ExposureMap_get_map_id_line():
+    p = helper.ExposureMap(4)
+    conc_type = helper.LevelConcentration()
+    conc_unit = "mass/m^3"
+    level1 = util.LengthInMeters(1.0)
+    level2 = util.LengthInMeters(2.0)
+    
+    p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Exposure (mass/m^3) averaged between 1 m and 2 m"
+    
+
+def test_DepositionMap___init__():
+    p = helper.DepositionMap(4)
+    assert p.KMAP == 3
+    assert p.KHEMIN == 4
+    assert p.map_id == "Deposition"
+    
+
+def test_DepositionMap_guess_volume_unit():
+    p = helper.DepositionMap(4)
+    assert p.guess_volume_unit("mass") == "/m^2"
+    
+        
+def test_DepositionMap_get_map_id_line():
+    p = helper.DepositionMap(4)
+    conc_type = helper.LevelConcentration()
+    conc_unit = "mass/m^3"
+    level1 = util.LengthInMeters(1.0)
+    level2 = util.LengthInMeters(2.0)
+    
+    p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Deposition (mass/m^3) at ground-level"
+
+
+def test_ThresholdLevelsMap___init__():
+    p = helper.ThresholdLevelsMap(3)
+    assert p.KMAP == 4
+    assert p.KHEMIN == 3
+    assert p.map_id == "Concentration"
     
     
 def test_ThresholdLevelsMap_has_banner():
-    p = helper.ThresholdLevelsMap(2, 4)
+    p = helper.ThresholdLevelsMap(4)
     assert p.has_banner() == True
     
     
 def test_ThresholdLevelsMap_get_banner():
-    p = helper.ThresholdLevelsMap(2, 4)
+    p = helper.ThresholdLevelsMap(4)
     assert p.get_banner() == "Not for Public Dissemination"
+
     
+def test_ThresholdLevelsMap_guess_volume_unit():
+    p = helper.ThresholdLevelsMap(4)
+    assert p.guess_volume_unit("mass") == "/m^3"
+    assert p.guess_volume_unit("ppm") == ""
+    
+        
+def test_ThresholdLevelsMap_get_map_id_line():
+    p = helper.ThresholdLevelsMap(4)
+    conc_type = helper.LevelConcentration()
+    conc_unit = "mass/m^3"
+    level1 = util.LengthInMeters(1.0)
+    level2 = util.LengthInMeters(2.0)
+    
+    p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Concentration (mass/m^3) averaged between 1 m and 2 m"
+
 
 def test_ThresholdLevelsMap_format_conc():
-    p = helper.ThresholdLevelsMap(2, 4)
+    p = helper.ThresholdLevelsMap(4)
     assert p.format_conc(2.56789e+5) == "2.6e+05"
     assert p.format_conc(2.56789e+4) == "25678"
     assert p.format_conc(2.56789e+3) == "2567"
@@ -699,7 +943,7 @@ def test_ThresholdLevelsMap_format_conc():
 
     
 def test_ThresholdLevelsMap_draw_explanation_text():
-    p = helper.ThresholdLevelsMap(2, 4)
+    p = helper.ThresholdLevelsMap(4)
     axes = plt.axes()
     
     try:
@@ -715,23 +959,39 @@ def test_ThresholdLevelsMap_draw_explanation_text():
    
     
 def test_VolcanicEruptionMap___init__():
-    p = helper.VolcanicEruptionMap(2, 4)
-    assert p.KMAP == 2
+    p = helper.VolcanicEruptionMap(4)
+    assert p.KMAP == 5
     assert p.KHEMIN == 4
+    assert p.map_id == "Concentration"
     
     
 def test_VolcanicEruptionMap_has_banner():
-    p = helper.VolcanicEruptionMap(2, 4)
+    p = helper.VolcanicEruptionMap(4)
     assert p.has_banner() == True
     
     
-def test_VolcanicEruptionMap_has_banner():
-    p = helper.VolcanicEruptionMap(2, 4)
+def test_VolcanicEruptionMap_get_banner():
+    p = helper.VolcanicEruptionMap(4)
     assert p.get_banner() == "*** Hypothetical eruption ***"
+
+   
+def test_VolcanicEruptionMap_guess_volume_unit():
+    p = helper.VolcanicEruptionMap(4)
+    assert p.guess_volume_unit("mass") == "/m^3"
+    
+        
+def test_VolcanicEruptionMap_get_map_id_line():
+    p = helper.VolcanicEruptionMap(4)
+    conc_type = helper.LevelConcentration()
+    conc_unit = "mass/m^3"
+    level1 = util.LengthInMeters(1.0)
+    level2 = util.LengthInMeters(2.0)
+    
+    p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Concentration (mass/m^3) averaged between 1 m and 2 m"
     
     
 def test_VolcanicEruptionMap_draw_explanation_text():
-    p = helper.VolcanicEruptionMap(2, 4)
+    p = helper.VolcanicEruptionMap(4)
     axes = plt.axes()
     
     try:
@@ -741,3 +1001,30 @@ def test_VolcanicEruptionMap_draw_explanation_text():
         pytest.fail("unexpected exception: {0}".format(ex))
 
     plt.close(axes.get_figure())
+    
+   
+def test_MassLoadingMap___init__():
+    p = helper.MassLoadingMap(4)
+    assert p.KMAP == 7
+    assert p.KHEMIN == 4
+    assert p.map_id == "Mass loading"
+  
+   
+def test_MassLoadingMap_guess_volume_unit():
+    p = helper.MassLoadingMap(4)
+    assert p.guess_volume_unit("mass") == "/m^2"
+    
+        
+def test_MassLoadingMap_get_map_id_line():
+    p = helper.MassLoadingMap(4)
+    conc_type = helper.LevelConcentration()
+    conc_unit = "mass/m^2"
+    level1 = util.LengthInMeters(1.0)
+    level2 = util.LengthInMeters(2.0)
+    
+    p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Mass loading (mass/m^2) averaged between 1 m and 2 m"
+
+
+
+
+
