@@ -606,7 +606,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         return mb
 
-    def draw_concentration_plot(self, conc_grid, scaled_conc, contour_levels, contour_colors):
+    def draw_concentration_plot(self, conc_grid, scaled_conc, contour_levels, fill_colors):
         axes = self.conc_axes
 
         # keep the plot size after zooming
@@ -648,7 +648,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         # place station locations
         self._draw_stations_if_exists(axes, self.settings)
 
-        logger.debug("Drawing contour at levels %s using colors %s", contour_levels, contour_colors)
+        logger.debug("Drawing contour at levels %s using colors %s", contour_levels, fill_colors)
         
         # draw a source marker
         if self.settings.label_source:
@@ -664,14 +664,20 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                           fontsize=self.settings.source_label_font_size,
                           horizontalalignment="center", verticalalignment="center",
                           transform=self.data_crs)
-                            
-        # draw filled contours
+
         if conc_grid.nonzero_conc_count > 0:
+            # draw filled contours
             axes.contourf(conc_grid.longitudes, conc_grid.latitudes, scaled_conc,
                           contour_levels,
-                          colors=contour_colors, extend="max",
+                          colors=fill_colors, extend="max",
                           transform=self.data_crs)
-        
+            # draw contour lines
+            line_colors = ["k"] * len(fill_colors)
+            axes.contour(conc_grid.longitudes, conc_grid.latitudes, scaled_conc,
+                          contour_levels,
+                          colors=line_colors, linewidths=0.25,
+                          transform=self.data_crs)
+
         if self.settings.noaa_logo:
             self._draw_noaa_logo(axes)
 
@@ -690,7 +696,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             
         return "{0}{1}".format(mass_unit, volume_unit)
         
-    def draw_contour_legends(self, grid, contour_labels, contour_levels, contour_colors):
+    def draw_contour_legends(self, grid, contour_labels, contour_levels, fill_colors):
         axes = self.legends_axes
         s = self.settings
         
@@ -725,13 +731,13 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         
         logger.debug("contour_level_count %d", s.contour_level_count)
         logger.debug("contour levels %s", contour_levels)
-        logger.debug("contour colors %s", contour_colors)
+        logger.debug("contour colors %s", fill_colors)
         logger.debug("contour labels %s", contour_labels)
 
         labels = copy.deepcopy(contour_labels)
         labels.reverse()
         
-        colors = copy.deepcopy(contour_colors)
+        colors = copy.deepcopy(fill_colors)
         colors.reverse()
         
         for k, level in enumerate(reversed(contour_levels)):
@@ -884,6 +890,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                     f = float(g.vert_level - LEVEL0)
                     TFACT *= f
                     self.conc_type.scale_exposure(f)
+                elif self.settings.KAVG == 2 and self.settings.exposure_unit == 4:
+                    # mass loading
+                    f = float(g.vert_level - LEVEL0)
+                    TFACT *= f
+                    self.conc_type.scale_exposure(f)
                     
                 xconc = numpy.copy(g.conc)
                 xconc *= TFACT
@@ -907,7 +918,12 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                     f = 1.0 / float(g.vert_level - LEVEL0)
                     TFACT *= f
                     self.conc_type.scale_exposure(f)
-                    
+                elif self.settings.KAVG == 2 and self.settings.exposure_unit == 4:
+                    # mass unloading
+                    f = 1.0 / float(g.vert_level - LEVEL0)
+                    TFACT *= f
+                    self.conc_type.scale_exposure(f)
+                                       
                 if self.settings.interactive_mode:
                     plt.show(*args, **kw)
                 else:
