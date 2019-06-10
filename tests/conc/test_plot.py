@@ -98,17 +98,18 @@ def test_ConcentrationPlotSettings___init__():
     assert s.NSSLBL == 0
     assert s.color == const.ConcentrationPlotColor.COLOR
     
-    assert s.label_source == False
-    assert s.source_marker != None
-    assert s.source_marker_color != None
-    assert s.source_marker_size > 0
+    assert s.label_source == True
+    assert s.source_label_color != None
+    assert s.source_label_font_size > 0
     assert s.user_color == False
     assert s.user_label == False
     assert s.contour_levels is None
     assert s.contour_level_count == 4
     assert s.pollutant == ""
     assert s.SCALE == 1.0
-
+    assert s.station_marker is not None
+    assert s.station_marker_color != None
+    assert s.station_marker_size > 0
 
 def test_ConcentrationPlotSettings_process_command_line_arguments():
     s = plot.ConcentrationPlotSettings()
@@ -843,10 +844,10 @@ def test_ConcentrationPlot_draw_contour_legends():
         p._initialize_map_projection(p.cdump)
         p.layout(p.cdump.grids[0], {"resize_event" : blank_event_handler})
         p.draw_contour_legends(
+            p.cdump.grids[0],
             ["AEGL-1", "AEGL-2", "AEGL-3"],
             [1.0-16, 1.0e-15, 1.0e-14],
-            ["g", "b", "y"],
-            2.5e-16, 8.7e-13)
+            ["g", "b", "y"])
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))

@@ -58,10 +58,9 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.color = const.ConcentrationPlotColor.COLOR
         
         # internally defined
-        self.label_source = False
-        self.source_marker = "*"
-        self.source_marker_color= "r"     # red
-        self.source_marker_size = 8*8
+        self.label_source = True
+        self.source_label_color= "k"        # black
+        self.source_label_font_size = 12    # font size
         self.user_color = False
         self.user_label = False
         self.contour_levels = None
@@ -594,7 +593,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                         mb.add((cdump.longitudes[i], cdump.latitudes[j]))
 
             if mb.hit_count == 0:
-                raise Exception("ALL concentrations are ZERO - no maps")
+                if self.settings.IZRO == 0:
+                    raise Exception("ALL concentrations are ZERO - no maps")
 
             # first pass only refines grid for small plumes
             if ipass == 0 and map_opt_passes == 2:
@@ -648,26 +648,23 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         # place station locations
         self._draw_stations_if_exists(axes, self.settings)
 
-        logger.debug("contour levels %s", contour_levels)
-        logger.debug("contour colors %s", contour_colors)
-
-        logger.debug("Drawing contour")
+        logger.debug("Drawing contour at levels %s using colors %s", contour_levels, contour_colors)
         
         # draw a source marker
-        if self.settings.label_source == 1:
+        if self.settings.label_source:
             x = []; y = []
             for loc in conc_grid.parent.release_locs:
                 if util.is_valid_lonlat(loc):
                     x.append(loc[0])
                     y.append(loc[1])
-                    
-            if len(x) > 0:
-                axes.scatter(x, y,
-                             s=self.settings.source_marker_size,
-                             marker=self.settings.source_marker,
-                             c=self.settings.source_marker_color, clip_on=True,
-                             transform=self.data_crs)
-
+            
+            for k in range(len(x)):
+                axes.text(x[k], y[k], self.settings.source_label,
+                          color=self.settings.source_label_color,
+                          fontsize=self.settings.source_label_font_size,
+                          horizontalalignment="center", verticalalignment="center",
+                          transform=self.data_crs)
+                            
         # draw filled contours
         if conc_grid.nonzero_conc_count > 0:
             axes.contourf(conc_grid.longitudes, conc_grid.latitudes, scaled_conc,
@@ -693,10 +690,13 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             
         return "{0}{1}".format(mass_unit, volume_unit)
         
-    def draw_contour_legends(self, contour_labels, contour_levels, contour_colors, cmin, cmax):
+    def draw_contour_legends(self, grid, contour_labels, contour_levels, contour_colors):
         axes = self.legends_axes
         s = self.settings
         
+        cmin, cmax = self.conc_type.get_plot_conc_range(grid)
+        logger.debug("concentration plot min %g, max %g", cmin, cmax)
+                
         self._turn_off_ticks(axes)
         
         font_sz = 9.0 # TODO: to be computed
@@ -717,6 +717,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                       transform=axes.transAxes)
             y -= small_line_skip
     
+        if grid.nonzero_conc_count == 0:
+            return
+        
         dy = line_skip if s.contour_level_count <= 16 else line_skip * 0.65
         dx = 0.25
         
@@ -888,19 +891,14 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 if self.smoothing_kernel is not None:
                     xconc = self.smoothing_kernel.smooth_with_max_preserved(xconc)
                 
-                cmin, cmax = self.conc_type.get_plot_conc_range(g)
-                logger.debug("concentration plot min %g, max %g", cmin, cmax)
-                #cmin *= TFACT
-                #cmax *= TFACT
-
                 # plot title
                 self.conc_outer.set_title(self.make_plot_title(g, level1, level2))
                 self.conc_outer.set_xlabel(self.make_xlabel(g))
                 
                 self.draw_concentration_plot(g, xconc,
                                              contour_levels, ctbl.colors)
-                self.draw_contour_legends(contour_labels, contour_levels, ctbl.colors,
-                                          cmin, cmax)
+                self.draw_contour_legends(g,
+                                          contour_labels, contour_levels, ctbl.colors)
                 self.draw_bottom_text()
                 
                 # TODO: better
