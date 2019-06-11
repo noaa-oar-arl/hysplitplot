@@ -55,7 +55,7 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.KHEMIN = 0     # plot below threshold contour for chemical output
         self.IZRO = 0       # create map(s) even if all values are zero
         self.NSSLBL = 0     # force sample start time label to start of release
-        self.color = const.ConcentrationPlotColor.COLOR
+        self.color = const.ConcentrationPlotColor.COLOR # KOLOR
         
         # internally defined
         self.label_source = True
@@ -622,7 +622,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         return mb
 
-    def draw_concentration_plot(self, conc_grid, scaled_conc, contour_levels, fill_colors):
+    def draw_concentration_plot(self, conc_grid, scaled_conc, conc_map, contour_levels, fill_colors):
         axes = self.conc_axes
 
         # keep the plot size after zooming
@@ -694,6 +694,24 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                           colors=line_colors, linewidths=0.25,
                           transform=self.data_crs)
 
+        if self.settings.show_max_conc == 1 or self.settings.show_max_conc == 3:
+            if self.settings.color == const.ConcentrationPlotColor.BLACK_AND_WHITE \
+              or self.settings.color == const.ConcentrationPlotColor.VAL_3:
+                clr = "k"   # blank
+            else:
+                clr = conc_map.get_color_at_max()
+            
+            dx = conc_grid.parent.grid_deltas[0]
+            dy = conc_grid.parent.grid_deltas[1]
+            hx = 0.5 * dx
+            hy = 0.5 * dy
+            for loc in helper.find_max_locs(conc_grid):
+                x, y = loc
+                r = matplotlib.patches.Rectangle((x-hx, y-hy), dx, dy,
+                                                 color=clr,
+                                                 transform=self.data_crs)
+                axes.add_patch(r)
+            
         if self.settings.noaa_logo:
             self._draw_noaa_logo(axes)
 
@@ -858,7 +876,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.conc_outer.set_title(self.make_plot_title(g, self.conc_map, level1, level2))
         self.conc_outer.set_xlabel(self.make_xlabel(g))
         
-        self.draw_concentration_plot(g, xconc,
+        self.draw_concentration_plot(g, xconc, self.conc_map,
                                      contour_levels, ctbl.colors)
         self.draw_contour_legends(g, self.conc_map,
                                   self.contour_labels, contour_levels, ctbl.colors)
@@ -905,7 +923,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.conc_outer.set_title(self.make_plot_title(g, self.depo_map, level1, level2))
         self.conc_outer.set_xlabel(self.make_xlabel(g))
         
-        self.draw_concentration_plot(g, xconc,
+        self.draw_concentration_plot(g, xconc, self.depo_map,
                                      contour_levels, ctbl.colors)
         self.draw_contour_legends(g, self.depo_map,
                                   self.contour_labels, contour_levels, ctbl.colors)

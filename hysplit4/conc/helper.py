@@ -69,6 +69,17 @@ def find_nonzero_min_max(mat):
         vmin = util.nonzero_min(mat)    # may return None.
 
     return vmin, vmax
+
+
+def find_max_locs(g):
+    v = numpy.amax(g.conc)
+    if v > 0:
+        loc = numpy.where(g.conc == v)
+        y = [g.latitudes[k] for k in loc[0]]
+        x = [g.longitudes[k] for k in loc[1]]
+        return list(zip(x, y))
+    else:
+        return []
     
 
 class TimeIndexSelector:
@@ -613,6 +624,10 @@ class AbstractConcentrationMap:
     def scale_time(self, TFACT, conc_type, f, initial_timeQ):
         # See ExposureMap.
         return TFACT
+    
+    def get_color_at_max(self):
+        return "r"  # red
+    
 
 class ConcentrationMap(AbstractConcentrationMap):
     
@@ -778,6 +793,9 @@ class ThresholdLevelsMap(AbstractConcentrationMap):
                     linewidth=0.125, transform=axes.transAxes)
         
         return y
+    
+    def get_color_at_max(self):
+        return "k"  # black
 
 
 class VolcanicEruptionMap(AbstractConcentrationMap):

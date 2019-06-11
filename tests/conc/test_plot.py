@@ -809,6 +809,7 @@ def test_ConcentrationPlot_draw_concentration_plot():
         p.layout(p.cdump.grids[0], {"resize_event" : blank_event_handler})
         p.draw_concentration_plot(p.cdump.grids[0],
                                   p.cdump.grids[0].conc,
+                                  p.conc_map,
                                   [1.0e-16, 1.0e-15, 1.0e-14],
                                   ["g", "b", "r"])
         cleanup_plot(p)

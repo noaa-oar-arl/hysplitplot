@@ -82,6 +82,30 @@ def test_find_nonzero_min_max(cdump2):
     assert vmin * 1.0e+15 == pytest.approx(1.871257)
     assert vmax * 1.0e+13 == pytest.approx(8.047535)
 
+
+def test_find_max_locs(cdump2):
+    g = cdump2.grids[0]
+    
+    loc = helper.find_max_locs(g)
+    
+    assert len(loc) == 1
+    assert loc[0] == pytest.approx((-84.22, 39.90))
+    assert loc[0][0] == g.longitudes[300]
+    assert loc[0][1] == g.latitudes[300]
+    
+    # max at another location
+    g.conc[0, 1] = g.conc[300, 300]
+    
+    loc = helper.find_max_locs(g)
+    
+    assert len(loc) == 2
+    assert loc[0] == pytest.approx((-99.17, 24.90))
+    assert loc[0][0] == g.longitudes[1]
+    assert loc[0][1] == g.latitudes[0]
+    assert loc[1] == pytest.approx((-84.22, 39.90))
+    assert loc[1][0] == g.longitudes[300]
+    assert loc[1][1] == g.latitudes[300]
+    
     
 def test_TimeIndexSelector___init__():
     s = helper.TimeIndexSelector()
