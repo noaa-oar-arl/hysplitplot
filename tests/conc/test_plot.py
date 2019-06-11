@@ -474,6 +474,7 @@ def test_ConcentrationPlot___init__():
     assert hasattr(p, "smoothing_kernel")
     assert hasattr(p, "conc_type")
     assert hasattr(p, "conc_map")
+    assert hasattr(p, "depo_map")
     assert hasattr(p, "prev_forecast_time")
     assert hasattr(p, "length_factory")
 
@@ -483,6 +484,11 @@ def test_ConcentrationPlot___init__():
     assert hasattr(p, "legends_axes")
     assert hasattr(p, "text_axes")
 
+    assert hasattr(p, "TFACT")
+    assert hasattr(p, "initial_time")
+    assert hasattr(p, "contour_labels")
+    assert hasattr(p, "current_frame")
+    
 def test_ConcentrationPlot_merge_plot_settings():
     p = plot.ConcentrationPlot()
 
@@ -528,6 +534,7 @@ def test_ConcentrationPlot_read_data_files():
     assert p.level_selector.max == 99999
     assert p.conc_type is not None
     assert p.conc_map is not None
+    assert p.depo_map is not None
     assert p.smoothing_kernel is not None
 
 
@@ -663,7 +670,7 @@ def test_ConcentrationPlot_make_plot_title(cdump):
     level1 = util.LengthInMeters(1.0)
     level2 = util.LengthInMeters(2.0)
     
-    title = p.make_plot_title(plotData, level1, level2)
+    title = p.make_plot_title(plotData, p.conc_map, level1, level2)
     assert title == "NOAA HYSPLIT MODEL\n" + \
             "Concentration ($mass/m^3$) at level 2 m\n" + \
             "Integrated from 1700 25 Sep to 0500 26 Sep 83 (UTC)\n" + \
@@ -672,7 +679,7 @@ def test_ConcentrationPlot_make_plot_title(cdump):
     # swap start and end datetimes
     plotData.starting_datetime, plotData.ending_datetime = plotData.ending_datetime, plotData.starting_datetime
     
-    title = p.make_plot_title(plotData, level1, level2)
+    title = p.make_plot_title(plotData, p.conc_map, level1, level2)
     assert title == "NOAA HYSPLIT MODEL\n" + \
             "Concentration ($mass/m^3$) at level 2 m\n" + \
             "Integrated from 0500 26 Sep to 1700 25 Sep 83 (UTC) [backward]\n" + \
@@ -819,18 +826,18 @@ def test_ConcentrationPlot_get_conc_unit():
     p.labels.cfg["UNITS"] = "pg"
     p.labels.cfg["VOLUM"] = "/cm^3"
     s.mass_unit_by_user = False
-    assert p.get_conc_unit(s) == "pg/cm^3"
+    assert p.get_conc_unit(p.conc_map, s) == "pg/cm^3"
     
     # when the mass unit is specified by the user
     s.mass_unit = "kg"
     s.mass_unit_by_user = True
-    assert p.get_conc_unit(s) == "kg/cm^3"
+    assert p.get_conc_unit(p.conc_map, s) == "kg/cm^3"
     
     # no labels params.
     p.labels.cfg.clear()
     s.mass_unit = "ppm"
     s.mass_unit_by_user = False
-    assert p.get_conc_unit(s) == "ppm"
+    assert p.get_conc_unit(p.conc_map, s) == "ppm"
     
     
 def test_ConcentrationPlot_draw_contour_legends():
@@ -845,6 +852,7 @@ def test_ConcentrationPlot_draw_contour_legends():
         p.layout(p.cdump.grids[0], {"resize_event" : blank_event_handler})
         p.draw_contour_legends(
             p.cdump.grids[0],
+            p.conc_map,
             ["AEGL-1", "AEGL-2", "AEGL-3"],
             [1.0-16, 1.0e-15, 1.0e-14],
             ["g", "b", "y"])
@@ -869,6 +877,58 @@ def test_ConcentrationPlot_draw_bottom_text():
         raise pytest.fail("unexpeced exception: {0}".format(ex))
 
 
+def test_ConcentrationPlot_draw_conc_above_ground():
+    p = plot.ConcentrationPlot()
+    p.merge_plot_settings(None, ["-idata/cdump_deposit", "-jdata/arlmap_truncated", "-d1"])
+    p.read_data_files()
+    p.read_background_map()
+    
+    lgen = plot.ContourLevelGeneratorFactory.create_instance(p.settings.contour_level_generator,
+                                                        p.settings.contour_levels,
+                                                        p.settings.UCMIN,
+                                                        p.settings.user_color)
+    ctbl = plot.ColorTableFactory.create_instance(p.settings)
+        
+    # See if no exception is thrown.
+    try:
+        p._initialize_map_projection(p.cdump)
+        p.contour_labels = [""] * p.settings.contour_level_count
+        p.draw_conc_above_ground(p.cdump.grids[0],
+                                 {"resize_event" : blank_event_handler},
+                                 lgen,
+                                 ctbl,
+                                 block=False)
+        cleanup_plot(p)
+    except Exception as ex:
+        raise pytest.fail("unexpeced exception: {0}".format(ex))
+
+
+def test_ConcentrationPlot_draw_conc_on_ground():
+    p = plot.ConcentrationPlot()
+    p.merge_plot_settings(None, ["-idata/cdump_deposit", "-jdata/arlmap_truncated", "-d1"])
+    p.read_data_files()
+    p.read_background_map()
+    
+    lgen = plot.ContourLevelGeneratorFactory.create_instance(p.settings.contour_level_generator,
+                                                             p.settings.contour_levels,
+                                                             p.settings.UCMIN,
+                                                             p.settings.user_color)
+    ctbl = plot.ColorTableFactory.create_instance(p.settings)
+    
+    # See if no exception is thrown.
+    try:
+        p._initialize_map_projection(p.cdump)
+        p.contour_labels = [""] * p.settings.contour_level_count
+        p.draw_conc_on_ground(p.cdump.grids[0],
+                              {"resize_event" : blank_event_handler},
+                              lgen,
+                              ctbl,
+                              block=False)
+        cleanup_plot(p)
+    except Exception as ex:
+        raise pytest.fail("unexpeced exception: {0}".format(ex))
+    
+    
 def test_ConcentrationPlot_draw():
     p = plot.ConcentrationPlot()
     p.merge_plot_settings(None, ["-idata/cdump", "-jdata/arlmap_truncated"])
@@ -878,8 +938,7 @@ def test_ConcentrationPlot_draw():
     # See if no exception is thrown.
     try:
         p._initialize_map_projection(p.cdump)
-        p.layout(p.cdump.grids[0], {"resize_event" : blank_event_handler})
-        p.draw(block=False)
+        p.draw({"resize_event" : blank_event_handler}, block=False)
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
@@ -947,7 +1006,16 @@ def test_ContourLevelGeneratorFactory_create_instance(contourLevels):
 def test_AbstractContourLevelGenerator___init__():
     o = plot.AbstractContourLevelGenerator()
     assert o is not None
-    
+    assert hasattr(o, "global_min")
+    assert hasattr(o, "global_max")
+ 
+
+def test_AbstractContourLevelGenerator_set_global_min_max():
+    o = plot.AbstractContourLevelGenerator()
+    o.set_global_min_max(0.25, 0.75)
+    assert o.global_min == pytest.approx(0.25)
+    assert o.global_max == pytest.approx(0.75)
+       
 
 def test_ExponentialDynamicLevelGenerator___init__():
     UCMIN = 3.14e-15
@@ -989,6 +1057,17 @@ def test_EExponentialFixedLevelGenerator___init__():
     assert o is not None
     assert o.UCMIN == pytest.approx(3.14e-15)
     assert o.force_base_10 == True  
+
+
+def test_ExponentialFixedLevelGenerator_make_levels():
+    o = plot.ExponentialFixedLevelGenerator(UCMIN = 3.14e-19)
+    o.set_global_min_max(1.39594e-15, 8.17302e-13)
+
+    levels = o.make_levels(1.39594e-16, 8.17302e-12, 4)
+    
+    # levels should be generated using the global min and max.
+    levels *= 1.e+16
+    assert levels == pytest.approx((1.0, 10.0, 100.0, 1000.0))
     
 
 def test_LinearDynamicLevelGenerator___init__():
@@ -1011,9 +1090,11 @@ def test_LinearFixedLevelGenerator___init__():
 
 def test_LinearFixedLevelGenerator_make_levels():
     o = plot.LinearFixedLevelGenerator()
+    o.set_global_min_max(1.0, 10.0)
     
-    levels = o.make_levels(1.0, 10.0, 4)
+    levels = o.make_levels(1.0, 50.0, 4)
     
+    # levels should be generated using the global min and max.
     assert levels == pytest.approx((2., 4., 6., 8.))
     
     

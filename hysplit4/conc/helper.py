@@ -240,7 +240,8 @@ class VerticalAverageCalculator:
         avg = numpy.zeros(grids[0].conc.shape)
         
         for g in grids:
-            avg += g.conc * self.delta_z[g.vert_level_index]
+            if g.vert_level_index in self.delta_z:
+                avg += g.conc * self.delta_z[g.vert_level_index]
         
         return (avg * self.inverse_weight)
 
@@ -293,7 +294,17 @@ class VerticalAverageConcentration(ConcentrationType):
         g = v_grids[0].clone_except_conc()
         g.conc = v_avg
         g.vert_level_index = -1
-        return [g]
+        
+        # grids on the ground
+        if 0 in self.level_selector:
+            gnd_grids = list(filter(lambda g: g.vert_level == 0, v_grids))
+        else:
+            ground_level_selector = VerticalLevelSelector(0, 0)
+            gnd_grids = sum_over_pollutants_per_level(t_grids,
+                                                      ground_level_selector,
+                                                      self.pollutant_selector)
+            
+        return [g], gnd_grids
         
     def update_min_max(self, t_grids):
         v_grids = sum_over_pollutants_per_level(t_grids,
@@ -360,6 +371,7 @@ class LevelConcentration(ConcentrationType):
         self.max_concs = None  # per vertical level, across all grids of interest
         self.KAVG = 1
         self.alt_KAVG = 1
+        self.ground_index = None
     
     def set_alt_KAVG(self, KAVG):
         self.alt_KAVG = KAVG
@@ -367,7 +379,11 @@ class LevelConcentration(ConcentrationType):
     def initialize(self, cdump, level_selector, pollutant_selector):
         ConcentrationType.initialize(self, cdump, level_selector, pollutant_selector)
         self.min_concs = [1.0e+25] * len(cdump.vert_levels)  # at each vertical level
-        self.max_concs = [0.0] * len(cdump.vert_levels)   # at each vertical level 
+        self.max_concs = [0.0] * len(cdump.vert_levels)   # at each vertical level
+        try:
+            self.ground_index = cdump.vert_levels.index(0)
+        except ValueError:
+            self.ground_index = None
         
     def update_min_max(self, t_grids):
         for g in t_grids:
@@ -425,7 +441,16 @@ class LevelConcentration(ConcentrationType):
         # sort by vertical level
         grids = sorted(grids, key=lambda g: g.vert_level)
         
-        return grids
+        # grids on the ground
+        if 0 in self.level_selector:
+            gnd_grids = list(filter(lambda g: g.vert_level == 0, v_grids))
+        else:
+            ground_level_selector = VerticalLevelSelector(0, 0)
+            gnd_grids = sum_over_pollutants_per_level(t_grids,
+                                                      ground_level_selector,
+                                                      self.pollutant_selector)
+        
+        return grids, gnd_grids
     
     def scale_conc(self, CONADJ, DEPADJ):
         if self.cdump.vert_levels[0] == 0:
@@ -453,6 +478,14 @@ class LevelConcentration(ConcentrationType):
     @property
     def contour_max_conc(self):
         return self.max_concs[-1]
+       
+    @property
+    def ground_min_conc(self):
+        return self.min_concs[self.ground_index]
+    
+    @property
+    def ground_max_conc(self):
+        return self.max_concs[self.ground_index]
     
     def get_plot_conc_range(self, grid):
         logger.debug("conc plot: min %g, max %g, at level %g",
@@ -483,11 +516,23 @@ class ConcentrationMapFactory:
             return ThresholdLevelsMap(KHEMIN)
         elif KMAP == const.ConcentrationMapType.VOLCANIC_ERUPTION:
             return VolcanicEruptionMap(KHEMIN)
+        elif KMAP == const.ConcentrationMapType.DEPOSITION_6:
+            return Deposition6Map(KHEMIN)
         elif KMAP == const.ConcentrationMapType.MASS_LOADING:
             return MassLoadingMap(KHEMIN)
         else:
             return AbstractConcentrationMap(KMAP, KHEMIN)
-        
+
+
+class DepositionMapFactory:
+    
+    @staticmethod
+    def create_instance(KMAP, KHEMIN):
+        if KMAP == const.ConcentrationMapType.VOLCANIC_ERUPTION:
+            return Deposition6Map(KHEMIN)
+
+        return DepositionMap(KHEMIN)
+     
 
 class AbstractConcentrationMap:
     
@@ -738,7 +783,23 @@ class VolcanicEruptionMap(AbstractConcentrationMap):
         
         return y
         
+# TODO: better name
+class Deposition6Map(AbstractConcentrationMap):
+    
+    def __init__(self, KHEMIN):
+        AbstractConcentrationMap.__init__(self,
+                                          const.ConcentrationMapType.DEPOSITION_6,
+                                          KHEMIN,
+                                          "Deposition")
         
+    def guess_volume_unit(self, mass_unit):
+        return "/m^2"
+        
+    def get_map_id_line(self, conc_type, conc_unit, level1, level2):
+        return "{0} (${1}$) at ground-level".format(self.map_id,
+                                                    conc_unit)
+
+       
 class MassLoadingMap(AbstractConcentrationMap):
     
     def __init__(self, KHEMIN):

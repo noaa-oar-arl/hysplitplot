@@ -90,7 +90,7 @@ class ConcentrationMapType: # KMAP
     DEPOSITION = 3          # NOT USED
     THRESHOLD_LEVELS = 4
     VOLCANIC_ERUPTION = 5
-    DEPOSITION_6 = 6        # TODO: spell it out # NOT USED
+    DEPOSITION_6 = 6        # TODO: spell it out
     MASS_LOADING = 7
 
 class SmoothingKernel:

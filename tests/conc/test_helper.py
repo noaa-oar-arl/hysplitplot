@@ -12,8 +12,14 @@ logger = logging.getLogger(__name__)
 def cdump2():
     m = model.ConcentrationDump().get_reader().read("data/cdump_two_pollutants")
     return m
-    
-    
+
+
+@pytest.fixture
+def cdump3():
+    m = model.ConcentrationDump().get_reader().read("data/cdump_deposit")
+    return m    
+
+
 def test_sum_over_pollutants_per_level(cdump2):
     # check what we know
     assert cdump2.vert_levels == [100, 300]
@@ -409,8 +415,9 @@ def test_VerticalAverageConcentration_prepare_grids_for_plotting(cdump2):
     p.initialize(cdump2, ls, ps)
     
     # should result in one conc grid: vertical average of concs after summing over pollutants
-    grids = p.prepare_grids_for_plotting(cdump2.grids)
+    grids, grids_gnd = p.prepare_grids_for_plotting(cdump2.grids)
     assert len(grids) == 1
+    assert len(grids_gnd) == 0
     
     g = grids[0]
     assert g.time_index == 0
@@ -420,6 +427,20 @@ def test_VerticalAverageConcentration_prepare_grids_for_plotting(cdump2):
     assert g.conc[300, 300] * 1.0e+13 == pytest.approx( \
                                                         8.047535/3.0 + 7.963810*2.0/3.0 + \
                                                         8.173024/3.0 + 7.608168*2.0/3.0 )
+
+
+def test_VerticalAverageConcentration_prepare_grids_for_plotting_case2(cdump3):
+    p = helper.VerticalAverageConcentration()
+    ls = helper.VerticalLevelSelector()
+    ps = helper.PollutantSelector()
+    p.initialize(cdump3, ls, ps)
+
+    t_grids = list(filter(lambda g: g.time_index == 0, cdump3.grids))
+    assert len(t_grids) == 2
+        
+    grids, grids_gnd = p.prepare_grids_for_plotting(t_grids)
+    assert len(grids) == 1
+    assert len(grids_gnd) == 1
     
     
 def test_VerticalAverageConcentration_update_min_max(cdump2):
@@ -560,6 +581,7 @@ def test_LevelConcentration___init__():
     assert p.max_concs is None
     assert p.KAVG == 1
     assert p.alt_KAVG == 1
+    assert p.ground_index is None
 
     
 def test_LevelConcentration_set_alt_KAVG():
@@ -581,6 +603,7 @@ def test_LevelConcentration_initialize(cdump2):
     assert p.cdump is cdump2
     assert p.level_selector is ls
     assert p.pollutant_selector is ps
+    assert p.ground_index == None
     
 
 def test_LevelConcentration_update_min_max(cdump2):
@@ -660,12 +683,32 @@ def test_LevelConcentration_prepare_grids_for_plotting(cdump2):
     ps = helper.PollutantSelector(1)
     p.initialize(cdump2, ls, ps)
 
-    grids = p.prepare_grids_for_plotting(cdump2.grids)
+    grids, grids_gnd = p.prepare_grids_for_plotting(cdump2.grids)
     
     assert len(grids) == 1
+    assert len(grids_gnd) == 0
     assert grids[0].conc[300, 300] * 1.0e+13 == pytest.approx(7.608168)
     
+
+def test_LevelConcentration_prepare_grids_for_plotting(cdump3):
+    p = helper.LevelConcentration()
+    ls = helper.VerticalLevelSelector(10, 500) # choose one-level
+    ps = helper.PollutantSelector()
+    p.initialize(cdump3, ls, ps)
+
+    # take the grids at zero time index.
+    t_grids = list(filter(lambda g: g.time_index == 0, cdump3.grids))
+    assert len(t_grids) == 2
+
+    # expect one grid above the ground and another on the ground.
+    grids, grids_gnd = p.prepare_grids_for_plotting(t_grids)
+
+    assert len(grids) == 1
+    assert len(grids_gnd) == 1
+    assert grids[0].vert_level == 100
+    assert grids_gnd[0].vert_level == 0
     
+
 def test_LevelConcentration_scale_conc():
     p = helper.LevelConcentration()
     
@@ -716,7 +759,21 @@ def test_LevelConcentration_contour_max_conc():
     p = helper.LevelConcentration()
     p.max_concs = [0.2, 0.4, 0.75]
     assert p.contour_max_conc == 0.75  
-     
+
+
+def test_LevelConcentration_ground_min_conc():
+    p = helper.LevelConcentration()
+    p.ground_index = 0
+    p.min_concs = [0.1, 0.2, 0.4]
+    assert p.ground_min_conc == 0.1
+    
+    
+def test_LevelConcentration_ground_max_conc():
+    p = helper.LevelConcentration()
+    p.ground_index = 0
+    p.max_concs = [0.2, 0.4, 0.75]
+    assert p.ground_max_conc == 0.2
+    
     
 def test_LevelConcentration_get_plot_conc_range():
     p = helper.LevelConcentration()
@@ -763,7 +820,11 @@ def test_ConcentrationMapFactory_create_instance():
     p = helper.ConcentrationMapFactory.create_instance(const.ConcentrationMapType.VOLCANIC_ERUPTION, 1)
     assert isinstance(p, helper.VolcanicEruptionMap)
     assert p.KHEMIN == 1
-     
+         
+    p = helper.ConcentrationMapFactory.create_instance(const.ConcentrationMapType.DEPOSITION_6, 1)
+    assert isinstance(p, helper.Deposition6Map)
+    assert p.KHEMIN == 1
+    
     p = helper.ConcentrationMapFactory.create_instance(const.ConcentrationMapType.MASS_LOADING, 1)
     assert isinstance(p, helper.MassLoadingMap)
     assert p.KHEMIN == 1
@@ -772,7 +833,17 @@ def test_ConcentrationMapFactory_create_instance():
     assert isinstance(p, helper.AbstractConcentrationMap)
     assert p.KHEMIN == 1
     
+
+def test_DepositionMapFactory_create_instance():
+    p = helper.DepositionMapFactory.create_instance(const.ConcentrationMapType.VOLCANIC_ERUPTION, 1)
+    assert isinstance(p, helper.Deposition6Map)
+    assert p.KHEMIN == 1
     
+    p = helper.DepositionMapFactory.create_instance(99999, 1)
+    assert isinstance(p, helper.DepositionMap)
+    assert p.KHEMIN == 1
+    
+        
 def test_AbstractConcentrationMap___init__():
     p = helper.AbstractConcentrationMap(2, 4, "MAP ID")
     assert p.KMAP == 2
@@ -1002,6 +1073,28 @@ def test_VolcanicEruptionMap_draw_explanation_text():
 
     plt.close(axes.get_figure())
     
+
+def test_Deposition6Map___init__():
+    p = helper.Deposition6Map(4)
+    assert p.KMAP == 6
+    assert p.KHEMIN == 4
+    assert p.map_id == "Deposition"
+    
+
+def test_Deposition6Map_guess_volume_unit():
+    p = helper.Deposition6Map(4)
+    assert p.guess_volume_unit("mass") == "/m^2"
+    
+        
+def test_Deposition6Map_get_map_id_line():
+    p = helper.Deposition6Map(4)
+    conc_type = helper.LevelConcentration()
+    conc_unit = "mass/m^3"
+    level1 = util.LengthInMeters(1.0)
+    level2 = util.LengthInMeters(2.0)
+    
+    p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Deposition (mass/m^3) at ground-level"
+
    
 def test_MassLoadingMap___init__():
     p = helper.MassLoadingMap(4)

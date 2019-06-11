@@ -308,6 +308,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.smoothing_kernel = None
         self.conc_type = None
         self.conc_map = None
+        self.depo_map = None
         self.prev_forecast_time = None
         self.length_factory = None
         
@@ -316,6 +317,12 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.conc_axes = None
         self.legends_axes = None
         self.text_axes = None
+        
+        self.TFACT = 1.0
+        self.initial_time = None
+        self.contour_labels = None
+        self.current_frame = 1
+        
   
     def merge_plot_settings(self, filename, args):
         if filename is not None:
@@ -376,6 +383,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self._post_file_processing(self.cdump)
         
         self.conc_map = helper.ConcentrationMapFactory.create_instance(self.settings.KMAP, self.settings.KHEMIN)
+        self.depo_map = helper.DepositionMapFactory.create_instance(self.settings.KMAP, self.settings.KHEMIN)
         
         if self.settings.smoothing_distance > 0:
             self.smoothing_kernel = smooth.SmoothingKernelFactory.create_instance(const.SmoothingKernel.SIMPLE, self.settings.smoothing_distance)
@@ -468,14 +476,14 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         if ev_handlers is not None:
             self._connect_event_handlers(ev_handlers)
     
-    def make_plot_title(self, conc_grid, level1, level2):
+    def make_plot_title(self, conc_grid, conc_map, level1, level2):
         s = self.settings
         
         fig_title = self.labels.get("TITLE")
         
-        conc_unit = self.get_conc_unit(s)
+        conc_unit = self.get_conc_unit(conc_map, s)
         fig_title += "\n"
-        fig_title += self.conc_map.get_map_id_line(self.conc_type, conc_unit, level1, level2)
+        fig_title += conc_map.get_map_id_line(self.conc_type, conc_unit, level1, level2)
         
         fig_title += conc_grid.starting_datetime.strftime("\nIntegrated from %H%M %d %b to")
         fig_title += conc_grid.ending_datetime.strftime(" %H%M %d %b %y (UTC)")
@@ -681,7 +689,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         if self.settings.noaa_logo:
             self._draw_noaa_logo(axes)
 
-    def get_conc_unit(self, settings):
+    def get_conc_unit(self, conc_map, settings):
         # default values from labels.cfg  
         mass_unit = self.labels.get("UNITS")
         volume_unit = self.labels.get("VOLUM")
@@ -689,14 +697,14 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         if settings.mass_unit_by_user:
             mass_unit = settings.mass_unit
         elif not self.labels.has("UNITS"):
-            mass_unit = self.conc_map.guess_mass_unit(settings.mass_unit)
+            mass_unit = conc_map.guess_mass_unit(settings.mass_unit)
             
         if not self.labels.has("VOLUM"):
-            volume_unit = self.conc_map.guess_volume_unit(settings.mass_unit)
+            volume_unit = conc_map.guess_volume_unit(settings.mass_unit)
             
         return "{0}{1}".format(mass_unit, volume_unit)
         
-    def draw_contour_legends(self, grid, contour_labels, contour_levels, fill_colors):
+    def draw_contour_legends(self, grid, conc_map, contour_labels, contour_levels, fill_colors):
         axes = self.legends_axes
         s = self.settings
         
@@ -714,10 +722,10 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         x = 0.05
         y = 1.0 - small_line_skip * 0.5;
                 
-        conc_unit = self.get_conc_unit(s)
+        conc_unit = self.get_conc_unit(conc_map, s)
         
-        if self.conc_map.has_banner():
-            str = self.conc_map.get_banner()
+        if conc_map.has_banner():
+            str = conc_map.get_banner()
             axes.text(0.5, y, str, color="r", fontsize=small_font_sz,
                       horizontalalignment="center", verticalalignment="top",
                       transform=axes.transAxes)
@@ -752,7 +760,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                       horizontalalignment="center", verticalalignment="center",
                       transform=axes.transAxes)
             
-            v = self.conc_map.format_conc(level)
+            v = conc_map.format_conc(level)
             str = ">{0} ${1}$".format(v, conc_unit)
             axes.text(x + dx + x, y-0.5*dy, str, color="k", fontsize=font_sz,
                       horizontalalignment="left", verticalalignment="center",
@@ -775,7 +783,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                       transform=axes.transAxes)
             y -= line_skip
      
-        y = self.conc_map.draw_explanation_text(axes, x, y, small_font_sz, small_line_skip, labels)
+        y = conc_map.draw_explanation_text(axes, x, y, small_font_sz, small_line_skip, labels)
         
         if self.settings.this_is_test:
             y -= small_line_skip * 1.5
@@ -808,135 +816,184 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 #         else:
 #             top_spineQ = self.settings.vertical_coordinate != const.Vertical.NONE
 #             self._turn_off_spines(self.text_axes, top=top_spineQ)
-     
-    def draw(self, ev_handlers=None, *args, **kw):
+    
+    def draw_conc_above_ground(self, g, ev_handlers, lgen, ctbl, *args, **kwargs):
+        
+        self.layout(g, ev_handlers)
+        
+        self._turn_off_spines(self.conc_outer)
+        self._turn_off_ticks(self.conc_outer)
+        
+        lgen.set_global_min_max(self.conc_type.contour_min_conc,
+                                self.conc_type.contour_max_conc)
+        contour_levels = lgen.make_levels(g.extension.min_conc,
+                                          g.extension.max_conc,
+                                          self.settings.contour_level_count)
+        
+        LEVEL0 = helper.get_lower_level(g.vert_level, self.cdump.vert_levels)
+        
+        # TODO: better
+        if self.settings.KAVG == 1:
+            level1 = self.length_factory.create_instance(LEVEL0)
+            level2 = self.length_factory.create_instance(g.vert_level)
+            self.conc_type.set_alt_KAVG(3)
+        else:
+            # TODO: better
+            level1 = self.length_factory.create_instance(LEVEL0)
+            level2 = self.length_factory.create_instance(self.settings.LEVEL2)
+            
+        # TODO: better
+        if self.settings.KAVG == 1 and self.settings.exposure_unit == 4:
+            # mass loading
+            f = float(g.vert_level - LEVEL0)
+            self.TFACT *= f
+            self.conc_type.scale_exposure(f)
+        elif self.settings.KAVG == 2 and self.settings.exposure_unit == 4:
+            # mass loading
+            f = float(g.vert_level - LEVEL0)
+            self.TFACT *= f
+            self.conc_type.scale_exposure(f)
+            
+        xconc = numpy.copy(g.conc)
+        xconc *= self.TFACT
+        
+        if self.smoothing_kernel is not None:
+            xconc = self.smoothing_kernel.smooth_with_max_preserved(xconc)
+        
+        # plot title
+        self.conc_outer.set_title(self.make_plot_title(g, self.conc_map, level1, level2))
+        self.conc_outer.set_xlabel(self.make_xlabel(g))
+        
+        self.draw_concentration_plot(g, xconc,
+                                     contour_levels, ctbl.colors)
+        self.draw_contour_legends(g, self.conc_map,
+                                  self.contour_labels, contour_levels, ctbl.colors)
+        self.draw_bottom_text()
+        
+        # TODO: better
+        if self.settings.KAVG == 1 and self.settings.exposure_unit == 4:
+            # mass unloading
+            f = 1.0 / float(g.vert_level - LEVEL0)
+            self.TFACT *= f
+            self.conc_type.scale_exposure(f)
+        elif self.settings.KAVG == 2 and self.settings.exposure_unit == 4:
+            # mass unloading
+            f = 1.0 / float(g.vert_level - LEVEL0)
+            self.TFACT *= f
+            self.conc_type.scale_exposure(f)
+                               
+        if self.settings.interactive_mode:
+            plt.show(*args, **kwargs)
+        else:
+            self.fig.canvas.draw()  # to get the plot spines right.
+            self.update_gridlines()
+            filename = self.make_plot_filename(self.settings, self.current_frame)
+            logger.info("Saving a plot to file %s", filename)
+            plt.savefig(filename, papertype="letter")
+        
+        plt.close(self.fig)
+        self.current_frame += 1
+
+    def draw_conc_on_ground(self, g, ev_handlers, lgen, ctbl, *args, **kwargs):
+        
+        self.layout(g, ev_handlers)
+        
+        self._turn_off_spines(self.conc_outer)
+        self._turn_off_ticks(self.conc_outer)
+
+        lgen.set_global_min_max(self.conc_type.ground_min_conc,
+                                self.conc_type.ground_max_conc)     
+        contour_levels = lgen.make_levels(g.extension.min_conc,
+                                          g.extension.max_conc,
+                                          self.settings.contour_level_count)
+        
+        level1 = self.length_factory.create_instance(0)
+        level2 = self.length_factory.create_instance(0)
+        
+        xconc = numpy.copy(g.conc)
+        if self.settings.DEPADJ != 1.0:
+            xconc *= self.settings.DEPADJ
+        
+        if self.smoothing_kernel is not None:
+            xconc = self.smoothing_kernel.smooth_with_max_preserved(xconc)
+        
+        # plot title
+        self.conc_outer.set_title(self.make_plot_title(g, self.depo_map, level1, level2))
+        self.conc_outer.set_xlabel(self.make_xlabel(g))
+        
+        self.draw_concentration_plot(g, xconc,
+                                     contour_levels, ctbl.colors)
+        self.draw_contour_legends(g, self.depo_map,
+                                  self.contour_labels, contour_levels, ctbl.colors)
+        self.draw_bottom_text()
+        
+        if self.settings.interactive_mode:
+            plt.show(*args, **kwargs)
+        else:
+            self.fig.canvas.draw()  # to get the plot spines right.
+            self.update_gridlines()
+            filename = self.make_plot_filename(self.settings, self.current_frame)
+            logger.info("Saving a plot to file %s", filename)
+            plt.savefig(filename, papertype="letter")
+        
+        plt.close(self.fig)
+        self.current_frame += 1
+    
+    def draw(self, ev_handlers=None, *args, **kwargs):
         if self.settings.interactive_mode == False:
             plt.ioff()
 
-        initial_time = None
-        current_frame = 1
-        
         lgen = ContourLevelGeneratorFactory.create_instance(self.settings.contour_level_generator,
                                                             self.settings.contour_levels,
                                                             self.settings.UCMIN,
                                                             self.settings.user_color)
         ctbl = ColorTableFactory.create_instance(self.settings)
      
-        vavg_calc = helper.VerticalAverageCalculator(self.cdump, self.level_selector)
-
         self._initialize_map_projection(self.cdump)
 
-        contour_levels = None
-        contour_labels = None
+        if self.contour_labels is None:
+            # TODO: better
+            if self.settings.contour_levels is not None:
+                self.contour_labels = [c.label for c in self.settings.contour_levels]
+            else:
+                self.contour_labels = [""] * self.settings.contour_level_count
         
         for t_index in self.time_selector:
             t_grids = helper.TimeIndexGridFilter(self.cdump.grids,
                                                  helper.TimeIndexSelector(t_index, t_index))
             
-            grids = self.conc_type.prepare_grids_for_plotting(t_grids)
+            grids_above_ground, grids_on_ground = self.conc_type.prepare_grids_for_plotting(t_grids)
+            logger.debug("grid counts: above the ground %d, on the ground %d",
+                         len(grids_above_ground), len(grids_on_ground))
           
             # TODO: move?
             if self.settings.exposure_unit == const.ExposureUnit.EXPOSURE:
-                g = grids[0]
+                g = grids_above_ground[0]
                 
                 # air conc to exposure
-                TFACT = self.settings.CONADJ * abs(g.get_duration_in_sec())
+                self.TFACT = self.settings.CONADJ * abs(g.get_duration_in_sec())
                 if t_index == self.time_selector.first:
                     f = abs(g.get_duration_in_sec())
                     self.conc_type.scale_exposure(f)
             else:
                 # conc unit conversion factor
-                TFACT = self.settings.CONADJ
-            logger.debug("CONADJ %g, TFACT %g", self.settings.CONADJ, TFACT)
+                self.TFACT = self.settings.CONADJ
+            logger.debug("CONADJ %g, TFACT %g", self.settings.CONADJ, self.TFACT)
             
             # save the initial time for internal summation
             if t_index == self.time_selector.first:
-                initial_time = grids[0].starting_datetime
+                if len(grids_above_ground) > 0:
+                    initial_time = grids_above_ground[0].starting_datetime
+                elif len(grids_on_ground) > 0:
+                    initial_time = grids_on_ground[0].starting_datetime
+                else:
+                    raise Exception("no concentration grids to plot")
             
-            for g in grids:
-                self.layout(g, ev_handlers)
-                
-                self._turn_off_spines(self.conc_outer)
-                self._turn_off_ticks(self.conc_outer)
-                
-                if contour_levels is None:
-                    contour_levels = lgen.make_levels(self.conc_type.contour_min_conc,
-                                                      self.conc_type.contour_max_conc,
-                                                      self.settings.contour_level_count)
-                
-                if contour_labels is None:
-                    # TODO: better
-                    if self.settings.contour_levels is not None:
-                        contour_labels = [c.label for c in self.settings.contour_levels]
-                    else:
-                        contour_labels = [""] * self.settings.contour_level_count
-                
-                LEVEL0 = helper.get_lower_level(g.vert_level, self.cdump.vert_levels)
-                
-                # TODO: better
-                if self.settings.KAVG == 1:
-                    
-                    level1 = self.length_factory.create_instance(LEVEL0)
-                    level2 = self.length_factory.create_instance(g.vert_level)
-                    self.conc_type.set_alt_KAVG(3)
-                else:
-                    # TODO: better
-                    level1 = self.length_factory.create_instance(LEVEL0)
-                    level2 = self.length_factory.create_instance(self.settings.LEVEL2)
-                    
-                # TODO: better
-                if self.settings.KAVG == 1 and self.settings.exposure_unit == 4:
-                    # mass loading
-                    f = float(g.vert_level - LEVEL0)
-                    TFACT *= f
-                    self.conc_type.scale_exposure(f)
-                elif self.settings.KAVG == 2 and self.settings.exposure_unit == 4:
-                    # mass loading
-                    f = float(g.vert_level - LEVEL0)
-                    TFACT *= f
-                    self.conc_type.scale_exposure(f)
-                    
-                xconc = numpy.copy(g.conc)
-                xconc *= TFACT
-                
-                if self.smoothing_kernel is not None:
-                    xconc = self.smoothing_kernel.smooth_with_max_preserved(xconc)
-                
-                # plot title
-                self.conc_outer.set_title(self.make_plot_title(g, level1, level2))
-                self.conc_outer.set_xlabel(self.make_xlabel(g))
-                
-                self.draw_concentration_plot(g, xconc,
-                                             contour_levels, ctbl.colors)
-                self.draw_contour_legends(g,
-                                          contour_labels, contour_levels, ctbl.colors)
-                self.draw_bottom_text()
-                
-                # TODO: better
-                if self.settings.KAVG == 1 and self.settings.exposure_unit == 4:
-                    # mass unloading
-                    f = 1.0 / float(g.vert_level - LEVEL0)
-                    TFACT *= f
-                    self.conc_type.scale_exposure(f)
-                elif self.settings.KAVG == 2 and self.settings.exposure_unit == 4:
-                    # mass unloading
-                    f = 1.0 / float(g.vert_level - LEVEL0)
-                    TFACT *= f
-                    self.conc_type.scale_exposure(f)
-                                       
-                if self.settings.interactive_mode:
-                    plt.show(*args, **kw)
-                else:
-                    self.fig.canvas.draw()  # to get the plot spines right.
-                    self.update_gridlines()
-                    filename = self.make_plot_filename(self.settings, current_frame)
-                    logger.info("Saving a plot to file %s", filename)
-                    plt.savefig(filename, papertype="letter")
-                
-                #self.fig.clf()
-                plt.close(self.fig)
-                current_frame += 1
-                    
+            for g in grids_above_ground:
+                self.draw_conc_above_ground(g, ev_handlers, lgen, ctbl, *args, **kwargs)
+            
+            for g in grids_on_ground:
+                self.draw_conc_on_ground(g, ev_handlers, lgen, ctbl, *args, **kwargs)
 
 class LabelledContourLevel:
     
@@ -976,8 +1033,14 @@ class ContourLevelGeneratorFactory:
 class AbstractContourLevelGenerator:
     
     def __init__(self, **kwargs):
+        self.global_min = None
+        self.global_max = None
         return
 
+    def set_global_min_max(self, cmin, cmax):
+        self.global_min = cmin
+        self.global_max = cmax
+        
 
 class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
     
@@ -1015,14 +1078,19 @@ class ExponentialFixedLevelGenerator(ExponentialDynamicLevelGenerator):
     def __init__(self, UCMIN, **kwargs):
         ExponentialDynamicLevelGenerator.__init__(self, UCMIN, **kwargs)
         
-        
+    def make_levels(self, cmin, cmax, max_levels):
+        return ExponentialDynamicLevelGenerator.make_levels(self,
+                                                            self.global_min,
+                                                            self.global_max,
+                                                            max_levels)
+    
+    
 class LinearDynamicLevelGenerator(AbstractContourLevelGenerator):
     
     def __init__(self):
         AbstractContourLevelGenerator.__init__(self)
         
-    @staticmethod
-    def make_levels(cmin, cmax, max_levels):
+    def make_levels(self, cmin, cmax, max_levels):
         nexp = util.nearest_int(math.log10(cmax * 0.25))
         if nexp < 0:
             nexp -= 1
@@ -1043,7 +1111,13 @@ class LinearFixedLevelGenerator(LinearDynamicLevelGenerator):
     def __init__(self):
         LinearDynamicLevelGenerator.__init__(self)
     
-    
+    def make_levels(self, cmin, cmax, max_levels):
+        return LinearDynamicLevelGenerator.make_levels(self,
+                                                       self.global_min,
+                                                       self.global_max,
+                                                       max_levels)
+
+
 class UserSpecifiedLevelGenerator(AbstractContourLevelGenerator):
     
     def __init__(self, user_specified_levels):
