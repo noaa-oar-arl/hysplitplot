@@ -68,11 +68,11 @@ class ContourLevelGenerator:
     MAX_LEVELS = 32
 
 class ExposureUnit:
-    CONC = 0
+    CONCENTRATION = 0
     EXPOSURE = 1
-    CHEM_THRESHOLDS = 2
-    VA = 3
-    VAL_4 = 4 # TODO: spell it out
+    CHEMICAL_THRESHOLDS = 2
+    VOLCANIC_ASH = 3
+    MASS_LOADING = 4
 
 class ConcentrationType: # KAVG
     EACH_LEVEL = 1

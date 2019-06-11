@@ -40,7 +40,7 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.this_is_test = 0
         self.LEVEL1 = 0 # bottom display level defaults to deposition surface
         self.LEVEL2 = 99999 # top level default to whole model atmosphere
-        self.exposure_unit = const.ExposureUnit.CONC
+        self.exposure_unit = const.ExposureUnit.CONCENTRATION # KEXP, -e
         self.KAVG = const.ConcentrationType.EACH_LEVEL
         self.NDEP = const.DepositionSum.TIME
         self.show_max_conc = 1
@@ -379,7 +379,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 self.settings.KAVG = const.ConcentrationType.EACH_LEVEL
         
         self.conc_type = helper.ConcentrationTypeFactory.create_instance(self.settings.KAVG)
-        
+        if self.settings.KAVG == 1:
+            self.conc_type.set_alt_KAVG(3)  # for the above-ground conc plots
+            
         self._post_file_processing(self.cdump)
         
         self.conc_map = helper.ConcentrationMapFactory.create_instance(self.settings.KMAP, self.settings.KHEMIN)
@@ -393,7 +395,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.conc_type.initialize(cdump,
                                   self.level_selector,
                                   self.pollutant_selector)
-        
+            
         # find min and max values by examining all grids of interest
         for t_index in self.time_selector:
             t_grids = helper.TimeIndexGridFilter(cdump.grids,
@@ -421,17 +423,23 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             s.UCMIN = 0.0
             s.UDMIN = 0.0
         
-        if s.exposure_unit == const.ExposureUnit.CHEM_THRESHOLDS:
-            s.KMAP = const.ConcentrationMapType.THRESHOLD_LEVELS #4
-        elif s.exposure_unit == const.ExposureUnit.VA:
-            s.KMAP = const.ConcentrationMapType.VOLCANIC_ERUPTION #5
-        elif s.exposure_unit == const.ExposureUnit.VAL_4:
-            s.KMAP = const.ConcentrationMapType.MASS_LOADING #7
+        if s.exposure_unit == const.ExposureUnit.CHEMICAL_THRESHOLDS:
+            s.KMAP = const.ConcentrationMapType.THRESHOLD_LEVELS
+        elif s.exposure_unit == const.ExposureUnit.VOLCANIC_ASH:
+            s.KMAP = const.ConcentrationMapType.VOLCANIC_ERUPTION
+        elif s.exposure_unit == const.ExposureUnit.MASS_LOADING:
+            s.KMAP = const.ConcentrationMapType.MASS_LOADING
         else:
             s.KMAP = s.exposure_unit + 1
 
         self.update_height_unit(self.labels)
         
+        if self.contour_labels is None:
+            if self.settings.contour_levels is not None:
+                self.contour_labels = [c.label for c in self.settings.contour_levels]
+            else:
+                self.contour_labels = [""] * self.settings.contour_level_count
+                
     def update_height_unit(self, labels):
         # default values from labels.cfg  
         if labels.has("ALTTD"):
@@ -830,32 +838,18 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                           g.extension.max_conc,
                                           self.settings.contour_level_count)
         
-        LEVEL0 = helper.get_lower_level(g.vert_level, self.cdump.vert_levels)
+        LEVEL0 = self.conc_type.get_lower_level(g.vert_level, self.cdump.vert_levels)
+        LEVEL2 = self.conc_type.get_upper_level(g.vert_level, self.settings.LEVEL2)
         
-        # TODO: better
-        if self.settings.KAVG == 1:
-            level1 = self.length_factory.create_instance(LEVEL0)
-            level2 = self.length_factory.create_instance(g.vert_level)
-            self.conc_type.set_alt_KAVG(3)
-        else:
-            # TODO: better
-            level1 = self.length_factory.create_instance(LEVEL0)
-            level2 = self.length_factory.create_instance(self.settings.LEVEL2)
-            
-        # TODO: better
-        if self.settings.KAVG == 1 and self.settings.exposure_unit == 4:
-            # mass loading
-            f = float(g.vert_level - LEVEL0)
-            self.TFACT *= f
-            self.conc_type.scale_exposure(f)
-        elif self.settings.KAVG == 2 and self.settings.exposure_unit == 4:
-            # mass loading
-            f = float(g.vert_level - LEVEL0)
-            self.TFACT *= f
-            self.conc_type.scale_exposure(f)
-            
+        level1 = self.length_factory.create_instance(LEVEL0)
+        level2 = self.length_factory.create_instance(LEVEL2)
+        
+        f = float(g.vert_level - LEVEL0)
+        conc_scaling_factor = self.conc_map.scale_exposure(self.TFACT, self.conc_type, f)
+        
         xconc = numpy.copy(g.conc)
-        xconc *= self.TFACT
+        if conc_scaling_factor != 1.0:
+            xconc *= conc_scaling_factor
         
         if self.smoothing_kernel is not None:
             xconc = self.smoothing_kernel.smooth_with_max_preserved(xconc)
@@ -870,18 +864,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                   self.contour_labels, contour_levels, ctbl.colors)
         self.draw_bottom_text()
         
-        # TODO: better
-        if self.settings.KAVG == 1 and self.settings.exposure_unit == 4:
-            # mass unloading
-            f = 1.0 / float(g.vert_level - LEVEL0)
-            self.TFACT *= f
-            self.conc_type.scale_exposure(f)
-        elif self.settings.KAVG == 2 and self.settings.exposure_unit == 4:
-            # mass unloading
-            f = 1.0 / float(g.vert_level - LEVEL0)
-            self.TFACT *= f
-            self.conc_type.scale_exposure(f)
-                               
+        self.conc_map.undo_scale_exposure(self.conc_type)
+        
         if self.settings.interactive_mode:
             plt.show(*args, **kwargs)
         else:
@@ -950,13 +934,6 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         ctbl = ColorTableFactory.create_instance(self.settings)
      
         self._initialize_map_projection(self.cdump)
-
-        if self.contour_labels is None:
-            # TODO: better
-            if self.settings.contour_levels is not None:
-                self.contour_labels = [c.label for c in self.settings.contour_levels]
-            else:
-                self.contour_labels = [""] * self.settings.contour_level_count
         
         for t_index in self.time_selector:
             t_grids = helper.TimeIndexGridFilter(self.cdump.grids,
@@ -965,23 +942,19 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             grids_above_ground, grids_on_ground = self.conc_type.prepare_grids_for_plotting(t_grids)
             logger.debug("grid counts: above the ground %d, on the ground %d",
                          len(grids_above_ground), len(grids_on_ground))
+
+            initial_timeQ = (t_index == self.time_selector.first)
           
-            # TODO: move?
-            if self.settings.exposure_unit == const.ExposureUnit.EXPOSURE:
-                g = grids_above_ground[0]
-                
-                # air conc to exposure
-                self.TFACT = self.settings.CONADJ * abs(g.get_duration_in_sec())
-                if t_index == self.time_selector.first:
-                    f = abs(g.get_duration_in_sec())
-                    self.conc_type.scale_exposure(f)
-            else:
-                # conc unit conversion factor
-                self.TFACT = self.settings.CONADJ
+            # conc unit conversion factor
+            self.TFACT = self.settings.CONADJ
+
+            if self.conc_map.need_time_scaling():
+                f = abs(grids_above_ground[0].get_duration_in_sec())
+                self.TFACT = self.conc_map.scale_time(self.TFACT, self.conc_type, f, initial_timeQ)
             logger.debug("CONADJ %g, TFACT %g", self.settings.CONADJ, self.TFACT)
             
             # save the initial time for internal summation
-            if t_index == self.time_selector.first:
+            if initial_timeQ:
                 if len(grids_above_ground) > 0:
                     initial_time = grids_above_ground[0].starting_datetime
                 elif len(grids_on_ground) > 0:

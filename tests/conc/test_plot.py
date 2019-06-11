@@ -81,7 +81,7 @@ def test_ConcentrationPlotSettings___init__():
     assert s.this_is_test == 0
     assert s.LEVEL1 == 0
     assert s.LEVEL2 == 99999
-    assert s.exposure_unit == const.ExposureUnit.CONC
+    assert s.exposure_unit == const.ExposureUnit.CONCENTRATION
     assert s.KAVG == const.ConcentrationType.EACH_LEVEL
     assert s.NDEP == const.DepositionSum.TIME
     assert s.show_max_conc == 1
@@ -583,15 +583,15 @@ def test_ConcentrationPlot__normalize_settings(cdump2):
     assert s.KMAP == 11
     
     # check with other exposure_unit values
-    s.exposure_unit = const.ExposureUnit.CHEM_THRESHOLDS
+    s.exposure_unit = const.ExposureUnit.CHEMICAL_THRESHOLDS
     p._normalize_settings(cdump2)
     assert s.KMAP == const.ConcentrationMapType.THRESHOLD_LEVELS #4
     
-    s.exposure_unit = const.ExposureUnit.VA
+    s.exposure_unit = const.ExposureUnit.VOLCANIC_ASH
     p._normalize_settings(cdump2)
     assert s.KMAP == const.ConcentrationMapType.VOLCANIC_ERUPTION #5
     
-    s.exposure_unit = const.ExposureUnit.VAL_4
+    s.exposure_unit = const.ExposureUnit.MASS_LOADING
     p._normalize_settings(cdump2)
     assert s.KMAP == const.ConcentrationMapType.MASS_LOADING #
 
@@ -938,6 +938,7 @@ def test_ConcentrationPlot_draw():
     # See if no exception is thrown.
     try:
         p._initialize_map_projection(p.cdump)
+        p.contour_labels = [""] * p.settings.contour_level_count
         p.draw({"resize_event" : blank_event_handler}, block=False)
         cleanup_plot(p)
     except Exception as ex:

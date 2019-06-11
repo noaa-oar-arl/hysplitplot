@@ -69,16 +69,6 @@ def find_nonzero_min_max(mat):
         vmin = util.nonzero_min(mat)    # may return None.
 
     return vmin, vmax
-
-
-def get_lower_level(current_level, levels):
-    sorted_levels = sorted(levels)
-
-    k = sorted_levels.index(current_level)
-    if k > 0:
-        return sorted_levels[k - 1]
-    else:
-        return 0.0
     
 
 class TimeIndexSelector:
@@ -270,6 +260,15 @@ class ConcentrationType:
         self.level_selector = level_selector
         self.pollutant_selector = pollutant_selector
 
+    def get_lower_level(self, current_level, levels):
+        sorted_levels = sorted(levels)
+    
+        k = sorted_levels.index(current_level)
+        if k > 0:
+            return sorted_levels[k - 1]
+        else:
+            return 0.0
+
 
 class VerticalAverageConcentration(ConcentrationType):
     
@@ -278,6 +277,8 @@ class VerticalAverageConcentration(ConcentrationType):
         self.average_calc = None
         self.min_average = 1.0e+25
         self.max_average = 0.0
+        self.__min_average_stashed = self.min_average
+        self.__max_average_stashed = self.max_average
         return 
     
     def initialize(self, cdump, level_selector, pollutant_selector):
@@ -338,15 +339,21 @@ class VerticalAverageConcentration(ConcentrationType):
         self.max_average *= CONADJ
 
     def scale_exposure(self, factor):
+        self.__min_average_stashed = self.min_average
+        self.__max_average_stashed = self.max_average
         self.min_average *= factor
         self.max_average *= factor
         logger.debug("exposure scaling factor %g, min avg %g, max avg %g", factor, self.min_average, self.max_average)
   
+    def undo_scale_exposure(self):
+        self.min_average = self.__min_average_stashed
+        self.max_average = self.__max_average_stashed
+        
     def normalize_min_max(self):
         if self.min_average > self.max_average:
             # This happens if all concentration values are zero.
             self.min_average, self.max_average = self.max_average, self.min_average
-            
+             
     @property
     def contour_min_conc(self):
         return self.min_average
@@ -362,6 +369,9 @@ class VerticalAverageConcentration(ConcentrationType):
         """level1 and level2 are instances of the LengthInFeet or LengthInMeters class."""
         return "averaged between {0} and {1}".format(level1, level2)
 
+    def get_upper_level(self, grid_level, settings_level):
+        return settings_level
+    
 
 class LevelConcentration(ConcentrationType):
     
@@ -369,6 +379,8 @@ class LevelConcentration(ConcentrationType):
         ConcentrationType.__init__(self)
         self.min_concs = None  # per vertical level, across all grids of interest
         self.max_concs = None  # per vertical level, across all grids of interest
+        self.__min_concs_stashed = None
+        self.__max_concs_stashed = None
         self.KAVG = 1
         self.alt_KAVG = 1
         self.ground_index = None
@@ -466,32 +478,35 @@ class LevelConcentration(ConcentrationType):
                      self.min_concs, self.max_concs)
 
     def scale_exposure(self, factor):
-        self.min_concs[:] = [x * factor for x in self.min_concs]
-        self.max_concs[:] = [x * factor for x in self.max_concs]
+        self.__min_concs_stashed = self.min_concs
+        self.__max_concs_stashed = self.max_concs
+        self.min_concs = [x * factor for x in self.min_concs]
+        self.max_concs = [x * factor for x in self.max_concs]
         logger.debug("exposure scaling factor %g, min_concs %s", factor, self.min_concs)
         logger.debug("exposure scaling factor %g, max_concs %s", factor, self.max_concs)
-       
+    
+    def undo_scale_exposure(self):
+        self.min_concs = self.__min_concs_stashed
+        self.max_concs = self.__max_concs_stashed
+        
     @property
     def contour_min_conc(self):
-        return self.min_concs[-1]
+        return self.min_concs[-1]   # at the top level
     
     @property
     def contour_max_conc(self):
-        return self.max_concs[-1]
+        return self.max_concs[-1]   # at the top level
        
     @property
     def ground_min_conc(self):
         return self.min_concs[self.ground_index]
-    
+     
     @property
     def ground_max_conc(self):
         return self.max_concs[self.ground_index]
     
     def get_plot_conc_range(self, grid):
-        logger.debug("conc plot: min %g, max %g, at level %g",
-                     grid.extension.min_conc,
-                     grid.extension.max_conc,
-                     grid.vert_level)
+        logger.debug("conc plot: min %g, max %g, at level %g", grid.extension.min_conc, grid.extension.max_conc, grid.vert_level)
         return grid.extension.min_conc, grid.extension.max_conc
 
     def get_level_range_str(self, level1, level2):
@@ -501,6 +516,9 @@ class LevelConcentration(ConcentrationType):
         else:
             return "at level {0}".format(level2)
 
+    def get_upper_level(self, grid_level, settings_level):
+        return grid_level
+    
 
 class ConcentrationMapFactory:
     
@@ -581,7 +599,20 @@ class AbstractConcentrationMap:
     
     def set_map_id(self, str):
         self.map_id = str
-        
+            
+    def scale_exposure(self, TFACT, conc_type, scaling_factor):
+        # TFACT and concentration extrema are scaled for mass loading: see MassLoadingMap.
+        return TFACT
+    
+    def undo_scale_exposure(self, conc_type):
+        return
+    
+    def need_time_scaling(self):
+        return False
+    
+    def scale_time(self, TFACT, conc_type, f, initial_timeQ):
+        # See ExposureMap.
+        return TFACT
 
 class ConcentrationMap(AbstractConcentrationMap):
     
@@ -620,7 +651,17 @@ class ExposureMap(AbstractConcentrationMap):
         return "{0} (${1}$) {2}".format(self.map_id,
                                         conc_unit,
                                         conc_type.get_level_range_str(level1, level2))
+        
+    def need_time_scaling(self):
+        return True
     
+    def scale_time(self, TFACT, conc_type, f, initial_timeQ):
+        # air conc to exposure
+        if initial_timeQ:
+            conc_type.scale_exposure(f)
+            
+        return TFACT * f
+        
         
 class DepositionMap(AbstractConcentrationMap):
     
@@ -815,4 +856,10 @@ class MassLoadingMap(AbstractConcentrationMap):
         return "{0} (${1}$) {2}".format(self.map_id,
                                         conc_unit,
                                         conc_type.get_level_range_str(level1, level2))
+        
+    def scale_exposure(self, TFACT, conc_type, scaling_factor):
+        conc_type.scale_exposure(scaling_factor)
+        return TFACT * scaling_factor
     
+    def undo_scale_exposure(self, conc_type):
+        conc_type.undo_scale_exposure()

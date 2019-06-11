@@ -81,17 +81,7 @@ def test_find_nonzero_min_max(cdump2):
     vmin, vmax = helper.find_nonzero_min_max(cdump2.grids[0].conc)
     assert vmin * 1.0e+15 == pytest.approx(1.871257)
     assert vmax * 1.0e+13 == pytest.approx(8.047535)
-  
 
-def test_get_lower_level():
-    assert helper.get_lower_level(300.0, [100.0, 300.0]) == 100.0
-    assert helper.get_lower_level(100.0, [100.0, 300.0]) == 0.0
-    
-    assert helper.get_lower_level(300.0, [300.0, 100.0]) == 100.0
-    assert helper.get_lower_level(100.0, [300.0, 100.0]) == 0.0   
-    
-    assert helper.get_lower_level(100.0, [0.0, 100.0, 300.0]) == 0.0
-    
     
 def test_TimeIndexSelector___init__():
     s = helper.TimeIndexSelector()
@@ -381,6 +371,18 @@ def test_ConcentrationType_initialize():
     assert p.cdump is cdump
     assert p.level_selector is ls
     assert p.pollutant_selector is ps
+  
+
+def test_ConcentrationType_get_lower_level():
+    p = helper.ConcentrationType()
+    
+    assert p.get_lower_level(300.0, [100.0, 300.0]) == 100.0
+    assert p.get_lower_level(100.0, [100.0, 300.0]) == 0.0
+    
+    assert p.get_lower_level(300.0, [300.0, 100.0]) == 100.0
+    assert p.get_lower_level(100.0, [300.0, 100.0]) == 0.0   
+    
+    assert p.get_lower_level(100.0, [0.0, 100.0, 300.0]) == 0.0
     
     
 def test_VerticalAverageConcentration___init__():
@@ -526,6 +528,21 @@ def test_VerticalAverageConcentration_scale_exposure():
     assert p.max_average == pytest.approx(3*0.75)
 
 
+def test_VerticalAverageConcentration_undo_scale_exposure():
+    p = helper.VerticalAverageConcentration()
+    
+    p.min_average = 0.25
+    p.max_average = 0.75
+    
+    p.scale_exposure(3)
+    assert p.min_average == pytest.approx(3*0.25)
+    assert p.max_average == pytest.approx(3*0.75)
+
+    p.undo_scale_exposure()
+    assert p.min_average == pytest.approx(0.25)
+    assert p.max_average == pytest.approx(0.75)
+
+
 def test_VerticalAverageConcentration_normalize_min_max():
     p = helper.VerticalAverageConcentration()
     assert p.min_average == 1.0e+25
@@ -569,7 +586,16 @@ def test_VerticalAverageConcentration_get_level_range_str():
     
     assert p.get_level_range_str(level1, level2) == "averaged between 1 m and 2 m"
     
+    
+def test_VerticalAverageConcentration_get_upper_level():
+    p = helper.VerticalAverageConcentration()
 
+    # should return the settings_level
+    grid_level = 100.0
+    settings_level = 500.0    
+    assert p.get_upper_level(grid_level, settings_level) == pytest.approx(500.0)
+    
+    
 def test_LevelConcentration___init__():
     p = helper.LevelConcentration()
     
@@ -749,6 +775,21 @@ def test_LevelConcentration_scale_exposure():
     assert p.max_concs == pytest.approx((3*0.6, 3*0.7, 3*0.8))
 
 
+def test_LevelConcentration_undo_scale_exposure():
+    p = helper.LevelConcentration()
+    
+    p.min_concs = [0.4, 0.5, 0.6]
+    p.max_concs = [0.6, 0.7, 0.8]
+    
+    p.scale_exposure(3)
+    assert p.min_concs == pytest.approx((3*0.4, 3*0.5, 3*0.6))
+    assert p.max_concs == pytest.approx((3*0.6, 3*0.7, 3*0.8))
+    
+    p.undo_scale_exposure()
+    assert p.min_concs == pytest.approx((0.4, 0.5, 0.6))
+    assert p.max_concs == pytest.approx((0.6, 0.7, 0.8))
+    
+
 def test_LevelConcentration_contour_min_conc():
     p = helper.LevelConcentration()
     p.min_concs = [0.1, 0.2, 0.4]
@@ -799,6 +840,15 @@ def test_LevelConcentration_get_level_range_str():
     p.alt_KAVG = 3
     assert p.get_level_range_str(level1, level2) == "averaged between 1 m and 2 m"
     
+    
+def test_LevelConcentration_get_upper_level():
+    p = helper.LevelConcentration()
+
+    # should return the grid
+    grid_level = 100.0
+    settings_level = 500.0    
+    assert p.get_upper_level(grid_level, settings_level) == pytest.approx(100.0)
+        
 
 def test_ConcentrationMapFactory_create_instance():
     p = helper.ConcentrationMapFactory.create_instance(const.ConcentrationMapType.CONCENTRATION, 1)
@@ -891,7 +941,38 @@ def test_AbstractConcentrationMap_set_map_id():
     p = helper.AbstractConcentrationMap(2, 4)
     p.set_map_id("Conc")
     assert p.map_id == "Conc"
+   
+
+def test_AbstractConcentrationMap_scale_exposure():
+    p = helper.AbstractConcentrationMap(2, 4)
+    conc_type = helper.LevelConcentration()
+    TFACT = 2.5;
     
+    assert p.scale_exposure(TFACT, conc_type, 2.0) == pytest.approx(2.5)
+  
+
+def test_AbstractConcentrationMap_undo_scale_exposure():
+    p = helper.AbstractConcentrationMap(2, 4)
+    conc_type = helper.LevelConcentration()
+
+    try:    
+        p.undo_scale_exposure(conc_type)
+    except Exception as ex:
+        pytest.fail("unexpected exception: {0}".format(ex))
+  
+
+def test_AbstractConcentrationMap_need_time_scaling():
+    p = helper.AbstractConcentrationMap(2, 4)
+    assert p.need_time_scaling() == False
+  
+
+def test_AbstractConcentrationMap_scale_time():
+    p = helper.AbstractConcentrationMap(2, 4)
+    conc_type = helper.LevelConcentration()
+    TFACT = 2.5;
+
+    assert p.scale_time(TFACT, conc_type, 2.0, False) == pytest.approx(2.5)
+
 
 def test_ConcentrationMap___init__():
     p = helper.ConcentrationMap(4)
@@ -940,7 +1021,31 @@ def test_ExposureMap_get_map_id_line():
     level2 = util.LengthInMeters(2.0)
     
     p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Exposure (mass/m^3) averaged between 1 m and 2 m"
+  
+
+def test_ExposureMap_need_time_scaling():
+    p = helper.ExposureMap(4)
+    assert p.need_time_scaling() == True
+  
+
+def test_ExposureMap_scale_time(cdump2):
+    p = helper.ExposureMap(4)
+    conc_type = helper.LevelConcentration()
+    ls = helper.VerticalLevelSelector()
+    ps = helper.PollutantSelector(0)
+    conc_type.initialize(cdump2, ls, ps)
+    t_grids = list(filter(lambda g: g.time_index == 0 and g.vert_level in ls and g.pollutant_index in ps, cdump2.grids))
+    conc_type.update_min_max(t_grids)
+    TFACT = 2.5;
+
+    assert p.scale_time(TFACT, conc_type, 2.0, False) == pytest.approx(2.0 * 2.5)
+    assert conc_type.min_concs[0] * 1.0e+15 == pytest.approx(1.871257)
+    assert conc_type.max_concs[0] * 1.0e+13 == pytest.approx(8.047535)
     
+    assert p.scale_time(TFACT, conc_type, 2.0, True) == pytest.approx(2.0 * 2.5)
+    assert conc_type.min_concs[0] * 1.0e+15 == pytest.approx(2.0 * 1.871257)
+    assert conc_type.max_concs[0] * 1.0e+13 == pytest.approx(2.0 * 8.047535)
+
 
 def test_DepositionMap___init__():
     p = helper.DepositionMap(4)
@@ -1118,6 +1223,37 @@ def test_MassLoadingMap_get_map_id_line():
     p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Mass loading (mass/m^2) averaged between 1 m and 2 m"
 
 
+def test_MassLoadingMap_scale_exposure(cdump2):
+    p = helper.MassLoadingMap(4)
+    conc_type = helper.LevelConcentration()
+    ls = helper.VerticalLevelSelector()
+    ps = helper.PollutantSelector(0)
+    conc_type.initialize(cdump2, ls, ps)
+    t_grids = list(filter(lambda g: g.time_index == 0 and g.vert_level in ls and g.pollutant_index in ps, cdump2.grids))
+    conc_type.update_min_max(t_grids)
+    TFACT = 2.5;
 
+    assert p.scale_exposure(TFACT, conc_type, 2.0) == pytest.approx(2.0 * 2.5)
+    assert conc_type.min_concs[0] * 1.0e+15 == pytest.approx(2.0 * 1.871257)
+    assert conc_type.max_concs[0] * 1.0e+13 == pytest.approx(2.0 * 8.047535)
+    
+
+def test_MassLoadingMap_undo_scale_exposure(cdump2):
+    p = helper.MassLoadingMap(4)
+    conc_type = helper.LevelConcentration()
+    ls = helper.VerticalLevelSelector()
+    ps = helper.PollutantSelector(0)
+    conc_type.initialize(cdump2, ls, ps)
+    t_grids = list(filter(lambda g: g.time_index == 0 and g.vert_level in ls and g.pollutant_index in ps, cdump2.grids))
+    conc_type.update_min_max(t_grids)
+    TFACT = 2.5;
+    
+    p.scale_exposure(TFACT, conc_type, 2.0)
+    assert conc_type.min_concs[0] * 1.0e+15 == pytest.approx(2.0 * 1.871257)
+    assert conc_type.max_concs[0] * 1.0e+13 == pytest.approx(2.0 * 8.047535)
+    
+    p.undo_scale_exposure(conc_type)
+    assert conc_type.min_concs[0] * 1.0e+15 == pytest.approx(1.871257)
+    assert conc_type.max_concs[0] * 1.0e+13 == pytest.approx(8.047535)
 
 
