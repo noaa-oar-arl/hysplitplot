@@ -42,7 +42,7 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.LEVEL2 = 99999 # top level default to whole model atmosphere
         self.exposure_unit = const.ExposureUnit.CONCENTRATION # KEXP, -e
         self.KAVG = const.ConcentrationType.EACH_LEVEL
-        self.NDEP = const.DepositionSum.TIME
+        self.NDEP = const.DepositionType.TIME
         self.show_max_conc = 1
         self.mass_unit = "mass"
         self.mass_unit_by_user = False
@@ -256,6 +256,7 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
     def get_reader(self):
         return ConcentrationPlotSettingsReader(self)
     
+ 
 class ConcentrationPlotSettingsReader:
     
     def __init__(self, settings):
@@ -622,6 +623,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         return mb
 
+        
     def draw_concentration_plot(self, conc_grid, scaled_conc, conc_map, contour_levels, fill_colors):
         axes = self.conc_axes
 
@@ -950,8 +952,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                                             self.settings.UCMIN,
                                                             self.settings.user_color)
         ctbl = ColorTableFactory.create_instance(self.settings)
-     
+        dsum = helper.DepositFactory.create_instance(self.settings.NDEP)
+        
         self._initialize_map_projection(self.cdump)
+
+        dsum.initialize(self.cdump.grids, self.time_selector, self.pollutant_selector)
         
         for t_index in self.time_selector:
             t_grids = helper.TimeIndexGridFilter(self.cdump.grids,
@@ -961,8 +966,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             logger.debug("grid counts: above the ground %d, on the ground %d",
                          len(grids_above_ground), len(grids_on_ground))
 
-            initial_timeQ = (t_index == self.time_selector.first)
-          
+            dsum.add(grids_on_ground, t_index == self.time_selector.first)
+                    
             # conc unit conversion factor
             self.TFACT = self.settings.CONADJ
 
@@ -971,20 +976,13 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 self.TFACT = self.conc_map.scale_time(self.TFACT, self.conc_type, f, initial_timeQ)
             logger.debug("CONADJ %g, TFACT %g", self.settings.CONADJ, self.TFACT)
             
-            # save the initial time for internal summation
-            if initial_timeQ:
-                if len(grids_above_ground) > 0:
-                    initial_time = grids_above_ground[0].starting_datetime
-                elif len(grids_on_ground) > 0:
-                    initial_time = grids_on_ground[0].starting_datetime
-                else:
-                    raise Exception("no concentration grids to plot")
-            
             for g in grids_above_ground:
                 self.draw_conc_above_ground(g, ev_handlers, lgen, ctbl, *args, **kwargs)
             
-            for g in grids_on_ground:
+            grids = dsum.get_grids_to_plot(grids_on_ground, t_index == self.time_selector.last)
+            for g in grids:
                 self.draw_conc_on_ground(g, ev_handlers, lgen, ctbl, *args, **kwargs)
+
 
 class LabelledContourLevel:
     
@@ -1041,11 +1039,13 @@ class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
         self.force_base_10 = kwargs.get("force_base_10", False)
 
     def make_levels(self, cmin, cmax, max_levels):
+        logger.debug("making %d levels using cmin %g, cmax %g", max_levels, cmin, cmax)
+        
         cint = 10.0; cint_inverse = 0.1
         if (not self.force_base_10) and cmax > 1.0e+8 * cmin:
             cint = 100.0; cint_inverse = 0.01
 
-        nexp = int(math.log10(cmax))
+        nexp = int(math.log10(cmax)) if cmax > 0 else 0
         if nexp < 0:
             nexp -= 1
         
@@ -1060,7 +1060,7 @@ class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
                 a = levels[k - 1] * cint_inverse
                 levels[k] = 0.0 if a < self.UCMIN else a
         
-        logger.debug("contour levels: %s using max %g, levels %d", levels, cmax, max_levels)
+        logger.debug("contour levels: %s", levels)
         return numpy.flip(levels)
 
 
@@ -1082,7 +1082,7 @@ class LinearDynamicLevelGenerator(AbstractContourLevelGenerator):
         AbstractContourLevelGenerator.__init__(self)
         
     def make_levels(self, cmin, cmax, max_levels):
-        nexp = util.nearest_int(math.log10(cmax * 0.25))
+        nexp = util.nearest_int(math.log10(cmax * 0.25)) if cmax > 0 else 0
         if nexp < 0:
             nexp -= 1
         cint = math.pow(10.0, nexp)

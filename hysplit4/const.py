@@ -78,7 +78,7 @@ class ConcentrationType: # KAVG
     EACH_LEVEL = 1
     VERTICAL_AVERAGE = 2
     
-class DepositionSum: # NDEP
+class DepositionType: # NDEP
     NONE = 0
     TIME = 1
     SUM = 2

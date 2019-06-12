@@ -197,6 +197,9 @@ class GridProperties:
         o = copy.copy(self)             # shallow copy since there is no objects
         return o
     
+    def update(self, conc):
+        self.min_conc, self.max_conc = find_nonzero_min_max(conc)
+
 
 class VerticalAverageCalculator:
     
@@ -881,3 +884,109 @@ class MassLoadingMap(AbstractConcentrationMap):
     
     def undo_scale_exposure(self, conc_type):
         conc_type.undo_scale_exposure()
+
+
+class DepositFactory:
+    
+    @staticmethod
+    def create_instance(type):
+        if type == const.DepositionType.NONE:
+            return IdleDeposit()
+        elif type == const.DepositionType.TIME:
+            return TimeDeposit()
+        elif type == const.DepositionType.SUM:
+            return SumDeposit()
+        elif type == const.DepositionType.TOTAL:
+            return TotalDeposit()
+        
+        raise Exception("unknown deposition type {0}".format(type))
+
+
+class IdleDeposit:
+    
+    def __init__(self):
+        return
+    
+    def initialize(self, grids, time_selector, pollutant_selector):
+        return
+    
+    def add(self, grids, first_timeQ = False):
+        return
+
+    def get_grids_to_plot(self, grids_on_ground, last_timeQ = False):
+        return grids_on_ground
+
+
+class TimeDeposit(IdleDeposit):
+    
+    def __init__(self):
+        IdleDeposit.__init__(self)
+
+
+class SumDeposit(IdleDeposit):
+    
+    def __init__(self):
+        IdleDeposit.__init__(self)
+        self.summation_grid = None
+    
+    def initialize(self, grids, time_selector, pollutant_selector):
+        # sum concentration grids right before the first time index
+        a = list(filter(lambda g: \
+                        g.time_index < time_selector.first and \
+                        g.pollutant_index in pollutant_selector and \
+                        g.vert_level == 0, grids))
+        if len(a) > 0:
+            self.summation_grid = a[0].clone()
+            if self.summation_grid.extension is None:
+                self.summation_grid.extension = GridProperties()
+            for g in a[1:]:
+                self.summation_grid.conc += g.conc
+            return
+        
+        # summation must be starting from the first time index.
+        # let the time-loop handle the summation.
+        
+        a = list(filter(lambda g: \
+                        g.time_index == time_selector.first and \
+                        g.pollutant_index in pollutant_selector and \
+                        g.vert_level == 0, grids))
+        if len(a) > 0:
+            self.summation_grid = a[0].clone_except_conc()
+            self.summation_grid.conc = numpy.zeros(a[0].conc.shape)
+            if self.summation_grid.extension is None:
+                self.summation_grid.extension = GridProperties()
+    
+    def add(self, grids_on_ground, first_timeQ = False):
+        for k, g in enumerate(grids_on_ground):
+            self.summation_grid.conc += g.conc
+            if first_timeQ and k == 0:
+                self.summation_grid.starting_datetime = g.starting_datetime
+                self.summation_grid.starting_forecast_hr = g.starting_forecast_hr
+
+    def get_grids_to_plot(self, grids_on_ground, last_timeQ = False):
+        self.update_properties(grids_on_ground)
+        return [self.summation_grid]
+
+    def update_properties(self, grids_on_ground):
+        if len(grids_on_ground) > 0 and self.summation_grid is not None:
+            g = grids_on_ground[0]
+            s = self.summation_grid
+            s.time_index = g.time_index
+            s.ending_datetime = g.ending_datetime
+            s.ending_forecast_hr = g.ending_forecast_hr
+            s.nonzero_conc_count = numpy.count_nonzero(s.conc)
+            if s.extension is not None:
+                s.extension.update(s.conc)
+
+
+class TotalDeposit(SumDeposit):
+    
+    def __init__(self):
+        SumDeposit.__init__(self)
+
+    def get_grids_to_plot(self, grids_on_ground, last_timeQ = False):
+        if last_timeQ:
+            self.update_properties(grids_on_ground)
+            return [self.summation_grid]
+        
+        return []

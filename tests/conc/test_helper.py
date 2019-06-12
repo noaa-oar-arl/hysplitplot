@@ -1,6 +1,8 @@
 import pytest
 import logging
 import matplotlib.pyplot as plt
+import numpy
+import datetime
 from hysplit4.conc import helper, model
 from hysplit4 import const, util
 
@@ -297,6 +299,18 @@ def test_GridProperties_clone():
     assert o.max_conc == 0.6
     assert o.min_vert_avg_conc == 0.2
     assert o.max_vert_avg_conc == 0.8
+
+
+def test_GridProperties_update():
+    p = helper.GridProperties()
+    c = numpy.zeros((3, 2))
+    c[0, 0] = 10.0
+    c[0, 1] =  1.0
+    
+    p.update(c)
+    
+    assert p.min_conc == 1.0
+    assert p.max_conc == 10.0
     
     
 def test_VerticalAverageCalculator___init__():
@@ -1281,3 +1295,187 @@ def test_MassLoadingMap_undo_scale_exposure(cdump2):
     assert conc_type.max_concs[0] * 1.0e+13 == pytest.approx(8.047535)
 
 
+def test_DepositFactory_create_instance():
+    o = helper.DepositFactory.create_instance(const.DepositionType.NONE)
+    assert isinstance(o, helper.IdleDeposit)
+    
+    o = helper.DepositFactory.create_instance(const.DepositionType.TIME)
+    assert isinstance(o, helper.TimeDeposit)
+    
+    o = helper.DepositFactory.create_instance(const.DepositionType.SUM)
+    assert isinstance(o, helper.SumDeposit)
+    
+    o = helper.DepositFactory.create_instance(const.DepositionType.TOTAL)
+    assert isinstance(o, helper.TotalDeposit)
+    
+    try:
+        o = helper.DepositFactory.create_instance(99999)
+        pytest.fail("expected an exception")
+    except Exception as ex:
+        assert str(ex) == "unknown deposition type 99999"
+    
+
+def test_IdleDeposit___init__():
+    o = helper.IdleDeposit()
+    assert o is not None
+    
+
+def test_IdleDeposit_initialize(cdump2):
+    o = helper.IdleDeposit()
+    ts = helper.TimeIndexSelector()
+    ps = helper.PollutantSelector()
+    
+    try:
+        o.initialize(cdump2.grids, ts, ps)
+    except Exception as ex:
+        pytest.fail("unexpected exception: {0}".format(ex))
+        
+
+def test_IdleDeposit_add(cdump2):
+    o = helper.IdleDeposit()
+    ts = helper.TimeIndexSelector()
+    ps = helper.PollutantSelector()
+    o.initialize(cdump2.grids, ts, ps)
+    
+    try:
+        o.add(cdump2.grids)
+    except Exception as ex:
+        pytest.fail("unexpected exception: {0}".format(ex))
+    
+
+def test_IdleDeposit_get_grids_to_plot(cdump2):
+    o = helper.IdleDeposit()
+    ts = helper.TimeIndexSelector()
+    ps = helper.PollutantSelector()
+    o.initialize(cdump2.grids, ts, ps)
+    
+    a = o.get_grids_to_plot(None, cdump2.grids)
+    assert a is None
+    
+
+def test_TimeDeposit___init__():
+    o = helper.TimeDeposit()
+    assert o is not None
+    
+    
+def test_SumDeposit___init__():
+    o = helper.SumDeposit()
+    assert o.summation_grid is None
+    
+
+def test_SumDeposit_initialize(cdump3):
+    o = helper.SumDeposit()
+    ts = helper.TimeIndexSelector(2, 99999)
+    ps = helper.PollutantSelector()
+    
+    o.initialize(cdump3.grids, ts, ps)
+    
+    # the summation grid should have accumulated concentrations from time index 0 to 1.
+    assert o.summation_grid.conc[23, 26] * 1.0e+7 == pytest.approx(19.36063 + 5.659043)
+    
+    # change the time index selector to include index 0.
+    ts = helper.TimeIndexSelector()
+        
+    o.initialize(cdump3.grids, ts, ps)
+    
+    assert o.summation_grid.conc[23, 26] * 1.0e+7 == 0.0
+    
+
+def test_SumDeposit_add(cdump3):
+    o = helper.SumDeposit()
+    ts = helper.TimeIndexSelector(1, 99999)
+    ps = helper.PollutantSelector()
+    
+    # initialize with grids at time index at 0.
+    o.initialize(cdump3.grids, ts, ps)
+    
+    # find grids at time index 1.
+    t_grids = list(filter(lambda g: g.vert_level == 0 and g.time_index == 1, cdump3.grids))
+
+    o.add(t_grids, True)
+    
+    # the summation grid should have accumulated concentrations from time index 0 to 1.
+    assert o.summation_grid.conc[23, 26] * 1.0e+7 == pytest.approx(19.36063 + 5.659043)
+    assert o.summation_grid.starting_datetime == datetime.datetime(83, 9, 25, 21, 0)
+
+
+def test_SumDeposit_get_grids_to_plot(cdump3):
+    o = helper.SumDeposit()
+    ts = helper.TimeIndexSelector(1, 99999)
+    ps = helper.PollutantSelector()
+    
+    # initialize with grids at time index at 0.
+    o.initialize(cdump3.grids, ts, ps)
+    
+    # find grids at time index 1.
+    t_grids = list(filter(lambda g: g.vert_level == 0 and g.time_index == 1, cdump3.grids))
+
+    grids = o.get_grids_to_plot(t_grids, False)
+    
+    assert len(grids) == 1
+    assert grids[0] is o.summation_grid
+    
+
+def test_SumDeposit_update_properties(cdump3):
+    o = helper.SumDeposit()
+    ts = helper.TimeIndexSelector(1, 99999)
+    ps = helper.PollutantSelector()
+    
+    # initialize with grids at time index at 0.
+    o.initialize(cdump3.grids, ts, ps)
+    
+    # check what we know.
+    assert o.summation_grid.time_index == 0
+    assert o.summation_grid.ending_datetime == datetime.datetime(83, 9, 25, 21, 0)
+    assert o.summation_grid.ending_forecast_hr == 0
+    assert o.summation_grid.nonzero_conc_count == 14
+    assert o.summation_grid.extension.min_conc is None
+    assert o.summation_grid.extension.max_conc is None
+    
+    # find grids at time index 1.
+    t_grids = list(filter(lambda g: g.vert_level == 0 and g.time_index == 1, cdump3.grids))
+
+    o.update_properties(t_grids)
+    
+    assert o.summation_grid.time_index == 1
+    assert o.summation_grid.ending_datetime == datetime.datetime(83, 9, 26, 0, 0)
+    assert o.summation_grid.ending_forecast_hr == 0
+    assert o.summation_grid.nonzero_conc_count == 14
+    assert o.summation_grid.extension.min_conc * 1.0e+10 == pytest.approx(9.859312)
+    assert o.summation_grid.extension.max_conc * 1.0e+06 == pytest.approx(4.231850)
+    
+
+def test_TotalDeposit___init__():
+    o = helper.TotalDeposit()
+    assert isinstance(o, helper.TotalDeposit)
+    
+    
+def test_TotalDeposit_get_grids_to_plot(cdump3):
+    o = helper.TotalDeposit()
+    ts = helper.TimeIndexSelector(1, 99999)
+    ps = helper.PollutantSelector()
+    
+    # initialize with grids at time index at 0.
+    o.initialize(cdump3.grids, ts, ps)
+    
+    # find grids
+    t_grids = list(filter(lambda g: g.vert_level == 0 and g.time_index >= 1, cdump3.grids))
+    o.add(t_grids)
+        
+    # test with the last_timeQ set to False
+    last = [ t_grids[-1] ]
+    grids = o.get_grids_to_plot(last, False)
+    
+    assert len(grids) == 0
+    
+    # test with the last_timeQ set to True
+    grids = o.get_grids_to_plot(last, True)
+    
+    assert len(grids) == 1
+    assert o.summation_grid.time_index == 7
+    assert o.summation_grid.ending_datetime == datetime.datetime(83, 9, 26, 18, 0)
+    assert o.summation_grid.ending_forecast_hr == 0
+    assert o.summation_grid.nonzero_conc_count == 349
+    assert o.summation_grid.extension.min_conc * 1.0e+10 == pytest.approx(4.308542)
+    assert o.summation_grid.extension.max_conc * 1.0e+06 == pytest.approx(4.231850)
+    

@@ -83,7 +83,7 @@ def test_ConcentrationPlotSettings___init__():
     assert s.LEVEL2 == 99999
     assert s.exposure_unit == const.ExposureUnit.CONCENTRATION
     assert s.KAVG == const.ConcentrationType.EACH_LEVEL
-    assert s.NDEP == const.DepositionSum.TIME
+    assert s.NDEP == const.DepositionType.TIME
     assert s.show_max_conc == 1
     assert s.mass_unit == "mass"
     assert s.mass_unit_by_user == False
@@ -1052,8 +1052,12 @@ def test_ExponentialDynamicLevelGenerator_make_levels():
     levels *= 1.e+10
     assert levels == pytest.approx((1.0, 10.0, 100.0, 1000.0))
 
+    # when cmax is zero
+    levels = o.make_levels(0, 0, 4)
+    assert levels == pytest.approx((0.001, 0.01, 0.1, 1.0))
     
-def test_EExponentialFixedLevelGenerator___init__():
+    
+def test_ExponentialFixedLevelGenerator___init__():
     UCMIN = 3.14e-15
     o = plot.ExponentialFixedLevelGenerator(UCMIN, force_base_10=True)
     assert o is not None
@@ -1071,6 +1075,11 @@ def test_ExponentialFixedLevelGenerator_make_levels():
     levels *= 1.e+16
     assert levels == pytest.approx((1.0, 10.0, 100.0, 1000.0))
     
+    # when cmax is zero
+    o.set_global_min_max(0, 0)
+    levels = o.make_levels(1.39594e-16, 8.17302e-12, 4)
+    assert levels == pytest.approx((0.001, 0.01, 0.1, 1.0))
+
 
 def test_LinearDynamicLevelGenerator___init__():
     o = plot.LinearDynamicLevelGenerator()
@@ -1084,6 +1093,10 @@ def test_LinearDynamicLevelGenerator_make_levels():
     
     assert levels == pytest.approx((2., 4., 6., 8.))
     
+    # when cmax is zero
+    levels = o.make_levels(0.0, 0.0, 4)
+    assert levels == pytest.approx((1., 2., 3., 4.))
+
 
 def test_LinearFixedLevelGenerator___init__():
     o = plot.LinearFixedLevelGenerator()
@@ -1099,7 +1112,12 @@ def test_LinearFixedLevelGenerator_make_levels():
     # levels should be generated using the global min and max.
     assert levels == pytest.approx((2., 4., 6., 8.))
     
-    
+    # when cmax is zero
+    o.set_global_min_max(0.0, 0.0)
+    levels = o.make_levels(1.0, 50.0, 4)
+    assert levels == pytest.approx((1., 2., 3., 4.))
+
+
 def test_UserSpecifiedLevelGenerator___init__(contourLevels):
     o = plot.UserSpecifiedLevelGenerator(contourLevels)
     assert o is not None
