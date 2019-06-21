@@ -420,26 +420,6 @@ def test_TrajecotryPlot__read_cluster_info_if_exists():
         pytest.fail("unexpected exception: {0}".format(ex))
 
     os.remove("CLUSLIST_4")
-   
-
-def test_TrajectoryPlot_make_maptext_filename():
-    assert plot.TrajectoryPlot._make_maptext_filename("ps") == "MAPTEXT.CFG"
-    assert plot.TrajectoryPlot._make_maptext_filename("pdf") == "MAPTEXT.pdf"
-
-
-def test_TrajectoryPlot__draw_maptext_if_exists():
-    p = plot.TrajectoryPlot()
-    p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
-    p.read_data_files()
-    p.read_background_map()
-    p.layout()
-
-    # See if no exception is thrown.
-    try:
-        p._draw_maptext_if_exists(p.text_axes, "data/MAPTEXT.CFG")
-        cleanup_plot(p)
-    except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
 
 
 def test_TrajectoryPlot__initialize_map_projection():

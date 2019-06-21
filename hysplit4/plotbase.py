@@ -378,7 +378,27 @@ class AbstractPlot:
                                  marker=settings.station_marker,
                                  c=settings.station_marker_color, clip_on=True,
                                  transform=self.data_crs)
-                    
+
+    @staticmethod
+    def _make_maptext_filename(output_suffix):
+        return "MAPTEXT.CFG" if output_suffix == "ps" else "MAPTEXT." + output_suffix
+
+    def _draw_maptext_if_exists(self, axes, filename=None):
+        if filename is None:
+            filename = self._make_maptext_filename(self.settings.output_suffix)
+            
+        if os.path.exists(filename):
+            selected_lines = [0, 2, 3, 4, 8, 14]
+            with open(filename, "r") as f:
+                lines = f.read().splitlines()
+                count = 0
+                for k, buff in enumerate(lines):
+                    if k in selected_lines:
+                        axes.text(0.05, 0.928-0.143*count, buff,
+                                  verticalalignment="top",
+                                  transform=axes.transAxes)
+                        count += 1
+
     def _draw_concentric_circles(self, axes, starting_loc, ring_number, ring_distance):
         lon, lat = starting_loc
         R = ring_distance/111.0
@@ -416,3 +436,4 @@ class AbstractPlot:
             filename = settings.output_postscript
 
         return filename
+    

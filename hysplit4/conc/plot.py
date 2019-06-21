@@ -832,18 +832,16 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         
     def draw_bottom_text(self):
         self._turn_off_ticks(self.text_axes)
-        self._turn_off_spines(self.text_axes)
-#                         
-#         alt_text_lines = self.labels.get("TXBOXL")
-#         
-#         maptext_fname = self.make_maptext_filename()
-#         if os.path.exists(maptext_fname):
-#             self._draw_maptext_if_exists(self.text_axes, maptext_fname)
-#         elif (alt_text_lines is not None) and (len(alt_text_lines) > 0):
-#             self._draw_alt_text_boxes(self.text_axes, alt_text_lines)
-#         else:
-#             top_spineQ = self.settings.vertical_coordinate != const.Vertical.NONE
-#             self._turn_off_spines(self.text_axes, top=top_spineQ)
+                         
+        alt_text_lines = self.labels.get("TXBOXL")
+         
+        maptext_fname = self._make_maptext_filename(self.settings.output_suffix)
+        if os.path.exists(maptext_fname):
+            self._draw_maptext_if_exists(self.text_axes, maptext_fname)
+        elif (alt_text_lines is not None) and (len(alt_text_lines) > 0):
+            self._draw_alt_text_boxes(self.text_axes, alt_text_lines)
+        else:
+            self._turn_off_spines(self.text_axes)
     
     def draw_conc_above_ground(self, g, ev_handlers, lgen, ctbl, *args, **kwargs):
         
