@@ -1032,7 +1032,7 @@ def test_ConcentrationMap_get_map_id_line():
     level1 = util.LengthInMeters(1.0)
     level2 = util.LengthInMeters(2.0)
     
-    p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Concentration"
+    assert p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Concentration ($mass/m^3$) at level 2 m"
     
 
 def test_ExposureMap___init__():
@@ -1058,7 +1058,7 @@ def test_ExposureMap_get_map_id_line():
     level1 = util.LengthInMeters(1.0)
     level2 = util.LengthInMeters(2.0)
     
-    p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Exposure (mass/m^3) averaged between 1 m and 2 m"
+    assert p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Exposure ($mass/m^3$) at level 2 m"
   
 
 def test_ExposureMap_need_time_scaling():
@@ -1104,7 +1104,7 @@ def test_DepositionMap_get_map_id_line():
     level1 = util.LengthInMeters(1.0)
     level2 = util.LengthInMeters(2.0)
     
-    p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Deposition (mass/m^3) at ground-level"
+    assert p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Deposition ($mass/m^3$) at ground-level"
 
 
 def test_ThresholdLevelsMap___init__():
@@ -1137,7 +1137,7 @@ def test_ThresholdLevelsMap_get_map_id_line():
     level1 = util.LengthInMeters(1.0)
     level2 = util.LengthInMeters(2.0)
     
-    p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Concentration (mass/m^3) averaged between 1 m and 2 m"
+    assert p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Concentration ($mass/m^3$) at level 2 m"
 
 
 def test_ThresholdLevelsMap_format_conc():
@@ -1201,7 +1201,7 @@ def test_VolcanicEruptionMap_get_map_id_line():
     level1 = util.LengthInMeters(1.0)
     level2 = util.LengthInMeters(2.0)
     
-    p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Concentration (mass/m^3) averaged between 1 m and 2 m"
+    assert p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Concentration ($mass/m^3$) at level 2 m"
     
     
 def test_VolcanicEruptionMap_draw_explanation_text():
@@ -1236,7 +1236,7 @@ def test_Deposition6Map_get_map_id_line():
     level1 = util.LengthInMeters(1.0)
     level2 = util.LengthInMeters(2.0)
     
-    p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Deposition (mass/m^3) at ground-level"
+    assert p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Deposition ($mass/m^3$) at ground-level"
 
    
 def test_MassLoadingMap___init__():
@@ -1258,7 +1258,7 @@ def test_MassLoadingMap_get_map_id_line():
     level1 = util.LengthInMeters(1.0)
     level2 = util.LengthInMeters(2.0)
     
-    p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Mass loading (mass/m^2) averaged between 1 m and 2 m"
+    assert p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Mass loading ($mass/m^2$) at level 2 m"
 
 
 def test_MassLoadingMap_scale_exposure(cdump2):

@@ -647,8 +647,10 @@ class ConcentrationMap(AbstractConcentrationMap):
             return "/m^3"
 
     def get_map_id_line(self, conc_type, conc_unit, level1, level2):
-        return self.map_id
-    
+        return "{0} (${1}$) {2}".format(self.map_id,
+                                        conc_unit,
+                                        conc_type.get_level_range_str(level1, level2))
+
 
 class ExposureMap(AbstractConcentrationMap):
     

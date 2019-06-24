@@ -850,10 +850,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self._turn_off_spines(self.conc_outer)
         self._turn_off_ticks(self.conc_outer)
         
+        min_conc, max_conc = self.conc_type.get_plot_conc_range(g)
         lgen.set_global_min_max(self.conc_type.contour_min_conc,
                                 self.conc_type.contour_max_conc)
-        contour_levels = lgen.make_levels(g.extension.min_conc,
-                                          g.extension.max_conc,
+        contour_levels = lgen.make_levels(min_conc,
+                                          max_conc,
                                           self.settings.contour_level_count)
         
         LEVEL0 = self.conc_type.get_lower_level(g.vert_level, self.cdump.vert_levels)
@@ -903,10 +904,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self._turn_off_spines(self.conc_outer)
         self._turn_off_ticks(self.conc_outer)
 
+        min_conc, max_conc = self.conc_type.get_plot_conc_range(g)
         lgen.set_global_min_max(self.conc_type.ground_min_conc,
                                 self.conc_type.ground_max_conc)     
-        contour_levels = lgen.make_levels(g.extension.min_conc,
-                                          g.extension.max_conc,
+        contour_levels = lgen.make_levels(min_conc,
+                                          max_conc,
                                           self.settings.contour_level_count)
         
         level1 = self.length_factory.create_instance(0)

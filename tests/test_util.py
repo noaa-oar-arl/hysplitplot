@@ -107,10 +107,10 @@ def test_normalize_output_filename():
 
 
 def test_restore_year():
-    util.restore_year( 0) == 2000
-    util.restore_year(39) == 2039
-    util.restore_year(40) == 1940
-    util.restore_year(99) == 1999
+    assert util.restore_year( 0) == 2000
+    assert util.restore_year(39) == 2039
+    assert util.restore_year(40) == 1940
+    assert util.restore_year(99) == 1999
 
 
 def test_calc_ring_distance():

@@ -618,10 +618,10 @@ def test_MapProjection_sanity_check():
 def test_MapProjection_create_proper_projection():
     m = mapproj.MapProjection(const.MapProjection.AUTO, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
     try:
-        m.create_proper_instance(const.MapProjection.AUTO, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
+        m.create_proper_projection(const.MapProjection.AUTO, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
         pytest.fail("expected an exception")
     except Exception as ex:
-        str(ex) == "This should not happen"
+        assert str(ex) == "This should not happen"
 
 
 def test_MapProjection_create_crs():
@@ -630,7 +630,7 @@ def test_MapProjection_create_crs():
         m.create_crs()
         pytest.fail("expected an exception")
     except Exception as ex:
-        str(ex) == "This should not happen"
+        assert str(ex) == "This should not happen"
 
 
 def test_LambertProjection___init__():
