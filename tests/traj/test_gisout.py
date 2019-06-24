@@ -2,8 +2,8 @@ import pytest
 import os
 import datetime
 import numpy
-from hysplit4 import gisout, const
-from hysplit4.traj import plot, model
+from hysplit4 import const
+from hysplit4.traj import plot, model, gisout
 
 
 @pytest.fixture

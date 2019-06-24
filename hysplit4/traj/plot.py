@@ -7,8 +7,8 @@ import matplotlib.gridspec
 import matplotlib.patches
 import matplotlib.pyplot as plt
 
-from hysplit4 import cmdline, clist, stnplot, util, const, mapproj, mapbox, gisout, plotbase
-from hysplit4.traj import model
+from hysplit4 import cmdline, clist, stnplot, util, const, mapproj, mapbox, plotbase
+from hysplit4.traj import model, gisout
 
 
 logger = logging.getLogger(__name__)
