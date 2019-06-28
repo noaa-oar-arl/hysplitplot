@@ -4,6 +4,10 @@ This project is to replace the postscript graphics of HYSPLIT with Python
 graphics.  The source code is written using Python 3.7 and it requires a few
 external packages.  See setup.py for the external packages that are required.
 
+To install this package, run
+
+    $ python setup.py install
+
 To generate a trajectory plot using a trajectory dump file, say, tdump found
 in HYSPLIT's working directory, run
 
