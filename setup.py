@@ -6,6 +6,7 @@ setup(
     description="HYSPLIT Graphics",
     author="Sonny Zinn",
     author_email="sonny.zinn@noaa.gov",
-    packages=["hysplit4", "hysplit4.traj"],
-    install_requires=["geopandas", "cartopy", "numpy"]
+    packages=["hysplit4", "hysplit4.traj", "hysplit4.conc"],
+    python_requires="=3.7",
+    install_requires=["geopandas=0.4", "cartopy=0.17", "numpy=1.16"]
 )

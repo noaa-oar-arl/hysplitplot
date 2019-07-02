@@ -114,11 +114,6 @@ def test_TrajectoryPlotSettings_process_command_line_arguments():
     s.process_command_line_arguments(["+N"])
     assert s.noaa_logo == True
 
-    # test -A
-    s.kml_option = 0
-    s.process_command_line_arguments(["-A3"])
-    assert s.kml_option == 3
-
     # test -e or -E
     s.end_hour_duration = 0
     s.process_command_line_arguments(["-e12"])

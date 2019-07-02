@@ -20,6 +20,14 @@ def cdump2():
 def cdump3():
     m = model.ConcentrationDump().get_reader().read("data/cdump_deposit")
     return m    
+        
+
+# Declare a concrete class needed for testing an abstract class.
+class ConcentrationTypeTest(helper.ConcentrationType):
+    
+    @staticmethod
+    def make_gis_basename(self, time_index, output_suffix, level1, level2):
+        pass
 
 
 def test_sum_over_pollutants_per_level(cdump2):
@@ -285,6 +293,7 @@ def test_GridProperties___init__():
     assert p.max_conc is None
     assert p.min_vert_avg_conc is None
     assert p.max_vert_avg_conc is None
+    assert p.max_locs is None
 
 
 def test_GridProperties_clone():
@@ -389,17 +398,17 @@ def test_ConcentrationTypeFactory_create_instance():
         pytest.fail("expected an exception")
     except Exception as ex:
         assert str(ex) == "unknown concentration type 999999" 
-        
 
+    
 def test_ConcentrationType___init__():
-    p = helper.ConcentrationType()
+    p = ConcentrationTypeTest()
     assert hasattr(p, "cdump")
     assert hasattr(p, "level_selector")
     assert hasattr(p, "pollutant_selector")
        
 
 def test_ConcentrationType_initialize():
-    p = helper.ConcentrationType()
+    p = ConcentrationTypeTest()
     cdump = model.ConcentrationDump()
     ls = helper.VerticalLevelSelector()
     ps = helper.PollutantSelector()
@@ -412,7 +421,7 @@ def test_ConcentrationType_initialize():
   
 
 def test_ConcentrationType_get_lower_level():
-    p = helper.ConcentrationType()
+    p = ConcentrationTypeTest()
     
     assert p.get_lower_level(300.0, [100.0, 300.0]) == 100.0
     assert p.get_lower_level(100.0, [100.0, 300.0]) == 0.0
@@ -632,6 +641,11 @@ def test_VerticalAverageConcentration_get_upper_level():
     grid_level = 100.0
     settings_level = 500.0    
     assert p.get_upper_level(grid_level, settings_level) == pytest.approx(500.0)
+    
+    
+def test_VerticalAverageConcentration_make_gis_basename():
+    assert helper.VerticalAverageConcentration.make_gis_basename(2, "ps", 100.0, 5000.0) \
+        == "GIS_00100-05000_ps_02"
     
     
 def test_LevelConcentration___init__():
@@ -886,7 +900,12 @@ def test_LevelConcentration_get_upper_level():
     grid_level = 100.0
     settings_level = 500.0    
     assert p.get_upper_level(grid_level, settings_level) == pytest.approx(100.0)
-        
+    
+    
+def test_LevelConcentration_make_gis_basename():
+    assert helper.LevelConcentration.make_gis_basename(2, "ps", 100.0, 5000.0) \
+        == "GIS_00100_ps_02"
+
 
 def test_ConcentrationMapFactory_create_instance():
     p = helper.ConcentrationMapFactory.create_instance(const.ConcentrationMapType.CONCENTRATION, 1)
@@ -1308,6 +1327,9 @@ def test_DepositFactory_create_instance():
     o = helper.DepositFactory.create_instance(const.DepositionType.TOTAL)
     assert isinstance(o, helper.TotalDeposit)
     
+    o = helper.DepositFactory.create_instance(const.DepositionType.TOTAL, False)
+    assert isinstance(o, helper.IdleDeposit)
+    
     try:
         o = helper.DepositFactory.create_instance(99999)
         pytest.fail("expected an exception")
@@ -1351,13 +1373,21 @@ def test_IdleDeposit_get_grids_to_plot(cdump2):
     
     a = o.get_grids_to_plot(None, cdump2.grids)
     assert a is None
+
+
+def test_IdleDeposit_make_gis_basename():
+    assert helper.IdleDeposit.make_gis_basename(2, "ps") == None
     
 
 def test_TimeDeposit___init__():
     o = helper.TimeDeposit()
     assert o is not None
     
+
+def test_TimeDeposit_make_gis_basename():
+    assert helper.TimeDeposit.make_gis_basename(2, "ps") == "GIS_DEP_ps_02"
     
+       
 def test_SumDeposit___init__():
     o = helper.SumDeposit()
     assert o.summation_grid is None
@@ -1445,6 +1475,10 @@ def test_SumDeposit_update_properties(cdump3):
     assert o.summation_grid.extension.max_conc * 1.0e+06 == pytest.approx(4.231850)
     
 
+def test_SumDeposit_make_gis_basename():
+    assert helper.SumDeposit.make_gis_basename(2, "ps") == "GIS_DEP_ps_02"
+
+
 def test_TotalDeposit___init__():
     o = helper.TotalDeposit()
     assert isinstance(o, helper.TotalDeposit)
@@ -1478,4 +1512,9 @@ def test_TotalDeposit_get_grids_to_plot(cdump3):
     assert o.summation_grid.nonzero_conc_count == 349
     assert o.summation_grid.extension.min_conc * 1.0e+10 == pytest.approx(4.308542)
     assert o.summation_grid.extension.max_conc * 1.0e+06 == pytest.approx(4.231850)
+
+
+def test_TotalDeposit_make_gis_basename():
+    assert helper.TotalDeposit.make_gis_basename(2, "ps") == "GIS_DEP_ps_02"
+
     

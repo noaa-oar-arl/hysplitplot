@@ -3,7 +3,6 @@ import datetime
 import struct
 import numpy
 import copy
-
 from hysplit4 import const
 
 
@@ -69,6 +68,13 @@ class ConcentrationDump:
     @longitudes.setter
     def longitudes(self, lons):
         self.__longitudes = lons
+    
+    def has_ground_level_grid(self):
+        for level in self.vert_levels:
+            if level == 0:
+                return True
+
+        return False
         
         
 class ConcentrationGrid:

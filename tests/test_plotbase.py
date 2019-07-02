@@ -31,6 +31,8 @@ def test_AbstractPlotSettings___init__():
     assert s.lat_lon_label_interval_option == 1
     assert s.lat_lon_label_interval == 1.0
     assert s.frames_per_file == 0
+    assert s.gis_output == const.GISOutput.NONE
+    assert s.kml_option == const.KMLOption.NONE
     
     assert s.interactive_mode == True
     assert s.map_color == "#1f77b4"
@@ -152,6 +154,16 @@ def test_AbstractPlotSettings__process_cmdline_args():
     s._process_cmdline_args(["-Z70"])
     assert s.zoom_factor == 0.3
     
+    # test -a
+    s.gis_output = 0
+    s._process_cmdline_args(["-a2"])
+    assert s.gis_output == 2
+    
+    # test -A
+    s.kml_option = 0
+    s._process_cmdline_args(["-A3"])
+    assert s.kml_option == 3
+
 
 def test_AbstractPlotSettings_parse_lat_lon_label_interval():
     mapdel = plotbase.AbstractPlotSettings.parse_lat_lon_label_interval("2:50")

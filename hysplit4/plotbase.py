@@ -31,6 +31,8 @@ class AbstractPlotSettings:
         self.lat_lon_label_interval_option = const.LatLonLabel.AUTO
         self.lat_lon_label_interval = 1.0
         self.frames_per_file = const.Frames.ALL_FILES_ON_ONE
+        self.gis_output = const.GISOutput.NONE
+        self.kml_option = const.KMLOption.NONE
         
         # internally defined
         self.interactive_mode = True    # becomes False if the -o or -O option is specified.
@@ -92,7 +94,10 @@ class AbstractPlotSettings:
                 
         if args.has_arg(["-z", "-Z"]):
             self.zoom_factor        = self.parse_zoom_factor(args.get_value(["-z", "-Z"]))
-    
+        
+        self.gis_output             = args.get_integer_value("-a", self.gis_output)
+        self.kml_option             = args.get_integer_value("-A", self.kml_option)
+            
     @staticmethod
     def parse_lat_lon_label_interval(str):
         divider = str.index(":")

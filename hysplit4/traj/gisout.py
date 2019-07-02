@@ -272,7 +272,7 @@ class KMLWriter(AbstractGISFileWriter):
       <description>http://weather.gov/gis/  Click on the link to access weather related overlays from the National Weather Service.</description>
     </Folder>\n""")
 
-	# add a link to NOAA NESDIS kml smoke/fire data overlays
+	    # add a link to NOAA NESDIS kml smoke/fire data overlays
         f.write("""\
     <Folder>
       <name>NOAA NESDIS kml Smoke/Fire Data</name>
@@ -280,7 +280,7 @@ class KMLWriter(AbstractGISFileWriter):
       <description>http://www.ssd.noaa.gov/PS/FIRE/hms.html  Click on the link to access wildfire smoke overlays from NOAA NESDIS.</description>
     </Folder>\n""")
 
-	# add a link to EPA AIRnow kml Air Quality Index (AQI)
+	    # add a link to EPA AIRnow kml Air Quality Index (AQI)
         f.write("""\
     <Folder>
       <name>EPA AIRNow Air Quality Index (AQI)</name>

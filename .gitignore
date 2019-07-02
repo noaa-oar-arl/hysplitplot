@@ -2,6 +2,7 @@
 .project
 .pydevproject
 __pycache__/
+.pytest_cache/
 build/
 dist/
 hysplit4.egg-info/

@@ -1,8 +1,9 @@
 import pytest
 import matplotlib.pyplot as plt
 import numpy
-from hysplit4.conc import plot, model, helper
+from hysplit4.conc import plot, model, helper, gisout
 from hysplit4 import const, mapfile, mapproj, labels, smooth, util
+from matplotlib.contour import QuadContourSet
 
 
 @pytest.fixture
@@ -97,6 +98,8 @@ def test_ConcentrationPlotSettings___init__():
     assert s.IZRO == 0
     assert s.NSSLBL == 0
     assert s.color == const.ConcentrationPlotColor.COLOR
+    assert s.gis_alt_mode == const.GISOutputAltitude.CLAMPED_TO_GROUND
+    assert s.KMLOUT == 0
     
     assert s.label_source == True
     assert s.source_label_color != None
@@ -280,6 +283,19 @@ def test_ConcentrationPlotSettings_process_command_line_arguments():
     assert s.contour_level_count == 2
     assert s.contour_level_generator == const.ContourLevelGenerator.USER_SPECIFIED
 
+    # test +a or +A
+    s.gis_alt_mode = 0
+    s.process_command_line_arguments(["+a1"])
+    assert s.gis_alt_mode == 1
+    
+    s.process_command_line_arguments(["+A0"])
+    assert s.gis_alt_mode == 0
+    
+    # test -5
+    s.KMLOUT = 0
+    s.process_command_line_arguments(["-51"])
+    assert s.KMLOUT == 1
+    
 
 def test_ConcentrationPlotSettings_parse_source_label():
     s = plot.ConcentrationPlotSettings()
@@ -807,11 +823,12 @@ def test_ConcentrationPlot_draw_concentration_plot():
     try:
         p._initialize_map_projection(p.cdump)
         p.layout(p.cdump.grids[0], {"resize_event" : blank_event_handler})
-        p.draw_concentration_plot(p.cdump.grids[0],
-                                  p.cdump.grids[0].conc,
-                                  p.conc_map,
-                                  [1.0e-16, 1.0e-15, 1.0e-14],
-                                  ["g", "b", "r"])
+        contour_set = p.draw_concentration_plot(p.cdump.grids[0],
+                                                p.cdump.grids[0].conc,
+                                                p.conc_map,
+                                                [1.0e-16, 1.0e-15, 1.0e-14],
+                                                ["g", "b", "r"])
+        assert isinstance(contour_set, QuadContourSet)
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
@@ -889,16 +906,43 @@ def test_ConcentrationPlot_draw_conc_above_ground():
                                                         p.settings.UCMIN,
                                                         p.settings.user_color)
     ctbl = plot.ColorTableFactory.create_instance(p.settings)
+    
+    dsum = helper.DepositFactory.create_instance(p.settings.NDEP,
+                                                 p.cdump.has_ground_level_grid())
+        
+    gis_writer = gisout.GISFileWriterFactory.create_instance(p.settings.gis_output,
+                                                             p.settings.kml_option)
+                                                             
+    gis_writer.initialize(p.settings.gis_alt_mode,
+                          p.settings.KMLOUT,
+                          p.settings.output_basename,
+                          p.settings.output_suffix,
+                          p.conc_type,
+                          p.conc_map,
+                          dsum,
+                          p.settings.KMAP,
+                          p.settings.NSSLBL,
+                          p.settings.show_max_conc,
+                          p.contour_labels)
         
     # See if no exception is thrown.
     try:
         p._initialize_map_projection(p.cdump)
+        dsum.initialize(p.cdump.grids, p.time_selector, p.pollutant_selector)
         p.contour_labels = [""] * p.settings.contour_level_count
         p.draw_conc_above_ground(p.cdump.grids[0],
                                  {"resize_event" : blank_event_handler},
                                  lgen,
                                  ctbl,
                                  block=False)
+        
+        # with a gis writer
+        p.draw_conc_above_ground(p.cdump.grids[0],
+                                 {"resize_event" : blank_event_handler},
+                                 lgen,
+                                 ctbl,
+                                 gis_writer,
+                                 block=False)       
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
@@ -916,14 +960,41 @@ def test_ConcentrationPlot_draw_conc_on_ground():
                                                              p.settings.user_color)
     ctbl = plot.ColorTableFactory.create_instance(p.settings)
     
+    dsum = helper.DepositFactory.create_instance(p.settings.NDEP,
+                                                 p.cdump.has_ground_level_grid())
+        
+    gis_writer = gisout.GISFileWriterFactory.create_instance(p.settings.gis_output,
+                                                             p.settings.kml_option)
+                                                             
+    gis_writer.initialize(p.settings.gis_alt_mode,
+                          p.settings.KMLOUT,
+                          p.settings.output_basename,
+                          p.settings.output_suffix,
+                          p.conc_type,
+                          p.conc_map,
+                          dsum,
+                          p.settings.KMAP,
+                          p.settings.NSSLBL,
+                          p.settings.show_max_conc,
+                          p.contour_labels)
+        
     # See if no exception is thrown.
     try:
         p._initialize_map_projection(p.cdump)
+        dsum.initialize(p.cdump.grids, p.time_selector, p.pollutant_selector)
         p.contour_labels = [""] * p.settings.contour_level_count
         p.draw_conc_on_ground(p.cdump.grids[0],
                               {"resize_event" : blank_event_handler},
                               lgen,
                               ctbl,
+                              block=False)
+        
+        # with a gis writer
+        p.draw_conc_on_ground(p.cdump.grids[0],
+                              {"resize_event" : blank_event_handler},
+                              lgen,
+                              ctbl,
+                              gis_writer,
                               block=False)
         cleanup_plot(p)
     except Exception as ex:
@@ -1231,6 +1302,23 @@ def test_DefaultColorTable_colors___init__():
     assert len(o.rgbs) == 32
     assert o.rgbs[3] == pytest.approx((0.0, 1.0, 0.0))
     assert hasattr(o, "colors")
+    assert hasattr(o, "raw_colors")
+   
+
+def test_DefaultColorTable_raw_colors():
+    o = plot.DefaultColorTable(3, False)
+    clrs = o.raw_colors
+    assert len(clrs) == 3
+    assert clrs[0] == pytest.approx((0.0, 1.0, 0.0))
+    assert clrs[1] == pytest.approx((0.0, 0.0, 1.0))
+    assert clrs[2] == pytest.approx((1.0, 1.0, 0.0))
+
+    o = plot.DefaultColorTable(3, True)
+    clrs = o.raw_colors
+    assert len(clrs) == 3
+    assert clrs[0] == pytest.approx((1.0, 1.0, 0.0))
+    assert clrs[1] == pytest.approx((1.0, 0.6, 0.0))
+    assert clrs[2] == pytest.approx((1.0, 0.0, 0.0)) 
     
 
 def test_DefaultColorTable_colors():
@@ -1256,6 +1344,22 @@ def test_DefaultChemicalThresholdColorTable___init__():
     assert len(o.rgbs) == 32
     assert o.rgbs[3] == pytest.approx((1.0, 0.5, 0.0))
     assert hasattr(o, "colors")    
+   
+
+def test_DefaultColorTable_raw_colors():
+    o = plot.DefaultChemicalThresholdColorTable(3, False)
+    clrs = o.raw_colors
+    assert len(clrs) == 3
+    assert clrs[0] == pytest.approx((1.0, 0.5, 0.0))
+    assert clrs[1] == pytest.approx((1.0, 1.0, 0.0))
+    assert clrs[2] == pytest.approx((0.8, 0.8, 0.8))
+
+    o = plot.DefaultChemicalThresholdColorTable(3, True)
+    clrs = o.raw_colors
+    assert len(clrs) == 3
+    assert clrs[0] == pytest.approx((1.0, 1.0, 1.0))
+    assert clrs[1] == pytest.approx((1.0, 1.0, 1.0))
+    assert clrs[2] == pytest.approx((1.0, 1.0, 1.0)) 
 
 
 def test_DefaultChemicalThresholdColorTable_colors():
@@ -1279,6 +1383,12 @@ def test_UserColorTable___init__(contourLevels):
     assert len(o.rgbs) == 4
     assert o.rgbs[0] == pytest.approx((0.4, 0.4, 0.4))
 
+
+def test_UserColorTable_raw_colors(contourLevels):
+    o = plot.UserColorTable(contourLevels)
+    clrs = o.raw_colors
+    assert len(clrs) == 4
+    
 
 def test_UserColorTable_colors(contourLevels):
     o = plot.UserColorTable(contourLevels)

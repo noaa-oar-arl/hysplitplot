@@ -2,6 +2,7 @@ import logging
 import numpy
 import sys
 import copy
+from abc import ABC, abstractmethod
 
 from hysplit4.conc import model
 from hysplit4 import util, const
@@ -192,6 +193,7 @@ class GridProperties:
         self.max_conc = None
         self.min_vert_avg_conc = None   # across pollutants and vertical levels of interest
         self.max_vert_avg_conc = None   # across pollutants and vertical levels of interest
+        self.max_locs = None            # locations of the max conc.
 
     def clone(self):
         o = copy.copy(self)             # shallow copy since there is no objects
@@ -262,7 +264,7 @@ class ConcentrationTypeFactory:
         raise Exception("unknown concentration type {0}".format(conc_type))
         
         
-class ConcentrationType:
+class ConcentrationType(ABC):
     
     def __init__(self):
         self.cdump = None
@@ -283,6 +285,10 @@ class ConcentrationType:
         else:
             return 0.0
 
+    @abstractmethod
+    def make_gis_basename(self, time_index, output_suffix, level1, level2):
+        pass
+    
 
 class VerticalAverageConcentration(ConcentrationType):
     
@@ -386,6 +392,10 @@ class VerticalAverageConcentration(ConcentrationType):
     def get_upper_level(self, grid_level, settings_level):
         return settings_level
     
+    @staticmethod
+    def make_gis_basename(time_index, output_suffix, level1, level2):
+        return "GIS_{0:05d}-{1:05d}_{2}_{3:02d}".format(int(level1), int(level2), output_suffix, time_index)
+
 
 class LevelConcentration(ConcentrationType):
     
@@ -532,7 +542,11 @@ class LevelConcentration(ConcentrationType):
 
     def get_upper_level(self, grid_level, settings_level):
         return grid_level
-    
+     
+    @staticmethod
+    def make_gis_basename(time_index, output_suffix, level1, level2):
+        return "GIS_{0:05d}_{1}_{2:02d}".format(int(level1), output_suffix, time_index)
+   
 
 class ConcentrationMapFactory:
     
@@ -891,8 +905,8 @@ class MassLoadingMap(AbstractConcentrationMap):
 class DepositFactory:
     
     @staticmethod
-    def create_instance(type):
-        if type == const.DepositionType.NONE:
+    def create_instance(type, has_ground_level_grid=True):
+        if has_ground_level_grid == False or type == const.DepositionType.NONE:
             return IdleDeposit()
         elif type == const.DepositionType.TIME:
             return TimeDeposit()
@@ -918,12 +932,20 @@ class IdleDeposit:
     def get_grids_to_plot(self, grids_on_ground, last_timeQ = False):
         return grids_on_ground
 
+    @staticmethod
+    def make_gis_basename(time_index, output_suffix):
+        return None
+    
 
 class TimeDeposit(IdleDeposit):
     
     def __init__(self):
         IdleDeposit.__init__(self)
 
+    @staticmethod
+    def make_gis_basename(time_index, output_suffix):
+        return "GIS_DEP_{0}_{1:02d}".format(output_suffix, time_index)
+    
 
 class SumDeposit(IdleDeposit):
     
@@ -980,6 +1002,10 @@ class SumDeposit(IdleDeposit):
             if s.extension is not None:
                 s.extension.update(s.conc)
 
+    @staticmethod
+    def make_gis_basename(time_index, output_suffix):
+        return "GIS_DEP_{0}_{1:02d}".format(output_suffix, time_index)
+
 
 class TotalDeposit(SumDeposit):
     
@@ -992,3 +1018,8 @@ class TotalDeposit(SumDeposit):
             return [self.summation_grid]
         
         return []
+    
+    @staticmethod
+    def make_gis_basename(time_index, output_suffix):
+        return "GIS_DEP_{0}_{1:02d}".format(output_suffix, time_index)
+

@@ -10,9 +10,7 @@ import copy
 import datetime
 
 from hysplit4 import cmdline, util, const, plotbase, mapbox, mapproj, io, smooth
-from hysplit4.conc import model, helper
-from ctypes.macholib.dyld import dyld_default_search
-from pandas.core.common import index_labels_to_array
+from hysplit4.conc import model, helper, gisout
 
 
 logger = logging.getLogger(__name__)
@@ -56,6 +54,8 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.IZRO = 0       # create map(s) even if all values are zero
         self.NSSLBL = 0     # force sample start time label to start of release
         self.color = const.ConcentrationPlotColor.COLOR # KOLOR
+        self.gis_alt_mode = const.GISOutputAltitude.CLAMPED_TO_GROUND
+        self.KMLOUT = 0
         
         # internally defined
         self.label_source = True
@@ -155,6 +155,9 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         if args.has_arg("-v"):
             self.parse_contour_levels(args.get_value("-v"))
             self.contour_level_generator = const.ContourLevelGenerator.USER_SPECIFIED
+            
+        self.gis_alt_mode = args.get_integer_value(["+a", "+A"], self.gis_alt_mode)
+        self.KMLOUT = args.get_integer_value(["-5"], self.KMLOUT)
   
     @staticmethod
     def parse_source_label(str):
@@ -384,7 +387,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             self.conc_type.set_alt_KAVG(3)  # for the above-ground conc plots
             
         self._post_file_processing(self.cdump)
-        
+                
         self.conc_map = helper.ConcentrationMapFactory.create_instance(self.settings.KMAP, self.settings.KHEMIN)
         self.depo_map = helper.DepositionMapFactory.create_instance(self.settings.KMAP, self.settings.KHEMIN)
         
@@ -625,6 +628,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         
     def draw_concentration_plot(self, conc_grid, scaled_conc, conc_map, contour_levels, fill_colors):
+        """
+        Draws a concentration contour plot and returns the contour data points.
+        """
+        contour_set = None
+        
         axes = self.conc_axes
 
         # keep the plot size after zooming
@@ -685,16 +693,16 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         if conc_grid.nonzero_conc_count > 0:
             # draw filled contours
-            axes.contourf(conc_grid.longitudes, conc_grid.latitudes, scaled_conc,
-                          contour_levels,
-                          colors=fill_colors, extend="max",
-                          transform=self.data_crs)
+            contour_set = axes.contourf(conc_grid.longitudes, conc_grid.latitudes, scaled_conc,
+                                        contour_levels,
+                                        colors=fill_colors, extend="max",
+                                        transform=self.data_crs)
             # draw contour lines
             line_colors = ["k"] * len(fill_colors)
             axes.contour(conc_grid.longitudes, conc_grid.latitudes, scaled_conc,
-                          contour_levels,
-                          colors=line_colors, linewidths=0.25,
-                          transform=self.data_crs)
+                         contour_levels,
+                         colors=line_colors, linewidths=0.25,
+                         transform=self.data_crs)
 
         if self.settings.show_max_conc == 1 or self.settings.show_max_conc == 3:
             if self.settings.color == const.ConcentrationPlotColor.BLACK_AND_WHITE \
@@ -703,11 +711,12 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             else:
                 clr = conc_map.get_color_at_max()
             
+            conc_grid.extension.max_locs = helper.find_max_locs(conc_grid)
             dx = conc_grid.parent.grid_deltas[0]
             dy = conc_grid.parent.grid_deltas[1]
             hx = 0.5 * dx
             hy = 0.5 * dy
-            for loc in helper.find_max_locs(conc_grid):
+            for loc in conc_grid.extension.max_locs:
                 x, y = loc
                 r = matplotlib.patches.Rectangle((x-hx, y-hy), dx, dy,
                                                  color=clr,
@@ -717,6 +726,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         if self.settings.noaa_logo:
             self._draw_noaa_logo(axes)
 
+        return contour_set
+    
     def get_conc_unit(self, conc_map, settings):
         # default values from labels.cfg  
         mass_unit = self.labels.get("UNITS")
@@ -843,7 +854,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         else:
             self._turn_off_spines(self.text_axes)
     
-    def draw_conc_above_ground(self, g, ev_handlers, lgen, ctbl, *args, **kwargs):
+    def draw_conc_above_ground(self, g, ev_handlers, lgen, ctbl, gis_writer=None, *args, **kwargs):
         
         self.layout(g, ev_handlers)
         
@@ -877,12 +888,19 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.conc_outer.set_title(self.make_plot_title(g, self.conc_map, level1, level2))
         self.conc_outer.set_xlabel(self.make_xlabel(g))
         
-        self.draw_concentration_plot(g, xconc, self.conc_map,
-                                     contour_levels, ctbl.colors)
-        self.draw_contour_legends(g, self.conc_map,
-                                  self.contour_labels, contour_levels, ctbl.colors)
+        contour_set = self.draw_concentration_plot(g, xconc, self.conc_map, contour_levels, ctbl.colors)
+        self.draw_contour_legends(g, self.conc_map, self.contour_labels, contour_levels, ctbl.colors)
         self.draw_bottom_text()
         
+        if gis_writer is not None:
+            if g.extension.max_locs is None:
+                g.extension.max_locs = helper.find_max_locs(g)
+                
+            conc_unit = self.get_conc_unit(self.conc_map, self.settings)
+            cmin, cmax = self.conc_type.get_plot_conc_range(g)
+
+            gis_writer.write(g, LEVEL0, g.vert_level, LEVEL2, contour_set, cmin, cmax, conc_unit, ctbl.raw_colors)
+            
         self.conc_map.undo_scale_exposure(self.conc_type)
         
         if self.settings.interactive_mode:
@@ -897,7 +915,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         plt.close(self.fig)
         self.current_frame += 1
 
-    def draw_conc_on_ground(self, g, ev_handlers, lgen, ctbl, *args, **kwargs):
+    def draw_conc_on_ground(self, g, ev_handlers, lgen, ctbl, gis_writer=None, *args, **kwargs):
         
         self.layout(g, ev_handlers)
         
@@ -925,12 +943,19 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.conc_outer.set_title(self.make_plot_title(g, self.depo_map, level1, level2))
         self.conc_outer.set_xlabel(self.make_xlabel(g))
         
-        self.draw_concentration_plot(g, xconc, self.depo_map,
-                                     contour_levels, ctbl.colors)
-        self.draw_contour_legends(g, self.depo_map,
-                                  self.contour_labels, contour_levels, ctbl.colors)
+        contour_set = self.draw_concentration_plot(g, xconc, self.depo_map, contour_levels, ctbl.colors)
+        self.draw_contour_legends(g, self.depo_map, self.contour_labels, contour_levels, ctbl.colors)
         self.draw_bottom_text()
-        
+         
+        if gis_writer is not None:
+            if g.extension.max_locs is None:
+                g.extension.max_locs = helper.find_max_locs(g)
+                
+            conc_unit = self.get_conc_unit(self.conc_map, self.settings)
+            cmin, cmax = self.conc_type.get_plot_conc_range(g)
+                
+            gis_writer.write(g, 0, 0, 0, contour_set, cmin, cmax, conc_unit, ctbl.raw_colors)
+       
         if self.settings.interactive_mode:
             plt.show(*args, **kwargs)
         else:
@@ -952,7 +977,23 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                                             self.settings.UCMIN,
                                                             self.settings.user_color)
         ctbl = ColorTableFactory.create_instance(self.settings)
-        dsum = helper.DepositFactory.create_instance(self.settings.NDEP)
+        dsum = helper.DepositFactory.create_instance(self.settings.NDEP,
+                                                     self.cdump.has_ground_level_grid())
+        
+        gis_writer = gisout.GISFileWriterFactory.create_instance(self.settings.gis_output,
+                                                                 self.settings.kml_option)
+                                                                 
+        gis_writer.initialize(self.settings.gis_alt_mode,
+                              self.settings.KMLOUT,
+                              self.settings.output_basename,
+                              self.settings.output_suffix,
+                              self.conc_type,
+                              self.conc_map,
+                              dsum,
+                              self.settings.KMAP,
+                              self.settings.NSSLBL,
+                              self.settings.show_max_conc,
+                              self.contour_labels)
         
         self._initialize_map_projection(self.cdump)
 
@@ -977,12 +1018,14 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             logger.debug("CONADJ %g, TFACT %g", self.settings.CONADJ, self.TFACT)
             
             for g in grids_above_ground:
-                self.draw_conc_above_ground(g, ev_handlers, lgen, ctbl, *args, **kwargs)
+                self.draw_conc_above_ground(g, ev_handlers, lgen, ctbl, gis_writer, *args, **kwargs)
             
             grids = dsum.get_grids_to_plot(grids_on_ground, t_index == self.time_selector.last)
             for g in grids:
-                self.draw_conc_on_ground(g, ev_handlers, lgen, ctbl, *args, **kwargs)
-
+                self.draw_conc_on_ground(g, ev_handlers, lgen, ctbl, gis_writer, *args, **kwargs)
+        
+        gis_writer.finalize()
+        
 
 class LabelledContourLevel:
     
@@ -1205,16 +1248,23 @@ class DefaultColorTable(ColorTable):
             (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
             (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0)]
         self.__colors = None
-                
+        self.__raw_colors = None
+    
+    @property
+    def raw_colors(self):
+        if self.__raw_colors is None:
+            if self.skip_std_colors:
+                self.__raw_colors = self.rgbs[5 + self.ncolors - 1:4:-1]
+            else:
+                self.__raw_colors = self.rgbs[1 + self.ncolors - 1:0:-1]
+
+        return self.__raw_colors
+    
     @property
     def colors(self):
         if self.__colors is None:
-            clrs = self.create_plot_colors(self.rgbs)
-            if self.skip_std_colors:
-                self.__colors = clrs[5 + self.ncolors - 1:4:-1]
-            else:
-                self.__colors = clrs[1 + self.ncolors - 1:0:-1]
-            
+            self.__colors = self.create_plot_colors(self.raw_colors)
+        
         return self.__colors
 
 class DefaultChemicalThresholdColorTable(ColorTable):
@@ -1223,6 +1273,7 @@ class DefaultChemicalThresholdColorTable(ColorTable):
         ColorTable.__init__(self, ncolors)
         self.skip_std_colors = skip_std_colors
         self.__colors = None
+        self.__raw_colors = None
         self.rgbs = [
             (1.0, 1.0, 1.0), (0.8, 0.8, 0.8), (1.0, 1.0, 0.0), (1.0, 0.5, 0.0),
             (1.0, 0.0, 0.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
@@ -1234,28 +1285,37 @@ class DefaultChemicalThresholdColorTable(ColorTable):
             (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0)]
     
     @property
+    def raw_colors(self):
+        if self.__raw_colors is None:
+            if self.skip_std_colors:
+                self.__raw_colors = self.rgbs[5 + self.ncolors - 1:4:-1]
+            else:
+                self.__raw_colors = self.rgbs[1 + self.ncolors - 1:0:-1]
+
+        return self.__raw_colors
+    
+    @property
     def colors(self):
         if self.__colors is None:
-            clrs = self.create_plot_colors(self.rgbs)
-            if self.skip_std_colors:
-                self.__colors = clrs[5 + self.ncolors - 1:4:-1]
-            else:
-                self.__colors = clrs[1 + self.ncolors - 1:0:-1]
+            self.__colors = self.create_plot_colors(self.raw_colors)
         
         return self.__colors
-
-
+    
 class UserColorTable(ColorTable):
     
     def __init__(self, contour_levels):
         ColorTable.__init__(self, len(contour_levels))
         self.rgbs = [(o.r, o.g, o.b) for o in contour_levels]
         self.__colors = None
-        
+    
+    @property
+    def raw_colors(self):
+        return self.rgbs
+    
     @property
     def colors(self):
         if self.__colors is None:
-            self.__colors = self.create_plot_colors(self.rgbs)
+            self.__colors = self.create_plot_colors(self.raw_colors)
             
         return self.__colors
 

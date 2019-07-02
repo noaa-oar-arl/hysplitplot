@@ -89,6 +89,13 @@ def test_ConcentrationDump_longitudes(cdump):
         pytest.fail("unexpected exception {0}".format(ex))
 
 
+def test_ConcentrationDump_has_ground_level_grid(cdump):
+    assert cdump.has_ground_level_grid() == False
+    
+    cdump.vert_levels = [500, 100, 0]
+    assert cdump.has_ground_level_grid() == True
+
+
 def test_ConcentrationGrid___init__():
     m = model.ConcentrationDump()
     g = model.ConcentrationGrid(m)

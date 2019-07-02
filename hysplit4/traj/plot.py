@@ -27,7 +27,6 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
         plotbase.AbstractPlotSettings.__init__(self)
         
         # defined in default_tplot
-        self.gis_output = const.GISOutput.NONE
         self.view = 1
         self.output_postscript = "trajplot.ps"
         self.output_basename = "trajplot"
@@ -39,7 +38,6 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
         self.color_codes = None
         
         # command-line option only
-        self.kml_option = const.KMLOption.NONE
         self.end_hour_duration = 0
         self.input_files = "tdump"
 
@@ -78,9 +76,7 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
         
         # process options common to trajplot, concplot, etc.
         self._process_cmdline_args(args0)
-        
-        self.gis_output             = args.get_integer_value("-a", self.gis_output)
-        self.kml_option             = args.get_integer_value("-A", self.kml_option)
+
         self.end_hour_duration      = args.get_integer_value(["-e", "-E"], self.end_hour_duration)
         self.input_files            = args.get_string_value(["-i", "-I"], self.input_files)
         self.time_label_interval    = args.get_integer_value("-l", self.time_label_interval)
