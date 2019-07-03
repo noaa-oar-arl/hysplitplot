@@ -10,7 +10,7 @@ import copy
 import datetime
 
 from hysplit4 import cmdline, util, const, plotbase, mapbox, mapproj, io, smooth
-from hysplit4.conc import model, helper, gisout
+from hysplit4.conc import model, helper, gisout, cntr
 
 
 logger = logging.getLogger(__name__)
@@ -392,6 +392,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.conc_map = helper.ConcentrationMapFactory.create_instance(self.settings.KMAP, self.settings.KHEMIN)
         self.depo_map = helper.DepositionMapFactory.create_instance(self.settings.KMAP, self.settings.KHEMIN)
         
+        self.depo_sum = helper.DepositFactory.create_instance(self.settings.NDEP,
+                                                     self.cdump.has_ground_level_grid())
+                
         if self.settings.smoothing_distance > 0:
             self.smoothing_kernel = smooth.SmoothingKernelFactory.create_instance(const.SmoothingKernel.SIMPLE, self.settings.smoothing_distance)
             
@@ -855,6 +858,34 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         else:
             self._turn_off_spines(self.text_axes)
     
+    def _write_gisout(self, gis_writer, g, lower_vert_level, upper_vert_level, quad_contour_set, contour_levels, ctbl):
+        if g.extension.max_locs is None:
+                g.extension.max_locs = helper.find_max_locs(g)
+                
+        cmin, cmax = self.conc_type.get_plot_conc_range(g)
+        
+        contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
+        contour_set.raw_colors = ctbl.raw_colors
+        contour_set.colors = ctbl.colors
+        contour_set.levels = contour_levels
+        contour_set.levels_str = [self.conc_map.format_conc(level) for level in contour_levels]
+        contour_set.labels = self.contour_labels
+        contour_set.concentration_unit = self.get_conc_unit(self.conc_map, self.settings)
+        contour_set.min_concentration = cmin
+        contour_set.max_concentration = cmax
+        contour_set.min_concentration_str = self.conc_map.format_conc(cmin)
+        contour_set.max_concentration_str = self.conc_map.format_conc(cmax)
+
+        basename = gis_writer.make_output_basename(g,
+                                                   self.conc_type,
+                                                   self.depo_sum,
+                                                   self.settings.output_basename,
+                                                   self.settings.output_suffix,
+                                                   self.settings.KMLOUT,
+                                                   upper_vert_level)
+
+        gis_writer.write(basename, g, contour_set, lower_vert_level, upper_vert_level)
+   
     def draw_conc_above_ground(self, g, ev_handlers, lgen, ctbl, gis_writer=None, *args, **kwargs):
         
         self.layout(g, ev_handlers)
@@ -889,18 +920,12 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.conc_outer.set_title(self.make_plot_title(g, self.conc_map, level1, level2))
         self.conc_outer.set_xlabel(self.make_xlabel(g))
         
-        contour_set = self.draw_concentration_plot(g, xconc, self.conc_map, contour_levels, ctbl.colors)
+        quad_contour_set = self.draw_concentration_plot(g, xconc, self.conc_map, contour_levels, ctbl.colors)
         self.draw_contour_legends(g, self.conc_map, self.contour_labels, contour_levels, ctbl.colors)
         self.draw_bottom_text()
         
         if gis_writer is not None:
-            if g.extension.max_locs is None:
-                g.extension.max_locs = helper.find_max_locs(g)
-                
-            conc_unit = self.get_conc_unit(self.conc_map, self.settings)
-            cmin, cmax = self.conc_type.get_plot_conc_range(g)
-
-            gis_writer.write(g, LEVEL0, g.vert_level, LEVEL2, contour_set, cmin, cmax, conc_unit, ctbl.raw_colors)
+            self._write_gisout(gis_writer, g, LEVEL0, LEVEL2, quad_contour_set, contour_levels, ctbl)
             
         self.conc_map.undo_scale_exposure(self.conc_type)
         
@@ -949,13 +974,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.draw_bottom_text()
          
         if gis_writer is not None:
-            if g.extension.max_locs is None:
-                g.extension.max_locs = helper.find_max_locs(g)
-                
-            conc_unit = self.get_conc_unit(self.conc_map, self.settings)
-            cmin, cmax = self.conc_type.get_plot_conc_range(g)
-                
-            gis_writer.write(g, 0, 0, 0, contour_set, cmin, cmax, conc_unit, ctbl.raw_colors)
+            self._write_gisout(gis_writer, g, 0, 0, contour_set, contour_levels, ctbl)
        
         if self.settings.interactive_mode:
             plt.show(*args, **kwargs)
@@ -967,8 +986,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             plt.savefig(filename, papertype="letter")
         
         plt.close(self.fig)
-        self.current_frame += 1
-    
+        self.current_frame += 1       
+        
     def draw(self, ev_handlers=None, *args, **kwargs):
         if self.settings.interactive_mode == False:
             plt.ioff()
@@ -978,27 +997,20 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                                             self.settings.UCMIN,
                                                             self.settings.user_color)
         ctbl = ColorTableFactory.create_instance(self.settings)
-        dsum = helper.DepositFactory.create_instance(self.settings.NDEP,
-                                                     self.cdump.has_ground_level_grid())
         
         gis_writer = gisout.GISFileWriterFactory.create_instance(self.settings.gis_output,
                                                                  self.settings.kml_option)
                                                                  
         gis_writer.initialize(self.settings.gis_alt_mode,
                               self.settings.KMLOUT,
-                              self.settings.output_basename,
                               self.settings.output_suffix,
-                              self.conc_type,
-                              self.conc_map,
-                              dsum,
                               self.settings.KMAP,
                               self.settings.NSSLBL,
-                              self.settings.show_max_conc,
-                              self.contour_labels)
+                              self.settings.show_max_conc)
         
         self._initialize_map_projection(self.cdump)
 
-        dsum.initialize(self.cdump.grids, self.time_selector, self.pollutant_selector)
+        self.depo_sum.initialize(self.cdump.grids, self.time_selector, self.pollutant_selector)
         
         for t_index in self.time_selector:
             t_grids = helper.TimeIndexGridFilter(self.cdump.grids,
@@ -1008,7 +1020,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             logger.debug("grid counts: above the ground %d, on the ground %d",
                          len(grids_above_ground), len(grids_on_ground))
 
-            dsum.add(grids_on_ground, t_index == self.time_selector.first)
+            self.depo_sum.add(grids_on_ground, t_index == self.time_selector.first)
                     
             # conc unit conversion factor
             self.TFACT = self.settings.CONADJ
@@ -1021,7 +1033,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             for g in grids_above_ground:
                 self.draw_conc_above_ground(g, ev_handlers, lgen, ctbl, gis_writer, *args, **kwargs)
             
-            grids = dsum.get_grids_to_plot(grids_on_ground, t_index == self.time_selector.last)
+            grids = self.depo_sum.get_grids_to_plot(grids_on_ground, t_index == self.time_selector.last)
             for g in grids:
                 self.draw_conc_on_ground(g, ev_handlers, lgen, ctbl, gis_writer, *args, **kwargs)
         
