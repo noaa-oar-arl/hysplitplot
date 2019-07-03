@@ -39,6 +39,7 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.LEVEL1 = 0 # bottom display level defaults to deposition surface
         self.LEVEL2 = 99999 # top level default to whole model atmosphere
         self.exposure_unit = const.ExposureUnit.CONCENTRATION # KEXP, -e
+        self.KMAP = const.ConcentrationMapType.CONCENTRATION
         self.KAVG = const.ConcentrationType.EACH_LEVEL
         self.NDEP = const.DepositionType.TIME
         self.show_max_conc = 1

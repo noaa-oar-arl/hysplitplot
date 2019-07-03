@@ -1,6 +1,7 @@
 import logging
 import math
 import numpy
+import copy
 from matplotlib.path import Path
 from abc import ABC, abstractmethod
 from hysplit4 import const, util
@@ -38,7 +39,7 @@ class AbstractWriter:
         self.depo_type = None   # instance created by DepositFactory
         self.KMAP = const.ConcentrationMapType.CONCENTRATION
     
-    def initialize(self, gis_alt_mode, KMLOUT, output_basename, output_suffix, conc_type, conc_map, depo_type, KMAP, NSSLBL, MAXCON, cntr_labels):
+    def initialize(self, gis_alt_mode, KMLOUT, output_basename, output_suffix, conc_type, conc_map, depo_type, KMAP, NSSLBL, show_max_conc, cntr_labels):
         self.gis_alt_mode       = gis_alt_mode
         self.KMLOUT             = KMLOUT
         self.output_basename    = "HYSPLIT" if KMLOUT == 0 else output_basename
@@ -48,7 +49,7 @@ class AbstractWriter:
         self.depo_type          = depo_type
         self.KMAP               = KMAP
         self.NSSLBL             = NSSLBL
-        self.MAXCON             = MAXCON
+        self.show_max_conc             = show_max_conc
         self.contour_labels     = cntr_labels
     
     def write(self, g, level_lower, level_cur, level_high, contour_set, min_conc, max_conc, conc_unit, raw_colors):
@@ -57,7 +58,8 @@ class AbstractWriter:
     def finalize(self):
         pass
     
-    def _reformat_color(self, clr):
+    @staticmethod
+    def _reformat_color(clr):
         r = clr[1:3]; g = clr[3:5]; b = clr[5:7]
         return "C8{}{}{}".format(b, g, r).upper()
      
@@ -72,8 +74,8 @@ class IdleWriter(AbstractWriter):
     
     def __init__(self):
         AbstractWriter.__init__(self)
-
-
+    
+            
 class PointsGenerateFileWriter(AbstractWriter):
     
     def __init__(self, formatter):
@@ -101,14 +103,16 @@ class PointsGenerateFileWriter(AbstractWriter):
 
     class DecimalFormWriter:
         
-        def write_seg(self, f, seg, contour_level):
+        @staticmethod
+        def write_seg(f, seg, contour_level):
             pts = seg[0]
             f.write("{0:10.5f}, {1:10.5f}, {2:10.5f}\n".format(math.log10(contour_level), pts[0], pts[1]))
             for pts in seg[1:]:
                 f.write("{0:10.5f}, {1:10.5f}\n".format(pts[0], pts[1]))
             f.write("END\n")
-            
-        def write_att(self, f, grid, level1, level2, contour_level, color):
+        
+        @staticmethod
+        def write_att(f, grid, level1, level2, contour_level, color):
             f.write("{:7.3f},{:4s},{:4d}{:02d}{:02d},{:04d},{:05d},{:05d},{:8s}\n".format(
                 math.log10(contour_level),
                 grid.pollutant,
@@ -151,8 +155,8 @@ class KMLWriter(AbstractWriter):
         self.att_file = None
         self.cntr_writer = None
  
-    def initialize(self, gis_alt_mode, KMLOUT, output_basename, output_suffix, conc_type, conc_map, depo_type, KMAP, NSSLBL, MAXCON, cntr_labels):
-        AbstractWriter.initialize(self, gis_alt_mode, KMLOUT, output_basename, output_suffix, conc_type, conc_map, depo_type, KMAP, NSSLBL, MAXCON, cntr_labels)
+    def initialize(self, gis_alt_mode, KMLOUT, output_basename, output_suffix, conc_type, conc_map, depo_type, KMAP, NSSLBL, show_max_conc, cntr_labels):
+        AbstractWriter.initialize(self, gis_alt_mode, KMLOUT, output_basename, output_suffix, conc_type, conc_map, depo_type, KMAP, NSSLBL, show_max_conc, cntr_labels)
         self.cntr_writer = KMLContourWriterFactory.create_instance(self.KMAP, conc_map, gis_alt_mode)
 
     def write(self, g, level_lower, level_cur, level_upper, contour_set, min_conc, max_conc, conc_unit, raw_colors):
@@ -201,7 +205,7 @@ class KMLWriter(AbstractWriter):
         f.write("Integrated: {}\n".format(self._get_att_datetime_str(starting_time)))
         f.write("        to: {}\n".format(self._get_att_datetime_str(g.ending_datetime)))
         
-        if self.MAXCON == 1 or self.MAXCON == 2:
+        if self.show_max_conc == 1 or self.show_max_conc == 2:
             f.write("{} {} {}\n".format(self.conc_map.format_conc(max_conc),
                                         self.conc_map.format_conc(min_conc),
                                         len(contour_levels)))
@@ -452,7 +456,6 @@ class AbstractKMLContourWriter(ABC):
             
         for k, contour in enumerate(contour_set.allsegs):
             # arbitrary height above ground in order of increasing concentration
-            # TODO: method?
             level = self._get_contour_height_at(k, level2)
                         
             f.write("""\
@@ -461,12 +464,12 @@ class AbstractKMLContourWriter(ABC):
             self._write_placemark_visibility(f)
             
             if len(contour_labels[k]) > 0:
-                f.write("""
+                f.write("""\
         <name LOC="{}">Contour Level: {} {}</name>\n""".format(contour_labels[k],
                                                                self.conc_map.format_conc(contour_set.levels[k]),
                                                                conc_unit))
             else:
-                f.write("""
+                f.write("""\
         <name>Contour Level: {} {}</name>\n""".format(self.conc_map.format_conc(contour_set.levels[k]),
                                                       conc_unit))
             
@@ -510,9 +513,9 @@ class AbstractKMLContourWriter(ABC):
     
     @staticmethod
     def _separate_paths(seg, path_codes, separator_code):
-        head = numpy.where(path_codes == separator_code)[0]
+        head = [k for k, c in enumerate(path_codes) if c == separator_code]
         
-        tail = [k for k in head]
+        tail = copy.deepcopy(head)
         tail.append(len(path_codes))
         tail.pop(0)
         
@@ -799,7 +802,7 @@ Valid:{}</pre>]]></description>
       </ScreenOverlay>\n""".format(begin_ts, end_ts,
                                    self.frame_count, suffix))
         
-        self._write_contour(f, g, contour_set, conc_unit, max_conc, level2)
+        self._write_contour(f, g, contour_set, conc_unit, level2, contour_labels)
 
         self._write_max_location(f, g, max_conc, level2, contour_labels[-1])
 
@@ -872,7 +875,7 @@ Valid:{}</pre>]]></description>
                                    begin_ts, end_ts,
                                    self.frame_count, suffix))
         
-        self._write_contour(f, g, contour_set, max_conc, conc_unit, level2)
+        self._write_contour(f, g, contour_set, conc_unit, level2, contour_labels)
 
         self._write_max_location(f, g, max_conc, level2, contour_labels[-1])
 
@@ -891,5 +894,3 @@ Valid:{}</pre>]]></description>
             f.write("""\
         <visibility>0</visibility>
         \n""");
-
-

@@ -83,6 +83,7 @@ def test_ConcentrationPlotSettings___init__():
     assert s.LEVEL1 == 0
     assert s.LEVEL2 == 99999
     assert s.exposure_unit == const.ExposureUnit.CONCENTRATION
+    assert s.KMAP == const.ConcentrationMapType.CONCENTRATION
     assert s.KAVG == const.ConcentrationType.EACH_LEVEL
     assert s.NDEP == const.DepositionType.TIME
     assert s.show_max_conc == 1
