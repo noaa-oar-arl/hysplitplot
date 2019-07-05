@@ -94,7 +94,7 @@ class PointsGenerateFileWriter(AbstractWriter):
                 level = contour_set.levels[k]
                 for polygon in contour.polygons:
                     for boundary in polygon.boundaries:
-                        self.formatter.write_seg(f, boundary, level)
+                        self.formatter.write_boundary(f, boundary, level)
             f.write("END\n")
             
         with open(basename + ".att", "wt") as f:
@@ -104,13 +104,13 @@ class PointsGenerateFileWriter(AbstractWriter):
                 clr = self._reformat_color(contour_set.colors[k])
                 for polygon in contour.polygons:
                     for boundary in polygon.boundaries:
-                        self.formatter.write_att(f, g, lower_vert_level, upper_vert_level, level, clr)
+                        self.formatter.write_attributes(f, g, lower_vert_level, upper_vert_level, level, clr)
 
 
     class DecimalFormWriter:
         
         @staticmethod
-        def write_seg(f, boundary, contour_level):
+        def write_boundary(f, boundary, contour_level):
             f.write("{0:10.5f}, {1:10.5f}, {2:10.5f}\n".format(math.log10(contour_level),
                                                                boundary.longitudes[0],
                                                                boundary.latitudes[0]))
@@ -120,7 +120,7 @@ class PointsGenerateFileWriter(AbstractWriter):
             f.write("END\n")
         
         @staticmethod
-        def write_att(f, g, lower_vert_level, upper_vert_level, contour_level, color):
+        def write_attributes(f, g, lower_vert_level, upper_vert_level, contour_level, color):
             f.write("{:7.3f},{:4s},{:4d}{:02d}{:02d},{:04d},{:05d},{:05d},{:8s}\n".format(math.log10(contour_level),
                                                                                           g.pollutant,
                                                                                           util.restore_year(g.ending_datetime.year),
@@ -133,7 +133,7 @@ class PointsGenerateFileWriter(AbstractWriter):
             
     class ExponentFormWriter:
         
-        def write_seg(self, f, boundary, contour_level):
+        def write_boundary(self, f, boundary, contour_level):
             f.write("{0:10.3e}, {1:10.5f}, {2:10.5f}\n".format(contour_level,
                                                                boundary.longitudes[0],
                                                                boundary.latitudes[0]))
@@ -142,7 +142,7 @@ class PointsGenerateFileWriter(AbstractWriter):
                                                         boundary.latitudes[k]))
             f.write("END\n")
         
-        def write_att(self, f, g, lower_vert_level, upper_vert_level, contour_level, color):
+        def write_attributes(self, f, g, lower_vert_level, upper_vert_level, contour_level, color):
             f.write("{:10.3e},{:4s},{:4d}{:02d}{:02d},{:04d},{:05d},{:05d},{:8s}\n".format(contour_level,
                                                                                            g.pollutant,
                                                                                            util.restore_year(g.ending_datetime.year),
@@ -553,13 +553,13 @@ class AbstractKMLContourWriter(ABC):
         <MultiGeometry>\n""".format(begin_ts, end_ts, k + 1))
             
             for polygon in contour.polygons:
-                self._write_seg(f, polygon, vert_level)
+                self._write_polygon(f, polygon, vert_level)
             
             f.write("""\
         </MultiGeometry>
       </Placemark>\n""")
     
-    def _write_seg(self, f, polygon, vert_level):
+    def _write_polygon(self, f, polygon, vert_level):
         
         if len(polygon.boundaries) > 0:
             f.write("""\

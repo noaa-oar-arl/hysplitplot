@@ -1314,24 +1314,24 @@ def test_MassLoadingMap_undo_scale_exposure(cdump2):
     assert conc_type.max_concs[0] * 1.0e+13 == pytest.approx(8.047535)
 
 
-def test_DepositFactory_create_instance():
-    o = helper.DepositFactory.create_instance(const.DepositionType.NONE)
+def test_DepositSumFactory_create_instance():
+    o = helper.DepositSumFactory.create_instance(const.DepositionType.NONE)
     assert isinstance(o, helper.IdleDeposit)
     
-    o = helper.DepositFactory.create_instance(const.DepositionType.TIME)
+    o = helper.DepositSumFactory.create_instance(const.DepositionType.TIME)
     assert isinstance(o, helper.TimeDeposit)
     
-    o = helper.DepositFactory.create_instance(const.DepositionType.SUM)
+    o = helper.DepositSumFactory.create_instance(const.DepositionType.SUM)
     assert isinstance(o, helper.SumDeposit)
     
-    o = helper.DepositFactory.create_instance(const.DepositionType.TOTAL)
+    o = helper.DepositSumFactory.create_instance(const.DepositionType.TOTAL)
     assert isinstance(o, helper.TotalDeposit)
     
-    o = helper.DepositFactory.create_instance(const.DepositionType.TOTAL, False)
+    o = helper.DepositSumFactory.create_instance(const.DepositionType.TOTAL, False)
     assert isinstance(o, helper.IdleDeposit)
     
     try:
-        o = helper.DepositFactory.create_instance(99999)
+        o = helper.DepositSumFactory.create_instance(99999)
         pytest.fail("expected an exception")
     except Exception as ex:
         assert str(ex) == "unknown deposition type 99999"

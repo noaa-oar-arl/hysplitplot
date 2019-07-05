@@ -908,7 +908,7 @@ def test_ConcentrationPlot_draw_conc_above_ground():
                                                         p.settings.user_color)
     ctbl = plot.ColorTableFactory.create_instance(p.settings)
     
-    dsum = helper.DepositFactory.create_instance(p.settings.NDEP,
+    dsum = helper.DepositSumFactory.create_instance(p.settings.NDEP,
                                                  p.cdump.has_ground_level_grid())
         
     gis_writer = gisout.GISFileWriterFactory.create_instance(p.settings.gis_output,
@@ -956,7 +956,7 @@ def test_ConcentrationPlot_draw_conc_on_ground():
                                                              p.settings.user_color)
     ctbl = plot.ColorTableFactory.create_instance(p.settings)
     
-    dsum = helper.DepositFactory.create_instance(p.settings.NDEP,
+    dsum = helper.DepositSumFactory.create_instance(p.settings.NDEP,
                                                  p.cdump.has_ground_level_grid())
         
     gis_writer = gisout.GISFileWriterFactory.create_instance(p.settings.gis_output,

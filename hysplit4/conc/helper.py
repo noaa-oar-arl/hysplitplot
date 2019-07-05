@@ -902,7 +902,7 @@ class MassLoadingMap(AbstractConcentrationMap):
         conc_type.undo_scale_exposure()
 
 
-class DepositFactory:
+class DepositSumFactory:
     
     @staticmethod
     def create_instance(type, has_ground_level_grid=True):

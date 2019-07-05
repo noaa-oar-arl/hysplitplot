@@ -355,7 +355,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.pollutant_selector = helper.PollutantSelector(self.settings.pollutant_index)
         self.level_selector = helper.VerticalLevelSelector(self.settings.LEVEL1, self.settings.LEVEL2)
 
-        # limit time indices. assume that last conc grid is the largest time index.
+        # limit time indices. assume that the last concentration grid has the largest time index.
         self.time_selector.normalize(cdump.grids[-1].time_index)
         logger.debug("time iteration is limited to index range [%d, %d]",
                      self.time_selector.first, self.time_selector.last)
@@ -385,18 +385,18 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         
         self.conc_type = helper.ConcentrationTypeFactory.create_instance(self.settings.KAVG)
         if self.settings.KAVG == 1:
-            self.conc_type.set_alt_KAVG(3)  # for the above-ground conc plots
+            self.conc_type.set_alt_KAVG(3)  # for the above-ground concentration plots
             
         self._post_file_processing(self.cdump)
                 
         self.conc_map = helper.ConcentrationMapFactory.create_instance(self.settings.KMAP, self.settings.KHEMIN)
         self.depo_map = helper.DepositionMapFactory.create_instance(self.settings.KMAP, self.settings.KHEMIN)
         
-        self.depo_sum = helper.DepositFactory.create_instance(self.settings.NDEP,
-                                                     self.cdump.has_ground_level_grid())
+        self.depo_sum = helper.DepositSumFactory.create_instance(self.settings.NDEP, self.cdump.has_ground_level_grid())
                 
         if self.settings.smoothing_distance > 0:
-            self.smoothing_kernel = smooth.SmoothingKernelFactory.create_instance(const.SmoothingKernel.SIMPLE, self.settings.smoothing_distance)
+            self.smoothing_kernel = smooth.SmoothingKernelFactory.create_instance(const.SmoothingKernel.SIMPLE,
+                                                                                  self.settings.smoothing_distance)
             
     def _post_file_processing(self, cdump):
         
@@ -414,6 +414,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         
         self.conc_type.scale_conc(self.settings.CONADJ,
                                   self.settings.DEPADJ)
+        
         self._normalize_settings(cdump)
            
         self.length_factory = util.AbstractLengthFactory.create_factory(self.settings.height_unit)
@@ -460,13 +461,13 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 raise Exception("ALTTD units must be meters or feet in labels.cfg or its equivalent file: {0}".format(alttd))
 
     @staticmethod
-    def _fix_map_color(clr, color_mode):
-        return clr if color_mode != const.ConcentrationPlotColor.BLACK_AND_WHITE else 'k'
+    def _fix_map_color(color, color_mode):
+        return color if color_mode != const.ConcentrationPlotColor.BLACK_AND_WHITE else 'k'
 
     def read_background_map(self):
         self.background_maps = self.load_background_map(self.settings.map_background)
 
-    def layout(self, grid, ev_handlers=None):
+    def layout(self, grid, event_handlers=None):
 
         fig = plt.figure(
             figsize=(8.5, 11.0),  # letter size
@@ -489,17 +490,17 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.legends_axes = fig.add_subplot(inner_grid[0, 1])
         self.text_axes = fig.add_subplot(outer_grid[1, 0])
 
-        if ev_handlers is not None:
-            self._connect_event_handlers(ev_handlers)
+        if event_handlers is not None:
+            self._connect_event_handlers(event_handlers)
     
-    def make_plot_title(self, conc_grid, conc_map, level1, level2):
+    def make_plot_title(self, conc_grid, conc_map, lower_vert_level, upper_vert_level):
         s = self.settings
         
         fig_title = self.labels.get("TITLE")
         
         conc_unit = self.get_conc_unit(conc_map, s)
         fig_title += "\n"
-        fig_title += conc_map.get_map_id_line(self.conc_type, conc_unit, level1, level2)
+        fig_title += conc_map.get_map_id_line(self.conc_type, conc_unit, lower_vert_level, upper_vert_level)
         
         fig_title += conc_grid.starting_datetime.strftime("\nIntegrated from %H%M %d %b to")
         fig_title += conc_grid.ending_datetime.strftime(" %H%M %d %b %y (UTC)")
@@ -573,7 +574,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                                                        map_box)
         self.projection.refine_corners(self.settings.center_loc)
 
-        # map projection might have changed.
+        # copy the map projection because it might have been changed.
         self.settings.map_projection = self.projection.proj_type
 
         self.crs = self.projection.create_crs()
@@ -584,16 +585,16 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         
         # use finer grids for small maps
         if lat_span < 2.0 and lon_span < 2.0:
-            mb = mapbox.MapBox(grid_corner=cdump.grid_loc, grid_size=(lon_span, lat_span), grid_delta=0.10)
+            mbox = mapbox.MapBox(grid_corner=cdump.grid_loc, grid_size=(lon_span, lat_span), grid_delta=0.10)
         elif lat_span < 5.0 and lon_span < 5.0:
-            mb = mapbox.MapBox(grid_corner=cdump.grid_loc, grid_size=(lon_span, lat_span), grid_delta=0.20)
+            mbox = mapbox.MapBox(grid_corner=cdump.grid_loc, grid_size=(lon_span, lat_span), grid_delta=0.20)
         else:
-            mb = mapbox.MapBox()
+            mbox = mapbox.MapBox()
         
-        return mb
+        return mbox
     
     def _determine_map_limits(self, cdump, map_opt_passes):
-        mb = self._create_map_box_instance(cdump)
+        mbox = self._create_map_box_instance(cdump)
 
         # summation of all concentration grids of interest
         conc = helper.sum_conc_grids_of_interest(cdump.grids,
@@ -602,41 +603,39 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                                  self.time_selector)
         
         for ipass in range(map_opt_passes):
-            mb.allocate()
+            mbox.allocate()
 
             # add release points
             for loc in cdump.release_locs:
                 if util.is_valid_lonlat(loc):
-                    mb.add(loc)
+                    mbox.add(loc)
 
             # find trajectory hits
-            mb.hit_count = 0
+            mbox.hit_count = 0
             for j in range(len(cdump.latitudes)):
                 for i in range(len(cdump.longitudes)):
                     if conc[j, i] > 0:
-                        mb.add((cdump.longitudes[i], cdump.latitudes[j]))
+                        mbox.add((cdump.longitudes[i], cdump.latitudes[j]))
 
-            if mb.hit_count == 0:
+            if mbox.hit_count == 0:
                 if self.settings.IZRO == 0:
                     raise Exception("ALL concentrations are ZERO - no maps")
 
             # first pass only refines grid for small plumes
             if ipass == 0 and map_opt_passes == 2:
-                mb.determine_plume_extent()
-                if mb.need_to_refine_grid():
-                    mb.refine_grid()
+                mbox.determine_plume_extent()
+                if mbox.need_to_refine_grid():
+                    mbox.refine_grid()
                 else:
                     break
 
-        return mb
+        return mbox
 
-        
     def draw_concentration_plot(self, conc_grid, scaled_conc, conc_map, contour_levels, fill_colors):
         """
         Draws a concentration contour plot and returns the contour data points.
         """
         contour_set = None
-        
         axes = self.conc_axes
 
         # keep the plot size after zooming
@@ -751,8 +750,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         axes = self.legends_axes
         s = self.settings
         
-        cmin, cmax = self.conc_type.get_plot_conc_range(grid)
-        logger.debug("concentration plot min %g, max %g", cmin, cmax)
+        min_conc, max_conc = self.conc_type.get_plot_conc_range(grid)
+        logger.debug("concentration plot min %g, max %g", min_conc, max_conc)
                 
         self._turn_off_ticks(axes)
         
@@ -811,16 +810,16 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             
             y -= dy
             
-        if cmax > 0 and (s.show_max_conc ==1 or s.show_max_conc == 2):
+        if max_conc > 0 and (s.show_max_conc ==1 or s.show_max_conc == 2):
             y -= line_skip * 0.5
             
-            str = "Maximum: {0:.1e} ${1}$".format(cmax, conc_unit)
+            str = "Maximum: {0:.1e} ${1}$".format(max_conc, conc_unit)
             axes.text(x, y, str, color="k", fontsize=font_sz,
                       horizontalalignment="left", verticalalignment="top",
                       transform=axes.transAxes)
             y -= line_skip
             
-            str = "Minimum: {0:.1e} ${1}$".format(cmin, conc_unit)
+            str = "Minimum: {0:.1e} ${1}$".format(min_conc, conc_unit)
             axes.text(x, y, str, color="k", fontsize=font_sz,
                       horizontalalignment="left", verticalalignment="top",
                       transform=axes.transAxes)
@@ -850,31 +849,31 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                          
         alt_text_lines = self.labels.get("TXBOXL")
          
-        maptext_fname = self._make_maptext_filename(self.settings.output_suffix)
-        if os.path.exists(maptext_fname):
-            self._draw_maptext_if_exists(self.text_axes, maptext_fname)
+        map_text_filename = self._make_maptext_filename(self.settings.output_suffix)
+        if os.path.exists(map_text_filename):
+            self._draw_maptext_if_exists(self.text_axes, map_text_filename)
         elif (alt_text_lines is not None) and (len(alt_text_lines) > 0):
             self._draw_alt_text_boxes(self.text_axes, alt_text_lines)
         else:
             self._turn_off_spines(self.text_axes)
     
-    def _write_gisout(self, gis_writer, g, lower_vert_level, upper_vert_level, quad_contour_set, contour_levels, ctbl):
+    def _write_gisout(self, gis_writer, g, lower_vert_level, upper_vert_level, quad_contour_set, contour_levels, color_table):
         if g.extension.max_locs is None:
                 g.extension.max_locs = helper.find_max_locs(g)
                 
-        cmin, cmax = self.conc_type.get_plot_conc_range(g)
+        min_conc, max_conc = self.conc_type.get_plot_conc_range(g)
         
         contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
-        contour_set.raw_colors = ctbl.raw_colors
-        contour_set.colors = ctbl.colors
+        contour_set.raw_colors = color_table.raw_colors
+        contour_set.colors = color_table.colors
         contour_set.levels = contour_levels
         contour_set.levels_str = [self.conc_map.format_conc(level) for level in contour_levels]
         contour_set.labels = self.contour_labels
         contour_set.concentration_unit = self.get_conc_unit(self.conc_map, self.settings)
-        contour_set.min_concentration = cmin
-        contour_set.max_concentration = cmax
-        contour_set.min_concentration_str = self.conc_map.format_conc(cmin)
-        contour_set.max_concentration_str = self.conc_map.format_conc(cmax)
+        contour_set.min_concentration = min_conc
+        contour_set.max_concentration = max_conc
+        contour_set.min_concentration_str = self.conc_map.format_conc(min_conc)
+        contour_set.max_concentration_str = self.conc_map.format_conc(max_conc)
 
         basename = gis_writer.make_output_basename(g,
                                                    self.conc_type,
@@ -886,19 +885,16 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         gis_writer.write(basename, g, contour_set, lower_vert_level, upper_vert_level)
    
-    def draw_conc_above_ground(self, g, ev_handlers, lgen, ctbl, gis_writer=None, *args, **kwargs):
+    def draw_conc_above_ground(self, g, event_handlers, level_generator, color_table, gis_writer=None, *args, **kwargs):
         
-        self.layout(g, ev_handlers)
+        self.layout(g, event_handlers)
         
         self._turn_off_spines(self.conc_outer)
         self._turn_off_ticks(self.conc_outer)
         
         min_conc, max_conc = self.conc_type.get_plot_conc_range(g)
-        lgen.set_global_min_max(self.conc_type.contour_min_conc,
-                                self.conc_type.contour_max_conc)
-        contour_levels = lgen.make_levels(min_conc,
-                                          max_conc,
-                                          self.settings.contour_level_count)
+        level_generator.set_global_min_max(self.conc_type.contour_min_conc, self.conc_type.contour_max_conc)
+        contour_levels = level_generator.make_levels(min_conc, max_conc, self.settings.contour_level_count)
         
         LEVEL0 = self.conc_type.get_lower_level(g.vert_level, self.cdump.vert_levels)
         LEVEL2 = self.conc_type.get_upper_level(g.vert_level, self.settings.LEVEL2)
@@ -909,23 +905,23 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         f = float(g.vert_level - LEVEL0)
         conc_scaling_factor = self.conc_map.scale_exposure(self.TFACT, self.conc_type, f)
         
-        xconc = numpy.copy(g.conc)
+        scaled_conc = numpy.copy(g.conc)
         if conc_scaling_factor != 1.0:
-            xconc *= conc_scaling_factor
+            scaled_conc *= conc_scaling_factor
         
         if self.smoothing_kernel is not None:
-            xconc = self.smoothing_kernel.smooth_with_max_preserved(xconc)
+            scaled_conc = self.smoothing_kernel.smooth_with_max_preserved(scaled_conc)
         
         # plot title
         self.conc_outer.set_title(self.make_plot_title(g, self.conc_map, level1, level2))
         self.conc_outer.set_xlabel(self.make_xlabel(g))
         
-        quad_contour_set = self.draw_concentration_plot(g, xconc, self.conc_map, contour_levels, ctbl.colors)
-        self.draw_contour_legends(g, self.conc_map, self.contour_labels, contour_levels, ctbl.colors)
+        quad_contour_set = self.draw_concentration_plot(g, scaled_conc, self.conc_map, contour_levels, color_table.colors)
+        self.draw_contour_legends(g, self.conc_map, self.contour_labels, contour_levels, color_table.colors)
         self.draw_bottom_text()
         
         if gis_writer is not None:
-            self._write_gisout(gis_writer, g, LEVEL0, LEVEL2, quad_contour_set, contour_levels, ctbl)
+            self._write_gisout(gis_writer, g, LEVEL0, LEVEL2, quad_contour_set, contour_levels, color_table)
             
         self.conc_map.undo_scale_exposure(self.conc_type)
         
@@ -941,40 +937,37 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         plt.close(self.fig)
         self.current_frame += 1
 
-    def draw_conc_on_ground(self, g, ev_handlers, lgen, ctbl, gis_writer=None, *args, **kwargs):
+    def draw_conc_on_ground(self, g, event_handlers, level_generator, color_table, gis_writer=None, *args, **kwargs):
         
-        self.layout(g, ev_handlers)
+        self.layout(g, event_handlers)
         
         self._turn_off_spines(self.conc_outer)
         self._turn_off_ticks(self.conc_outer)
 
         min_conc, max_conc = self.conc_type.get_plot_conc_range(g)
-        lgen.set_global_min_max(self.conc_type.ground_min_conc,
-                                self.conc_type.ground_max_conc)     
-        contour_levels = lgen.make_levels(min_conc,
-                                          max_conc,
-                                          self.settings.contour_level_count)
+        level_generator.set_global_min_max(self.conc_type.ground_min_conc, self.conc_type.ground_max_conc)     
+        contour_levels = level_generator.make_levels(min_conc, max_conc, self.settings.contour_level_count)
         
         level1 = self.length_factory.create_instance(0)
         level2 = self.length_factory.create_instance(0)
         
-        xconc = numpy.copy(g.conc)
+        scaled_conc = numpy.copy(g.conc)
         if self.settings.DEPADJ != 1.0:
-            xconc *= self.settings.DEPADJ
+            scaled_conc *= self.settings.DEPADJ
         
         if self.smoothing_kernel is not None:
-            xconc = self.smoothing_kernel.smooth_with_max_preserved(xconc)
+            scaled_conc = self.smoothing_kernel.smooth_with_max_preserved(scaled_conc)
         
         # plot title
         self.conc_outer.set_title(self.make_plot_title(g, self.depo_map, level1, level2))
         self.conc_outer.set_xlabel(self.make_xlabel(g))
         
-        contour_set = self.draw_concentration_plot(g, xconc, self.depo_map, contour_levels, ctbl.colors)
-        self.draw_contour_legends(g, self.depo_map, self.contour_labels, contour_levels, ctbl.colors)
+        contour_set = self.draw_concentration_plot(g, scaled_conc, self.depo_map, contour_levels, color_table.colors)
+        self.draw_contour_legends(g, self.depo_map, self.contour_labels, contour_levels, color_table.colors)
         self.draw_bottom_text()
          
         if gis_writer is not None:
-            self._write_gisout(gis_writer, g, 0, 0, contour_set, contour_levels, ctbl)
+            self._write_gisout(gis_writer, g, 0, 0, contour_set, contour_levels, color_table)
        
         if self.settings.interactive_mode:
             plt.show(*args, **kwargs)
@@ -992,11 +985,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         if self.settings.interactive_mode == False:
             plt.ioff()
 
-        lgen = ContourLevelGeneratorFactory.create_instance(self.settings.contour_level_generator,
-                                                            self.settings.contour_levels,
-                                                            self.settings.UCMIN,
-                                                            self.settings.user_color)
-        ctbl = ColorTableFactory.create_instance(self.settings)
+        level_generator = ContourLevelGeneratorFactory.create_instance(self.settings.contour_level_generator,
+                                                                       self.settings.contour_levels,
+                                                                       self.settings.UCMIN,
+                                                                       self.settings.user_color)
+        color_table = ColorTableFactory.create_instance(self.settings)
         
         gis_writer = gisout.GISFileWriterFactory.create_instance(self.settings.gis_output,
                                                                  self.settings.kml_option)
@@ -1022,7 +1015,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
             self.depo_sum.add(grids_on_ground, t_index == self.time_selector.first)
                     
-            # conc unit conversion factor
+            # concentration unit conversion factor
             self.TFACT = self.settings.CONADJ
 
             if self.conc_map.need_time_scaling():
@@ -1031,11 +1024,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             logger.debug("CONADJ %g, TFACT %g", self.settings.CONADJ, self.TFACT)
             
             for g in grids_above_ground:
-                self.draw_conc_above_ground(g, ev_handlers, lgen, ctbl, gis_writer, *args, **kwargs)
+                self.draw_conc_above_ground(g, ev_handlers, level_generator, color_table, gis_writer, *args, **kwargs)
             
             grids = self.depo_sum.get_grids_to_plot(grids_on_ground, t_index == self.time_selector.last)
             for g in grids:
-                self.draw_conc_on_ground(g, ev_handlers, lgen, ctbl, gis_writer, *args, **kwargs)
+                self.draw_conc_on_ground(g, ev_handlers, level_generator, color_table, gis_writer, *args, **kwargs)
         
         gis_writer.finalize()
         
@@ -1094,14 +1087,14 @@ class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
         self.UCMIN = UCMIN
         self.force_base_10 = kwargs.get("force_base_10", False)
 
-    def make_levels(self, cmin, cmax, max_levels):
-        logger.debug("making %d levels using cmin %g, cmax %g", max_levels, cmin, cmax)
+    def make_levels(self, min_conc, max_conc, max_levels):
+        logger.debug("making %d levels using min_conc %g, max_conc %g", max_levels, min_conc, max_conc)
         
         cint = 10.0; cint_inverse = 0.1
-        if (not self.force_base_10) and cmax > 1.0e+8 * cmin:
+        if (not self.force_base_10) and max_conc > 1.0e+8 * min_conc:
             cint = 100.0; cint_inverse = 0.01
 
-        nexp = int(math.log10(cmax)) if cmax > 0 else 0
+        nexp = int(math.log10(max_conc)) if max_conc > 0 else 0
         if nexp < 0:
             nexp -= 1
         
@@ -1125,7 +1118,7 @@ class ExponentialFixedLevelGenerator(ExponentialDynamicLevelGenerator):
     def __init__(self, UCMIN, **kwargs):
         ExponentialDynamicLevelGenerator.__init__(self, UCMIN, **kwargs)
         
-    def make_levels(self, cmin, cmax, max_levels):
+    def make_levels(self, min_conc, max_conc, max_levels):
         return ExponentialDynamicLevelGenerator.make_levels(self,
                                                             self.global_min,
                                                             self.global_max,
@@ -1137,19 +1130,19 @@ class LinearDynamicLevelGenerator(AbstractContourLevelGenerator):
     def __init__(self):
         AbstractContourLevelGenerator.__init__(self)
         
-    def make_levels(self, cmin, cmax, max_levels):
-        nexp = util.nearest_int(math.log10(cmax * 0.25)) if cmax > 0 else 0
+    def make_levels(self, min_conc, max_conc, max_levels):
+        nexp = util.nearest_int(math.log10(max_conc * 0.25)) if max_conc > 0 else 0
         if nexp < 0:
             nexp -= 1
         cint = math.pow(10.0, nexp)
-        if cmax > 6 * cint:
+        if max_conc > 6 * cint:
             cint *= 2.0
             
         levels = numpy.empty(max_levels, dtype=float)
         for k in range(len(levels)):
             levels[k] = cint * (k + 1)
             
-        logger.debug("contour levels: %s using max %g, levels %d", levels, cmax, max_levels)
+        logger.debug("contour levels: %s using max %g, levels %d", levels, max_conc, max_levels)
         return levels
 
 
@@ -1158,7 +1151,7 @@ class LinearFixedLevelGenerator(LinearDynamicLevelGenerator):
     def __init__(self):
         LinearDynamicLevelGenerator.__init__(self)
     
-    def make_levels(self, cmin, cmax, max_levels):
+    def make_levels(self, min_conc, max_conc, max_levels):
         return LinearDynamicLevelGenerator.make_levels(self,
                                                        self.global_min,
                                                        self.global_max,
@@ -1171,7 +1164,7 @@ class UserSpecifiedLevelGenerator(AbstractContourLevelGenerator):
         AbstractContourLevelGenerator.__init__(self)
         self.contour_levels = [o.level for o in user_specified_levels]
     
-    def make_levels(self, cmin, cmax, max_levels):
+    def make_levels(self, min_conc, max_conc, max_levels):
         return self.contour_levels
     
     
@@ -1280,6 +1273,7 @@ class DefaultColorTable(ColorTable):
         
         return self.__colors
 
+
 class DefaultChemicalThresholdColorTable(ColorTable):
     
     def __init__(self, ncolors, skip_std_colors):
@@ -1313,7 +1307,8 @@ class DefaultChemicalThresholdColorTable(ColorTable):
             self.__colors = self.create_plot_colors(self.raw_colors)
         
         return self.__colors
-    
+
+
 class UserColorTable(ColorTable):
     
     def __init__(self, contour_levels):
@@ -1331,6 +1326,7 @@ class UserColorTable(ColorTable):
             self.__colors = self.create_plot_colors(self.raw_colors)
             
         return self.__colors
+
 
 class ColorTableReader(io.FormattedTextFileReader):
     

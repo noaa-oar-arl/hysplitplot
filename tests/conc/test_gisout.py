@@ -136,7 +136,7 @@ def test_PointsGenerateFileWriter___init__():
 def test_PointsGenerateFileWriter_make_output_basename(cdump_two_pollutants):
     s = plot.ConcentrationPlotSettings()
     conc_type = helper.ConcentrationTypeFactory.create_instance( s.KAVG )
-    depo_sum = helper.DepositFactory.create_instance(s.NDEP,
+    depo_sum = helper.DepositSumFactory.create_instance(s.NDEP,
                                                      cdump_two_pollutants.has_ground_level_grid())
     
     o = gisout.PointsGenerateFileWriter( gisout.PointsGenerateFileWriter.DecimalFormWriter() )
@@ -156,7 +156,7 @@ def test_PointsGenerateFileWriter_write(cdump_two_pollutants):
     s = plot.ConcentrationPlotSettings()
     conc_type = helper.ConcentrationTypeFactory.create_instance( s.KAVG )
     conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    depo_type = helper.DepositFactory.create_instance(s.NDEP,
+    depo_type = helper.DepositSumFactory.create_instance(s.NDEP,
                                                       cdump_two_pollutants.has_ground_level_grid())
     g = cdump_two_pollutants.grids[0]
     
@@ -199,7 +199,7 @@ def test_PointsGenerateFileWriter_write(cdump_two_pollutants):
     os.remove("GIS_00100_ps_01.txt")
 
 
-def test_DecimalFormWriter_write_seg():
+def test_DecimalFormWriter_write_boundary():
     o = gisout.PointsGenerateFileWriter.DecimalFormWriter()
 
     seg = cntr.Boundary(None)
@@ -207,7 +207,7 @@ def test_DecimalFormWriter_write_seg():
     seg.longitudes = [1.0, 2.0, 3.0]
     
     f = open("__decimalFormWriter.txt", "wt")
-    o.write_seg(f, seg, 1.0e-05)
+    o.write_boundary(f, seg, 1.0e-05)
     f.close()
     
     f = open("__decimalFormWriter.txt", "rt")
@@ -221,12 +221,12 @@ def test_DecimalFormWriter_write_seg():
     os.remove("__decimalFormWriter.txt")
 
 
-def test_DecimalFormWriter_write_att(cdump_two_pollutants):
+def test_DecimalFormWriter_write_attributes(cdump_two_pollutants):
     o = gisout.PointsGenerateFileWriter.DecimalFormWriter()
     g = cdump_two_pollutants.grids[0]
     
     f = open("__decimalFormWriter.txt", "wt")
-    o.write_att(f, g, 100, 300, 1.0e-5, "#ff0000")
+    o.write_attributes(f, g, 100, 300, 1.0e-5, "#ff0000")
     f.close()
     
     f = open("__decimalFormWriter.txt", "rt")
@@ -238,7 +238,7 @@ def test_DecimalFormWriter_write_att(cdump_two_pollutants):
     os.remove("__decimalFormWriter.txt")
 
 
-def test_ExponentFormWriter_write_seg():
+def test_ExponentFormWriter_write_boundary():
     o = gisout.PointsGenerateFileWriter.ExponentFormWriter()
     
     seg = cntr.Boundary(None)
@@ -246,7 +246,7 @@ def test_ExponentFormWriter_write_seg():
     seg.longitudes = [1.0, 2.0, 3.0]
     
     f = open("__exponentFormWriter.txt", "wt")
-    o.write_seg(f, seg, 1.0e-05)
+    o.write_boundary(f, seg, 1.0e-05)
     f.close()
     
     f = open("__exponentFormWriter.txt", "rt")
@@ -260,12 +260,12 @@ def test_ExponentFormWriter_write_seg():
     os.remove("__exponentFormWriter.txt")
 
 
-def test_ExponentFormWriter_write_att(cdump_two_pollutants):
+def test_ExponentFormWriter_write_attributes(cdump_two_pollutants):
     o = gisout.PointsGenerateFileWriter.ExponentFormWriter()
     g = cdump_two_pollutants.grids[0]
     
     f = open("__exponentFormWriter.txt", "wt")
-    o.write_att(f, g, 100, 300, 1.0e-5, "#ff0000")
+    o.write_attributes(f, g, 100, 300, 1.0e-5, "#ff0000")
     f.close()
     
     f = open("__exponentFormWriter.txt", "rt")
@@ -289,7 +289,7 @@ def test_KMLWriter___init__():
 def test_KMLWriter_make_output_basename(cdump_two_pollutants):
     s = plot.ConcentrationPlotSettings()
     conc_type = helper.ConcentrationTypeFactory.create_instance( s.KAVG )
-    depo_sum = helper.DepositFactory.create_instance(s.NDEP,
+    depo_sum = helper.DepositSumFactory.create_instance(s.NDEP,
                                                      cdump_two_pollutants.has_ground_level_grid())
     
     o = gisout.KMLWriter(s.kml_option)
@@ -649,7 +649,7 @@ def test_AbstractKMLContourWriter__write_contour(cdump_two_pollutants):
     os.remove("__AbstractKMLContourWriter.txt")
 
 
-def test_AbstractKMLContourWriter__write_seg(cdump_two_pollutants):
+def test_AbstractKMLContourWriter__write_polygon(cdump_two_pollutants):
     o = AbstractKMLContourWriterTest("relativeToGround")
     
     g = cdump_two_pollutants.grids[0]
@@ -679,7 +679,7 @@ def test_AbstractKMLContourWriter__write_seg(cdump_two_pollutants):
     
     # just see if there is any exception
     try:
-        o._write_seg(f, contour_set.contours[0].polygons[0], 100)
+        o._write_polygon(f, contour_set.contours[0].polygons[0], 100)
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
             
