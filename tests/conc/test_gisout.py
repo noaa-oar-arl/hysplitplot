@@ -3,7 +3,7 @@ import logging
 import datetime
 import matplotlib.pyplot as plt
 import os
-from hysplit4.conc import gisout, model, plot, helper
+from hysplit4.conc import gisout, model, plot, helper, cntr
 from hysplit4 import const
 
 
@@ -16,7 +16,19 @@ def cdump_two_pollutants():
     
 
 # Concrete classes to test abstract classes
+class AbstractWriterTest(gisout.AbstractWriter):
+    
+    def make_output_basename(self, g, conc_type, depo_sum, output_basename, output_suffix, KMLOUT, upper_vert_level):
+        pass
+   
+    
 class AbstractKMLContourWriterTest(gisout.AbstractKMLContourWriter):
+    
+    def _get_name_cdata(self, dt):
+        return ""
+    
+    def _get_description_cdata(self, lower_vert_level, upper_vert_level, dt):
+        return "" 
     
     def _get_max_location_text(self):
         pass
@@ -46,46 +58,47 @@ def test_GISFileWriterFactory_create_instance():
 
 
 def test_AbstractWriter___init__():
-    o = gisout.AbstractWriter()
-    assert o.gis_alt_mode == const.GISOutputAltitude.CLAMPED_TO_GROUND
+    o = AbstractWriterTest()
+    assert o.alt_mode_str == "clampedToGround"
     assert o.KMLOUT == 0
-    assert o.output_basename == "output"
     assert o.output_suffix == "ps"
-    assert o.conc_type is None
-    assert o.depo_type is None
     assert o.KMAP == const.ConcentrationMapType.CONCENTRATION
 
 
 def test_AbstractWriter_initialize():
-    o = gisout.AbstractWriter()
-    o.initialize(1, 2, "3", "4", 5, 6, 7, 8, 9, 10, ["11"])
-    assert o.gis_alt_mode == 1
+    o = AbstractWriterTest()
+    o.initialize(0, 2, "3", 5, 6, 7)
+    assert o.alt_mode_str == "clampedToGround"
     assert o.KMLOUT == 2
-    assert o.output_basename == "3"
-    assert o.output_suffix == "4"
-    assert o.conc_type == 5     # should have been an object
-    assert o.conc_map == 6      # should have been an object
-    assert o.depo_type == 7     # should have been an object
-    assert o.KMAP == 8
-    assert o.NSSLBL == 9
-    assert o.show_max_conc == 10
-    assert o.contour_labels == ["11"]
+    assert o.output_suffix == "3"
+    assert o.KMAP == 5
+    assert o.NSSLBL == 6
+    assert o.show_max_conc == 7
 
 
 def test_AbstractWriter_write():
-    o = gisout.AbstractWriter()
+    o = AbstractWriterTest()
     try:
         # a silly test
-        o.write(1, 2, 3, 4, 5, 6, 7, 8, 9)
+        o.write(1, 2, 3, 4, 5)
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
 
 
-def test_AbstractWriter_write():
-    o = gisout.AbstractWriter()
+def test_AbstractWriter_finalize():
+    o = AbstractWriterTest()
     try:
         # a silly test
         o.finalize()
+    except Exception as ex:
+        pytest.fail("unexpected exception: {}".format(ex))
+
+
+def test_AbstractWriter_make_output_basename():
+    o = AbstractWriterTest()
+    try:
+        # a silly test
+        o.make_output_basename(1, 2, 3, 4, 5, 6, 7)
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
 
@@ -106,10 +119,31 @@ def test_IdleWriter___init__():
         pytest.fail("unexpected exception: {}".format(ex))
 
 
+def test_IdleWriter_make_output_basename():
+    o = gisout.IdleWriter()
+    try:
+        # a silly test
+        o.make_output_basename(1, 2, 3, 4, 5, 6, 7)
+    except Exception as ex:
+        pytest.fail("unexpected exception: {}".format(ex))
+        
+
 def test_PointsGenerateFileWriter___init__():
     o = gisout.PointsGenerateFileWriter( gisout.PointsGenerateFileWriter.DecimalFormWriter() )
     assert isinstance( o.formatter, gisout.PointsGenerateFileWriter.DecimalFormWriter )
 
+
+def test_PointsGenerateFileWriter_make_output_basename(cdump_two_pollutants):
+    s = plot.ConcentrationPlotSettings()
+    conc_type = helper.ConcentrationTypeFactory.create_instance( s.KAVG )
+    depo_sum = helper.DepositFactory.create_instance(s.NDEP,
+                                                     cdump_two_pollutants.has_ground_level_grid())
+    
+    o = gisout.PointsGenerateFileWriter( gisout.PointsGenerateFileWriter.DecimalFormWriter() )
+    g = cdump_two_pollutants.grids[0]
+    basename = o.make_output_basename(g, conc_type, depo_sum, "output", "ps", s.KMLOUT, 500)
+    assert basename == "GIS_00100_ps_01"
+        
 
 def test_PointsGenerateFileWriter_write(cdump_two_pollutants):
     # delete files we are about to create
@@ -128,27 +162,33 @@ def test_PointsGenerateFileWriter_write(cdump_two_pollutants):
     
     o.initialize(s.gis_alt_mode,
                  s.KMLOUT,
-                 s.output_basename,
                  s.output_suffix,
-                 conc_type,
-                 conc_map,
-                 depo_type,
                  s.KMAP,
                  s.NSSLBL,
-                 s.show_max_conc,
-                 ["a", "b"])
+                 s.show_max_conc)
 
     ax = plt.axes()
-    contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
-                               [1.0e-15, 1.0e-12],
-                               colors=["#ff0000", "#00ff00"],
-                               extend="max")
+    quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
+                                   [1.0e-15, 1.0e-12],
+                                   colors=["#ff0000", "#00ff00"],
+                                   extend="max")
     plt.close(ax.figure)
     
-    raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
+    contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
+    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
+    contour_set.colors = ["#ff0000", "#00ff00"]
+    contour_set.levels = [1.0e-15, 1.0e-12]
+    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
+    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.concentration_unit = "mass/m^3"
+    contour_set.min_concentration = 1.0e-16
+    contour_set.max_concentration = 8.0e-12
+    contour_set.min_concentration_str = "1.0e-16"
+    contour_set.max_concentration_str = "8.0e-12"
     
     try:
-        o.write(g, 10, 100, 500, contour_set, 1.0e-15, 8.0e-12, "mass/m^3", raw_colors)
+        basename = "GIS_00100_ps_01"
+        o.write(basename, g, contour_set, 100, 500)
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
         
@@ -161,7 +201,10 @@ def test_PointsGenerateFileWriter_write(cdump_two_pollutants):
 
 def test_DecimalFormWriter_write_seg():
     o = gisout.PointsGenerateFileWriter.DecimalFormWriter()
-    seg = [[1.0, 1.2], [2.0, 2.2], [3.0, 3.2]]
+
+    seg = cntr.Boundary(None)
+    seg.latitudes = [1.2, 2.2, 3.2]
+    seg.longitudes = [1.0, 2.0, 3.0]
     
     f = open("__decimalFormWriter.txt", "wt")
     o.write_seg(f, seg, 1.0e-05)
@@ -197,7 +240,10 @@ def test_DecimalFormWriter_write_att(cdump_two_pollutants):
 
 def test_ExponentFormWriter_write_seg():
     o = gisout.PointsGenerateFileWriter.ExponentFormWriter()
-    seg = [[1.0, 1.2], [2.0, 2.2], [3.0, 3.2]]
+    
+    seg = cntr.Boundary(None)
+    seg.latitudes = [1.2, 2.2, 3.2]
+    seg.longitudes = [1.0, 2.0, 3.0]
     
     f = open("__exponentFormWriter.txt", "wt")
     o.write_seg(f, seg, 1.0e-05)
@@ -237,29 +283,33 @@ def test_KMLWriter___init__():
     assert o.kml_option == 1
     assert o.kml_file is None
     assert o.att_file is None
-    assert o.cntr_writer is None
+    assert o.contour_writer is None
 
+
+def test_KMLWriter_make_output_basename(cdump_two_pollutants):
+    s = plot.ConcentrationPlotSettings()
+    conc_type = helper.ConcentrationTypeFactory.create_instance( s.KAVG )
+    depo_sum = helper.DepositFactory.create_instance(s.NDEP,
+                                                     cdump_two_pollutants.has_ground_level_grid())
+    
+    o = gisout.KMLWriter(s.kml_option)
+    g = cdump_two_pollutants.grids[0]
+    basename = o.make_output_basename(g, conc_type, depo_sum, "output", "ps", s.KMLOUT, 500)
+    assert basename == "HYSPLIT_ps" and s.KMLOUT == 0
+        
 
 def test_KMLWriter_initialize(cdump_two_pollutants):
     s = plot.ConcentrationPlotSettings()
     o = gisout.KMLWriter(s.kml_option)
-    conc_type = helper.ConcentrationTypeFactory.create_instance( s.KAVG )
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    depo_type = helper.DepositFactory.create_instance(s.NDEP,
-                                                      cdump_two_pollutants.has_ground_level_grid())
+
     o.initialize(s.gis_alt_mode,
                  s.KMLOUT,
-                 s.output_basename,
                  s.output_suffix,
-                 conc_type,
-                 conc_map,
-                 depo_type,
                  s.KMAP,
                  s.NSSLBL,
-                 s.show_max_conc,
-                 ["a", "b"])
+                 s.show_max_conc)
     
-    assert isinstance(o.cntr_writer, gisout.AbstractKMLContourWriter)
+    assert isinstance(o.contour_writer, gisout.AbstractKMLContourWriter)
 
 
 def test_KMLWriter_write(cdump_two_pollutants):
@@ -271,37 +321,39 @@ def test_KMLWriter_write(cdump_two_pollutants):
         
     s = plot.ConcentrationPlotSettings()
     o = gisout.KMLWriter(s.kml_option)
-    conc_type = helper.ConcentrationTypeFactory.create_instance( s.KAVG )
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    depo_type = helper.DepositFactory.create_instance(s.NDEP,
-                                                      cdump_two_pollutants.has_ground_level_grid())
+
     g = cdump_two_pollutants.grids[0]
     g.extension = helper.GridProperties()
     g.extension.max_locs = helper.find_max_locs(g)
     
     o.initialize(s.gis_alt_mode,
                  s.KMLOUT,
-                 s.output_basename,
                  s.output_suffix,
-                 conc_type,
-                 conc_map,
-                 depo_type,
                  s.KMAP,
                  s.NSSLBL,
-                 s.show_max_conc,
-                 ["a", "b"])
+                 s.show_max_conc)
     
     ax = plt.axes()
-    contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
-                               [1.0e-15, 1.0e-12],
-                               colors=["#ff0000", "#00ff00"],
-                               extend="max")
+    quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
+                                    [1.0e-15, 1.0e-12],
+                                    colors=["#ff0000", "#00ff00"],
+                                    extend="max")
     plt.close(ax.figure)
     
-    raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
+    contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
+    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
+    contour_set.colors = ["#ff0000", "#00ff00"]
+    contour_set.levels = [1.0e-15, 1.0e-12]
+    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
+    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.concentration_unit = "mass/m^3"
+    contour_set.min_concentration = 1.0e-16
+    contour_set.max_concentration = 8.0e-12
+    contour_set.min_concentration_str = "1.0e-16"
+    contour_set.max_concentration_str = "8.0e-12"
     
     try:
-        o.write(g, 10, 100, 500, contour_set, 1.0e-15, 8.0e-12, "mass/m^3", raw_colors)
+        o.write("HYSPLIT_ps", g, contour_set, 100, 500)
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
         
@@ -330,31 +382,41 @@ def test_KMLWriter__get_att_datetime_str():
 def test_KMLWriter__write_attributes(cdump_two_pollutants):
     s = plot.ConcentrationPlotSettings()
     o = gisout.KMLWriter(s.kml_option)
-    conc_type = helper.ConcentrationTypeFactory.create_instance( s.KAVG )
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    depo_type = helper.DepositFactory.create_instance(s.NDEP,
-                                                      cdump_two_pollutants.has_ground_level_grid())
+
     g = cdump_two_pollutants.grids[0]
     g.extension = helper.GridProperties()
     g.extension.max_locs = helper.find_max_locs(g)
     
     o.initialize(s.gis_alt_mode,
                  s.KMLOUT,
-                 s.output_basename,
                  s.output_suffix,
-                 conc_type,
-                 conc_map,
-                 depo_type,
                  s.KMAP,
                  s.NSSLBL,
-                 s.show_max_conc,
-                 ["a", "b"])
+                 s.show_max_conc)
+    
+    ax = plt.axes()
+    quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
+                                    [1.0e-15, 1.0e-12],
+                                    colors=["#ff0000", "#00ff00"],
+                                    extend="max")
+    plt.close(ax.figure)
+    
+    contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
+    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
+    contour_set.colors = ["#ff0000", "#00ff00"]
+    contour_set.levels = [1.0e-15, 1.0e-12]
+    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
+    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.concentration_unit = "mass/m^3"
+    contour_set.min_concentration = 1.0e-16
+    contour_set.max_concentration = 8.0e-12
+    contour_set.min_concentration_str = "1.0e-16"
+    contour_set.max_concentration_str = "8.0e-12"
     
     f = open("__KMLWriter.txt", "wt")
-    raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
     
     try:
-        o._write_attributes(f, g, 1.0e-15, 8.0e-12, "mass/m^3", [1.0e-15, 1.0e-12], raw_colors)
+        o._write_attributes(f, g, contour_set)
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
         
@@ -368,12 +430,12 @@ def test_KMLWriter__write_attributes(cdump_two_pollutants):
     assert lines[1] == "mass/m^3&"
     assert lines[2] == "Integrated: 1700 UTC Sep 25 1983&"
     assert lines[3] == "        to: 0500 UTC Sep 26 1983&"
-    assert lines[4] == "8.0e-12 1.0e-15 2"
+    assert lines[4] == "8.0e-12 1.0e-16 2"
     assert lines[5] == "1.0e-15 1.0e-12 "
     assert lines[6] == "1.00 1.00 "
     assert lines[7] == "1.00 0.00 "
     assert lines[8] == "1.00 0.00 "
-    assert lines[9] == "a b "
+    assert lines[9] == "USER-2 USER-1 "
     
     os.remove("__KMLWriter.txt")
 
@@ -384,7 +446,7 @@ def test_PartialKMLWriter___init__():
     assert o.kml_option == 1
     assert o.kml_file is None
     assert o.att_file is None
-    assert o.cntr_writer is None
+    assert o.contour_writer is None
 
 
 def test_PartialKMLWriter_write(cdump_two_pollutants):
@@ -396,37 +458,39 @@ def test_PartialKMLWriter_write(cdump_two_pollutants):
         
     s = plot.ConcentrationPlotSettings()
     o = gisout.PartialKMLWriter(s.kml_option)
-    conc_type = helper.ConcentrationTypeFactory.create_instance( s.KAVG )
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    depo_type = helper.DepositFactory.create_instance(s.NDEP,
-                                                      cdump_two_pollutants.has_ground_level_grid())
+
     g = cdump_two_pollutants.grids[0]
     g.extension = helper.GridProperties()
     g.extension.max_locs = helper.find_max_locs(g)
     
     o.initialize(s.gis_alt_mode,
                  s.KMLOUT,
-                 s.output_basename,
                  s.output_suffix,
-                 conc_type,
-                 conc_map,
-                 depo_type,
                  s.KMAP,
                  s.NSSLBL,
-                 s.show_max_conc,
-                 ["a", "b"])
+                 s.show_max_conc)
     
     ax = plt.axes()
-    contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
-                               [1.0e-15, 1.0e-12],
-                               colors=["#ff0000", "#00ff00"],
-                               extend="max")
+    quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
+                                    [1.0e-15, 1.0e-12],
+                                    colors=["#ff0000", "#00ff00"],
+                                    extend="max")
     plt.close(ax.figure)
     
-    raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
+    contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
+    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
+    contour_set.colors = ["#ff0000", "#00ff00"]
+    contour_set.levels = [1.0e-15, 1.0e-12]
+    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
+    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.concentration_unit = "mass/m^3"
+    contour_set.min_concentration = 1.0e-16
+    contour_set.max_concentration = 8.0e-12
+    contour_set.min_concentration_str = "1.0e-16"
+    contour_set.max_concentration_str = "8.0e-12"
     
     try:
-        o.write(g, 10, 100, 500, contour_set, 1.0e-15, 8.0e-12, "mass/m^3", raw_colors)
+        o.write("HYSPLIT_ps", g, contour_set, 100, 500)
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
         
@@ -444,12 +508,13 @@ def test_PartialKMLWriter__write_attributes(cdump_two_pollutants):
     g = cdump_two_pollutants.grids[0]
     g.extension = helper.GridProperties()
     g.extension.max_locs = helper.find_max_locs(g)
-              
+
+    contour_set = None
+                  
     f = open("__PartialKMLWriter.txt", "wt")
-    raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
     
     try:
-        o._write_attributes(f, g, 1.0e-15, 8.0e-12, "mass/m^3", [1.0e-15, 1.0e-12], raw_colors)
+        o._write_attributes(f, g, contour_set)
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
     
@@ -459,61 +524,74 @@ def test_PartialKMLWriter__write_attributes(cdump_two_pollutants):
 
    
 def test_KMLContourWriterFactory_create_instance():
-    conc_map = None
     gis_alt_mode = 0
     
-    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.CONCENTRATION, conc_map, gis_alt_mode)
+    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.CONCENTRATION, gis_alt_mode)
     assert isinstance(w, gisout.KMLConcentrationWriter)
     
-    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.EXPOSURE, conc_map, gis_alt_mode)
+    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.EXPOSURE, gis_alt_mode)
     assert isinstance(w, gisout.KMLConcentrationWriter)
     
-    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.DEPOSITION, conc_map, gis_alt_mode)
+    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.DEPOSITION, gis_alt_mode)
     assert isinstance(w, gisout.KMLDepositionWriter)
     
-    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.THRESHOLD_LEVELS, conc_map, gis_alt_mode)
+    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.THRESHOLD_LEVELS, gis_alt_mode)
     assert isinstance(w, gisout.KMLChemicalThresholdWriter)
     
-    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.VOLCANIC_ERUPTION, conc_map, gis_alt_mode)
+    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.VOLCANIC_ERUPTION, gis_alt_mode)
     assert isinstance(w, gisout.KMLDepositionWriter)
     
-    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.DEPOSITION_6, conc_map, gis_alt_mode)
+    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.DEPOSITION_6, gis_alt_mode)
     assert isinstance(w, gisout.KMLDepositionWriter)
     
-    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.MASS_LOADING, conc_map, gis_alt_mode)
+    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.MASS_LOADING, gis_alt_mode)
     assert isinstance(w, gisout.KMLMassLoadingWriter)
     
     
 def test_AbstractKMLContourWriter___init__():
-    o = AbstractKMLContourWriterTest(None, 1)
+    o = AbstractKMLContourWriterTest("relativeToGround")
     assert o.frame_count == 0
-    assert o.conc_map is None
-    assert o.gis_alt_mode == 1    
+    assert o.alt_mode_str == "relativeToGround"
 
 
-def test_AbstractKMLContourWriter_write(cdump_two_pollutants):
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
+def test_AbstractKMLContourWriter__get_begin_end_timestamps(cdump_two_pollutants):
+    g = cdump_two_pollutants.grids[0]
     
-    o = AbstractKMLContourWriterTest(conc_map, s.gis_alt_mode)
+    a = gisout.AbstractKMLContourWriter._get_begin_end_timestamps(g)
+    assert a[0] == "1983-09-25T17:00:00Z"
+    assert a[1] == "1983-09-26T05:00:00Z"
+    
+    
+def test_AbstractKMLContourWriter_write(cdump_two_pollutants):
+    o = AbstractKMLContourWriterTest("relativeToGround")
     
     g = cdump_two_pollutants.grids[0]
     g.extension = helper.GridProperties()
     g.extension.max_locs = helper.find_max_locs(g)
    
     ax = plt.axes()
-    contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
-                               [1.0e-15, 1.0e-12],
-                               colors=["#ff0000", "#00ff00"],
-                               extend="max")
+    quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
+                                    [1.0e-15, 1.0e-12],
+                                    colors=["#ff0000", "#00ff00"],
+                                    extend="max")
     plt.close(ax.figure)
     
-    cntr_labels = ["AEGL-1", "AEGL-2"]
+    contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
+    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
+    contour_set.colors = ["#ff0000", "#00ff00"]
+    contour_set.levels = [1.0e-15, 1.0e-12]
+    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
+    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.concentration_unit = "mass/m^3"
+    contour_set.min_concentration = 1.0e-16
+    contour_set.max_concentration = 8.0e-12
+    contour_set.min_concentration_str = "1.0e-16"
+    contour_set.max_concentration_str = "8.0e-12"
     
     f = open("__AbstractKMLContourWriter.txt", "wt")
     
     try:
-        o.write(f, g, contour_set, 100, 500, "ps", 8.0e-12, "mass/m^3", cntr_labels)
+        o.write(f, g, contour_set, 100, 500, "ps")
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
 
@@ -525,10 +603,7 @@ def test_AbstractKMLContourWriter_write(cdump_two_pollutants):
 
 
 def test_AbstractKMLContourWriter__get_contour_height_at():
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    
-    o = AbstractKMLContourWriterTest(conc_map, s.gis_alt_mode)
+    o = AbstractKMLContourWriterTest("relativeToGround")
     
     assert o._get_contour_height_at(0, 100.0) == 100
     assert o._get_contour_height_at(1, 100.0) == 300
@@ -536,29 +611,36 @@ def test_AbstractKMLContourWriter__get_contour_height_at():
 
 
 def test_AbstractKMLContourWriter__write_contour(cdump_two_pollutants):
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    
-    o = AbstractKMLContourWriterTest(conc_map, s.gis_alt_mode)
+    o = AbstractKMLContourWriterTest("relativeToGround")
     
     g = cdump_two_pollutants.grids[0]
     g.extension = helper.GridProperties()
     g.extension.max_locs = helper.find_max_locs(g)
    
     ax = plt.axes()
-    contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
-                               [1.0e-15, 1.0e-12],
-                               colors=["#ff0000", "#00ff00"],
-                               extend="max")
+    quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
+                                    [1.0e-15, 1.0e-12],
+                                    colors=["#ff0000", "#00ff00"],
+                                    extend="max")
     plt.close(ax.figure)
     
-    cntr_labels = ["AEGL-1", "AEGL-2"]
+    contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
+    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
+    contour_set.colors = ["#ff0000", "#00ff00"]
+    contour_set.levels = [1.0e-15, 1.0e-12]
+    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
+    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.concentration_unit = "mass/m^3"
+    contour_set.min_concentration = 1.0e-16
+    contour_set.max_concentration = 8.0e-12
+    contour_set.min_concentration_str = "1.0e-16"
+    contour_set.max_concentration_str = "8.0e-12"
     
     f = open("__AbstractKMLContourWriter.txt", "wt")
     
     # just see if there is any exception
     try:
-        o._write_contour(f, g, contour_set, "mass/m^3", 100, cntr_labels)
+        o._write_contour(f, g, contour_set, 100)
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
         
@@ -568,78 +650,75 @@ def test_AbstractKMLContourWriter__write_contour(cdump_two_pollutants):
 
 
 def test_AbstractKMLContourWriter__write_seg(cdump_two_pollutants):
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    
-    o = AbstractKMLContourWriterTest(conc_map, s.gis_alt_mode)
+    o = AbstractKMLContourWriterTest("relativeToGround")
     
     g = cdump_two_pollutants.grids[0]
     g.extension = helper.GridProperties()
     g.extension.max_locs = helper.find_max_locs(g)
    
     ax = plt.axes()
-    contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
-                               [1.0e-15, 1.0e-12],
-                               colors=["#ff0000", "#00ff00"],
-                               extend="max")
+    quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
+                                    [1.0e-15, 1.0e-12],
+                                    colors=["#ff0000", "#00ff00"],
+                                    extend="max")
     plt.close(ax.figure)
     
-    cntr_labels = ["AEGL-1", "AEGL-2"]
+    contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
+    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
+    contour_set.colors = ["#ff0000", "#00ff00"]
+    contour_set.levels = [1.0e-15, 1.0e-12]
+    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
+    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.concentration_unit = "mass/m^3"
+    contour_set.min_concentration = 1.0e-16
+    contour_set.max_concentration = 8.0e-12
+    contour_set.min_concentration_str = "1.0e-16"
+    contour_set.max_concentration_str = "8.0e-12"
     
     f = open("__AbstractKMLContourWriter.txt", "wt")
     
     # just see if there is any exception
     try:
-        o._write_seg(f, g, contour_set.allsegs[0][0], contour_set.allkinds[0][0], 100)
+        o._write_seg(f, contour_set.contours[0].polygons[0], 100)
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
             
     f.close()
     
     os.remove("__AbstractKMLContourWriter.txt")
-
-
-def test_AbstractKMLContourWriter__separate_paths():
-    path_codes = [1, 2, 2, 79]
-    seg = [(0,0), (1,1), (2,2), (0,0)]
-    
-    paths = AbstractKMLContourWriterTest._separate_paths(seg, path_codes, 1)
-
-    assert paths == [ [(0,0), (1,1), (2,2), (0,0)] ]
-    
-    path_codes = [1, 2, 2, 79, 1, 2, 2, 79]
-    seg = [(0,0), (1,1), (2,2), (0,0), (5,5), (6,6), (7,7), (5,5)]
-    
-    paths = AbstractKMLContourWriterTest._separate_paths(seg, path_codes, 1)
-
-    assert paths == [ [(0,0), (1,1), (2,2), (0,0)], [(5,5), (6,6), (7,7), (5,5)] ]
 
 
 def test_AbstractKMLContourWriter__write_boundary(cdump_two_pollutants):
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    
-    o = AbstractKMLContourWriterTest(conc_map, s.gis_alt_mode)
+    o = AbstractKMLContourWriterTest("relativeToGround")
     
     g = cdump_two_pollutants.grids[0]
     g.extension = helper.GridProperties()
     g.extension.max_locs = helper.find_max_locs(g)
    
     ax = plt.axes()
-    contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
-                               [1.0e-15, 1.0e-12],
-                               colors=["#ff0000", "#00ff00"],
-                               extend="max")
+    quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
+                                    [1.0e-15, 1.0e-12],
+                                    colors=["#ff0000", "#00ff00"],
+                                    extend="max")
     plt.close(ax.figure)
     
-    cntr_labels = ["AEGL-1", "AEGL-2"]
+    contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
+    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
+    contour_set.colors = ["#ff0000", "#00ff00"]
+    contour_set.levels = [1.0e-15, 1.0e-12]
+    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
+    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.concentration_unit = "mass/m^3"
+    contour_set.min_concentration = 1.0e-16
+    contour_set.max_concentration = 8.0e-12
+    contour_set.min_concentration_str = "1.0e-16"
+    contour_set.max_concentration_str = "8.0e-12"
     
     f = open("__AbstractKMLContourWriter.txt", "wt")
     
     # just see if there is any exception
     try:
-        paths = AbstractKMLContourWriterTest._separate_paths(contour_set.allsegs[0][0], contour_set.allkinds[0][0], 1)
-        o._write_boundary(f, g, paths[0], 100)
+        o._write_boundary(f, contour_set.contours[0].polygons[0].boundaries[0], 100)
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
             
@@ -648,33 +727,8 @@ def test_AbstractKMLContourWriter__write_boundary(cdump_two_pollutants):
     os.remove("__AbstractKMLContourWriter.txt")
 
 
-def test_AbstractKMLContourWriter__crossing_date_line():
-    lons = [170, 175, -185, -190]
-    assert AbstractKMLContourWriterTest._crossing_date_line(lons) == True
-    
-    lons = [170, 175, 177, 178]
-    assert AbstractKMLContourWriterTest._crossing_date_line(lons) == False
-   
-    
-def test_AbstractKMLContourWriter__compute_polygon_area():
-    # clockwise, area < 0
-    x = [0, 0, 1, 1, 0]
-    y = [0, 1, 1, 0, 0]
-    area = gisout.AbstractKMLContourWriter._compute_polygon_area(x, y)
-    assert area == pytest.approx(-1.0)
-    
-    # counterclockwise, area > 0
-    x = [0, 1, 1, 0, 0]
-    y = [0, 0, 1, 1, 0]
-    area = gisout.AbstractKMLContourWriter._compute_polygon_area(x, y)
-    assert area == pytest.approx(1.0)
-
-
 def test_AbstractKMLContourWriter__write_max_location(cdump_two_pollutants):
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    
-    o = AbstractKMLContourWriterTest(conc_map, s.gis_alt_mode)
+    o = AbstractKMLContourWriterTest("relativeToGround")
     
     g = cdump_two_pollutants.grids[0]
     g.extension = helper.GridProperties()
@@ -701,165 +755,78 @@ def test_AbstractKMLContourWriter__get_timestamp_str():
     
 
 def test_KMLConcentrationWriter___init__():
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    
-    o = gisout.KMLConcentrationWriter(conc_map, s.gis_alt_mode)
+    o = gisout.KMLConcentrationWriter("relativeToGround")
 
-    assert o.conc_map is conc_map
-    assert o.gis_alt_mode == s.gis_alt_mode
-    
+    assert o.alt_mode_str == "relativeToGround"
 
-def test_KMLConcentrationWriter_write(cdump_two_pollutants):
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    
-    o = gisout.KMLConcentrationWriter(conc_map, s.gis_alt_mode)
-    
-    g = cdump_two_pollutants.grids[0]
-    g.extension = helper.GridProperties()
-    g.extension.max_locs = helper.find_max_locs(g)
-   
-    ax = plt.axes()
-    contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
-                               [1.0e-15, 1.0e-12],
-                               colors=["#ff0000", "#00ff00"],
-                               extend="max")
-    plt.close(ax.figure)
-    
-    cntr_labels = ["AEGL-1", "AEGL-2"]
-    
-    f = open("__KMLConcentrationWriter.txt", "wt")
-    
-    # just see if no exception occurs
-    try:
-        o.write(f, g, contour_set, 100, 500, "ps", 8.0e-12, "mass/m^3", cntr_labels)
-    except Exception as ex:
-        pytest.fail("unexpected exception: {}".format(ex))
 
-    f.close()
+def test_KMLDepositionWriter__get_name_cdata():
+    o = gisout.KMLConcentrationWriter("relativeToGround")
     
-    os.remove("__KMLConcentrationWriter.txt")
+    dt = datetime.datetime(19, 7, 5, 7, 42)
+    assert o._get_name_cdata(dt) == """<pre>Concentration
+(Valid:20190705 0742 UTC)</pre>"""
 
+
+def test_KMLDepositionWriter__get_description_cdata():
+    o = gisout.KMLConcentrationWriter("relativeToGround")
     
+    dt = datetime.datetime(19, 7, 5, 7, 42)
+    assert o._get_description_cdata(100, 500, dt) == """<pre>
+Averaged from 100 to 500 m
+Valid:20190705 0742 UTC</pre>"""
+
+
 def test_KMLConcentrationWriter__get_max_location_text():
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    
-    o = gisout.KMLConcentrationWriter(conc_map, s.gis_alt_mode)
+    o = gisout.KMLConcentrationWriter("relativeToGround")
     
     assert o._get_max_location_text().strip().startswith("The square represents")
 
 
 def test_KMLChemicalThresholdWriter___init__():
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    
-    o = gisout.KMLChemicalThresholdWriter(conc_map, s.gis_alt_mode)
+    o = gisout.KMLChemicalThresholdWriter("relativeToGround")
 
-    assert o.conc_map is conc_map
-    assert o.gis_alt_mode == s.gis_alt_mode
+    assert o.alt_mode_str == "relativeToGround"
 
 
 def test_KMLChemicalThresholdWriter__get_contour_height_at():
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    
-    o = gisout.KMLChemicalThresholdWriter(conc_map, s.gis_alt_mode)
+    o = gisout.KMLChemicalThresholdWriter("relativeToGround")
     
     assert o._get_contour_height_at(0, 100.0) == 100
     assert o._get_contour_height_at(1, 100.0) == 100
     assert o._get_contour_height_at(2, 100.0) == 500    
 
 
-def test_KMLChemicalThresholdWriter_write(cdump_two_pollutants):
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    
-    o = gisout.KMLChemicalThresholdWriter(conc_map, s.gis_alt_mode)
-    
-    g = cdump_two_pollutants.grids[0]
-    g.extension = helper.GridProperties()
-    g.extension.max_locs = helper.find_max_locs(g)
-   
-    ax = plt.axes()
-    contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
-                               [1.0e-15, 1.0e-12],
-                               colors=["#ff0000", "#00ff00"],
-                               extend="max")
-    plt.close(ax.figure)
-    
-    cntr_labels = ["AEGL-1", "AEGL-2"]
-    
-    f = open("__KMLChemicalThresholdWriter.txt", "wt")
-    
-    # just see if no exception occurs
-    try:
-        o.write(f, g, contour_set, 100, 500, "ps", 8.0e-12, "mass/m^3", cntr_labels)
-    except Exception as ex:
-        pytest.fail("unexpected exception: {}".format(ex))
-
-    f.close()
-    
-    os.remove("__KMLChemicalThresholdWriter.txt")
-
-
 def test_KMLDepositionWriter___init__():
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    
-    o = gisout.KMLDepositionWriter(conc_map, s.gis_alt_mode)
+    o = gisout.KMLMassLoadingWriter("relativeToGround")
 
-    assert o.conc_map is conc_map
-    assert o.gis_alt_mode == s.gis_alt_mode
+    assert o.alt_mode_str == "relativeToGround"
 
 
-def test_KMLDepositionWriter_write(cdump_two_pollutants):
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
+def test_KMLDepositionWriter__get_name_cdata():
+    o = gisout.KMLDepositionWriter("relativeToGround")
     
-    o = gisout.KMLDepositionWriter(conc_map, s.gis_alt_mode)
-    
-    g = cdump_two_pollutants.grids[0]
-    g.extension = helper.GridProperties()
-    g.extension.max_locs = helper.find_max_locs(g)
-   
-    ax = plt.axes()
-    contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
-                               [1.0e-15, 1.0e-12],
-                               colors=["#ff0000", "#00ff00"],
-                               extend="max")
-    plt.close(ax.figure)
-    
-    cntr_labels = ["AEGL-1", "AEGL-2"]
-    
-    f = open("__KMLDepositionWriter.txt", "wt")
-    
-    # just see if no exception occurs
-    try:
-        o.write(f, g, contour_set, 100, 500, "ps", 8.0e-12, "mass/m^3", cntr_labels)
-    except Exception as ex:
-        pytest.fail("unexpected exception: {}".format(ex))
+    dt = datetime.datetime(19, 7, 5, 7, 42)
+    assert o._get_name_cdata(dt) == """<pre>Deposition
+(Valid:20190705 0742 UTC)</pre>"""
 
-    f.close()
+
+def test_KMLDepositionWriter__get_description_cdata():
+    o = gisout.KMLDepositionWriter("relativeToGround")
     
-    os.remove("__KMLDepositionWriter.txt")
+    dt = datetime.datetime(19, 7, 5, 7, 42)
+    assert o._get_description_cdata(100, 500, dt) == """<pre>
+Valid:20190705 0742 UTC</pre>"""
 
     
 def test_KMLDepositionWriter__get_max_location_text():
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    
-    o = gisout.KMLDepositionWriter(conc_map, s.gis_alt_mode)
+    o = gisout.KMLDepositionWriter("relativeToGround")
     
     assert o._get_max_location_text().strip().startswith("The square represents")
 
     
 def test_KMLDepositionWriter__write_placemark_visibility():
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    
-    o = gisout.KMLDepositionWriter(conc_map, s.gis_alt_mode)
+    o = gisout.KMLDepositionWriter("relativeToGround")
     
     f = open("__KMLDepositionWriter.txt", "wt")
     o.frame_count = 2
@@ -876,61 +843,36 @@ def test_KMLDepositionWriter__write_placemark_visibility():
 
 
 def test_KMLMassLoadingWriter___init__():
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    
-    o = gisout.KMLMassLoadingWriter(conc_map, s.gis_alt_mode)
+    o = gisout.KMLMassLoadingWriter("relativeToGround")
 
-    assert o.conc_map is conc_map
-    assert o.gis_alt_mode == s.gis_alt_mode
+    assert o.alt_mode_str == "relativeToGround"
 
 
-def test_KMLMassLoadingWriter_write(cdump_two_pollutants):
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
+def test_KMLMassLoadingWriter__get_name_cdata():
+    o = gisout.KMLMassLoadingWriter("relativeToGround")
     
-    o = gisout.KMLMassLoadingWriter(conc_map, s.gis_alt_mode)
-    
-    g = cdump_two_pollutants.grids[0]
-    g.extension = helper.GridProperties()
-    g.extension.max_locs = helper.find_max_locs(g)
-   
-    ax = plt.axes()
-    contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
-                               [1.0e-15, 1.0e-12],
-                               colors=["#ff0000", "#00ff00"],
-                               extend="max")
-    plt.close(ax.figure)
-    
-    cntr_labels = ["AEGL-1", "AEGL-2"]
-    
-    f = open("__KMLMassLoadingWriter.txt", "wt")
-    
-    # just see if no exception occurs
-    try:
-        o.write(f, g, contour_set, 100, 500, "ps", 8.0e-12, "mass/m^3", cntr_labels)
-    except Exception as ex:
-        pytest.fail("unexpected exception: {}".format(ex))
+    dt = datetime.datetime(19, 7, 5, 7, 42)
+    assert o._get_name_cdata(dt) == """<pre>Mass_loading
+(Valid:20190705 0742 UTC)</pre>"""
 
-    f.close()
+
+def test_KMLMassLoadingWriter__get_description_cdata():
+    o = gisout.KMLMassLoadingWriter("relativeToGround")
     
-    os.remove("__KMLMassLoadingWriter.txt")
+    dt = datetime.datetime(19, 7, 5, 7, 42)
+    assert o._get_description_cdata(100, 500, dt) == """<pre>
+From 100 to 500 m
+Valid:20190705 0742 UTC</pre>"""
 
     
 def test_KMLMassLoadingWriter__get_max_location_text():
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    
-    o = gisout.KMLMassLoadingWriter(conc_map, s.gis_alt_mode)
+    o = gisout.KMLMassLoadingWriter("relativeToGround")
     
     assert o._get_max_location_text().strip().startswith("The square represents")
 
     
 def test_KMLMassLoadingWriter__write_placemark_visibility():
-    s = plot.ConcentrationPlotSettings()
-    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
-    
-    o = gisout.KMLMassLoadingWriter(conc_map, s.gis_alt_mode)
+    o = gisout.KMLMassLoadingWriter("relativeToGround")
     
     f = open("__KMLMassLoadingWriter.txt", "wt")
     o.frame_count = 2

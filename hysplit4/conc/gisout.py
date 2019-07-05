@@ -456,6 +456,14 @@ class AbstractKMLContourWriter(ABC):
             end_ts = AbstractWriter._get_iso_8601_str(g.ending_datetime)
         return (begin_ts, end_ts)
     
+    @abstractmethod
+    def _get_name_cdata(self, dt):
+        pass
+    
+    @abstractmethod
+    def _get_description_cdata(self, lower_vert_level, upper_vert_level, dt):
+        pass
+    
     def write(self, f, g, contour_set, lower_vert_level, upper_vert_level, suffix):
         self.frame_count += 1
  

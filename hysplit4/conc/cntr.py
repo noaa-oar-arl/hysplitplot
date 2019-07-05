@@ -24,19 +24,22 @@ class ContourSet:
 
 class Contour:
     
-    def __init__(self):
+    def __init__(self, contour_set):
+        self.parent = contour_set
         self.polygons = []
         
 
 class Polygon:
     
-    def __init__(self):
+    def __init__(self, contour):
+        self.parent = contour
         self.boundaries = []
         
         
 class Boundary:
     
-    def __init__(self):
+    def __init__(self, polygon):
+        self.parent = polygon
         self.hole = False       # It is hole if points are ordered clockwise.
         self.longitudes = []
         self.latitudes = []
@@ -45,7 +48,7 @@ class Boundary:
         lons, lats = numpy.transpose(lonlats)
         
         if self._crossing_date_line(lons):
-            self.longitudes = [v + 360.0 for v in lons]
+            self.longitudes = [(v if v >= 0 else v + 360.0) for v in lons]
         else:
             self.longitudes = copy.deepcopy(lons)
         self.latitudes = copy.deepcopy(lats)
@@ -92,22 +95,22 @@ def _separate_paths(seg, path_codes, separator_code):
 
 
 def convert_matplotlib_quadcontourset(quadContourSet):
-    cs = ContourSet()
+    contour_set = ContourSet()
     
     if quadContourSet is not None:
         for k, segs in enumerate(quadContourSet.allsegs):
-            c = Contour()
-            cs.contours.append(c)
+            contour = Contour(contour_set)
+            contour_set.contours.append(contour)
             for j, seg in enumerate(segs):
-                poly = Polygon()
-                c.polygons.append(poly)
+                polygon = Polygon(contour)
+                contour.polygons.append(polygon)
                 # separate boundaries
                 codes = quadContourSet.allkinds[k][j]
                 paths = _separate_paths(seg, codes, Path.MOVETO)
                 for path in paths:
-                    bnd = Boundary()
-                    poly.boundaries.append(bnd)
-                    bnd.copy_with_dateline_crossing_fix(path)
-                    bnd.hole = True if bnd.compute_area() < 0 else False
+                    boundary = Boundary(polygon)
+                    polygon.boundaries.append(boundary)
+                    boundary.copy_with_dateline_crossing_fix(path)
+                    boundary.hole = True if boundary.compute_area() < 0 else False
                     
-    return cs
+    return contour_set

@@ -916,15 +916,10 @@ def test_ConcentrationPlot_draw_conc_above_ground():
                                                              
     gis_writer.initialize(p.settings.gis_alt_mode,
                           p.settings.KMLOUT,
-                          p.settings.output_basename,
                           p.settings.output_suffix,
-                          p.conc_type,
-                          p.conc_map,
-                          dsum,
                           p.settings.KMAP,
                           p.settings.NSSLBL,
-                          p.settings.show_max_conc,
-                          p.contour_labels)
+                          p.settings.show_max_conc)
         
     # See if no exception is thrown.
     try:
@@ -969,15 +964,10 @@ def test_ConcentrationPlot_draw_conc_on_ground():
                                                              
     gis_writer.initialize(p.settings.gis_alt_mode,
                           p.settings.KMLOUT,
-                          p.settings.output_basename,
                           p.settings.output_suffix,
-                          p.conc_type,
-                          p.conc_map,
-                          dsum,
                           p.settings.KMAP,
                           p.settings.NSSLBL,
-                          p.settings.show_max_conc,
-                          p.contour_labels)
+                          p.settings.show_max_conc)
         
     # See if no exception is thrown.
     try:
