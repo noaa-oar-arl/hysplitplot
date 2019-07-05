@@ -40,6 +40,8 @@ def sum_over_pollutants_per_level(grids, level_selector, pollutant_selector):
             g.repair_pollutant(pollutant_selector.index)
             for b in a[1:]:
                 g.conc += b.conc
+            # update the min and max concentration values
+            g.extension.update(g.conc)
             v_grids.append(g)
        
     return v_grids

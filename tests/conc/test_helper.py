@@ -42,6 +42,11 @@ def test_sum_over_pollutants_per_level(cdump2):
     assert cdump2.grids[2].conc[300, 300] * 1.e+13 == pytest.approx(8.173024)
     assert cdump2.grids[3].conc[300, 300] * 1.e+13 == pytest.approx(7.608168)
     
+    # set min and max values
+    for g in cdump2.grids:
+        g.extension = helper.GridProperties()
+        g.extension.update(g.conc)
+        
     # pollutant 0, all levels
     ls = helper.VerticalLevelSelector(0, 10000)
     ps = helper.PollutantSelector(0)
@@ -50,6 +55,10 @@ def test_sum_over_pollutants_per_level(cdump2):
     assert len(v_grids) == 2
     assert v_grids[0] is cdump2.grids[0]
     assert v_grids[1] is cdump2.grids[1]
+    assert v_grids[0].extension.min_conc * 1.e+13 == pytest.approx(0.01871257)
+    assert v_grids[0].extension.max_conc * 1.e+13 == pytest.approx(8.047535)
+    assert v_grids[1].extension.min_conc * 1.e+13 == pytest.approx(0.009363178)
+    assert v_grids[1].extension.max_conc * 1.e+13 == pytest.approx(7.963810)
     
     # pollutant 1, all levels
     ls = helper.VerticalLevelSelector(0, 10000)
@@ -59,7 +68,11 @@ def test_sum_over_pollutants_per_level(cdump2):
     assert len(v_grids) == 2
     assert v_grids[0] is cdump2.grids[2]
     assert v_grids[1] is cdump2.grids[3]    
-    
+    assert v_grids[0].extension.min_conc * 1.e+13 == pytest.approx(0.01395941)
+    assert v_grids[0].extension.max_conc * 1.e+13 == pytest.approx(8.173024)
+    assert v_grids[1].extension.min_conc * 1.e+13 == pytest.approx(0.00935228)
+    assert v_grids[1].extension.max_conc * 1.e+13 == pytest.approx(7.608169)
+#        
     # pollutant sums, all levels
     ls = helper.VerticalLevelSelector(0, 10000)
     ps = helper.PollutantSelector()
@@ -72,7 +85,11 @@ def test_sum_over_pollutants_per_level(cdump2):
     assert v_grids[1].pollutant_index == -1
     assert v_grids[0].conc[300, 300] * 1.e+13 == pytest.approx(8.047535 + 8.173024)
     assert v_grids[1].conc[300, 300] * 1.e+13 == pytest.approx(7.963810 + 7.608168)
-    
+    assert v_grids[0].extension.min_conc * 1.e+13 == pytest.approx( 0.01873180)
+    assert v_grids[0].extension.max_conc * 1.e+13 == pytest.approx(16.22056)
+    assert v_grids[1].extension.min_conc * 1.e+13 == pytest.approx( 0.009353077)
+    assert v_grids[1].extension.max_conc * 1.e+13 == pytest.approx(15.57198)
+
 
 def test_sum_conc_grids_of_interest(cdump2):
     level_selector = helper.VerticalLevelSelector()
