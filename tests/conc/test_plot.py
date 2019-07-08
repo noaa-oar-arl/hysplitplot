@@ -500,6 +500,7 @@ def test_ConcentrationPlot___init__():
     assert hasattr(p, "conc_axes")
     assert hasattr(p, "legends_axes")
     assert hasattr(p, "text_axes")
+    assert hasattr(p, "plot_saver")
 
     assert hasattr(p, "TFACT")
     assert hasattr(p, "initial_time")
@@ -550,9 +551,11 @@ def test_ConcentrationPlot_read_data_files():
     assert p.level_selector.min == 0
     assert p.level_selector.max == 99999
     assert p.conc_type is not None
+    assert p.plot_saver is not None
     assert p.conc_map is not None
     assert p.depo_map is not None
-    assert p.smoothing_kernel is not None
+    assert p.depo_sum is not None
+    assert p.settings.smoothing_distance > 0 and p.smoothing_kernel is not None
 
 
 def test_ConcentrationPlot__post_file_processing(cdump2):

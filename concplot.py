@@ -80,8 +80,6 @@ def main():
     logger.info("Started Concentration Drawing")
     hysplit4.print_version()
 
-    #the_plot.write_gis_files()
-    
     the_plot.read_background_map()
     the_plot.draw({"resize_event" : on_resize})
 

@@ -363,7 +363,7 @@ def test_AbstractPlot__draw_maptext_if_exists():
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
     p.read_background_map()
-    p.layout()
+    p.layout(p.data_list)
 
     # See if no exception is thrown.
     try:
@@ -396,21 +396,3 @@ def test_AbstractPlot__draw_noaa_logo():
         plt.close(axes.figure)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
-    
-    
-def test_AbstractPlot_make_plot_filename():
-    s = plotbase.AbstractPlotSettings()
-    p = plotbase.AbstractPlot()
-    
-    s.output_postscript= "output.ps"
-    s.output_basename = "output"
-    s.output_suffix = "ps"
-    
-    s.frames_per_file = const.Frames.ALL_FILES_ON_ONE
-    assert p.make_plot_filename(s) == "output.ps"
-    
-    s.frames_per_file = const.Frames.ONE_PER_FILE
-    assert p.make_plot_filename(s) == "output0001.ps"
-    assert p.make_plot_filename(s, 2) == "output0002.ps"
-    
-    

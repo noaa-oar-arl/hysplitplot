@@ -31,6 +31,17 @@ def cleanup_plot(p):
         plt.close(p.fig)
 
 
+# concrete classes to test abstract classes
+
+class AbstractFrameDataIteratorTest(plot.AbstractFrameDataIterator):
+    
+    def __init__(self, tdump_list):
+        super(AbstractFrameDataIteratorTest, self).__init__(tdump_list)
+        
+    def __iter__(self):
+        pass
+
+
 def test_TrajectoryPlotSettings___init__():
     s = plot.TrajectoryPlotSettings()
 
@@ -279,13 +290,15 @@ def test_TrajectoryPlotSettingsReader_read():
 def test_TrapjectoyPlot___init__():
     p = plot.TrajectoryPlot()
 
+    assert isinstance(p.labels, labels.LabelsConfig)    # from the base class
     assert hasattr(p, "settings")
     assert hasattr(p, "data_list")
     assert hasattr(p, "traj_axes")
     assert hasattr(p, "height_axes")
     assert hasattr(p, "height_axes_outer")
-    assert isinstance(p.labels, labels.LabelsConfig)
     assert hasattr(p, "cluster_list")
+    assert hasattr(p, "plot_saver")
+    assert hasattr(p, "current_frame")
 
 
 def test_TrajectoryPlot_merge_plot_settings():
@@ -305,6 +318,7 @@ def test_TrajectoryPlot_read_data_files():
     assert len(p.data_list) == 1
     assert len(p.data_list[0].trajectories) == 3
     assert p.settings.color_cycle is not None
+    assert p.plot_saver is not None
 
 
 def test_TrajectoryPlot_has_terrain_profile(plotData):
@@ -422,7 +436,7 @@ def test_TrajectoryPlot__initialize_map_projection():
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump"])
     p.read_data_files()
 
-    p._initialize_map_projection()
+    p._initialize_map_projection(p.data_list)
 
     assert isinstance(p.projection, mapproj.MapProjection)
     assert p.crs is not None
@@ -489,7 +503,7 @@ def test_TrajectoryPlot_layout():
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump"])
     p.read_data_files()
 
-    p.layout()
+    p.layout(p.data_list)
 
     assert p.fig is not None
     assert p.traj_axes is not None
@@ -630,7 +644,7 @@ def test_TrajectoryPlot_update_gridlines():
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
     p.read_background_map()
-    p.layout()
+    p.layout(p.data_list)
 
     # See if no exception is thrown.
     try:
@@ -645,12 +659,12 @@ def test_TrajectoryPlot_draw_height_profile():
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
     p.read_background_map()
-    p.layout()
+    p.layout(p.data_list)
 
     # See if no exception is thrown.
     try:
-        p.draw_height_profile(False)
-        p.draw_height_profile(True)
+        p.draw_height_profile(p.data_list, False)
+        p.draw_height_profile(p.data_list, True)
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
@@ -661,11 +675,11 @@ def test_TrajectoryPlot_draw_trajectory_plot():
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
     p.read_background_map()
-    p.layout()
+    p.layout(p.data_list)
 
     # See if no exception is thrown.
     try:
-        p.draw_trajectory_plot()
+        p.draw_trajectory_plot(p.data_list)
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
@@ -676,11 +690,11 @@ def test_TrajectoryPlot_draw_bottom_plot():
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
     p.read_background_map()
-    p.layout()
+    p.layout(p.data_list)
 
     # See if no exception is thrown.
     try:
-        p.draw_bottom_plot()
+        p.draw_bottom_plot(p.data_list)
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
@@ -691,7 +705,7 @@ def test_TrajectoryPlot_draw_bottom_text():
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
     p.read_background_map()
-    p.layout()
+    p.layout(p.data_list)
 
     # See if no exception is thrown.
     try:
@@ -706,7 +720,7 @@ def test_TrajectoryPlot__draw_alt_text_boxes():
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
     p.read_background_map()
-    p.layout()
+    p.layout(p.data_list)
 
     # See if no exception is thrown.
     try:
@@ -721,7 +735,7 @@ def test_TrajectoryPlot_draw():
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
     p.read_background_map()
-    p.layout()
+    #p.layout(p.data_list)
 
     # See if no exception is thrown.
     try:
@@ -1137,3 +1151,63 @@ def test_VerticalProjectionFactory_create_instance():
     s.time_label_interval = 0
     o = plot.VerticalProjectionFactory.create_instance(axes, s)
     assert isinstance(o, plot.TimeVerticalProjection)
+    
+    
+def test_FrameDataIteratorFactory_create_instance(plotData):
+    tdump_list = [plotData]
+    
+    o = plot.FrameDataIteratorFactory.create_instance(const.Frames.ALL_FILES_ON_ONE, tdump_list)
+    assert isinstance(o, plot.AllAtOnceFrameDataIterator)
+        
+    o = plot.FrameDataIteratorFactory.create_instance(const.Frames.ONE_PER_FILE, tdump_list)
+    assert isinstance(o, plot.OneByOneFrameDataIterator)
+
+
+def test_AbstractFrameDataIterator___init__(plotData):
+    tdump_list = [plotData]
+        
+    # Since an object cannot be created from an abstract class, instantiate a concrete test class.
+    o = AbstractFrameDataIteratorTest(tdump_list)
+    assert len(o.tdump_list) == 1
+    assert o.tdump_list[0] is plotData
+
+
+def test_AllAtOnceFrameDataIterator___init__(plotData):
+    tdump_list = [plotData]
+    
+    o = plot.AllAtOnceFrameDataIterator(tdump_list)
+    assert len(o.tdump_list) == 1
+    assert o.tdump_list[0] is plotData
+    
+    
+def test_AllAtOnceFrameDataIterator___iter__(plotData):
+    tdump_list = [plotData, plotData]
+    a = []
+    
+    o = plot.AllAtOnceFrameDataIterator(tdump_list)
+    for data_list in o:
+        a.append(data_list)
+        
+    assert len(a) == 1
+    assert len(a[0]) == 2
+    assert a[0] == [plotData, plotData]
+
+
+def test_OneByOneFrameDataIterator___init__(plotData):
+    tdump_list = [plotData]
+    
+    o = plot.OneByOneFrameDataIterator(tdump_list)
+    assert len(o.tdump_list) == 1
+    assert o.tdump_list[0] is plotData
+    
+    
+def test_OneByOneFrameDataIterator___iter__(plotData):
+    tdump_list = [plotData, plotData]
+    a = []
+    
+    o = plot.OneByOneFrameDataIterator(tdump_list)
+    for data_list in o:
+        a.append(data_list)
+        
+    assert len(a) == 2
+    assert a == [[plotData], [plotData]]

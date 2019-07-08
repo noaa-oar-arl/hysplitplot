@@ -6,8 +6,9 @@ import matplotlib.dates
 import matplotlib.gridspec
 import matplotlib.patches
 import matplotlib.pyplot as plt
+from abc import ABC, abstractmethod
 
-from hysplit4 import cmdline, clist, stnplot, util, const, mapproj, mapbox, plotbase
+from hysplit4 import cmdline, clist, stnplot, util, const, mapproj, mapbox, plotbase, multipage
 from hysplit4.traj import model, gisout
 
 
@@ -171,6 +172,8 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         self.height_axes = None
         self.height_axes_outer = None
         self.cluster_list = None
+        self.plot_saver = None
+        self.current_frame = 1
 
     def merge_plot_settings(self, filename, args):
         if filename is not None:
@@ -194,7 +197,11 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         # create an color cycle instance
         self.settings.color_cycle = ColorCycleFactory.create_instance(self.settings,
                                                                       len(self.data_list[0].uniq_start_levels))
-    
+        
+        self.plot_saver = multipage.PlotFileWriterFactory.create_instance(self.settings.frames_per_file,
+                                                                          self.settings.output_basename,
+                                                                          self.settings.output_suffix)
+        
     @staticmethod
     def has_terrain_profile(tdump_list):
         for tdump in tdump_list:
@@ -237,15 +244,15 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                 self.cluster_list = clist.ClusterList(start_index).get_reader().read(fn)
                 break
 
-    def _initialize_map_projection(self):
+    def _initialize_map_projection(self, data_list):
         map_opt_passes = 1 if self.settings.ring_number == 0 else 2
-        map_box = self._determine_map_limits(self.data_list[0], map_opt_passes)
+        map_box = self._determine_map_limits(data_list[0], map_opt_passes)
 
         # TODO: check if we are using pbot and ptop.
-        pbot, ptop = self._determine_vertical_limit(self.data_list[0], self.settings.vertical_coordinate)
+        pbot, ptop = self._determine_vertical_limit(data_list[0], self.settings.vertical_coordinate)
 
         if self.settings.center_loc == [0.0, 0.0]:
-            self.settings.center_loc = self.data_list[0].trajectories[0].starting_loc
+            self.settings.center_loc = data_list[0].trajectories[0].starting_loc
 
         if self.settings.ring and self.settings.ring_number >= 0:
             map_box.determine_plume_extent()
@@ -314,9 +321,9 @@ class TrajectoryPlot(plotbase.AbstractPlot):
 
         return (pbot, ptop)
 
-    def layout(self, ev_handlers=None):
+    def layout(self, data_list, ev_handlers=None):
 
-        self._initialize_map_projection()
+        self._initialize_map_projection(data_list)
 
         fig = plt.figure(
             figsize=(8.5, 11.0),  # letter size
@@ -325,7 +332,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         )
 
         # cluster information
-        self._read_cluster_info_if_exists(self.data_list)        
+        self._read_cluster_info_if_exists(data_list)        
 
         outer_grid = matplotlib.gridspec.GridSpec(3, 1,
                                                   wspace=0.0, hspace=0.0,  # no spaces between subplots
@@ -412,7 +419,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                                self.settings.lat_lon_label_interval_option,
                                self.settings.lat_lon_label_interval)
         
-    def draw_height_profile(self, terrain_profileQ):
+    def draw_height_profile(self, data_list, terrain_profileQ):
         axes = self.height_axes
 
         # reset line color and marker cycles to be in sync with the trajectory plot.
@@ -420,7 +427,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         self.settings.reset_marker_cycle()
 
         # Invert the y-axis for pressure profile.
-        if self.data_list[0].trajectories[0].vertical_coord.need_axis_inversion():
+        if data_list[0].trajectories[0].vertical_coord.need_axis_inversion():
             axes.invert_yaxis()
 
         # Draw y-tick labels on the right.
@@ -439,18 +446,18 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         
         # Adjust x-range.
         x_range = None
-        for pd in self.data_list:
+        for pd in data_list:
             x_range = util.union_ranges(x_range, vert_proj.calc_xrange(pd))
         axes.set_xlim(x_range[0], x_range[1])
 
         # Invert the x-axis if it is a backward trajectory
-        if not self.data_list[0].is_forward_calculation():
+        if not data_list[0].is_forward_calculation():
             axes.invert_xaxis()
 
         axes.xaxis.set_major_formatter(vert_proj.create_xlabel_formatter())
         interval_symbol_drawer = vert_proj.create_interval_symbol_drawer()
 
-        for k, plotData in enumerate(self.data_list):
+        for k, plotData in enumerate(data_list):
             for t in plotData.trajectories:
                 clr = self.settings.color_cycle.next_color(t.starting_level_index, t.color)
                 ms = self.settings.next_marker()
@@ -478,7 +485,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
 
         # draw the terrain profile if it is necessary
         if terrain_profileQ and self.settings.vertical_coordinate == const.Vertical.ABOVE_GROUND_LEVEL:
-            for plotData in self.data_list:
+            for plotData in data_list:
                 for t in plotData.trajectories:
                     if t.has_terrain_profile():
                         clr = self.settings.terrain_line_color
@@ -498,11 +505,11 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                                      clip_on=False)
                         break
 
-    def draw_trajectory_plot(self):
+    def draw_trajectory_plot(self, data_list):
         axes = self.traj_axes
 
         # plot title
-        axes.set_title(self.make_plot_title(self.data_list[0]))
+        axes.set_title(self.make_plot_title(data_list[0]))
         
         # reset line color and marker cycles to be in sync with the height profile plot
         self.settings.color_cycle.reset()
@@ -518,7 +525,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                          bottom="off", labelbottom="off")
 
         # y-label
-        axes.set_ylabel(self.make_ylabel(self.data_list[0],
+        axes.set_ylabel(self.make_ylabel(data_list[0],
                                          self.settings.source_label,
                                          self.settings.time_label_interval))
        
@@ -541,7 +548,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         # draw optional concentric circles
         if self.settings.ring and self.settings.ring_number > 0:
             self._draw_concentric_circles(axes,
-                                          self.data_list[0].trajectories[0].starting_loc,
+                                          data_list[0].trajectories[0].starting_loc,
                                           self.settings.ring_number,
                                           self.settings.ring_distance)
 
@@ -551,7 +558,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         # See if the data time span is longer than the specified interval
         interval_symbol_drawer = IntervalSymbolDrawerFactory.create_instance(axes, self.settings)
             
-        for plotData in self.data_list:
+        for plotData in data_list:
             for k, t in enumerate(plotData.trajectories):
                 # draw a source marker
                 if self.settings.label_source == 1:
@@ -582,7 +589,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         if self.settings.noaa_logo:
             self._draw_noaa_logo(axes)
         
-    def draw_bottom_plot(self):
+    def draw_bottom_plot(self, data_list):
         if self.settings.vertical_coordinate == const.Vertical.NONE:
             self._turn_off_spines(self.height_axes_outer, top=True)
             self._turn_off_ticks(self.height_axes_outer)
@@ -590,14 +597,14 @@ class TrajectoryPlot(plotbase.AbstractPlot):
             self._turn_off_spines(self.height_axes)
             self._turn_off_ticks(self.height_axes)
         else:
-            terrainProfileQ = self.has_terrain_profile(self.data_list)
+            terrainProfileQ = self.has_terrain_profile(data_list)
 
             self._turn_off_ticks(self.height_axes_outer)
-            str = self.data_list[0].trajectories[0].vertical_coord.get_vertical_label()
+            str = data_list[0].trajectories[0].vertical_coord.get_vertical_label()
 
             self.height_axes_outer.set_ylabel(str)
 
-            self.draw_height_profile(terrainProfileQ)
+            self.draw_height_profile(data_list, terrainProfileQ)
 
     def draw_bottom_text(self):
         self._turn_off_ticks(self.text_axes)
@@ -623,23 +630,31 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                       transform=axes.transAxes)
             count += 1
 
-    def draw(self, *args, **kw):
+    def draw(self, ev_handlers=None, *args, **kw):
         if self.settings.interactive_mode == False:
             plt.ioff()
-            
-        self.draw_trajectory_plot()
-        self.draw_bottom_plot()
-        self.draw_bottom_text()
         
-        if self.settings.interactive_mode:
-            plt.show(*args, **kw)
-        else:
-            self.fig.canvas.draw()  # to get the plot spines right.
-            self.update_gridlines()
-            plt.savefig(self.settings.output_postscript,
-                        papertype="letter")
+        frame_data_it = FrameDataIteratorFactory.create_instance(self.settings.frames_per_file, self.data_list)
+        
+        for data_list in frame_data_it:
+            self.layout(data_list, ev_handlers)
+    
+            self.draw_trajectory_plot(data_list)
+            self.draw_bottom_plot(data_list)
+            self.draw_bottom_text()
             
-        plt.close(self.fig)
+            if self.settings.interactive_mode:
+                plt.show(*args, **kw)
+            else:
+                self.fig.canvas.draw()  # to get the plot spines right.
+                self.update_gridlines()
+                self.plot_saver.save(self.fig, self.current_frame)
+                
+            plt.close(self.fig)
+            self.current_frame += 1
+            
+        self.write_gis_files()
+        self.plot_saver.close()
 
     def write_gis_files(self):
         w = gisout.GISFileWriterFactory.create_instance(self.settings.gis_output, self.settings.height_unit)
@@ -886,3 +901,43 @@ class VerticalProjectionFactory:
             return TimeVerticalProjection(axes, settings, time_interval)
         else:
             return AgeVerticalProjection(axes, settings, time_interval)
+    
+
+class FrameDataIteratorFactory:
+    
+    @staticmethod
+    def create_instance(frame_opt, tdump_list):
+        if frame_opt == const.Frames.ALL_FILES_ON_ONE:
+            return AllAtOnceFrameDataIterator(tdump_list)
+        else:
+            return OneByOneFrameDataIterator(tdump_list)
+    
+
+class AbstractFrameDataIterator(ABC):
+    
+    def __init__(self, tdump_list):
+        self.tdump_list = tdump_list
+    
+    @abstractmethod
+    def __iter__(self):
+        pass
+    
+    
+class AllAtOnceFrameDataIterator(AbstractFrameDataIterator):
+    
+    def __init__(self, tdump_list):
+        super(AllAtOnceFrameDataIterator, self).__init__(tdump_list)
+
+    def __iter__(self):
+        return iter([self.tdump_list])
+    
+
+class OneByOneFrameDataIterator(AbstractFrameDataIterator):
+    
+    def __init__(self, tdump_list):
+        super(OneByOneFrameDataIterator, self).__init__(tdump_list)
+
+    def __iter__(self):
+        return iter([[o] for o in self.tdump_list])
+
+

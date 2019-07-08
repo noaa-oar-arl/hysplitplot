@@ -432,13 +432,13 @@ class AbstractPlot:
          
         logo.NOAALogoDrawer().draw(axes, box_axes)
     
-    def make_plot_filename(self, settings, current_frame=1):
-        if settings.frames_per_file == const.Frames.ONE_PER_FILE:
-            filename = "{0}{1:04d}.{2}".format(settings.output_basename,
-                                               current_frame,
-                                               settings.output_suffix)
-        else:
-            filename = settings.output_postscript
-
-        return filename
+#     def make_plot_filename(self, settings, current_frame=1):
+#         if settings.frames_per_file == const.Frames.ONE_PER_FILE:
+#             filename = "{0}{1:04d}.{2}".format(settings.output_basename,
+#                                                current_frame,
+#                                                settings.output_suffix)
+#         else:
+#             filename = settings.output_postscript
+# 
+#         return filename
     

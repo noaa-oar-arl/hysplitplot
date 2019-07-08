@@ -58,12 +58,9 @@ def main():
 
     logger.info("Started Trajectory Drawing")
     hysplit4.print_version()
-
-    the_plot.write_gis_files()
     
     the_plot.read_background_map()
-    the_plot.layout({"resize_event" : on_resize})
-    the_plot.draw()
+    the_plot.draw({"resize_event" : on_resize})
 
     return 0
 

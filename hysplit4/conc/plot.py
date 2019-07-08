@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import copy
 import datetime
 
-from hysplit4 import cmdline, util, const, plotbase, mapbox, mapproj, io, smooth
+from hysplit4 import cmdline, util, const, plotbase, mapbox, mapproj, io, smooth, multipage
 from hysplit4.conc import model, helper, gisout, cntr
 
 
@@ -322,6 +322,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.conc_axes = None
         self.legends_axes = None
         self.text_axes = None
+        self.plot_saver = None
         
         self.TFACT = 1.0
         self.initial_time = None
@@ -386,7 +387,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.conc_type = helper.ConcentrationTypeFactory.create_instance(self.settings.KAVG)
         if self.settings.KAVG == 1:
             self.conc_type.set_alt_KAVG(3)  # for the above-ground concentration plots
-            
+        
+        self.plot_saver = multipage.PlotFileWriterFactory.create_instance(self.settings.frames_per_file,
+                                                                          self.settings.output_basename,
+                                                                          self.settings.output_suffix)
+
         self._post_file_processing(self.cdump)
                 
         self.conc_map = helper.ConcentrationMapFactory.create_instance(self.settings.KMAP, self.settings.KHEMIN)
@@ -930,9 +935,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         else:
             self.fig.canvas.draw()  # to get the plot spines right.
             self.update_gridlines()
-            filename = self.make_plot_filename(self.settings, self.current_frame)
-            logger.info("Saving a plot to file %s", filename)
-            plt.savefig(filename, papertype="letter")
+            self.plot_saver.save(self.fig, self.current_frame)
         
         plt.close(self.fig)
         self.current_frame += 1
@@ -974,10 +977,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         else:
             self.fig.canvas.draw()  # to get the plot spines right.
             self.update_gridlines()
-            filename = self.make_plot_filename(self.settings, self.current_frame)
-            logger.info("Saving a plot to file %s", filename)
-            plt.savefig(filename, papertype="letter")
-        
+            self.plot_saver.save(self.fig, self.current_frame)
+            
         plt.close(self.fig)
         self.current_frame += 1       
         
@@ -1031,6 +1032,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 self.draw_conc_on_ground(g, ev_handlers, level_generator, color_table, gis_writer, *args, **kwargs)
         
         gis_writer.finalize()
+        self.plot_saver.close()
         
 
 class LabelledContourLevel:
