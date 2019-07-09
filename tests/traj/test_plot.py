@@ -545,7 +545,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
     # Change the starting time of a trajectory
 
     t = plotData.trajectories[2]
-    t.starting_datetime = datetime.datetime(93, 10, 16, 1, 0)
+    t.starting_datetime = datetime.datetime(1993, 10, 16, 1, 0)
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "Forward trajectories starting at various times\n" + \
@@ -1057,8 +1057,8 @@ def test_TimeVerticalProjection_calc_xrange(plotData):
     axes = plt.axes()
     o = plot.TimeVerticalProjection(axes, s, 6)
     r = o.calc_xrange(plotData)
-    assert r[0] == datetime.datetime(95, 10, 16,  0, 0)
-    assert r[1] == datetime.datetime(95, 10, 16, 12, 0)
+    assert r[0] == datetime.datetime(1995, 10, 16,  0, 0)
+    assert r[1] == datetime.datetime(1995, 10, 16, 12, 0)
     plt.close(axes.get_figure())
         
 
@@ -1089,7 +1089,7 @@ def test_TimeVerticalProjection_select_xvalues(plotData):
     o = plot.TimeVerticalProjection(axes, s, 6)
     x = o.select_xvalues(plotData.trajectories[0])
     assert len(x) > 0
-    assert x[0] == datetime.datetime(95, 10, 16, 0, 0)
+    assert x[0] == datetime.datetime(1995, 10, 16, 0, 0)
     plt.close(axes.get_figure())
 
 

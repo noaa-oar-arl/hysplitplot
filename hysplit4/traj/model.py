@@ -2,7 +2,7 @@ import logging
 import datetime
 import numpy
 
-from hysplit4 import io, const
+from hysplit4 import io, const, util
 
 
 logger = logging.getLogger(__name__)
@@ -340,7 +340,8 @@ class TrajectoryDumpFileReader(io.FormattedTextFileReader):
                     if actual != ndiagnostics:
                         logger.error("expected %d diagnostic(s) but found %d in the data file", ndiagnostics, actual)
                 t.grids.append(g)
-                t.datetimes.append(datetime.datetime(v[2], v[3], v[4], v[5], v[6]))
+                year = util.restore_year(v[2])
+                t.datetimes.append(datetime.datetime(year, v[3], v[4], v[5], v[6]))
                 t.forecast_hours.append(v[7])
                 t.ages.append(v[8])
                 t.latitudes.append(v[9])
@@ -380,7 +381,8 @@ class TrajectoryDumpFileReader(io.FormattedTextFileReader):
             v = self.parse_line("A8, 5I6")
             g = MeteorologicalGrid(pd)
             g.model = v[0]
-            g.datetime = datetime.datetime(v[1], v[2], v[3], v[4])
+            year = util.restore_year(v[1])
+            g.datetime = datetime.datetime(year, v[2], v[3], v[4])
             g.forecast_hour = v[5]
             pd.grids.append(g)
 
@@ -402,7 +404,8 @@ class TrajectoryDumpFileReader(io.FormattedTextFileReader):
         for k in range(ntraj):
             v = self.parse_line(fmt)
             t = Trajectory(pd)
-            t.starting_datetime = datetime.datetime(v[0], v[1], v[2], v[3])
+            year = util.restore_year(v[0])
+            t.starting_datetime = datetime.datetime(year, v[1], v[2], v[3])
             t.starting_loc = (v[5], v[4])
             t.starting_level = v[6]
             pd.trajectories.append(t)

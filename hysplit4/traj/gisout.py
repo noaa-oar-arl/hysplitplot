@@ -1,5 +1,5 @@
 import logging
-from hysplit4 import const, util
+from hysplit4 import const
 from hysplit4.traj import model
 
 
@@ -46,10 +46,9 @@ class GenerateAttributeFileWriter:
             f.write("#TRAJNUM,YYYYMMDD,TIME,LEVEL\n")
             for k, t in enumerate(plot_data.trajectories):
                 for j in range(len(t.longitudes)):
-                    year = util.restore_year(t.datetimes[j].year)
                     f.write("{0:6d},{1:4d}{2:02d}{3:02d},{4:02d}{5:02d},{6:8d}.\n".format(
                         (k+1)*1000 + j,
-                        year,
+                        t.datetimes[j].year,
                         t.datetimes[j].month,
                         t.datetimes[j].day,
                         t.datetimes[j].hour,
@@ -122,15 +121,13 @@ class KMLWriter(AbstractGISFileWriter):
     
     @staticmethod
     def _get_iso_8601_str(dt):
-        year = util.restore_year(dt.year)
         return "{0:04d}-{1:02d}-{2:02d}T{3:02d}:{4:02d}:{5:02d}Z".format(
-            year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
     
     @staticmethod
     def _get_timestamp_str(dt):
-        year = util.restore_year(dt.year)
         return "{1:02d}/{2:02d}/{0:04d} {3:02d}{4:02d} UTC".format(
-            year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
     
     @staticmethod
     def _get_alt_mode(t):

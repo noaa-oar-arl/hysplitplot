@@ -4,7 +4,7 @@ import numpy
 import copy
 from matplotlib.path import Path
 from abc import ABC, abstractmethod
-from hysplit4 import const, util
+from hysplit4 import const
 from hysplit4.conc import model
 
 
@@ -62,9 +62,8 @@ class AbstractWriter(ABC):
      
     @staticmethod
     def _get_iso_8601_str(dt):
-        year = util.restore_year(dt.year)
         return "{0:04d}-{1:02d}-{2:02d}T{3:02d}:{4:02d}:{5:02d}Z".format(
-            year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
            
     
 class IdleWriter(AbstractWriter):
@@ -123,7 +122,7 @@ class PointsGenerateFileWriter(AbstractWriter):
         def write_attributes(f, g, lower_vert_level, upper_vert_level, contour_level, color):
             f.write("{:7.3f},{:4s},{:4d}{:02d}{:02d},{:04d},{:05d},{:05d},{:8s}\n".format(math.log10(contour_level),
                                                                                           g.pollutant,
-                                                                                          util.restore_year(g.ending_datetime.year),
+                                                                                          g.ending_datetime.year,
                                                                                           g.ending_datetime.month,
                                                                                           g.ending_datetime.day,
                                                                                           g.ending_datetime.hour * 100,
@@ -145,7 +144,7 @@ class PointsGenerateFileWriter(AbstractWriter):
         def write_attributes(self, f, g, lower_vert_level, upper_vert_level, contour_level, color):
             f.write("{:10.3e},{:4s},{:4d}{:02d}{:02d},{:04d},{:05d},{:05d},{:8s}\n".format(contour_level,
                                                                                            g.pollutant,
-                                                                                           util.restore_year(g.ending_datetime.year),
+                                                                                           g.ending_datetime.year,
                                                                                            g.ending_datetime.month,
                                                                                            g.ending_datetime.day,
                                                                                            g.ending_datetime.hour * 100,
@@ -205,8 +204,7 @@ class KMLWriter(AbstractWriter):
     
     @staticmethod
     def _get_att_datetime_str(dt):
-        year = util.restore_year(dt.year)
-        return "{} {:04d}&".format(dt.strftime("%H%M UTC %b %d"), year)
+        return "{} {:04d}&".format(dt.strftime("%H%M UTC %b %d"), dt.year)
     
     def _write_attributes(self, f, g, contour_set):
         f.write("{}\n".format(self.KMAP))
@@ -670,9 +668,8 @@ Value: {}
             
     @staticmethod
     def _get_timestamp_str(dt):
-        year = util.restore_year(dt.year)
         return "{:04d}{:02d}{:02d} {:02d}{:02d} UTC".format(
-            year, dt.month, dt.day, dt.hour, dt.minute)
+            dt.year, dt.month, dt.day, dt.hour, dt.minute)
 
     def _write_placemark_visibility(self, f):
         pass

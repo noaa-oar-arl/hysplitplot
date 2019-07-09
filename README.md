@@ -13,10 +13,10 @@ in HYSPLIT's working directory, run
 
     $ python ~/hysplit_graf/trajplot.py -itdump
 
-It is assumed that hysplit_graf is installed at the top-level of your home
-directory.  If it is installed somewhere else, use that path to run
-trajplot.py.  The command-line arguments for the trajplot.py script have the
-same format and meaning as the TRAJPLOT program in HYSPLIT.
+It is assumed that hysplit_graf is unpacked at the top-level of your home
+directory.  If the hysplit_graf directory is located elsewhere, use that path
+to run trajplot.py.  The command-line arguments for the trajplot.py script
+have the same format and meaning as the TRAJPLOT program in HYSPLIT.
 
 Unit tests are written using the pytest framework. You will need to install
 pytest if it is not.  To run the unit tests, do

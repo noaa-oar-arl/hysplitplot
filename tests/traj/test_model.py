@@ -203,8 +203,8 @@ def test_TrajectoryDump_get_age_range(plotData):
 def test_TrajectoryDump_get_datetime_range(plotData):
     r = plotData.get_datetime_range()
 
-    assert r[0] == datetime.datetime(95, 10, 16,  0, 0)
-    assert r[1] == datetime.datetime(95, 10, 16, 12, 0)
+    assert r[0] == datetime.datetime(1995, 10, 16,  0, 0)
+    assert r[1] == datetime.datetime(1995, 10, 16, 12, 0)
 
 
 def test_TrajectoryDump_get_max_forecast_hour(plotData):
@@ -217,7 +217,7 @@ def test_TrajectoryDump_get_max_forecast_hour(plotData):
 def test_TrajectoryDump_get_forecast_init_datetime(plotData):
     r = plotData.get_forecast_init_datetime()
 
-    assert r == datetime.datetime(95, 10, 16,  0, 0)
+    assert r == datetime.datetime(1995, 10, 16,  0, 0)
 
 
 def test_TrajectoryDump_fix_vertical_coordinates():
@@ -346,8 +346,8 @@ def test_Trajectory_ages(plotData):
 def test_Trajectory_datetimes(plotData):
     datetimes = plotData.trajectories[0].datetimes
     assert len(datetimes) == 13
-    assert datetimes[0] == datetime.datetime(95, 10, 16, 0, 0)
-    assert datetimes[12] == datetime.datetime(95, 10, 16, 12, 0)
+    assert datetimes[0] == datetime.datetime(1995, 10, 16, 0, 0)
+    assert datetimes[12] == datetime.datetime(1995, 10, 16, 12, 0)
 
     plotData.trajectories[0].datetimes = []
     
@@ -468,7 +468,7 @@ def test_TrajectoryDumpFileReader_read():
     g = d.grids[0]
     assert g.parent is d
     assert g.model == "    NGM "
-    assert g.datetime == datetime.datetime(95, 10, 16, 0, 0)
+    assert g.datetime == datetime.datetime(1995, 10, 16, 0, 0)
     assert g.forecast_hour == 0
 
     assert len(d.trajectories) == 3
@@ -479,7 +479,7 @@ def test_TrajectoryDumpFileReader_read():
 
     t = d.trajectories[0]
     assert t.parent is d
-    assert t.starting_datetime == datetime.datetime(95, 10, 16, 0, 0)
+    assert t.starting_datetime == datetime.datetime(1995, 10, 16, 0, 0)
     assert t.starting_loc == (-90.0, 40.0)
     assert t.starting_level == 10.0
     assert t.starting_level_index == 0
@@ -488,7 +488,7 @@ def test_TrajectoryDumpFileReader_read():
 
     t = d.trajectories[1]
     assert t.parent is d
-    assert t.starting_datetime == datetime.datetime(95, 10, 16, 0, 0)
+    assert t.starting_datetime == datetime.datetime(1995, 10, 16, 0, 0)
     assert t.starting_loc == (-90.0, 40.0)
     assert t.starting_level == 500.0
     assert t.starting_level_index == 1
@@ -497,7 +497,7 @@ def test_TrajectoryDumpFileReader_read():
 
     t = d.trajectories[2]
     assert t.parent is d
-    assert t.starting_datetime == datetime.datetime(95, 10, 16, 0, 0)
+    assert t.starting_datetime == datetime.datetime(1995, 10, 16, 0, 0)
     assert t.starting_loc == (-90.0, 40.0)
     assert t.starting_level == 1000.0
     assert t.starting_level_index == 2
@@ -517,7 +517,7 @@ def test_TrajectoryDumpFileReader_read():
 
     k = 12
     assert t.grids[k] is d.grids[0]
-    assert t.datetimes[k] == datetime.datetime(95, 10, 16, 12, 0)
+    assert t.datetimes[k] == datetime.datetime(1995, 10, 16, 12, 0)
     assert t.forecast_hours[k] == 0
     assert t.ages[k] == 12.0
     assert t.latitudes[k] == 38.586
@@ -539,7 +539,7 @@ def test_TrajectoryDumpFileReader_read():
 
     k = 12
     assert t.grids[k] is d.grids[0]
-    assert t.datetimes[k] == datetime.datetime(95, 10, 16, 12, 0)
+    assert t.datetimes[k] == datetime.datetime(1995, 10, 16, 12, 0)
     assert t.forecast_hours[k] == 0
     assert t.ages[k] == 12.0
     assert t.latitudes[k] == 36.886
@@ -566,7 +566,7 @@ def test_TrajectoryDumpFileReader_read_fmt0():
     g = d.grids[0]
     assert g.parent is d
     assert g.model == "    NGM "
-    assert g.datetime == datetime.datetime(95, 10, 16, 0, 0)
+    assert g.datetime == datetime.datetime(1995, 10, 16, 0, 0)
     assert g.forecast_hour == 0
 
     assert len(d.trajectories) == 3
@@ -577,7 +577,7 @@ def test_TrajectoryDumpFileReader_read_fmt0():
 
     t = d.trajectories[0]
     assert t.parent is d
-    assert t.starting_datetime == datetime.datetime(95, 10, 16, 0, 0)
+    assert t.starting_datetime == datetime.datetime(1995, 10, 16, 0, 0)
     assert t.starting_loc == (-90.0, 40.0)
     assert t.starting_level == 10.0
     assert t.starting_level_index == 0
@@ -586,7 +586,7 @@ def test_TrajectoryDumpFileReader_read_fmt0():
 
     t = d.trajectories[1]
     assert t.parent is d
-    assert t.starting_datetime == datetime.datetime(95, 10, 16, 0, 0)
+    assert t.starting_datetime == datetime.datetime(1995, 10, 16, 0, 0)
     assert t.starting_loc == (-90.0, 40.0)
     assert t.starting_level == 500.0
     assert t.starting_level_index == 1
@@ -595,7 +595,7 @@ def test_TrajectoryDumpFileReader_read_fmt0():
 
     t = d.trajectories[2]
     assert t.parent is d
-    assert t.starting_datetime == datetime.datetime(95, 10, 16, 0, 0)
+    assert t.starting_datetime == datetime.datetime(1995, 10, 16, 0, 0)
     assert t.starting_loc == (-90.0, 40.0)
     assert t.starting_level == 1000.0
     assert t.starting_level_index == 2
@@ -615,7 +615,7 @@ def test_TrajectoryDumpFileReader_read_fmt0():
 
     k = 12
     assert t.grids[k] is d.grids[0]
-    assert t.datetimes[k] == datetime.datetime(95, 10, 16, 12, 0)
+    assert t.datetimes[k] == datetime.datetime(1995, 10, 16, 12, 0)
     assert t.forecast_hours[k] == 0
     assert t.ages[k] == 12.0
     assert t.latitudes[k] == 38.586
@@ -637,7 +637,7 @@ def test_TrajectoryDumpFileReader_read_fmt0():
 
     k = 12
     assert t.grids[k] is d.grids[0]
-    assert t.datetimes[k] == datetime.datetime(95, 10, 16, 12, 0)
+    assert t.datetimes[k] == datetime.datetime(1995, 10, 16, 12, 0)
     assert t.forecast_hours[k] == 0
     assert t.ages[k] == 12.0
     assert t.latitudes[k] == 36.886

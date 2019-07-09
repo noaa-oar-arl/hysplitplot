@@ -1443,7 +1443,7 @@ def test_SumDeposit_add(cdump3):
     
     # the summation grid should have accumulated concentrations from time index 0 to 1.
     assert o.summation_grid.conc[23, 26] * 1.0e+7 == pytest.approx(19.36063 + 5.659043)
-    assert o.summation_grid.starting_datetime == datetime.datetime(83, 9, 25, 21, 0)
+    assert o.summation_grid.starting_datetime == datetime.datetime(1983, 9, 25, 21, 0)
 
 
 def test_SumDeposit_get_grids_to_plot(cdump3):
@@ -1473,7 +1473,7 @@ def test_SumDeposit_update_properties(cdump3):
     
     # check what we know.
     assert o.summation_grid.time_index == 0
-    assert o.summation_grid.ending_datetime == datetime.datetime(83, 9, 25, 21, 0)
+    assert o.summation_grid.ending_datetime == datetime.datetime(1983, 9, 25, 21, 0)
     assert o.summation_grid.ending_forecast_hr == 0
     assert o.summation_grid.nonzero_conc_count == 14
     assert o.summation_grid.extension.min_conc is None
@@ -1485,7 +1485,7 @@ def test_SumDeposit_update_properties(cdump3):
     o.update_properties(t_grids)
     
     assert o.summation_grid.time_index == 1
-    assert o.summation_grid.ending_datetime == datetime.datetime(83, 9, 26, 0, 0)
+    assert o.summation_grid.ending_datetime == datetime.datetime(1983, 9, 26, 0, 0)
     assert o.summation_grid.ending_forecast_hr == 0
     assert o.summation_grid.nonzero_conc_count == 14
     assert o.summation_grid.extension.min_conc * 1.0e+10 == pytest.approx(9.859312)
@@ -1524,7 +1524,7 @@ def test_TotalDeposit_get_grids_to_plot(cdump3):
     
     assert len(grids) == 1
     assert o.summation_grid.time_index == 7
-    assert o.summation_grid.ending_datetime == datetime.datetime(83, 9, 26, 18, 0)
+    assert o.summation_grid.ending_datetime == datetime.datetime(1983, 9, 26, 18, 0)
     assert o.summation_grid.ending_forecast_hr == 0
     assert o.summation_grid.nonzero_conc_count == 349
     assert o.summation_grid.extension.min_conc * 1.0e+10 == pytest.approx(4.308542)

@@ -118,12 +118,12 @@ def test_KMLWriter_make_filename():
         
 
 def test_KMLWriter__get_iso_8601_str():
-    dt = datetime.datetime(83, 10, 13, 0, 15)
+    dt = datetime.datetime(1983, 10, 13, 0, 15)
     assert gisout.KMLWriter._get_iso_8601_str(dt) == "1983-10-13T00:15:00Z"
     
 
 def test_KMLWriter__get_timestamp_str():
-    dt = datetime.datetime(83, 10, 13, 0, 15)
+    dt = datetime.datetime(1983, 10, 13, 0, 15)
     assert gisout.KMLWriter._get_timestamp_str(dt) == "10/13/1983 0015 UTC"
 
 

@@ -108,7 +108,7 @@ def test_AbstractWriter__reformat_color():
 
 
 def test_AbstractWriter__get_iso_8601_str():
-    dt = datetime.datetime(19, 7, 2, 13, 28, 5)
+    dt = datetime.datetime(2019, 7, 2, 13, 28, 5)
     assert gisout.AbstractWriter._get_iso_8601_str(dt) == "2019-07-02T13:28:05Z"
 
 
@@ -375,7 +375,7 @@ def test_KMLWriter_finalize():
 
 
 def test_KMLWriter__get_att_datetime_str():
-    dt = datetime.datetime(19, 7, 2, 14, 50)
+    dt = datetime.datetime(2019, 7, 2, 14, 50)
     assert gisout.KMLWriter._get_att_datetime_str(dt) == "1450 UTC Jul 02 2019&"
 
 
@@ -750,7 +750,7 @@ def test_AbstractKMLContourWriter__write_max_location(cdump_two_pollutants):
 
 
 def test_AbstractKMLContourWriter__get_timestamp_str():
-    dt = datetime.datetime(19, 7, 3, 8, 11)
+    dt = datetime.datetime(2019, 7, 3, 8, 11)
     assert gisout.AbstractKMLContourWriter._get_timestamp_str(dt) == "20190703 0811 UTC"
     
 
@@ -763,7 +763,7 @@ def test_KMLConcentrationWriter___init__():
 def test_KMLDepositionWriter__get_name_cdata():
     o = gisout.KMLConcentrationWriter("relativeToGround")
     
-    dt = datetime.datetime(19, 7, 5, 7, 42)
+    dt = datetime.datetime(2019, 7, 5, 7, 42)
     assert o._get_name_cdata(dt) == """<pre>Concentration
 (Valid:20190705 0742 UTC)</pre>"""
 
@@ -771,7 +771,7 @@ def test_KMLDepositionWriter__get_name_cdata():
 def test_KMLDepositionWriter__get_description_cdata():
     o = gisout.KMLConcentrationWriter("relativeToGround")
     
-    dt = datetime.datetime(19, 7, 5, 7, 42)
+    dt = datetime.datetime(2019, 7, 5, 7, 42)
     assert o._get_description_cdata(100, 500, dt) == """<pre>
 Averaged from 100 to 500 m
 Valid:20190705 0742 UTC</pre>"""
@@ -806,7 +806,7 @@ def test_KMLDepositionWriter___init__():
 def test_KMLDepositionWriter__get_name_cdata():
     o = gisout.KMLDepositionWriter("relativeToGround")
     
-    dt = datetime.datetime(19, 7, 5, 7, 42)
+    dt = datetime.datetime(2019, 7, 5, 7, 42)
     assert o._get_name_cdata(dt) == """<pre>Deposition
 (Valid:20190705 0742 UTC)</pre>"""
 
@@ -814,7 +814,7 @@ def test_KMLDepositionWriter__get_name_cdata():
 def test_KMLDepositionWriter__get_description_cdata():
     o = gisout.KMLDepositionWriter("relativeToGround")
     
-    dt = datetime.datetime(19, 7, 5, 7, 42)
+    dt = datetime.datetime(2019, 7, 5, 7, 42)
     assert o._get_description_cdata(100, 500, dt) == """<pre>
 Valid:20190705 0742 UTC</pre>"""
 
@@ -851,7 +851,7 @@ def test_KMLMassLoadingWriter___init__():
 def test_KMLMassLoadingWriter__get_name_cdata():
     o = gisout.KMLMassLoadingWriter("relativeToGround")
     
-    dt = datetime.datetime(19, 7, 5, 7, 42)
+    dt = datetime.datetime(2019, 7, 5, 7, 42)
     assert o._get_name_cdata(dt) == """<pre>Mass_loading
 (Valid:20190705 0742 UTC)</pre>"""
 
@@ -859,7 +859,7 @@ def test_KMLMassLoadingWriter__get_name_cdata():
 def test_KMLMassLoadingWriter__get_description_cdata():
     o = gisout.KMLMassLoadingWriter("relativeToGround")
     
-    dt = datetime.datetime(19, 7, 5, 7, 42)
+    dt = datetime.datetime(2019, 7, 5, 7, 42)
     assert o._get_description_cdata(100, 500, dt) == """<pre>
 From 100 to 500 m
 Valid:20190705 0742 UTC</pre>"""
