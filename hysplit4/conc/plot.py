@@ -402,6 +402,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         if self.settings.smoothing_distance > 0:
             self.smoothing_kernel = smooth.SmoothingKernelFactory.create_instance(const.SmoothingKernel.SIMPLE,
                                                                                   self.settings.smoothing_distance)
+        
+        if self.settings.use_source_time_zone:
+            self.source_time_zone = self.get_time_zone_at(self.cdump.release_locs[0])
             
     def _post_file_processing(self, cdump):
         
@@ -507,8 +510,12 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         fig_title += "\n"
         fig_title += conc_map.get_map_id_line(self.conc_type, conc_unit, lower_vert_level, upper_vert_level)
         
-        fig_title += conc_grid.starting_datetime.strftime("\nIntegrated from %H%M %d %b to")
-        fig_title += conc_grid.ending_datetime.strftime(" %H%M %d %b %y (UTC)")
+        dt = self.adjust_for_time_zone(conc_grid.starting_datetime)
+        fig_title += dt.strftime("\nIntegrated from %H%M %d %b to")
+        
+        dt = self.adjust_for_time_zone(conc_grid.ending_datetime)
+        fig_title += dt.strftime(" %H%M %d %b %Y (%Z)")
+        
         if not conc_grid.is_forward_calculation():
             fig_title += " [backward]"           
         
@@ -518,7 +525,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             fig_title += "\n{0} Calculation started at".format(pollutant)
         else:
             fig_title += "\n{0} Release started at".format(pollutant)
-        fig_title += conc_grid.parent.release_datetime[0].strftime(" %H%M %d %b %y (UTC)")
+            
+        dt = self.adjust_for_time_zone(conc_grid.parent.release_datetime[0])
+        fig_title += dt.strftime(" %H%M %d %b %Y (%Z)")
         
         return fig_title
     
@@ -549,7 +558,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         curr_forecast_time = g.ending_datetime - datetime.timedelta(hours=g.ending_forecast_hr)
         
         if g.ending_forecast_hr > 12 and (self.prev_forecast_time is None or self.prev_forecast_time == curr_forecast_time):
-            ts = curr_forecast_time.strftime("%H%M %d %b %y")
+            ts = self.adjust_for_time_zone(curr_forecast_time).strftime("%H%M %d %b %Y")
             x_label = "{0} {1} FORECAST INITIALIZATION".format(ts, self.cdump.meteo_model)
         else:
             x_label = "{0} METEOROLOGICAL DATA".format(self.cdump.meteo_model)

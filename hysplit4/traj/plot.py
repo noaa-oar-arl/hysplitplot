@@ -202,6 +202,9 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                                                                           self.settings.output_basename,
                                                                           self.settings.output_suffix)
         
+        if self.settings.use_source_time_zone:
+            self.source_time_zone = self.get_time_zone_at(self.data_list[0].trajectories[0].starting_loc)
+            
     @staticmethod
     def has_terrain_profile(tdump_list):
         for tdump in tdump_list:
@@ -383,7 +386,8 @@ class TrajectoryPlot(plotbase.AbstractPlot):
     
             traj_times = plot_data.get_unique_start_datetimes()
             if len(traj_times) == 1:
-                fig_title += traj_times[0].strftime(" %H%M UTC %d %b %y")
+                dt = self.adjust_for_time_zone(traj_times[0])
+                fig_title += dt.strftime(" %H%M %Z %d %b %Y")
             else:
                 fig_title += " various times"
 
@@ -391,7 +395,8 @@ class TrajectoryPlot(plotbase.AbstractPlot):
             # use the first grid for plotting
             model_name = plot_data.grids[0].model.strip()
             if plot_data.get_max_forecast_hour() > 12:
-                init_time_str = plot_data.get_forecast_init_datetime().strftime("%H UTC %d %b");
+                dt = self.adjust_for_time_zone(plot_data.get_forecast_init_datetime())
+                init_time_str = dt.strftime("%H %Z %d %b");
                 fig_title += "\n{0}  {1}  Forecast Initialization".format(init_time_str, model_name)
             else:
                 fig_title += "\n{0}  Meteorological Data".format(model_name)
@@ -444,10 +449,12 @@ class TrajectoryPlot(plotbase.AbstractPlot):
 
         vert_proj = VerticalProjectionFactory.create_instance(axes, self.settings)
         
+        time_zone = self.source_time_zone if self.settings.use_source_time_zone else None
+        
         # Adjust x-range.
         x_range = None
         for pd in data_list:
-            x_range = util.union_ranges(x_range, vert_proj.calc_xrange(pd))
+            x_range = util.union_ranges(x_range, vert_proj.calc_xrange(pd, time_zone))
         axes.set_xlim(x_range[0], x_range[1])
 
         # Invert the x-axis if it is a backward trajectory
@@ -462,7 +469,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                 clr = self.settings.color_cycle.next_color(t.starting_level_index, t.color)
                 ms = self.settings.next_marker()
                 # gather data points
-                ages = vert_proj.select_xvalues(t)
+                ages = vert_proj.select_xvalues(t, time_zone)
                 vc = t.vertical_coordinates
                 if len(vc) > 0:
                     if self.settings.label_source == 1:
@@ -491,7 +498,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                         clr = self.settings.terrain_line_color
                         ms = self.settings.terrain_marker
                         # gather data points
-                        ages = vert_proj.select_xvalues(t)
+                        ages = vert_proj.select_xvalues(t, time_zone)
                         vc = t.terrain_profile
                         # draw a profile
                         axes.plot(ages, vc, clr)
@@ -822,24 +829,24 @@ class IntervalSymbolDrawerFactory:
             return IdleIntervalSymbolDrawer(axes, settings, time_interval)
 
         
-class AbstractVerticalProjection:
+class AbstractVerticalProjection(ABC):
  
     def __init__(self, axes, settings, time_interval):
         self.axes = axes
         self.settings = settings
         self.time_interval = time_interval
-        
-    def calc_xrange(self, plot_data):
-        # should be overriden by a child class
-        return None
     
+    @abstractmethod
+    def calc_xrange(self, plot_data, time_zone=None):
+        pass
+
+    @abstractmethod    
     def create_xlabel_formatter(self):
-        # should be overriden by a child class
-        return None
+        pass
     
-    def select_xvalues(self, trajectory):
-        # should be overriden by a child class
-        return None
+    @abstractmethod
+    def select_xvalues(self, trajectory, time_zone=None):
+        pass
     
     def create_interval_symbol_drawer(self):
         return IntervalSymbolDrawerFactory.create_instance(self.axes, self.settings)
@@ -850,8 +857,13 @@ class TimeVerticalProjection(AbstractVerticalProjection):
     def __init__(self, axes, settings, time_interval):
         AbstractVerticalProjection.__init__(self, axes, settings, time_interval)
         
-    def calc_xrange(self, plot_data):
-        return plot_data.get_datetime_range()
+    def calc_xrange(self, plot_data, time_zone=None):
+        r = plot_data.get_datetime_range()
+        if time_zone is None:
+            return r
+        # See _format_datetime() for the reason why tzinfo is removed after applying the timezone.
+        t = [x.astimezone(time_zone).replace(tzinfo=None) for x in r]
+        return t
     
     def create_xlabel_formatter(self):
         return plt.FuncFormatter(self._format_datetime)
@@ -859,6 +871,10 @@ class TimeVerticalProjection(AbstractVerticalProjection):
     @staticmethod
     def _format_datetime(value, position):
         if position != None:
+            # The value argument is a floating point number representing a datetime in UTC and only in UTC.
+            # Since this is a static method, a timezone object cannot be accessed (without resorting to a global variable).
+            # An ad hoc solution is to receive a naive datetime value that is unaware of timezone.
+            # select_xvalues() returns "naive" datetime values for this reason.
             dt = matplotlib.dates.num2date(value)
             if dt.minute == 0 and dt.second == 0:
                 if dt.hour == 0:
@@ -867,8 +883,11 @@ class TimeVerticalProjection(AbstractVerticalProjection):
                     return "{0:d}".format(dt.hour)
         return ""
     
-    def select_xvalues(self, t):
-        return t.datetimes
+    def select_xvalues(self, t, time_zone=None):
+        if time_zone is None:
+            return t.datetimes
+        # See _format_datetime() for the reason why tzinfo is removed after applying the timezone.
+        return [x.astimezone(time_zone).replace(tzinfo=None) for x in t.datetimes]
    
     
 class AgeVerticalProjection(AbstractVerticalProjection):
@@ -876,7 +895,7 @@ class AgeVerticalProjection(AbstractVerticalProjection):
     def __init__(self, axes, settings, time_interval):
         AbstractVerticalProjection.__init__(self, axes, settings, time_interval)
         
-    def calc_xrange(self, plot_data):
+    def calc_xrange(self, plot_data, time_zone=None):
         return plot_data.get_age_range()
     
     def create_xlabel_formatter(self):
@@ -888,7 +907,7 @@ class AgeVerticalProjection(AbstractVerticalProjection):
             return "{0:.1f}".format(value)
         return ""
     
-    def select_xvalues(self, t):
+    def select_xvalues(self, t, time_zone=None):
         return t.ages
     
     

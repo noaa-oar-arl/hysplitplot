@@ -4,6 +4,7 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.dates
 import cartopy.crs
+import pytz
 from hysplit4.traj import plot, model
 from hysplit4 import labels, clist, mapfile, mapproj, const
 
@@ -41,6 +42,18 @@ class AbstractFrameDataIteratorTest(plot.AbstractFrameDataIterator):
     def __iter__(self):
         pass
 
+
+class AbstractVerticalProjectionTest(plot.AbstractVerticalProjection):
+    
+    def calc_xrange(self, plot_data, time_zone=None):
+        pass
+    
+    def create_xlabel_formatter(self):
+        pass
+    
+    def select_xvalues(self, trajectory, time_zone=None):
+        pass
+    
 
 def test_TrajectoryPlotSettings___init__():
     s = plot.TrajectoryPlotSettings()
@@ -311,7 +324,7 @@ def test_TrajectoryPlot_merge_plot_settings():
 
 def test_TrajectoryPlot_read_data_files():
     p = plot.TrajectoryPlot()
-    p.merge_plot_settings("data/default_tplot", ["-idata/tdump"])
+    p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "--source-time-zone"])
 
     p.read_data_files()
 
@@ -319,6 +332,7 @@ def test_TrajectoryPlot_read_data_files():
     assert len(p.data_list[0].trajectories) == 3
     assert p.settings.color_cycle is not None
     assert p.plot_saver is not None
+    assert p.source_time_zone is not None
 
 
 def test_TrajectoryPlot_has_terrain_profile(plotData):
@@ -521,7 +535,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
     
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
-           "Forward trajectories starting at 0000 UTC 16 Oct 95\n" + \
+           "Forward trajectories starting at 0000 UTC 16 Oct 1995\n" + \
            "NGM  Meteorological Data"
 
     # Change the model name
@@ -529,7 +543,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
     plotData.grids[0].model = " TEST "
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
-           "Forward trajectories starting at 0000 UTC 16 Oct 95\n" + \
+           "Forward trajectories starting at 0000 UTC 16 Oct 1995\n" + \
            "TEST  Meteorological Data"
 
     # Add a grid
@@ -539,9 +553,17 @@ def test_TrajectoryPlot_make_plot_title(plotData):
     plotData.grids.append(g)
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
-           "Forward trajectories starting at 0000 UTC 16 Oct 95\n" + \
+           "Forward trajectories starting at 0000 UTC 16 Oct 1995\n" + \
            "TEST  Meteorological Data"
 
+    # Add time zone
+    p.source_time_zone = pytz.timezone("EST")
+    title = p.make_plot_title(plotData)
+    assert title == "NOAA HYSPLIT MODEL\n" + \
+           "Forward trajectories starting at 1900 EST 15 Oct 1995\n" + \
+           "TEST  Meteorological Data"
+    p.source_time_zone = None
+    
     # Change the starting time of a trajectory
 
     t = plotData.trajectories[2]
@@ -565,7 +587,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
     plotData.trajectories.pop()
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
-           "Backward trajectory ending at 0000 UTC 16 Oct 95\n" + \
+           "Backward trajectory ending at 0000 UTC 16 Oct 1995\n" + \
            "TEST  Meteorological Data"
 
     # Change direction
@@ -573,7 +595,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
     plotData.trajectory_direction = "FORWARD"
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
-           "Forward trajectory starting at 0000 UTC 16 Oct 95\n" + \
+           "Forward trajectory starting at 0000 UTC 16 Oct 1995\n" + \
            "TEST  Meteorological Data"
 
     # IDLBL = "MERGMEAN"
@@ -600,6 +622,14 @@ def test_TrajectoryPlot_make_plot_title(plotData):
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "112 backward trajectories\n" + \
            "11 UTC 15 Oct  TEST  Forecast Initialization"
+
+    # Time zone
+    p.source_time_zone = pytz.timezone("EST")
+    
+    title = p.make_plot_title(plotData)
+    assert title == "NOAA HYSPLIT MODEL\n" + \
+           "112 backward trajectories\n" + \
+           "06 EST 15 Oct  TEST  Forecast Initialization"
 
 
 def test_TrajectoryPlot_make_ylabel():
@@ -1003,7 +1033,7 @@ def test_IntervalSymbolDrawerFactory_create_instance():
 def test_AbstractVerticalProjection___init__():
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
-    o = plot.AbstractVerticalProjection(axes, s, 6)
+    o = AbstractVerticalProjectionTest(axes, s, 6)
     assert o.axes == axes
     assert o.settings == s
     assert o.time_interval == 6
@@ -1013,7 +1043,7 @@ def test_AbstractVerticalProjection___init__():
 def test_AbstractVerticalProjection_calc_xrange(plotData):
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
-    o = plot.AbstractVerticalProjection(axes, s, 6)
+    o = AbstractVerticalProjectionTest(axes, s, 6)
     assert o.calc_xrange(plotData) == None
     plt.close(axes.get_figure())
         
@@ -1021,7 +1051,7 @@ def test_AbstractVerticalProjection_calc_xrange(plotData):
 def test_AbstractVerticalProjection_create_xlabel_formatter():
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
-    o = plot.AbstractVerticalProjection(axes, s, 6)
+    o = AbstractVerticalProjectionTest(axes, s, 6)
     assert o.create_xlabel_formatter() == None
     plt.close(axes.get_figure())
   
@@ -1029,7 +1059,7 @@ def test_AbstractVerticalProjection_create_xlabel_formatter():
 def test_AbstractVerticalProjection_select_xvalues(plotData):
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
-    o = plot.AbstractVerticalProjection(axes, s, 6)
+    o = AbstractVerticalProjectionTest(axes, s, 6)
     assert o.select_xvalues(plotData.trajectories[0]) == None
     plt.close(axes.get_figure())
 
@@ -1037,7 +1067,7 @@ def test_AbstractVerticalProjection_select_xvalues(plotData):
 def test_AbstractVerticalProjection_create_interval_symbol_drawer():
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
-    o = plot.AbstractVerticalProjection(axes, s, 6)
+    o = AbstractVerticalProjectionTest(axes, s, 6)
     assert o.create_interval_symbol_drawer() is not None
     plt.close(axes.get_figure())
 
@@ -1057,8 +1087,15 @@ def test_TimeVerticalProjection_calc_xrange(plotData):
     axes = plt.axes()
     o = plot.TimeVerticalProjection(axes, s, 6)
     r = o.calc_xrange(plotData)
-    assert r[0] == datetime.datetime(1995, 10, 16,  0, 0)
-    assert r[1] == datetime.datetime(1995, 10, 16, 12, 0)
+    utc = pytz.utc
+    assert r[0] == datetime.datetime(1995, 10, 16,  0, 0, 0, 0, utc)
+    assert r[1] == datetime.datetime(1995, 10, 16, 12, 0, 0, 0, utc)
+    
+    est = pytz.timezone("EST")
+    r = o.calc_xrange(plotData, est)
+    assert r[0] == datetime.datetime(1995, 10, 15, 19, 0, 0, 0)
+    assert r[1] == datetime.datetime(1995, 10, 16,  7, 0, 0, 0)
+    
     plt.close(axes.get_figure())
         
 
@@ -1087,9 +1124,18 @@ def test_TimeVerticalProjection_select_xvalues(plotData):
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
     o = plot.TimeVerticalProjection(axes, s, 6)
+    
     x = o.select_xvalues(plotData.trajectories[0])
+    utc = pytz.utc
     assert len(x) > 0
-    assert x[0] == datetime.datetime(1995, 10, 16, 0, 0)
+    assert x[0] == datetime.datetime(1995, 10, 16, 0, 0, 0, 0, utc)
+
+    est = pytz.timezone("EST")    
+    x = o.select_xvalues(plotData.trajectories[0], est)
+    utc = pytz.utc
+    assert len(x) > 0
+    assert x[0] == datetime.datetime(1995, 10, 15, 19, 0, 0, 0)
+    
     plt.close(axes.get_figure())
 
 
@@ -1108,6 +1154,7 @@ def test_AgeVerticalProjection_calc_xrange(plotData):
     axes = plt.axes()
     o = plot.AgeVerticalProjection(axes, s, 6)
     assert o.calc_xrange(plotData) == (0.0, 12.0)
+    assert o.calc_xrange(plotData, pytz.utc) == (0.0, 12.0)
     plt.close(axes.get_figure())
 
 
@@ -1130,9 +1177,16 @@ def test_AgeVerticalProjection_select_xvalues(plotData):
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
     o = plot.AgeVerticalProjection(axes, s, 6)
+    
     x = o.select_xvalues(plotData.trajectories[0])
     assert len(x) > 0
     assert x[0] == 0
+    
+    est = pytz.timezone("EST")
+    x = o.select_xvalues(plotData.trajectories[0], est)
+    assert len(x) > 0
+    assert x[0] == 0
+    
     plt.close(axes.get_figure())
  
 

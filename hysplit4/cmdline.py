@@ -35,6 +35,17 @@ class CommandLineArguments:
             if len(arg) >= 2:
                 if arg == "-:":
                     break
+                elif arg[0:2] == "--":
+                    if arg.count("=") > 0:
+                        k = arg.index("=")
+                        opt = arg[:k]
+                        val = arg[k+1:]
+                        self.args[opt] = val
+                    else:
+                        opt = arg
+                        val = None
+                        self.args[opt] = val
+                    logger.debug("adding command-line argument %s as %s -> %s", arg, opt, val)
                 elif arg[0] == "+" or arg[0] == "-":
                     opt = arg[:2]
                     val = arg[2:]

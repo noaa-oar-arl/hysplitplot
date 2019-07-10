@@ -1,9 +1,10 @@
 import pytest
 import matplotlib.pyplot as plt
+from matplotlib.contour import QuadContourSet
 import numpy
+import pytz
 from hysplit4.conc import plot, model, helper, gisout
 from hysplit4 import const, mapfile, mapproj, labels, smooth, util
-from matplotlib.contour import QuadContourSet
 
 
 @pytest.fixture
@@ -533,7 +534,7 @@ def test_ConcentrationPlot_update_gridlines():
 
 def test_ConcentrationPlot_read_data_files():
     p = plot.ConcentrationPlot()
-    p.merge_plot_settings(None, ["-idata/cdump", "-w1", "-d2"])
+    p.merge_plot_settings(None, ["-idata/cdump", "-w1", "-d2", "--source-time-zone"])
 
     p.read_data_files()
 
@@ -556,6 +557,7 @@ def test_ConcentrationPlot_read_data_files():
     assert p.depo_map is not None
     assert p.depo_sum is not None
     assert p.settings.smoothing_distance > 0 and p.smoothing_kernel is not None
+    assert p.source_time_zone is not None
 
 
 def test_ConcentrationPlot__post_file_processing(cdump2):
@@ -693,8 +695,8 @@ def test_ConcentrationPlot_make_plot_title(cdump):
     title = p.make_plot_title(plotData, p.conc_map, level1, level2)
     assert title == "NOAA HYSPLIT MODEL\n" + \
             "Concentration ($mass/m^3$) at level 2 m\n" + \
-            "Integrated from 1700 25 Sep to 0500 26 Sep 83 (UTC)\n" + \
-            "TEST Release started at 1700 25 Sep 83 (UTC)"
+            "Integrated from 1700 25 Sep to 0500 26 Sep 1983 (UTC)\n" + \
+            "TEST Release started at 1700 25 Sep 1983 (UTC)"
 
     # swap start and end datetimes
     plotData.starting_datetime, plotData.ending_datetime = plotData.ending_datetime, plotData.starting_datetime
@@ -702,8 +704,16 @@ def test_ConcentrationPlot_make_plot_title(cdump):
     title = p.make_plot_title(plotData, p.conc_map, level1, level2)
     assert title == "NOAA HYSPLIT MODEL\n" + \
             "Concentration ($mass/m^3$) at level 2 m\n" + \
-            "Integrated from 0500 26 Sep to 1700 25 Sep 83 (UTC) [backward]\n" + \
-            "TEST Calculation started at 1700 25 Sep 83 (UTC)"
+            "Integrated from 0500 26 Sep to 1700 25 Sep 1983 (UTC) [backward]\n" + \
+            "TEST Calculation started at 1700 25 Sep 1983 (UTC)"
+
+    # set the time zone
+    p.source_time_zone = pytz.timezone("EST")
+    title = p.make_plot_title(plotData, p.conc_map, level1, level2)
+    assert title == "NOAA HYSPLIT MODEL\n" + \
+            "Concentration ($mass/m^3$) at level 2 m\n" + \
+            "Integrated from 0000 26 Sep to 1200 25 Sep 1983 (EST) [backward]\n" + \
+            "TEST Calculation started at 1200 25 Sep 1983 (EST)"   
 
 
 def test_ConcentrationPlot_make_ylabel(cdump):
@@ -736,12 +746,12 @@ def test_ConcentrationPlot_make_xlabel(cdump):
 
     g.ending_forecast_hr = 24
     p.prev_forecast_time = None
-    assert p.make_xlabel(g) == "0500 25 Sep 83 NARR FORECAST INITIALIZATION"
+    assert p.make_xlabel(g) == "0500 25 Sep 1983 NARR FORECAST INITIALIZATION"
     
     g.ending_forecast_hr = 23
     assert p.make_xlabel(g) == "NARR METEOROLOGICAL DATA"
 
-    assert p.make_xlabel(g) == "0600 25 Sep 83 NARR FORECAST INITIALIZATION"
+    assert p.make_xlabel(g) == "0600 25 Sep 1983 NARR FORECAST INITIALIZATION"
     
 
 def test_ConcentrationPlot__initialize_map_projection():

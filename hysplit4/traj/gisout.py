@@ -1,6 +1,8 @@
 import logging
-from hysplit4 import const
+from abc import ABC, abstractmethod
+from hysplit4 import const, util
 from hysplit4.traj import model
+from asn1crypto._ffi import null
 
 
 logger = logging.getLogger(__name__)
@@ -15,51 +17,65 @@ def debug_trunc(f):
 class GISFileWriterFactory:
     
     @staticmethod
-    def create_instance(selector, height_unit=const.HeightUnit.METERS):
+    def create_instance(selector, height_unit=const.HeightUnit.METERS, time_zone=None):
         if selector == const.GISOutput.GENERATE_POINTS:
-            return PointsGenerateFileWriter()
+            return PointsGenerateFileWriter(time_zone)
         elif selector == const.GISOutput.GENERATE_LINES:
-            return LinesGenerateFileWriter()
+            return LinesGenerateFileWriter(time_zone)
         elif selector == const.GISOutput.KML:
-            return KMLWriter(height_unit)
+            return KMLWriter(height_unit, time_zone)
         elif selector == const.GISOutput.PARTIAL_KML:
-            return PartialKMLWriter(height_unit)
+            return PartialKMLWriter(height_unit, time_zone)
         elif selector != const.GISOutput.NONE:
             logger.warning("Unknown GIS file writer type %d", selector)
-        return None
+        return NullGISFileWriter(time_zone)
 
 
-class AbstractGISFileWriter:
+class AbstractGISFileWriter(ABC):
     
-    def __init__(self):
+    def __init__(self, time_zone=None):
         self.output_suffix = "ps"           # for backward compatibility
         self.output_name = "trajplot.ps"    # for backward compatibility
         self.kml_option = const.KMLOption.NONE
-        return
+        self.time_zone = time_zone
 
+    @abstractmethod
+    def write(self, file_no, plot_data):
+        pass
+
+
+class NullGISFileWriter(AbstractGISFileWriter):
+    
+    def __init__(self, time_zone=None):
+        super(NullGISFileWriter, self).__init__(time_zone)
+
+    def write(self, file_no, plot_data):
+        pass
+    
 
 class GenerateAttributeFileWriter:
     
     @staticmethod
-    def write(filename, plot_data):
+    def write(filename, plot_data, time_zone=None):
         with open(filename, "wt") as f:
             f.write("#TRAJNUM,YYYYMMDD,TIME,LEVEL\n")
             for k, t in enumerate(plot_data.trajectories):
                 for j in range(len(t.longitudes)):
+                    dt = t.datetimes[j] if time_zone is None else t.datetimes[j].astimezone(time_zone)
                     f.write("{0:6d},{1:4d}{2:02d}{3:02d},{4:02d}{5:02d},{6:8d}.\n".format(
                         (k+1)*1000 + j,
-                        t.datetimes[j].year,
-                        t.datetimes[j].month,
-                        t.datetimes[j].day,
-                        t.datetimes[j].hour,
-                        t.datetimes[j].minute,
+                        dt.year,
+                        dt.month,
+                        dt.day,
+                        dt.hour,
+                        dt.minute,
                         debug_trunc(t.heights[j])))
 
 
 class PointsGenerateFileWriter(AbstractGISFileWriter):
     
-    def __init__(self):
-        AbstractGISFileWriter.__init__(self)
+    def __init__(self, time_zone=None):
+        AbstractGISFileWriter.__init__(self, time_zone)
     
     def write(self, file_no, plot_data):
         gisout = "GIS_traj_{0}_{1:02d}.txt".format(self.output_suffix, file_no)
@@ -74,13 +90,13 @@ class PointsGenerateFileWriter(AbstractGISFileWriter):
             f.write("END\n")
             
         gisatt = "GIS_traj_{0}_{1:02d}.att".format(self.output_suffix, file_no)
-        GenerateAttributeFileWriter.write(gisatt, plot_data)
+        GenerateAttributeFileWriter.write(gisatt, plot_data, self.time_zone)
 
 
 class LinesGenerateFileWriter(AbstractGISFileWriter):
     
-    def __init__(self):
-        AbstractGISFileWriter.__init__(self)
+    def __init__(self, time_zone=None):
+        AbstractGISFileWriter.__init__(self, time_zone)
     
     def write(self, file_no, plot_data):
         gisout = "GIS_traj_{0}_{1:02d}.txt".format(self.output_suffix, file_no)
@@ -98,13 +114,13 @@ class LinesGenerateFileWriter(AbstractGISFileWriter):
             f.write("END\n")
             
         gisatt = "GIS_traj_{0}_{1:02d}.att".format(self.output_suffix, file_no)
-        GenerateAttributeFileWriter.write(gisatt, plot_data)
+        GenerateAttributeFileWriter.write(gisatt, plot_data, self.time_zone)
 
 
 class KMLWriter(AbstractGISFileWriter):
     
-    def __init__(self, height_unit=const.HeightUnit.METERS):
-        AbstractGISFileWriter.__init__(self)
+    def __init__(self, height_unit=const.HeightUnit.METERS, time_zone=None):
+        AbstractGISFileWriter.__init__(self, time_zone)
         self.height_unit = height_unit
     
     @staticmethod
@@ -120,14 +136,9 @@ class KMLWriter(AbstractGISFileWriter):
             return "{0}_{1:02d}.kml".format(name, file_no)
     
     @staticmethod
-    def _get_iso_8601_str(dt):
-        return "{0:04d}-{1:02d}-{2:02d}T{3:02d}:{4:02d}:{5:02d}Z".format(
-            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
-    
-    @staticmethod
-    def _get_timestamp_str(dt):
-        return "{1:02d}/{2:02d}/{0:04d} {3:02d}{4:02d} UTC".format(
-            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+    def _get_timestamp_str(dt, time_zone=None):
+        t = dt if time_zone is None else dt.astimezone(time_zone)
+        return t.strftime("%m/%d/%Y %H%M %Z")
     
     @staticmethod
     def _get_alt_mode(t):
@@ -159,7 +170,7 @@ class KMLWriter(AbstractGISFileWriter):
         t = plot_data.trajectories[0]
         starting_loc = t.starting_loc
         starting_datetime = t.starting_datetime
-        timestamp_str = self._get_iso_8601_str(starting_datetime)
+        timestamp_str = util.get_iso_8601_str(starting_datetime, self.time_zone)
 
         f.write("""\
 <?xml version="1.0" encoding="UTF-8"?>
@@ -302,7 +313,7 @@ class KMLWriter(AbstractGISFileWriter):
     		t.starting_loc[0],
     		t.starting_loc[1]))
 
-        timestamp_str = self._get_iso_8601_str(t.starting_datetime)
+        timestamp_str = util.get_iso_8601_str(t.starting_datetime, self.time_zone)
 
         f.write("""\
           <range>2000000.0</range>
@@ -335,7 +346,7 @@ class KMLWriter(AbstractGISFileWriter):
                 t.latitudes[k],
                 debug_trunc(vc.values[k])))
         
-        starttime_str = self._get_timestamp_str(t.starting_datetime)
+        starttime_str = self._get_timestamp_str(t.starting_datetime, self.time_zone)
         
         f.write("""\
           </coordinates>
@@ -397,7 +408,7 @@ LAT: {1:.4f} LON: {2:.4f} Hght({3}): {4:.1f}
           </LookAt>
           <Snippet maxLines="0"/>
           <TimeSpan>\n""".format(
-                self._get_timestamp_str(t.datetimes[k]),
+                self._get_timestamp_str(t.datetimes[k], self.time_zone),
                 t.longitudes[k],
                 t.latitudes[k]))
 
@@ -405,14 +416,14 @@ LAT: {1:.4f} LON: {2:.4f} Hght({3}): {4:.1f}
                 f.write("""\
             <end>{0}</end>
             <begin>{1}</begin>\n""".format(
-                    self._get_iso_8601_str(t.datetimes[k-1]),
-                    self._get_iso_8601_str(t.datetimes[k])))
+                    util.get_iso_8601_str(t.datetimes[k-1], self.time_zone),
+                    util.get_iso_8601_str(t.datetimes[k], self.time_zone)))
             else:
                 f.write("""\
             <begin>{0}</begin>
             <end>{1}</end>\n""".format(
-                    self._get_iso_8601_str(t.datetimes[k-1]),
-                    self._get_iso_8601_str(t.datetimes[k])))
+                    util.get_iso_8601_str(t.datetimes[k-1], self.time_zone),
+                    util.get_iso_8601_str(t.datetimes[k], self.time_zone)))
             
             f.write("""\
           </TimeSpan>
@@ -428,7 +439,7 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
           </Point>
         </Placemark>\n""".format(
                 t.ages[k],
-                self._get_timestamp_str(t.datetimes[k]),
+                self._get_timestamp_str(t.datetimes[k], self.time_zone),
                 t.latitudes[k],
                 t.longitudes[k],
                 self._get_level_type(t),
@@ -445,8 +456,8 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
  
 class PartialKMLWriter(KMLWriter):
     
-    def __init__(self, height_unit=const.HeightUnit.METERS):
-        KMLWriter.__init__(self, height_unit)
+    def __init__(self, height_unit=const.HeightUnit.METERS, time_zone=None):
+        KMLWriter.__init__(self, height_unit, time_zone)
     
     @staticmethod
     def make_filename(output_name, output_suffix, file_no):

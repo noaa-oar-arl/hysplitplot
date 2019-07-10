@@ -1,5 +1,6 @@
 import pytest
 import datetime
+import pytz
 from hysplit4.traj import plot, model
 from hysplit4 import const
 
@@ -202,9 +203,10 @@ def test_TrajectoryDump_get_age_range(plotData):
 
 def test_TrajectoryDump_get_datetime_range(plotData):
     r = plotData.get_datetime_range()
-
-    assert r[0] == datetime.datetime(1995, 10, 16,  0, 0)
-    assert r[1] == datetime.datetime(1995, 10, 16, 12, 0)
+    utc = pytz.utc
+    
+    assert r[0] == datetime.datetime(1995, 10, 16,  0, 0, 0, 0, utc)
+    assert r[1] == datetime.datetime(1995, 10, 16, 12, 0, 0, 0, utc)
 
 
 def test_TrajectoryDump_get_max_forecast_hour(plotData):
@@ -216,8 +218,9 @@ def test_TrajectoryDump_get_max_forecast_hour(plotData):
 
 def test_TrajectoryDump_get_forecast_init_datetime(plotData):
     r = plotData.get_forecast_init_datetime()
+    utc = pytz.utc
 
-    assert r == datetime.datetime(1995, 10, 16,  0, 0)
+    assert r == datetime.datetime(1995, 10, 16,  0, 0, 0, 0, utc)
 
 
 def test_TrajectoryDump_fix_vertical_coordinates():
@@ -345,9 +348,10 @@ def test_Trajectory_ages(plotData):
 
 def test_Trajectory_datetimes(plotData):
     datetimes = plotData.trajectories[0].datetimes
+    utc = pytz.utc
     assert len(datetimes) == 13
-    assert datetimes[0] == datetime.datetime(1995, 10, 16, 0, 0)
-    assert datetimes[12] == datetime.datetime(1995, 10, 16, 12, 0)
+    assert datetimes[0] == datetime.datetime(1995, 10, 16, 0, 0, 0, 0, utc)
+    assert datetimes[12] == datetime.datetime(1995, 10, 16, 12, 0, 0, 0, utc)
 
     plotData.trajectories[0].datetimes = []
     
@@ -441,13 +445,32 @@ def test_Trajectory_repair_starting_level():
     assert t.starting_level == 500.0
 
 
-
-
 def test_TrajectoryDumpFileReader___init__():
     d = model.TrajectoryDump()
     r = model.TrajectoryDumpFileReader(d)
 
     assert r.trajectory_data is d
+    assert r.end_hour_duration == 0
+    assert r.vertical_coordinate == const.Vertical.PRESSURE
+    assert r.height_unit == const.HeightUnit.METERS
+    assert r.utc is not None
+
+
+def test_TrajectoryDumpFileReader_set_end_hour_duration():
+    d = model.TrajectoryDump()
+    r = model.TrajectoryDumpFileReader(d)
+    
+    r.set_end_hour_duration(100)
+    assert r.end_hour_duration == 100
+
+
+def test_TrajectoryDumpFileReader_set_vertical_coordinate():
+    d = model.TrajectoryDump()
+    r = model.TrajectoryDumpFileReader(d)
+    
+    r.set_vertical_coordinate(100, const.HeightUnit.FEET)
+    assert r.vertical_coordinate == 100
+    assert r.height_unit == const.HeightUnit.FEET
 
 
 def test_TrajectoryDumpFileReader_read():
@@ -456,6 +479,7 @@ def test_TrajectoryDumpFileReader_read():
     r = model.TrajectoryDumpFileReader(d)
     r.set_end_hour_duration(s.end_hour_duration)
     r.set_vertical_coordinate(s.vertical_coordinate, s.height_unit)
+    utc = pytz.utc
     
     o = r.read("data/tdump")
     s.vertical_coordinate = r.vertical_coordinate
@@ -468,7 +492,7 @@ def test_TrajectoryDumpFileReader_read():
     g = d.grids[0]
     assert g.parent is d
     assert g.model == "    NGM "
-    assert g.datetime == datetime.datetime(1995, 10, 16, 0, 0)
+    assert g.datetime == datetime.datetime(1995, 10, 16, 0, 0, 0, 0, utc)
     assert g.forecast_hour == 0
 
     assert len(d.trajectories) == 3
@@ -479,7 +503,7 @@ def test_TrajectoryDumpFileReader_read():
 
     t = d.trajectories[0]
     assert t.parent is d
-    assert t.starting_datetime == datetime.datetime(1995, 10, 16, 0, 0)
+    assert t.starting_datetime == datetime.datetime(1995, 10, 16, 0, 0, 0, 0, utc)
     assert t.starting_loc == (-90.0, 40.0)
     assert t.starting_level == 10.0
     assert t.starting_level_index == 0
@@ -488,7 +512,7 @@ def test_TrajectoryDumpFileReader_read():
 
     t = d.trajectories[1]
     assert t.parent is d
-    assert t.starting_datetime == datetime.datetime(1995, 10, 16, 0, 0)
+    assert t.starting_datetime == datetime.datetime(1995, 10, 16, 0, 0, 0, 0, utc)
     assert t.starting_loc == (-90.0, 40.0)
     assert t.starting_level == 500.0
     assert t.starting_level_index == 1
@@ -497,7 +521,7 @@ def test_TrajectoryDumpFileReader_read():
 
     t = d.trajectories[2]
     assert t.parent is d
-    assert t.starting_datetime == datetime.datetime(1995, 10, 16, 0, 0)
+    assert t.starting_datetime == datetime.datetime(1995, 10, 16, 0, 0, 0, 0, utc)
     assert t.starting_loc == (-90.0, 40.0)
     assert t.starting_level == 1000.0
     assert t.starting_level_index == 2
@@ -517,7 +541,7 @@ def test_TrajectoryDumpFileReader_read():
 
     k = 12
     assert t.grids[k] is d.grids[0]
-    assert t.datetimes[k] == datetime.datetime(1995, 10, 16, 12, 0)
+    assert t.datetimes[k] == datetime.datetime(1995, 10, 16, 12, 0, 0, 0, utc)
     assert t.forecast_hours[k] == 0
     assert t.ages[k] == 12.0
     assert t.latitudes[k] == 38.586
@@ -539,7 +563,7 @@ def test_TrajectoryDumpFileReader_read():
 
     k = 12
     assert t.grids[k] is d.grids[0]
-    assert t.datetimes[k] == datetime.datetime(1995, 10, 16, 12, 0)
+    assert t.datetimes[k] == datetime.datetime(1995, 10, 16, 12, 0, 0, 0, utc)
     assert t.forecast_hours[k] == 0
     assert t.ages[k] == 12.0
     assert t.latitudes[k] == 36.886
@@ -555,6 +579,7 @@ def test_TrajectoryDumpFileReader_read_fmt0():
     r = model.TrajectoryDumpFileReader(d)
     r.set_end_hour_duration(s.end_hour_duration)
     r.set_vertical_coordinate(s.vertical_coordinate, s.height_unit)
+    utc = pytz.utc
     
     r.read("data/tdump_fmt0")
     s.vertical_coordinate = r.vertical_coordinate
@@ -566,7 +591,7 @@ def test_TrajectoryDumpFileReader_read_fmt0():
     g = d.grids[0]
     assert g.parent is d
     assert g.model == "    NGM "
-    assert g.datetime == datetime.datetime(1995, 10, 16, 0, 0)
+    assert g.datetime == datetime.datetime(1995, 10, 16, 0, 0, 0, 0, utc)
     assert g.forecast_hour == 0
 
     assert len(d.trajectories) == 3
@@ -577,7 +602,7 @@ def test_TrajectoryDumpFileReader_read_fmt0():
 
     t = d.trajectories[0]
     assert t.parent is d
-    assert t.starting_datetime == datetime.datetime(1995, 10, 16, 0, 0)
+    assert t.starting_datetime == datetime.datetime(1995, 10, 16, 0, 0, 0, 0, utc)
     assert t.starting_loc == (-90.0, 40.0)
     assert t.starting_level == 10.0
     assert t.starting_level_index == 0
@@ -586,7 +611,7 @@ def test_TrajectoryDumpFileReader_read_fmt0():
 
     t = d.trajectories[1]
     assert t.parent is d
-    assert t.starting_datetime == datetime.datetime(1995, 10, 16, 0, 0)
+    assert t.starting_datetime == datetime.datetime(1995, 10, 16, 0, 0, 0, 0, utc)
     assert t.starting_loc == (-90.0, 40.0)
     assert t.starting_level == 500.0
     assert t.starting_level_index == 1
@@ -595,7 +620,7 @@ def test_TrajectoryDumpFileReader_read_fmt0():
 
     t = d.trajectories[2]
     assert t.parent is d
-    assert t.starting_datetime == datetime.datetime(1995, 10, 16, 0, 0)
+    assert t.starting_datetime == datetime.datetime(1995, 10, 16, 0, 0, 0, 0, utc)
     assert t.starting_loc == (-90.0, 40.0)
     assert t.starting_level == 1000.0
     assert t.starting_level_index == 2
@@ -615,7 +640,7 @@ def test_TrajectoryDumpFileReader_read_fmt0():
 
     k = 12
     assert t.grids[k] is d.grids[0]
-    assert t.datetimes[k] == datetime.datetime(1995, 10, 16, 12, 0)
+    assert t.datetimes[k] == datetime.datetime(1995, 10, 16, 12, 0, 0, 0, utc)
     assert t.forecast_hours[k] == 0
     assert t.ages[k] == 12.0
     assert t.latitudes[k] == 38.586
@@ -637,7 +662,7 @@ def test_TrajectoryDumpFileReader_read_fmt0():
 
     k = 12
     assert t.grids[k] is d.grids[0]
-    assert t.datetimes[k] == datetime.datetime(1995, 10, 16, 12, 0)
+    assert t.datetimes[k] == datetime.datetime(1995, 10, 16, 12, 0, 0, 0, utc)
     assert t.forecast_hours[k] == 0
     assert t.ages[k] == 12.0
     assert t.latitudes[k] == 36.886

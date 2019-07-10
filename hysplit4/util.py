@@ -108,6 +108,12 @@ def normalize_output_filename(pathname, ext="ps"):
 def restore_year(yr):
     return 2000 + yr if (yr < 40) else 1900 + yr
 
+def get_iso_8601_str(dt, time_zone=None):
+    t = dt if time_zone is None else dt.astimezone(time_zone)
+    if t.tzinfo is None or t.tzinfo.utcoffset(t).total_seconds() == 0:
+        return t.strftime("%Y-%m-%dT%H:%M:%SZ")
+    return t.strftime("%Y-%m-%dT%H:%M:%S%z")
+    
 def calc_ring_distance(ext_sz, grid_delta, center_loc, ring_number, ring_distance):
     ext_lon, ext_lat = ext_sz
     if ring_distance == 0.0:

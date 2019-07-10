@@ -1,5 +1,7 @@
 import pytest
 import numpy
+import pytz
+import datetime
 from hysplit4 import util, const
 
 
@@ -111,6 +113,16 @@ def test_restore_year():
     assert util.restore_year(39) == 2039
     assert util.restore_year(40) == 1940
     assert util.restore_year(99) == 1999
+        
+
+def test_get_iso_8601_str():
+    utc = pytz.utc
+    dt = datetime.datetime(1983, 10, 13, 0, 15, 0, 0, utc)
+    assert util.get_iso_8601_str(dt) == "1983-10-13T00:15:00Z"
+
+    eastern = pytz.timezone("EST")
+    dt = datetime.datetime(1983, 10, 13, 0, 15, 0, 0, eastern)
+    assert util.get_iso_8601_str(dt) == "1983-10-13T00:15:00-0500"
 
 
 def test_calc_ring_distance():

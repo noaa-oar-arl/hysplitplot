@@ -39,6 +39,14 @@ def test_CommandLineArguments_add():
     assert c.args["-a"] == "0"
     assert c.args["+b"] == "1"
     assert c.args["-d"] == "4"
+    
+    # long form
+    c.clear()
+    c.add(["--source-time-zone"])
+    assert "--source-time-zone" in c.args
+    
+    c.add(["--long-form=314"])
+    assert c.args["--long-form"] == "314"
 
 
 def test_CommandLineArguments_has_arg():

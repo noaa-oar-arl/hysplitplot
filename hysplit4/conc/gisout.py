@@ -4,7 +4,7 @@ import numpy
 import copy
 from matplotlib.path import Path
 from abc import ABC, abstractmethod
-from hysplit4 import const
+from hysplit4 import const, util
 from hysplit4.conc import model
 
 
@@ -14,27 +14,30 @@ logger = logging.getLogger(__name__)
 class GISFileWriterFactory:
     
     @staticmethod
-    def create_instance(selector, kml_option):
+    def create_instance(selector, kml_option, time_zone=None):
         if selector == const.GISOutput.GENERATE_POINTS:
-            return PointsGenerateFileWriter(PointsGenerateFileWriter.DecimalFormWriter())
+            formatter = PointsGenerateFileWriter.DecimalFormWriter(time_zone)
+            return PointsGenerateFileWriter(formatter, time_zone)
         elif selector == const.GISOutput.GENERATE_POINTS_2:
-            return PointsGenerateFileWriter(PointsGenerateFileWriter.ExponentFormWriter())
+            formatter = PointsGenerateFileWriter.ExponentFormWriter(time_zone)
+            return PointsGenerateFileWriter(formatter, time_zone)
         elif selector == const.GISOutput.KML:
-            return KMLWriter(kml_option)
+            return KMLWriter(kml_option, time_zone)
         elif selector == const.GISOutput.PARTIAL_KML:
-            return PartialKMLWriter(kml_option)
+            return PartialKMLWriter(kml_option, time_zone)
         elif selector != const.GISOutput.NONE:
             logger.warning("Unknown GIS file writer type %d", selector)
-        return IdleWriter()
+        return IdleWriter(time_zone)
     
 
 class AbstractWriter(ABC):
         
-    def __init__(self):
+    def __init__(self, time_zone=None):
         self.alt_mode_str   = "clampedToGround"
         self.KMLOUT         = 0
         self.output_suffix  = "ps"
         self.KMAP           = const.ConcentrationMapType.CONCENTRATION
+        self.time_zone      = time_zone
     
     def initialize(self, gis_alt_mode, KMLOUT, output_suffix, KMAP, NSSLBL, show_max_conc):
         self.alt_mode_str       = "relativeToGround" if gis_alt_mode == const.GISOutputAltitude.RELATIVE_TO_GROUND \
@@ -60,16 +63,11 @@ class AbstractWriter(ABC):
         r = clr[1:3]; g = clr[3:5]; b = clr[5:7]
         return "C8{}{}{}".format(b, g, r).upper()
      
-    @staticmethod
-    def _get_iso_8601_str(dt):
-        return "{0:04d}-{1:02d}-{2:02d}T{3:02d}:{4:02d}:{5:02d}Z".format(
-            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
-           
     
 class IdleWriter(AbstractWriter):
     
-    def __init__(self):
-        AbstractWriter.__init__(self)
+    def __init__(self, time_zone=None):
+        AbstractWriter.__init__(self, time_zone)
 
     def make_output_basename(self, g, conc_type, depo_sum, output_basename, output_suffix, KMLOUT, upper_vert_level):
         pass   
@@ -77,8 +75,8 @@ class IdleWriter(AbstractWriter):
 
 class PointsGenerateFileWriter(AbstractWriter):
     
-    def __init__(self, formatter):
-        AbstractWriter.__init__(self)
+    def __init__(self, formatter, time_zone=None):
+        AbstractWriter.__init__(self, time_zone)
         self.formatter = formatter
         
     def make_output_basename(self, g, conc_type, depo_sum, output_basename, output_suffix, KMLOUT, upper_vert_level):
@@ -107,9 +105,11 @@ class PointsGenerateFileWriter(AbstractWriter):
 
 
     class DecimalFormWriter:
-        
-        @staticmethod
-        def write_boundary(f, boundary, contour_level):
+
+        def __init__(self, time_zone=None):
+            self.time_zone = time_zone
+            
+        def write_boundary(self, f, boundary, contour_level):
             f.write("{0:10.5f}, {1:10.5f}, {2:10.5f}\n".format(math.log10(contour_level),
                                                                boundary.longitudes[0],
                                                                boundary.latitudes[0]))
@@ -118,20 +118,24 @@ class PointsGenerateFileWriter(AbstractWriter):
                                                         boundary.latitudes[k]))
             f.write("END\n")
         
-        @staticmethod
-        def write_attributes(f, g, lower_vert_level, upper_vert_level, contour_level, color):
-            f.write("{:7.3f},{:4s},{:4d}{:02d}{:02d},{:04d},{:05d},{:05d},{:8s}\n".format(math.log10(contour_level),
-                                                                                          g.pollutant,
-                                                                                          g.ending_datetime.year,
-                                                                                          g.ending_datetime.month,
-                                                                                          g.ending_datetime.day,
-                                                                                          g.ending_datetime.hour * 100,
-                                                                                          int(lower_vert_level),
-                                                                                          int(upper_vert_level),
-                                                                                          color));
+        def write_attributes(self, f, g, lower_vert_level, upper_vert_level, contour_level, color):
+            dt = g.ending_datetime if self.time_zone is None else g.ending_datetime.astimezone(self.time_zone)
+            f.write("{:7.3f},{:4s},{:4d}{:02d}{:02d},{:02d}{:02d},{:05d},{:05d},{:8s}\n".format(math.log10(contour_level),
+                                                                                                g.pollutant,
+                                                                                                dt.year,
+                                                                                                dt.month,
+                                                                                                dt.day,
+                                                                                                dt.hour,
+                                                                                                dt.minute,
+                                                                                                int(lower_vert_level),
+                                                                                                int(upper_vert_level),
+                                                                                                color));
             
     class ExponentFormWriter:
         
+        def __init__(self, time_zone=None):
+            self.time_zone = time_zone
+            
         def write_boundary(self, f, boundary, contour_level):
             f.write("{0:10.3e}, {1:10.5f}, {2:10.5f}\n".format(contour_level,
                                                                boundary.longitudes[0],
@@ -142,21 +146,23 @@ class PointsGenerateFileWriter(AbstractWriter):
             f.write("END\n")
         
         def write_attributes(self, f, g, lower_vert_level, upper_vert_level, contour_level, color):
-            f.write("{:10.3e},{:4s},{:4d}{:02d}{:02d},{:04d},{:05d},{:05d},{:8s}\n".format(contour_level,
-                                                                                           g.pollutant,
-                                                                                           g.ending_datetime.year,
-                                                                                           g.ending_datetime.month,
-                                                                                           g.ending_datetime.day,
-                                                                                           g.ending_datetime.hour * 100,
-                                                                                           int(lower_vert_level),
-                                                                                           int(upper_vert_level),
-                                                                                           color));
+            dt = g.ending_datetime if self.time_zone is None else g.ending_datetime.astimezone(self.time_zone)
+            f.write("{:10.3e},{:4s},{:4d}{:02d}{:02d},{:02d}{:02d},{:05d},{:05d},{:8s}\n".format(contour_level,
+                                                                                                 g.pollutant,
+                                                                                                 dt.year,
+                                                                                                 dt.month,
+                                                                                                 dt.day,
+                                                                                                 dt.hour,
+                                                                                                 dt.minute,
+                                                                                                 int(lower_vert_level),
+                                                                                                 int(upper_vert_level),
+                                                                                                 color));
                 
                 
 class KMLWriter(AbstractWriter):
     
-    def __init__(self, kml_option):
-        AbstractWriter.__init__(self)
+    def __init__(self, kml_option, time_zone=None):
+        AbstractWriter.__init__(self, time_zone)
         self.kml_option     = kml_option    # IKML
         self.kml_file       = None
         self.att_file       = None
@@ -202,9 +208,9 @@ class KMLWriter(AbstractWriter):
         if self.att_file is not None:
             self.att_file.close()
     
-    @staticmethod
-    def _get_att_datetime_str(dt):
-        return "{} {:04d}&".format(dt.strftime("%H%M UTC %b %d"), dt.year)
+    def _get_att_datetime_str(self, dt):
+        t = dt if self.time_zone is None else dt.astimezone(self.time_zone)
+        return t.strftime("%H%M %Z %b %d %Y&")
     
     def _write_attributes(self, f, g, contour_set):
         f.write("{}\n".format(self.KMAP))
@@ -263,7 +269,7 @@ class KMLWriter(AbstractWriter):
       <gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
     </LookAt>\n""".format(first_release_loc[0],
                           first_release_loc[1],
-                          self._get_iso_8601_str(g.starting_datetime)))
+                          util.get_iso_8601_str(g.starting_datetime)))
     
     def _write_colors(self, f, colors):
         for k, color in enumerate(colors):
@@ -397,8 +403,8 @@ Released between {} and {} m AGL
 
 class PartialKMLWriter(KMLWriter):
     
-    def __init__(self, kml_option):
-        KMLWriter.__init__(self, kml_option)
+    def __init__(self, kml_option, time_zone=None):
+        KMLWriter.__init__(self, kml_option, time_zone)
 
     def write(self, basename, g, contour_set, lower_vert_level, upper_vert_level):
         if self.kml_file is None:
@@ -421,37 +427,37 @@ class PartialKMLWriter(KMLWriter):
 class KMLContourWriterFactory:
     
     @staticmethod
-    def create_instance(KMAP, alt_mode_str):
+    def create_instance(KMAP, alt_mode_str, time_zone=None):
         if KMAP == const.ConcentrationMapType.CONCENTRATION:
-            return KMLConcentrationWriter(alt_mode_str)
+            return KMLConcentrationWriter(alt_mode_str, time_zone)
         elif KMAP == const.ConcentrationMapType.EXPOSURE:
-            return KMLConcentrationWriter(alt_mode_str)
+            return KMLConcentrationWriter(alt_mode_str, time_zone)
         elif KMAP == const.ConcentrationMapType.DEPOSITION:
-            return KMLDepositionWriter(alt_mode_str)
+            return KMLDepositionWriter(alt_mode_str, time_zone)
         elif KMAP == const.ConcentrationMapType.THRESHOLD_LEVELS:
-            return KMLChemicalThresholdWriter(alt_mode_str)
+            return KMLChemicalThresholdWriter(alt_mode_str, time_zone)
         elif KMAP == const.ConcentrationMapType.VOLCANIC_ERUPTION:
-            return KMLDepositionWriter(alt_mode_str)
+            return KMLDepositionWriter(alt_mode_str, time_zone)
         elif KMAP == const.ConcentrationMapType.DEPOSITION_6:
-            return KMLDepositionWriter(alt_mode_str)
+            return KMLDepositionWriter(alt_mode_str, time_zone)
         elif KMAP == const.ConcentrationMapType.MASS_LOADING:
-            return KMLMassLoadingWriter(alt_mode_str)
+            return KMLMassLoadingWriter(alt_mode_str, time_zone)
 
 
 class AbstractKMLContourWriter(ABC):
     
-    def __init__(self, alt_mode_str):
-        self.frame_count = 0
-        self.alt_mode_str = alt_mode_str
+    def __init__(self, alt_mode_str, time_zone=None):
+        self.frame_count    = 0
+        self.alt_mode_str   = alt_mode_str
+        self.time_zone      = time_zone
     
-    @staticmethod
-    def _get_begin_end_timestamps(g):
+    def _get_begin_end_timestamps(self, g):
         if g.ending_datetime < g.starting_datetime:
-            begin_ts = AbstractWriter._get_iso_8601_str(g.ending_datetime)
-            end_ts = AbstractWriter._get_iso_8601_str(g.starting_datetime)
+            begin_ts = util.get_iso_8601_str(g.ending_datetime, self.time_zone)
+            end_ts = util.get_iso_8601_str(g.starting_datetime, self.time_zone)
         else:
-            begin_ts = AbstractWriter._get_iso_8601_str(g.starting_datetime)
-            end_ts = AbstractWriter._get_iso_8601_str(g.ending_datetime)
+            begin_ts = util.get_iso_8601_str(g.starting_datetime, self.time_zone)
+            end_ts = util.get_iso_8601_str(g.ending_datetime, self.time_zone)
         return (begin_ts, end_ts)
     
     @abstractmethod
@@ -666,10 +672,9 @@ Value: {}
         </Polygon>
       </Placemark>\n""")
             
-    @staticmethod
-    def _get_timestamp_str(dt):
-        return "{:04d}{:02d}{:02d} {:02d}{:02d} UTC".format(
-            dt.year, dt.month, dt.day, dt.hour, dt.minute)
+    def _get_timestamp_str(self, dt):
+        t = dt if self.time_zone is None else dt.astimezone(self.time_zone)
+        return t.strftime("%Y%m%d %H%M %Z")
 
     def _write_placemark_visibility(self, f):
         pass
@@ -677,8 +682,8 @@ Value: {}
     
 class KMLConcentrationWriter(AbstractKMLContourWriter):
     
-    def __init__(self, alt_mode_str):
-        AbstractKMLContourWriter.__init__(self, alt_mode_str)
+    def __init__(self, alt_mode_str, time_zone=None):
+        AbstractKMLContourWriter.__init__(self, alt_mode_str, time_zone)
     
     def _get_name_cdata(self, dt):
         return """<pre>Concentration
@@ -701,8 +706,8 @@ Valid:{}</pre>""".format(int(lower_vert_level),
         
 class KMLChemicalThresholdWriter(KMLConcentrationWriter):
     
-    def __init__(self, alt_mode_str):
-        KMLConcentrationWriter.__init__(self, alt_mode_str)
+    def __init__(self, alt_mode_str, time_zone=None):
+        KMLConcentrationWriter.__init__(self, alt_mode_str, time_zone)
 
     def _get_contour_height_at(self, k, vert_level):
         return int(vert_level) if k == 1 else int(vert_level) + (200 * k)
@@ -710,8 +715,8 @@ class KMLChemicalThresholdWriter(KMLConcentrationWriter):
 
 class KMLDepositionWriter(AbstractKMLContourWriter):
     
-    def __init__(self, alt_mode_str):
-        AbstractKMLContourWriter.__init__(self, alt_mode_str)
+    def __init__(self, alt_mode_str, time_zone=None):
+        AbstractKMLContourWriter.__init__(self, alt_mode_str, time_zone)
     
     def _get_name_cdata(self, dt):
         return """<pre>Deposition
@@ -737,8 +742,8 @@ Valid:{}</pre>""".format(self._get_timestamp_str(dt))
       
 class KMLMassLoadingWriter(AbstractKMLContourWriter):
     
-    def __init__(self, alt_mode_str):
-        AbstractKMLContourWriter.__init__(self, alt_mode_str)
+    def __init__(self, alt_mode_str, time_zone=None):
+        AbstractKMLContourWriter.__init__(self, alt_mode_str, time_zone)
     
     def _get_name_cdata(self, dt):
         return """<pre>Mass_loading

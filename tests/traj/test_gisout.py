@@ -2,6 +2,7 @@ import pytest
 import os
 import datetime
 import numpy
+import pytz
 from hysplit4 import const
 from hysplit4.traj import plot, model, gisout
 
@@ -18,39 +19,114 @@ def plotData():
     return d
 
 
+# concrete classes for testing abstract classes
+class AbstractGISFileWriterTest(gisout.AbstractGISFileWriter):
+    
+    def __init__(self, time_zone=None):
+        super(AbstractGISFileWriterTest, self).__init__(time_zone)
+        
+    def write(self, file_no, plot_data):
+        pass
+
+
 def test_GISFileWriterFactory_create_instance():
+    tz = pytz.utc
+    
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.GENERATE_POINTS, const.HeightUnit.FEET, tz)
+    assert isinstance(w, gisout.PointsGenerateFileWriter)
+    assert w.time_zone is tz
+    
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.GENERATE_LINES, const.HeightUnit.FEET, tz)
+    assert isinstance(w, gisout.LinesGenerateFileWriter)
+    assert w.time_zone is tz
+    
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.KML, const.HeightUnit.FEET, tz)
+    assert isinstance(w, gisout.KMLWriter)
+    assert w.height_unit == const.HeightUnit.FEET
+    assert w.time_zone is tz
+    
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.PARTIAL_KML, const.HeightUnit.FEET, tz)
+    assert isinstance(w, gisout.PartialKMLWriter)
+    assert w.height_unit == const.HeightUnit.FEET
+    assert w.time_zone is tz
+    
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.NONE, const.HeightUnit.FEET, tz)
+    assert isinstance(w, gisout.NullGISFileWriter)
+    assert w.time_zone is tz
+    
+
+def test_GISFileWriterFactory_create_instance__without_time_zone():
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.GENERATE_POINTS)
     assert isinstance(w, gisout.PointsGenerateFileWriter)
+    assert w.time_zone is None
     
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.GENERATE_LINES)
     assert isinstance(w, gisout.LinesGenerateFileWriter)
+    assert w.time_zone is None
     
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.KML)
     assert isinstance(w, gisout.KMLWriter)
     assert w.height_unit == const.HeightUnit.METERS
+    assert w.time_zone is None
      
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.KML, const.HeightUnit.FEET)
     assert isinstance(w, gisout.KMLWriter)
     assert w.height_unit == const.HeightUnit.FEET
+    assert w.time_zone is None
     
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.PARTIAL_KML)
     assert isinstance(w, gisout.PartialKMLWriter)
     assert w.height_unit == const.HeightUnit.METERS
+    assert w.time_zone is None
      
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.PARTIAL_KML, const.HeightUnit.FEET)
     assert isinstance(w, gisout.PartialKMLWriter)
     assert w.height_unit == const.HeightUnit.FEET
+    assert w.time_zone is None
     
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.NONE)
-    assert w is None
+    assert isinstance(w, gisout.NullGISFileWriter)
+    assert w.time_zone is None
 
 
 def test_AbstractGISFileWriter___init__():
-    w = gisout.AbstractGISFileWriter()
+    w = AbstractGISFileWriterTest()
     
     assert w.output_suffix == "ps"
     assert w.output_name == "trajplot.ps"
     assert w.kml_option == const.KMLOption.NONE
+    assert w.time_zone is None
+
+    tz = pytz.utc
+    w = AbstractGISFileWriterTest(tz)
+    assert w.time_zone is tz
+    
+
+def test_AbstractGISFileWriter_write(plotData):
+    # just see if no error occurs
+    try:
+        w = AbstractGISFileWriterTest()
+        w.write(1, plotData)
+    except Exception as ex:
+        pytest.fail("unexpected exception: {0}".format(ex))
+
+    
+def test_NullGISFileWriter___init__():
+    w = gisout.NullGISFileWriter()
+    assert w.time_zone is None
+
+    tz = pytz.utc
+    w = gisout.NullGISFileWriter(tz)
+    assert w.time_zone is tz
+    
+
+def test_NullGISFileWriter_write(plotData):
+    # just see if no error occurs
+    try:
+        w = gisout.NullGISFileWriter()
+        w.write(1, plotData)
+    except Exception as ex:
+        pytest.fail("unexpected exception: {0}".format(ex))    
 
 
 def test_GenerateAttributeFileWriter_write(plotData):
@@ -58,15 +134,21 @@ def test_GenerateAttributeFileWriter_write(plotData):
     try:
         gisout.GenerateAttributeFileWriter.write("__gis.att", plotData)
         os.remove("__gis.att")
+
+        tz = pytz.timezone("EST")        
+        gisout.GenerateAttributeFileWriter.write("__gis.att", plotData, tz)
+        os.remove("__gis.att")
     except Exception as ex:
         pytest.fail("unexpected exception: {0}".format(ex))
 
     
 def test_PointsGenerateFileWriter___init__():
-    try:
-        w = gisout.PointsGenerateFileWriter()
-    except Exception as ex:
-        pytest.fail("unexpected exception: {0}".format(ex))
+    w = gisout.PointsGenerateFileWriter()
+    assert w.time_zone is None
+    
+    tz = pytz.timezone("EST")      
+    w = gisout.PointsGenerateFileWriter( tz )
+    assert w.time_zone is tz
         
 
 def test_PointsGenerateFileWriter_write(plotData):
@@ -81,11 +163,13 @@ def test_PointsGenerateFileWriter_write(plotData):
 
     
 def test_LinesGenerateFileWriter___init__():
-    try:
-        w = gisout.LinesGenerateFileWriter()
-    except Exception as ex:
-        pytest.fail("unexpected exception: {0}".format(ex))
-        
+    w = gisout.LinesGenerateFileWriter()
+    assert w.time_zone is None
+
+    tz = pytz.timezone("EST")
+    w = gisout.LinesGenerateFileWriter(tz)
+    assert w.time_zone is tz
+    
 
 def test_LinesGenerateFileWriter_write(plotData):
     # just see if no error occurs
@@ -102,9 +186,16 @@ def test_KMLWriter___init__():
     try:
         w = gisout.KMLWriter()
         assert w.height_unit == const.HeightUnit.METERS
+        assert w.time_zone is None
         
         w = gisout.KMLWriter(const.HeightUnit.FEET)
         assert w.height_unit == const.HeightUnit.FEET
+        assert w.time_zone is None
+            
+        tz = pytz.timezone("EST")
+        w = gisout.KMLWriter(const.HeightUnit.FEET, tz)
+        assert w.height_unit == const.HeightUnit.FEET
+        assert w.time_zone is tz
     except Exception as ex:
         pytest.fail("unexpected exception: {0}".format(ex))
         
@@ -115,15 +206,10 @@ def test_KMLWriter_make_filename():
     assert gisout.KMLWriter.make_filename("sample", "ps", 1) == "sample_01.kml"
     assert gisout.KMLWriter.make_filename("sample.pdf", "ps", 1) == "sample_01.kml"
     assert gisout.KMLWriter.make_filename("sample pdf", "ps", 1) == "sample_01.kml"
-        
-
-def test_KMLWriter__get_iso_8601_str():
-    dt = datetime.datetime(1983, 10, 13, 0, 15)
-    assert gisout.KMLWriter._get_iso_8601_str(dt) == "1983-10-13T00:15:00Z"
-    
+   
 
 def test_KMLWriter__get_timestamp_str():
-    dt = datetime.datetime(1983, 10, 13, 0, 15)
+    dt = datetime.datetime(1983, 10, 13, 0, 15, 0, 0, pytz.utc)
     assert gisout.KMLWriter._get_timestamp_str(dt) == "10/13/1983 0015 UTC"
 
 
@@ -198,9 +284,16 @@ def test_PartialKMLWriter___init__():
     try:
         w = gisout.PartialKMLWriter()
         assert w.height_unit == const.HeightUnit.METERS
+        assert w.time_zone is None
         
         w = gisout.PartialKMLWriter(const.HeightUnit.FEET)
         assert w.height_unit == const.HeightUnit.FEET
+        assert w.time_zone is None
+        
+        tz = pytz.timezone("EST")
+        w = gisout.PartialKMLWriter(const.HeightUnit.FEET, tz)
+        assert w.height_unit == const.HeightUnit.FEET
+        assert w.time_zone is tz
     except Exception as ex:
         pytest.fail("unexpected exception: {0}".format(ex))
         

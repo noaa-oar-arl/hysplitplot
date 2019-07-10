@@ -2,7 +2,8 @@ import logging
 import os
 import cartopy.crs
 import matplotlib.patches
-
+import pytz
+from timezonefinder import TimezoneFinder
 from hysplit4 import util, const, mapfile, logo, labels, cmdline, stnplot
 from abc import abstractmethod
 
@@ -33,6 +34,7 @@ class AbstractPlotSettings:
         self.frames_per_file = const.Frames.ALL_FILES_ON_ONE
         self.gis_output = const.GISOutput.NONE
         self.kml_option = const.KMLOption.NONE
+        self.use_source_time_zone = False   # for the --source-time-zone option
         
         # internally defined
         self.interactive_mode = True    # becomes False if the -o or -O option is specified.
@@ -97,6 +99,9 @@ class AbstractPlotSettings:
         
         self.gis_output             = args.get_integer_value("-a", self.gis_output)
         self.kml_option             = args.get_integer_value("-A", self.kml_option)
+        
+        if args.has_arg(["--source-time-zone"]):
+            self.use_source_time_zone   = True
             
     @staticmethod
     def parse_lat_lon_label_interval(str):
@@ -137,6 +142,8 @@ class AbstractPlot:
         self.data_crs = cartopy.crs.PlateCarree()
         self.background_maps = []
         self.labels = labels.LabelsConfig()
+        self.source_time_zone = None
+        self.time_zone_finder = TimezoneFinder()
         
     def _connect_event_handlers(self, handlers):
         for ev in handlers:
@@ -432,13 +439,19 @@ class AbstractPlot:
          
         logo.NOAALogoDrawer().draw(axes, box_axes)
     
-#     def make_plot_filename(self, settings, current_frame=1):
-#         if settings.frames_per_file == const.Frames.ONE_PER_FILE:
-#             filename = "{0}{1:04d}.{2}".format(settings.output_basename,
-#                                                current_frame,
-#                                                settings.output_suffix)
-#         else:
-#             filename = settings.output_postscript
-# 
-#         return filename
+    def get_time_zone_at(self, lonlat):
+        lon, lat = lonlat
+        time_zone_name = None
+        try:
+            time_zone_name = self.time_zone_finder.timezone_at(lng=lon, lat=lat)
+            if time_zone_name is None:
+                time_zone_name = self.time_zone_finder.closest_timezone_at(lng=lon, lat=lat)
+            logger.warning("cannot find time zone for lon {}, lat {}: using UTC".format(lon, lat))
+        except ValueError as ex:
+            logger.error("cannot find time zone for lon {}, lat {}: {}".format(lon, lat, ex))
+            pass
+        
+        return pytz.utc if time_zone_name is None else pytz.timezone(time_zone_name)
     
+    def adjust_for_time_zone(self, dt):
+        return dt if self.source_time_zone is None else dt.astimezone(self.source_time_zone)

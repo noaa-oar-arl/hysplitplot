@@ -8,6 +8,20 @@ To install this package, run
 
     $ python setup.py install
 
+A timezonefinder database including oceans is necessary to determine the
+timezone at a given latitude and longitude location. You would need to
+download a geojson file, say, timezones-with-oceans.geojson.zip. Here are
+steps to update the timezone database:
+
+    $ mkdir ~/timezones
+    $ cd ~/timezones
+    $ unzip timezones-with-oceans.geojson.zip
+    $ ln -s dist/timezones-with-oceans.geojson
+    $ python -m timezonefinder.file_converter
+
+Copy all *.bin files and timezone_names.json to where the timezonefinder
+module is installed.
+
 To generate a trajectory plot using a trajectory dump file, say, tdump found
 in HYSPLIT's working directory, run
 

@@ -1,4 +1,6 @@
 import pytest
+import datetime
+import pytz
 import matplotlib.pyplot as plt
 from hysplit4 import plotbase, const, mapproj, mapfile, labels
 from hysplit4.traj import plot
@@ -33,6 +35,7 @@ def test_AbstractPlotSettings___init__():
     assert s.frames_per_file == 0
     assert s.gis_output == const.GISOutput.NONE
     assert s.kml_option == const.KMLOption.NONE
+    assert s.use_source_time_zone == False
     
     assert s.interactive_mode == True
     assert s.map_color == "#1f77b4"
@@ -163,6 +166,11 @@ def test_AbstractPlotSettings__process_cmdline_args():
     s.kml_option = 0
     s._process_cmdline_args(["-A3"])
     assert s.kml_option == 3
+    
+    # test --sourec-time-zone
+    s.use_source_time_zone = False
+    s._process_cmdline_args(["--source-time-zone"])
+    assert s.use_source_time_zone == True
 
 
 def test_AbstractPlotSettings_parse_lat_lon_label_interval():
@@ -198,6 +206,7 @@ def test_AbstractPlot___init__():
     assert hasattr(p, "data_crs")
     assert hasattr(p, "background_maps")
     assert hasattr(p, "labels")
+    assert hasattr(p, "source_time_zone")
     assert isinstance(p.labels, labels.LabelsConfig)
 
 
@@ -396,3 +405,45 @@ def test_AbstractPlot__draw_noaa_logo():
         plt.close(axes.figure)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
+
+
+def test_AbstractPlot_get_time_zone_at():
+    p = plotbase.AbstractPlot()
+    
+    tz = p.get_time_zone_at((-73.9620, 40.7874))
+    assert tz is not None
+    assert tz.zone == "America/New_York"
+    
+    tz = p.get_time_zone_at((-157.9791, 21.4862))
+    assert tz is not None
+    assert tz.zone == "Pacific/Honolulu"
+    
+    # Somewhere in the Pacific Ocean
+    tz = p.get_time_zone_at((-128.6962, 6.8179))
+    assert tz is not None
+    assert tz.zone == "Etc/GMT+9"
+    # If "UTC" is returned, you will need to install a timezone database with oceans included.
+    
+    # somewhere in the Philippine Sea
+    tz = p.get_time_zone_at((133.0391, 14.5434))
+    assert tz is not None
+    assert tz.zone == "Etc/GMT-9"
+    # If "UTC" is returned, you will need to install a timezone database with oceans included.
+
+
+def test_AbstractPlot_adjust_for_time_zone():
+    p = plotbase.AbstractPlot()
+    assert p.source_time_zone is None
+    
+    dt = datetime.datetime(2019, 7, 10, 14, 3, 0, 0, pytz.utc)
+    
+    p.source_time_zone = pytz.timezone("America/New_York")
+    t = p.adjust_for_time_zone(dt)
+    assert t.year        == 2019
+    assert t.month       == 7
+    assert t.day         == 10
+    assert t.hour        == 10
+    assert t.minute      == 3
+    assert t.second      == 0
+    assert t.tzinfo.zone == "America/New_York"
+
