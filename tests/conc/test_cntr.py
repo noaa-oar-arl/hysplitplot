@@ -1,9 +1,11 @@
-import pytest
-import logging
 import datetime
+import logging
 import matplotlib.pyplot as plt
 import os
-from hysplit4.conc import cntr, model
+import pytest
+
+from hysplitdata.conc import model
+from hysplit4.conc import cntr
 from hysplit4 import const
 
 

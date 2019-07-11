@@ -1,9 +1,11 @@
-import pytest
 import matplotlib.pyplot as plt
 from matplotlib.contour import QuadContourSet
 import numpy
+import pytest
 import pytz
-from hysplit4.conc import plot, model, helper, gisout
+
+from hysplitdata.conc import model
+from hysplit4.conc import plot, helper, gisout
 from hysplit4 import const, mapfile, mapproj, labels, smooth, util
 
 

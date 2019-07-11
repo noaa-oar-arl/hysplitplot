@@ -1,5 +1,5 @@
 import logging
-from hysplit4 import io
+from hysplitdata import io
 
 
 logger = logging.getLogger(__name__)

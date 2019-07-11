@@ -1,11 +1,11 @@
+from abc import ABC, abstractmethod
+import copy
 import logging
 import math
-import numpy
-import copy
 from matplotlib.path import Path
-from abc import ABC, abstractmethod
+import numpy
 from hysplit4 import const, util
-from hysplit4.conc import model
+from hysplitdata.conc import model
 
 
 logger = logging.getLogger(__name__)

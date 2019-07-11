@@ -441,17 +441,24 @@ class AbstractPlot:
     
     def get_time_zone_at(self, lonlat):
         lon, lat = lonlat
+
+        time_zone = None
         time_zone_name = None
         try:
             time_zone_name = self.time_zone_finder.timezone_at(lng=lon, lat=lat)
             if time_zone_name is None:
                 time_zone_name = self.time_zone_finder.closest_timezone_at(lng=lon, lat=lat)
             logger.warning("cannot find time zone for lon {}, lat {}: using UTC".format(lon, lat))
+            
+            time_zone = pytz.timezone(time_zone_name)
         except ValueError as ex:
             logger.error("cannot find time zone for lon {}, lat {}: {}".format(lon, lat, ex))
             pass
+        except pytz.exceptions.UnknownTimeZoneError as ex:
+            logger.error("unknown time zone {} for lon {}, lat {}: {}".format(time_zone_name, lon, lat, ex))
+            pass
         
-        return pytz.utc if time_zone_name is None else pytz.timezone(time_zone_name)
+        return pytz.utc if time_zone is None else time_zone
     
     def adjust_for_time_zone(self, dt):
         return dt if self.source_time_zone is None else dt.astimezone(self.source_time_zone)

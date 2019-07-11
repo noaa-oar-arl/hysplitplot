@@ -1,8 +1,8 @@
-import logging
 from abc import ABC, abstractmethod
+import logging
+
 from hysplit4 import const, util
-from hysplit4.traj import model
-from asn1crypto._ffi import null
+from hysplitdata.traj import model
 
 
 logger = logging.getLogger(__name__)

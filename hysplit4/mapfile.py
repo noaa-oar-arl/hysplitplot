@@ -2,7 +2,8 @@ import os
 import logging
 import geopandas
 import shapely.geometry
-from hysplit4 import io, util, mapproj
+from hysplitdata import io
+from hysplit4 import util, mapproj
 
 
 logger = logging.getLogger(__name__)

@@ -1,10 +1,12 @@
-import pytest
-import logging
 import datetime
+import logging
 import matplotlib.pyplot as plt
 import os
+import pytest
 import pytz
-from hysplit4.conc import gisout, model, plot, helper, cntr
+
+from hysplitdata.conc import model
+from hysplit4.conc import gisout, plot, helper, cntr
 from hysplit4 import const
 
 

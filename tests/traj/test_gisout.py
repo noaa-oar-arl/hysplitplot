@@ -1,10 +1,12 @@
-import pytest
-import os
 import datetime
 import numpy
+import os
+import pytest
 import pytz
+
 from hysplit4 import const
-from hysplit4.traj import plot, model, gisout
+from hysplit4.traj import plot, gisout
+from hysplitdata.traj import model
 
 
 @pytest.fixture

@@ -1,12 +1,11 @@
+from abc import ABC, abstractmethod
+import copy
 import logging
 import numpy
 import sys
-import copy
-from abc import ABC, abstractmethod
 
-from hysplit4.conc import model
+from hysplitdata.conc import model
 from hysplit4 import util, const
-from _operator import concat
 
 
 logger = logging.getLogger(__name__)

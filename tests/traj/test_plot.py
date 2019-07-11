@@ -1,11 +1,13 @@
-import pytest
+import cartopy.crs
 import datetime
-import os
 import matplotlib.pyplot as plt
 import matplotlib.dates
-import cartopy.crs
+import os
+import pytest
 import pytz
-from hysplit4.traj import plot, model
+
+from hysplitdata.traj import model
+from hysplit4.traj import plot
 from hysplit4 import labels, clist, mapfile, mapproj, const
 
 

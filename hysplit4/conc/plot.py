@@ -1,16 +1,18 @@
-import logging
-import os
-import sys
-import geopandas
-import math
-import numpy
-import matplotlib.gridspec
-import matplotlib.pyplot as plt
 import copy
 import datetime
+import geopandas
+import logging
+import math
+import matplotlib.gridspec
+import matplotlib.pyplot as plt
+import numpy
+import os
+import sys
 
-from hysplit4 import cmdline, util, const, plotbase, mapbox, mapproj, io, smooth, multipage
-from hysplit4.conc import model, helper, gisout, cntr
+from hysplit4 import cmdline, util, const, plotbase, mapbox, mapproj, smooth, multipage
+from hysplit4.conc import helper, gisout, cntr
+from hysplitdata.conc import model
+from hysplitdata import io
 
 
 logger = logging.getLogger(__name__)

@@ -1,15 +1,16 @@
-import sys
-import os
-import logging
+from abc import ABC, abstractmethod
 import geopandas
+import logging
 import matplotlib.dates
 import matplotlib.gridspec
 import matplotlib.patches
 import matplotlib.pyplot as plt
-from abc import ABC, abstractmethod
+import os
+import sys
 
 from hysplit4 import cmdline, clist, stnplot, util, const, mapproj, mapbox, plotbase, multipage
-from hysplit4.traj import model, gisout
+from hysplit4.traj import gisout
+from hysplitdata.traj import model
 
 
 logger = logging.getLogger(__name__)

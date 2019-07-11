@@ -1,9 +1,11 @@
-import pytest
+import cartopy.crs
 import math
 import numpy
-import cartopy.crs
+import pytest
+
+from hysplitdata.traj import model
 from hysplit4 import mapproj, mapbox, const
-from hysplit4.traj import plot, model
+from hysplit4.traj import plot
 
 
 # Notes:
