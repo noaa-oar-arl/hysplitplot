@@ -97,6 +97,9 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.contour_level_generator = args.get_integer_value(["-c", "-C"], self.contour_level_generator)
         self.input_file              = args.get_string_value(["-i", "-I"], self.input_file)
         
+        if len(args.unprocessed_args) > 0:
+            self.input_file = args.unprocessed_args[-1]
+            
         if args.has_arg("-l"):
             self.source_label = self.parse_source_label(args.get_value("-l"))
             self.label_source = True

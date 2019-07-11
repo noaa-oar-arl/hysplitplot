@@ -18,6 +18,7 @@ class CommandLineArguments:
         :param args: list of command-line arguments excluding the program name.
         """
         self.args = dict()
+        self.unprocessed_args = []
         if args != None:
             self.add(args)
 
@@ -52,6 +53,10 @@ class CommandLineArguments:
                     val = arg[2:]
                     self.args[opt] = val
                     logger.debug("adding command-line argument %s as %s -> %s", arg, opt, val)
+                else:
+                    self.unprocessed_args.append(arg)
+            else:
+                self.unprocessed_args.append(arg)
 
     def has_arg(self, option):
         if isinstance(option, list):

@@ -6,13 +6,16 @@ from hysplitplot.cmdline import CommandLineArguments
 def test_CommandLineArguments___init__():
     c = CommandLineArguments()
 
-    assert c.args != None
+    assert c.args is not None
+    assert c.unprocessed_args is not None
 
-    args = ["-a0", "+b1"]
+    args = ["-a0", "+b1", "filename"]
     c2 = CommandLineArguments(args)
 
     assert c2.args["-a"] == "0"
     assert c2.args["+b"] == "1"
+    assert len(c2.unprocessed_args) == 1
+    assert c2.unprocessed_args[0] == "filename"
 
 
 def test_CommandLineArguments_clear():
@@ -31,6 +34,7 @@ def test_CommandLineArguments_add():
     # processing stops at "-:"
     c.add(["-a0", "-:", "+b1"])
     assert len(c.args) == 1
+    assert len(c.unprocessed_args) == 0
 
     # options start with "-" or "+"
     c.clear()
@@ -40,6 +44,8 @@ def test_CommandLineArguments_add():
     assert c.args["-a"] == "0"
     assert c.args["+b"] == "1"
     assert c.args["-d"] == "4"
+    assert len(c.unprocessed_args) == 1
+    assert c.unprocessed_args[0] == "cc"
     
     # long form
     c.clear()

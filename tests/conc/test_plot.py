@@ -301,6 +301,10 @@ def test_ConcentrationPlotSettings_process_command_line_arguments():
     s.process_command_line_arguments(["-51"])
     assert s.KMLOUT == 1
     
+    # input file override.
+    s.process_command_line_arguments(["-icdump", "cdump_two", "cdump_three"])
+    assert s.input_file == "cdump_three"
+
 
 def test_ConcentrationPlotSettings_parse_source_label():
     s = plot.ConcentrationPlotSettings()
