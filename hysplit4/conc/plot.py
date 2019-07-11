@@ -12,6 +12,7 @@ import sys
 from hysplit4 import cmdline, util, const, plotbase, mapbox, mapproj, smooth, multipage
 from hysplit4.conc import helper, gisout, cntr
 from hysplitdata.conc import model
+from hysplitdata.const import HeightUnit
 from hysplitdata import io
 
 
@@ -464,9 +465,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         if labels.has("ALTTD"):
             alttd = labels.get("ALTTD")
             if alttd == "feet":
-                self.settings.height_unit = const.HeightUnit.FEET
+                self.settings.height_unit = HeightUnit.FEET
             elif alttd == "meters":
-                self.settings.height_unit = const.HeightUnit.METERS
+                self.settings.height_unit = HeightUnit.METERS
             else:
                 raise Exception("ALTTD units must be meters or feet in labels.cfg or its equivalent file: {0}".format(alttd))
 
@@ -528,7 +529,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         else:
             fig_title += "\n{0} Release started at".format(pollutant)
             
-        dt = self.adjust_for_time_zone(conc_grid.parent.release_datetime[0])
+        dt = self.adjust_for_time_zone(conc_grid.parent.release_datetimes[0])
         fig_title += dt.strftime(" %H%M %d %b %Y (%Z)")
         
         return fig_title

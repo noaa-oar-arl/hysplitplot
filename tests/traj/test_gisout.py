@@ -4,9 +4,10 @@ import os
 import pytest
 import pytz
 
+from hysplitdata.const import HeightUnit
+from hysplitdata.traj import model
 from hysplit4 import const
 from hysplit4.traj import plot, gisout
-from hysplitdata.traj import model
 
 
 @pytest.fixture
@@ -34,25 +35,25 @@ class AbstractGISFileWriterTest(gisout.AbstractGISFileWriter):
 def test_GISFileWriterFactory_create_instance():
     tz = pytz.utc
     
-    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.GENERATE_POINTS, const.HeightUnit.FEET, tz)
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.GENERATE_POINTS, HeightUnit.FEET, tz)
     assert isinstance(w, gisout.PointsGenerateFileWriter)
     assert w.time_zone is tz
     
-    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.GENERATE_LINES, const.HeightUnit.FEET, tz)
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.GENERATE_LINES, HeightUnit.FEET, tz)
     assert isinstance(w, gisout.LinesGenerateFileWriter)
     assert w.time_zone is tz
     
-    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.KML, const.HeightUnit.FEET, tz)
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.KML, HeightUnit.FEET, tz)
     assert isinstance(w, gisout.KMLWriter)
-    assert w.height_unit == const.HeightUnit.FEET
+    assert w.height_unit == HeightUnit.FEET
     assert w.time_zone is tz
     
-    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.PARTIAL_KML, const.HeightUnit.FEET, tz)
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.PARTIAL_KML, HeightUnit.FEET, tz)
     assert isinstance(w, gisout.PartialKMLWriter)
-    assert w.height_unit == const.HeightUnit.FEET
+    assert w.height_unit == HeightUnit.FEET
     assert w.time_zone is tz
     
-    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.NONE, const.HeightUnit.FEET, tz)
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.NONE, HeightUnit.FEET, tz)
     assert isinstance(w, gisout.NullGISFileWriter)
     assert w.time_zone is tz
     
@@ -68,22 +69,22 @@ def test_GISFileWriterFactory_create_instance__without_time_zone():
     
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.KML)
     assert isinstance(w, gisout.KMLWriter)
-    assert w.height_unit == const.HeightUnit.METERS
+    assert w.height_unit == HeightUnit.METERS
     assert w.time_zone is None
      
-    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.KML, const.HeightUnit.FEET)
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.KML, HeightUnit.FEET)
     assert isinstance(w, gisout.KMLWriter)
-    assert w.height_unit == const.HeightUnit.FEET
+    assert w.height_unit == HeightUnit.FEET
     assert w.time_zone is None
     
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.PARTIAL_KML)
     assert isinstance(w, gisout.PartialKMLWriter)
-    assert w.height_unit == const.HeightUnit.METERS
+    assert w.height_unit == HeightUnit.METERS
     assert w.time_zone is None
      
-    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.PARTIAL_KML, const.HeightUnit.FEET)
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.PARTIAL_KML, HeightUnit.FEET)
     assert isinstance(w, gisout.PartialKMLWriter)
-    assert w.height_unit == const.HeightUnit.FEET
+    assert w.height_unit == HeightUnit.FEET
     assert w.time_zone is None
     
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.NONE)
@@ -187,16 +188,16 @@ def test_LinesGenerateFileWriter_write(plotData):
 def test_KMLWriter___init__():
     try:
         w = gisout.KMLWriter()
-        assert w.height_unit == const.HeightUnit.METERS
+        assert w.height_unit == HeightUnit.METERS
         assert w.time_zone is None
         
-        w = gisout.KMLWriter(const.HeightUnit.FEET)
-        assert w.height_unit == const.HeightUnit.FEET
+        w = gisout.KMLWriter(HeightUnit.FEET)
+        assert w.height_unit == HeightUnit.FEET
         assert w.time_zone is None
             
         tz = pytz.timezone("EST")
-        w = gisout.KMLWriter(const.HeightUnit.FEET, tz)
-        assert w.height_unit == const.HeightUnit.FEET
+        w = gisout.KMLWriter(HeightUnit.FEET, tz)
+        assert w.height_unit == HeightUnit.FEET
         assert w.time_zone is tz
     except Exception as ex:
         pytest.fail("unexpected exception: {0}".format(ex))
@@ -229,20 +230,20 @@ def test_KMLWriter__get_alt_mode(plotData):
 def test_KMLWriter__get_level_type(plotData):
     t = plotData.trajectories[0]
     
-    w = gisout.KMLWriter(const.HeightUnit.METERS)
+    w = gisout.KMLWriter(HeightUnit.METERS)
     assert w._get_level_type(t) == "m AGL"
     
-    w = gisout.KMLWriter(const.HeightUnit.FEET)
+    w = gisout.KMLWriter(HeightUnit.FEET)
     assert w._get_level_type(t) == "ft AGL"
     
     # now add TERR_MSL
     t.diagnostic_names.append("TERR_MSL")
     t.others["TERR_MSL"] = numpy.zeros(len(t.latitudes))
    
-    w = gisout.KMLWriter(const.HeightUnit.METERS)
+    w = gisout.KMLWriter(HeightUnit.METERS)
     assert w._get_level_type(t) == "m AMSL"
     
-    w = gisout.KMLWriter(const.HeightUnit.FEET)
+    w = gisout.KMLWriter(HeightUnit.FEET)
     assert w._get_level_type(t) == "ft AMSL"
 
 
@@ -285,16 +286,16 @@ def test_KMLWriter_write(plotData):
 def test_PartialKMLWriter___init__():
     try:
         w = gisout.PartialKMLWriter()
-        assert w.height_unit == const.HeightUnit.METERS
+        assert w.height_unit == HeightUnit.METERS
         assert w.time_zone is None
         
-        w = gisout.PartialKMLWriter(const.HeightUnit.FEET)
-        assert w.height_unit == const.HeightUnit.FEET
+        w = gisout.PartialKMLWriter(HeightUnit.FEET)
+        assert w.height_unit == HeightUnit.FEET
         assert w.time_zone is None
         
         tz = pytz.timezone("EST")
-        w = gisout.PartialKMLWriter(const.HeightUnit.FEET, tz)
-        assert w.height_unit == const.HeightUnit.FEET
+        w = gisout.PartialKMLWriter(HeightUnit.FEET, tz)
+        assert w.height_unit == HeightUnit.FEET
         assert w.time_zone is tz
     except Exception as ex:
         pytest.fail("unexpected exception: {0}".format(ex))

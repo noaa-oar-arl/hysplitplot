@@ -1,10 +1,12 @@
+import abc
 import logging
 import math
 import numpy
 import os
 import sys
-import abc
+
 from hysplit4 import const
+from hysplitdata.const import HeightUnit
 
 
 logger = logging.getLogger(__name__)
@@ -105,9 +107,6 @@ def normalize_output_filename(pathname, ext="ps"):
 
     return n + "." + ext, n, ext
     
-def restore_year(yr):
-    return 2000 + yr if (yr < 40) else 1900 + yr
-
 def get_iso_8601_str(dt, time_zone=None):
     t = dt if time_zone is None else dt.astimezone(time_zone)
     if t.tzinfo is None or t.tzinfo.utcoffset(t).total_seconds() == 0:
@@ -147,9 +146,9 @@ class AbstractLengthFactory():
     
     @staticmethod
     def create_factory(len_unit):
-        if len_unit == const.HeightUnit.METERS:
+        if len_unit == HeightUnit.METERS:
             return LengthInMetersFactory()
-        elif len_unit == const.HeightUnit.FEET:
+        elif len_unit == HeightUnit.FEET:
             return LengthInFeetFactory()
         else:
             raise Exception("unknown length unit type {0}".format(len_unit))
@@ -161,8 +160,8 @@ class AbstractLengthFactory():
         
 class LengthInMetersFactory():
     
-    def create_instance(self, v, unit=const.HeightUnit.METERS):
-        if unit == const.HeightUnit.FEET:
+    def create_instance(self, v, unit=HeightUnit.METERS):
+        if unit == HeightUnit.FEET:
             v *= 0.3048
             
         return LengthInMeters(v)
@@ -170,8 +169,8 @@ class LengthInMetersFactory():
 
 class LengthInFeetFactory():
     
-    def create_instance(self, v, unit=const.HeightUnit.METERS):
-        if unit == const.HeightUnit.METERS:
+    def create_instance(self, v, unit=HeightUnit.METERS):
+        if unit == HeightUnit.METERS:
             v *= 3.28084
             
         return LengthInFeet(v)

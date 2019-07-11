@@ -8,9 +8,10 @@ import matplotlib.pyplot as plt
 import os
 import sys
 
+from hysplitdata.const import VerticalCoordinate
+from hysplitdata.traj import model
 from hysplit4 import cmdline, clist, stnplot, util, const, mapproj, mapbox, plotbase, multipage
 from hysplit4.traj import gisout
-from hysplitdata.traj import model
 
 
 logger = logging.getLogger(__name__)
@@ -33,7 +34,7 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
         self.output_postscript = "trajplot.ps"
         self.output_basename = "trajplot"
         self.time_label_interval = 6
-        self.vertical_coordinate = const.Vertical.NOT_SET
+        self.vertical_coordinate = VerticalCoordinate.NOT_SET
         self.label_source = True
         self.map_center = 0
         self.color = const.Color.COLOR
@@ -492,7 +493,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                     logger.error("skipping a trajectory with no vertical coordinate")
 
         # draw the terrain profile if it is necessary
-        if terrain_profileQ and self.settings.vertical_coordinate == const.Vertical.ABOVE_GROUND_LEVEL:
+        if terrain_profileQ and self.settings.vertical_coordinate == VerticalCoordinate.ABOVE_GROUND_LEVEL:
             for plotData in data_list:
                 for t in plotData.trajectories:
                     if t.has_terrain_profile():
@@ -598,7 +599,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
             self._draw_noaa_logo(axes)
         
     def draw_bottom_plot(self, data_list):
-        if self.settings.vertical_coordinate == const.Vertical.NONE:
+        if self.settings.vertical_coordinate == VerticalCoordinate.NONE:
             self._turn_off_spines(self.height_axes_outer, top=True)
             self._turn_off_ticks(self.height_axes_outer)
 
@@ -625,7 +626,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         elif (alt_text_lines is not None) and (len(alt_text_lines) > 0):
             self._draw_alt_text_boxes(self.text_axes, alt_text_lines)
         else:
-            top_spineQ = self.settings.vertical_coordinate != const.Vertical.NONE
+            top_spineQ = self.settings.vertical_coordinate != VerticalCoordinate.NONE
             self._turn_off_spines(self.text_axes, top=top_spineQ)
 
     def _draw_alt_text_boxes(self, axes, lines):

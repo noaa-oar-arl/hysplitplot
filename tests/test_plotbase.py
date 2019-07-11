@@ -1,7 +1,9 @@
-import pytest
 import datetime
-import pytz
 import matplotlib.pyplot as plt
+import pytest
+import pytz
+
+from hysplitdata.const import HeightUnit
 from hysplit4 import plotbase, const, mapproj, mapfile, labels
 from hysplit4.traj import plot
 
@@ -42,7 +44,7 @@ def test_AbstractPlotSettings___init__():
     assert s.station_marker != None
     assert s.station_marker_color != None
     assert s.station_marker_size > 0
-    assert s.height_unit == const.HeightUnit.METERS
+    assert s.height_unit == HeightUnit.METERS
     
 
 def test_AbstractPlotSettings__process_cmdline_args():

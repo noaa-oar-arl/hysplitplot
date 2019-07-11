@@ -216,7 +216,7 @@ class KMLWriter(AbstractWriter):
         f.write("{}\n".format(self.KMAP))
         f.write("{}&\n".format(contour_set.concentration_unit))
         
-        starting_time = g.parent.release_datetime[0] if self.NSSLBL == 1 else g.starting_datetime
+        starting_time = g.parent.release_datetimes[0] if self.NSSLBL == 1 else g.starting_datetime
         f.write("Integrated: {}\n".format(self._get_att_datetime_str(starting_time)))
         f.write("        to: {}\n".format(self._get_att_datetime_str(g.ending_datetime)))
         

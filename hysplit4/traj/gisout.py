@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 import logging
 
-from hysplit4 import const, util
+from hysplitdata.const import HeightUnit, VerticalCoordinate
 from hysplitdata.traj import model
+from hysplit4 import const, util
 
 
 logger = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ def debug_trunc(f):
 class GISFileWriterFactory:
     
     @staticmethod
-    def create_instance(selector, height_unit=const.HeightUnit.METERS, time_zone=None):
+    def create_instance(selector, height_unit=HeightUnit.METERS, time_zone=None):
         if selector == const.GISOutput.GENERATE_POINTS:
             return PointsGenerateFileWriter(time_zone)
         elif selector == const.GISOutput.GENERATE_LINES:
@@ -119,7 +120,7 @@ class LinesGenerateFileWriter(AbstractGISFileWriter):
 
 class KMLWriter(AbstractGISFileWriter):
     
-    def __init__(self, height_unit=const.HeightUnit.METERS, time_zone=None):
+    def __init__(self, height_unit=HeightUnit.METERS, time_zone=None):
         AbstractGISFileWriter.__init__(self, time_zone)
         self.height_unit = height_unit
     
@@ -145,9 +146,9 @@ class KMLWriter(AbstractGISFileWriter):
         return "absolute" if t.has_terrain_profile() else "relativeToGround"
     
     def _get_level_type(self, t):
-        if self.height_unit == const.HeightUnit.METERS:
+        if self.height_unit == HeightUnit.METERS:
             return "m AMSL" if t.has_terrain_profile() else "m AGL"
-        elif self.height_unit == const.HeightUnit.FEET:
+        elif self.height_unit == HeightUnit.FEET:
             return "ft AMSL" if t.has_terrain_profile() else "ft AGL"
         else:
             return "AMSL" if t.has_terrain_profile() else "AGL"
@@ -297,7 +298,7 @@ class KMLWriter(AbstractGISFileWriter):
     </Folder>\n""")
 
     def _write_trajectory(self, f, t, t_index):
-        vc = model.VerticalCoordinateFactory.create_instance(const.Vertical.ABOVE_GROUND_LEVEL, self.height_unit, t)
+        vc = model.VerticalCoordinateFactory.create_instance(VerticalCoordinate.ABOVE_GROUND_LEVEL, self.height_unit, t)
         vc.make_vertical_coordinates()
         
         f.write("""\
@@ -456,7 +457,7 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
  
 class PartialKMLWriter(KMLWriter):
     
-    def __init__(self, height_unit=const.HeightUnit.METERS, time_zone=None):
+    def __init__(self, height_unit=HeightUnit.METERS, time_zone=None):
         KMLWriter.__init__(self, height_unit, time_zone)
     
     @staticmethod

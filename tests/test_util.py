@@ -1,7 +1,9 @@
-import pytest
-import numpy
-import pytz
 import datetime
+import numpy
+import pytest
+import pytz
+
+from hysplitdata.const import HeightUnit
 from hysplit4 import util, const
 
 
@@ -108,13 +110,6 @@ def test_normalize_output_filename():
     assert (n, b, x) == ("output.ps", "output", "ps")
 
 
-def test_restore_year():
-    assert util.restore_year( 0) == 2000
-    assert util.restore_year(39) == 2039
-    assert util.restore_year(40) == 1940
-    assert util.restore_year(99) == 1999
-        
-
 def test_get_iso_8601_str():
     utc = pytz.utc
     dt = datetime.datetime(1983, 10, 13, 0, 15, 0, 0, utc)
@@ -144,10 +139,10 @@ def test_nonzero_min():
 
 
 def test_AbstractLengthFactory_create_factory():
-    f = util.AbstractLengthFactory.create_factory(const.HeightUnit.METERS)
+    f = util.AbstractLengthFactory.create_factory(HeightUnit.METERS)
     assert isinstance(f, util.LengthInMetersFactory)
     
-    f = util.AbstractLengthFactory.create_factory(const.HeightUnit.FEET)
+    f = util.AbstractLengthFactory.create_factory(HeightUnit.FEET)
     assert isinstance(f, util.LengthInFeetFactory)
     
     try:
@@ -164,7 +159,7 @@ def test_LengthInMetersFactory_create_instance():
     assert isinstance(o, util.LengthInMeters)
     assert o.v == 1.0
     
-    o = f.create_instance(1.0, const.HeightUnit.FEET)
+    o = f.create_instance(1.0, HeightUnit.FEET)
     assert isinstance(o, util.LengthInMeters)
     assert o.v == 0.3048
 
@@ -176,7 +171,7 @@ def test_LengthInFeetFactory_create_instance():
     assert isinstance(o, util.LengthInFeet)
     assert o.v == 3.28084
     
-    o = f.create_instance(1.0, const.HeightUnit.FEET)
+    o = f.create_instance(1.0, HeightUnit.FEET)
     assert isinstance(o, util.LengthInFeet)
     assert o.v == 1.0
     

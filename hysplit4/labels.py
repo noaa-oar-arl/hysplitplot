@@ -1,4 +1,6 @@
 import logging
+
+from hysplitdata.const import HeightUnit
 from hysplit4 import const
 
 
@@ -23,7 +25,7 @@ class LabelsConfig():
 
     def after_reading_file(self, settings):
         if self.get("VUNIT") == "FEET":
-            settings.height_unit = const.HeightUnit.FEET
+            settings.height_unit = HeightUnit.FEET
 
 
 class LabelsConfigReader():

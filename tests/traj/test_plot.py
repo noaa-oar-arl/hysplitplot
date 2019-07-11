@@ -6,6 +6,7 @@ import os
 import pytest
 import pytz
 
+from hysplitdata.const import HeightUnit, VerticalCoordinate
 from hysplitdata.traj import model
 from hysplit4.traj import plot
 from hysplit4 import labels, clist, mapfile, mapproj, const
@@ -80,14 +81,14 @@ def test_TrajectoryPlotSettings___init__():
     assert s.station_marker != None
     assert s.station_marker_color != None
     assert s.station_marker_size > 0
-    assert s.height_unit == const.HeightUnit.METERS
+    assert s.height_unit == HeightUnit.METERS
     
     assert s.gis_output == 0
     assert s.view == 1
     assert s.output_postscript == "trajplot.ps"
     assert s.output_basename == "trajplot"
     assert s.time_label_interval == 6
-    assert s.vertical_coordinate == const.Vertical.NOT_SET
+    assert s.vertical_coordinate == VerticalCoordinate.NOT_SET
     assert s.label_source == True
     assert s.map_center == 0
     assert s.color == 1
@@ -494,14 +495,14 @@ def test_TrajectoryPlot__determine_vertical_limit(plotData):
     p = plot.TrajectoryPlot()
 
     # ensure vertical coordinates are pressures
-    plotData.fix_vertical_coordinates(const.Vertical.PRESSURE, p.settings.height_unit)
-    low, high = p._determine_vertical_limit(plotData, const.Vertical.PRESSURE)
+    plotData.fix_vertical_coordinates(VerticalCoordinate.PRESSURE, p.settings.height_unit)
+    low, high = p._determine_vertical_limit(plotData, VerticalCoordinate.PRESSURE)
     assert low == 1001.1
     assert high == 879.8
 
     # ensure vertical coordinates are heights
-    plotData.fix_vertical_coordinates(const.Vertical.ABOVE_GROUND_LEVEL, p.settings.height_unit)
-    low, high = p._determine_vertical_limit(plotData, const.Vertical.ABOVE_GROUND_LEVEL)
+    plotData.fix_vertical_coordinates(VerticalCoordinate.ABOVE_GROUND_LEVEL, p.settings.height_unit)
+    low, high = p._determine_vertical_limit(plotData, VerticalCoordinate.ABOVE_GROUND_LEVEL)
     assert low == 0.0
     assert high == 1000.0
 
@@ -509,7 +510,7 @@ def test_TrajectoryPlot__determine_vertical_limit(plotData):
     traj = model.Trajectory()
     traj.vertical_coord = model.BlankVerticalCoordinate(traj)
     pd.trajectories.append(traj)
-    low, high = p._determine_vertical_limit(pd, const.Vertical.ABOVE_GROUND_LEVEL)
+    low, high = p._determine_vertical_limit(pd, VerticalCoordinate.ABOVE_GROUND_LEVEL)
     assert low is None
     assert high is None
     

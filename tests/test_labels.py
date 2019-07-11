@@ -1,5 +1,7 @@
-import pytest
 import os
+import pytest
+
+from hysplitdata.const import HeightUnit
 from hysplit4 import labels, const
 from hysplit4.traj import plot
 
@@ -32,12 +34,12 @@ def test_LabelsConfig_get_reader():
 def test_LabelsConfig_after_reading_file():
     c = labels.LabelsConfig()
     s = plot.TrajectoryPlotSettings()
-    assert s.height_unit == const.HeightUnit.METERS
+    assert s.height_unit == HeightUnit.METERS
     c.after_reading_file(s)
-    assert s.height_unit == const.HeightUnit.METERS
+    assert s.height_unit == HeightUnit.METERS
     c.cfg["VUNIT"] = "FEET"
     c.after_reading_file(s)
-    assert s.height_unit == const.HeightUnit.FEET
+    assert s.height_unit == HeightUnit.FEET
     
 
 def test_LabelsConfigReader_read():

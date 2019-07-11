@@ -1,11 +1,13 @@
-import logging
-import os
+from abc import abstractmethod
 import cartopy.crs
+import logging
 import matplotlib.patches
+import os
 import pytz
 from timezonefinder import TimezoneFinder
+
+from hysplitdata.const import HeightUnit
 from hysplit4 import util, const, mapfile, logo, labels, cmdline, stnplot
-from abc import abstractmethod
 
 
 logger = logging.getLogger(__name__)
@@ -42,7 +44,7 @@ class AbstractPlotSettings:
         self.station_marker = "o"
         self.station_marker_color= "k"     # black
         self.station_marker_size = 6*6
-        self.height_unit = const.HeightUnit.METERS
+        self.height_unit = HeightUnit.METERS
         
     
     def _process_cmdline_args(self, args0):

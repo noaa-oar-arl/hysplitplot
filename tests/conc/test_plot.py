@@ -4,6 +4,7 @@ import numpy
 import pytest
 import pytz
 
+from hysplitdata.const import HeightUnit
 from hysplitdata.conc import model
 from hysplit4.conc import plot, helper, gisout
 from hysplit4 import const, mapfile, mapproj, labels, smooth, util
@@ -625,17 +626,17 @@ def test_ConcentrationPlot_update_height_unit():
     o = labels.LabelsConfig()
     
     # check the default
-    assert p.settings.height_unit == const.HeightUnit.METERS
+    assert p.settings.height_unit == HeightUnit.METERS
     
     # test with "feet"
     o.cfg["ALTTD"] = "feet"
     p.update_height_unit(o)
-    assert p.settings.height_unit == const.HeightUnit.FEET
+    assert p.settings.height_unit == HeightUnit.FEET
 
     # test with "meters"
     o.cfg["ALTTD"] = "meters"
     p.update_height_unit(o)
-    assert p.settings.height_unit == const.HeightUnit.METERS
+    assert p.settings.height_unit == HeightUnit.METERS
 
     # test with "kg"
     o.cfg["ALTTD"] = "kg"
