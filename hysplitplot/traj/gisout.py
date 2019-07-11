@@ -3,7 +3,7 @@ import logging
 
 from hysplitdata.const import HeightUnit, VerticalCoordinate
 from hysplitdata.traj import model
-from hysplit4 import const, util
+from hysplitplot import const, util
 
 
 logger = logging.getLogger(__name__)

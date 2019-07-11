@@ -1,7 +1,8 @@
-import pytest
-import os
 import geopandas
-from hysplit4 import mapfile
+import os
+import pytest
+
+from hysplitplot import mapfile
 
 
 def test_ARLMap___init__():

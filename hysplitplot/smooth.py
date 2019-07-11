@@ -1,7 +1,7 @@
 import logging
 import numpy
 
-from hysplit4 import const
+from hysplitplot import const
 
 
 logger = logging.getLogger(__name__)

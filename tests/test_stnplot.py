@@ -1,6 +1,7 @@
-import pytest
 import os
-from hysplit4 import stnplot
+import pytest
+
+from hysplitplot import stnplot
 
 
 def test_StationPlotConfig___init__():

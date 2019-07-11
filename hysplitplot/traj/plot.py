@@ -10,8 +10,8 @@ import sys
 
 from hysplitdata.const import VerticalCoordinate
 from hysplitdata.traj import model
-from hysplit4 import cmdline, clist, stnplot, util, const, mapproj, mapbox, plotbase, multipage
-from hysplit4.traj import gisout
+from hysplitplot import cmdline, clist, stnplot, util, const, mapproj, mapbox, plotbase, multipage
+from hysplitplot.traj import gisout
 
 
 logger = logging.getLogger(__name__)

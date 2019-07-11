@@ -45,22 +45,10 @@ class MapProjection:
     MERCATOR    = 3
     CYL_EQU     = 4
 
-class Vertical:
-    NOT_SET             = -1
-    PRESSURE            = 0
-    ABOVE_GROUND_LEVEL  = 1
-    THETA               = 2
-    METEO               = 3
-    NONE                = 4
-
 class ZoomFactor:
     LEAST_ZOOM  = 0
     MOST_ZOOM   = 100
 
-class HeightUnit:
-    METERS =    0
-    FEET =      1
-    
 class ContourLevelGenerator:
     EXPONENTIAL_DYNAMIC = 0
     EXPONENTIAL_FIXED   = 1

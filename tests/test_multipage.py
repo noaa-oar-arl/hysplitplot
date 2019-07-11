@@ -1,7 +1,8 @@
-import pytest
-import os
 import matplotlib.pyplot as plt
-from hysplit4 import multipage, const
+import os
+import pytest
+
+from hysplitplot import multipage, const
 
 
 def test_PlotFileWriterFactory_create_instance():

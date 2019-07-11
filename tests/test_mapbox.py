@@ -1,6 +1,7 @@
 import pytest
-from hysplit4 import mapbox, const
-from hysplit4.traj import plot
+
+from hysplitplot import mapbox, const
+from hysplitplot.traj import plot
 
 
 def test_MapBox___init__():

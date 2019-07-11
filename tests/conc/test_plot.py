@@ -6,8 +6,8 @@ import pytz
 
 from hysplitdata.const import HeightUnit
 from hysplitdata.conc import model
-from hysplit4.conc import plot, helper, gisout
-from hysplit4 import const, mapfile, mapproj, labels, smooth, util
+from hysplitplot import const, mapfile, mapproj, labels, smooth, util
+from hysplitplot.conc import plot, helper, gisout
 
 
 @pytest.fixture

@@ -1,6 +1,7 @@
-import pytest
 import matplotlib.pyplot as plt
-from hysplit4 import logo
+import pytest
+
+from hysplitplot import logo
 
 
 def test_NOAALogoDrawer___init__():

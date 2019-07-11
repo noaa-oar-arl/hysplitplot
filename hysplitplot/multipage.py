@@ -1,7 +1,8 @@
-import logging
 from abc import ABC, abstractmethod
+import logging
 from matplotlib.backends.backend_pdf import PdfPages
-from hysplit4 import const
+
+from hysplitplot import const
 
 
 logger = logging.getLogger(__name__)

@@ -6,8 +6,8 @@ import pytest
 import pytz
 
 from hysplitdata.conc import model
-from hysplit4.conc import helper
-from hysplit4 import const, util
+from hysplitplot import const, util
+from hysplitplot.conc import helper
 
 
 logger = logging.getLogger(__name__)

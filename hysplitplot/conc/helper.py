@@ -5,7 +5,7 @@ import numpy
 import sys
 
 from hysplitdata.conc import model
-from hysplit4 import util, const
+from hysplitplot import util, const
 
 
 logger = logging.getLogger(__name__)

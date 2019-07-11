@@ -1,5 +1,6 @@
 import logging
-from hysplit4 import util
+
+from hysplitplot import util
 
 
 logger = logging.getLogger(__name__)

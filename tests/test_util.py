@@ -4,7 +4,7 @@ import pytest
 import pytz
 
 from hysplitdata.const import HeightUnit
-from hysplit4 import util, const
+from hysplitplot import util, const
 
 
 def test_myzip():

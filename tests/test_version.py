@@ -1,9 +1,10 @@
 import pytest
-import hysplit4.version
+
+import hysplitplot.version
 
 def test_print_version():
 
     try:
-        hysplit4.version.print_version()
+        hysplitplot.version.print_version()
     except:
         pytest.fail("unexpected exception")

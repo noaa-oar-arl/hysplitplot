@@ -2,8 +2,8 @@ import os
 import pytest
 
 from hysplitdata.const import HeightUnit
-from hysplit4 import labels, const
-from hysplit4.traj import plot
+from hysplitplot import labels, const
+from hysplitplot.traj import plot
 
 
 def test_LabelsConfig___init__():

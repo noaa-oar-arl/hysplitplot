@@ -5,8 +5,8 @@ import numpy
 import os
 import sys
 
-from hysplit4 import const
 from hysplitdata.const import HeightUnit
+from hysplitplot import const
 
 
 logger = logging.getLogger(__name__)

@@ -7,7 +7,7 @@ import pytz
 from timezonefinder import TimezoneFinder
 
 from hysplitdata.const import HeightUnit
-from hysplit4 import util, const, mapfile, logo, labels, cmdline, stnplot
+from hysplitplot import util, const, mapfile, logo, labels, cmdline, stnplot
 
 
 logger = logging.getLogger(__name__)

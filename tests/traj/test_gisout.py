@@ -6,8 +6,8 @@ import pytz
 
 from hysplitdata.const import HeightUnit
 from hysplitdata.traj import model
-from hysplit4 import const
-from hysplit4.traj import plot, gisout
+from hysplitplot import const
+from hysplitplot.traj import plot, gisout
 
 
 @pytest.fixture

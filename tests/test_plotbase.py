@@ -4,8 +4,8 @@ import pytest
 import pytz
 
 from hysplitdata.const import HeightUnit
-from hysplit4 import plotbase, const, mapproj, mapfile, labels
-from hysplit4.traj import plot
+from hysplitplot import plotbase, const, mapproj, mapfile, labels
+from hysplitplot.traj import plot
 
 
 def blank_event_handler(event):

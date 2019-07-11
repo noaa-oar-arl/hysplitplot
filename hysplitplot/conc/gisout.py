@@ -4,8 +4,9 @@ import logging
 import math
 from matplotlib.path import Path
 import numpy
-from hysplit4 import const, util
+
 from hysplitdata.conc import model
+from hysplitplot import const, util
 
 
 logger = logging.getLogger(__name__)

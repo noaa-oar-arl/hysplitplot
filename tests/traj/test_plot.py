@@ -8,8 +8,8 @@ import pytz
 
 from hysplitdata.const import HeightUnit, VerticalCoordinate
 from hysplitdata.traj import model
-from hysplit4.traj import plot
-from hysplit4 import labels, clist, mapfile, mapproj, const
+from hysplitplot import labels, clist, mapfile, mapproj, const
+from hysplitplot.traj import plot
 
 
 @pytest.fixture

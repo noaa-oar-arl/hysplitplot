@@ -1,8 +1,9 @@
-import logging
-import numpy
-import math
 import cartopy.crs
-from hysplit4 import util, const
+import logging
+import math
+import numpy
+
+from hysplitplot import util, const
 
 
 logger = logging.getLogger(__name__)

@@ -3,7 +3,7 @@
 import logging
 import os
 import sys
-import hysplit4
+import hysplitplot
 
 
 logger = logging.getLogger(__name__)
@@ -50,14 +50,14 @@ def on_resize(event):
 def main():
     global the_plot
 
-    the_plot = hysplit4.TrajectoryPlot()
+    the_plot = hysplitplot.TrajectoryPlot()
 
     the_plot.merge_plot_settings(None, sys.argv[1:])
     the_plot.read_custom_labels_if_exists()
     the_plot.read_data_files()
 
     logger.info("Started Trajectory Drawing")
-    hysplit4.print_version()
+    hysplitplot.print_version()
     
     the_plot.read_background_map()
     the_plot.draw({"resize_event" : on_resize})
@@ -74,4 +74,4 @@ if __name__ == "__main__":
             # when reading a shapefile and its corresponding shx file is missing,
             # automatically generate the missing file.
             os.environ['SHAPE_RESTORE_SHX']='YES'
-        hysplit4.run(main, "TRAJPLOT")
+        hysplitplot.run(main, "TRAJPLOT")

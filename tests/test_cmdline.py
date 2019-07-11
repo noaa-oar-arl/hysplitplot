@@ -1,5 +1,6 @@
 import pytest
-from hysplit4.cmdline import CommandLineArguments
+
+from hysplitplot.cmdline import CommandLineArguments
 
 
 def test_CommandLineArguments___init__():

@@ -1,5 +1,5 @@
-import logging
 import cartopy.crs
+import logging
 
 
 logger = logging.getLogger(__name__)

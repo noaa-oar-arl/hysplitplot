@@ -9,11 +9,11 @@ import numpy
 import os
 import sys
 
-from hysplit4 import cmdline, util, const, plotbase, mapbox, mapproj, smooth, multipage
-from hysplit4.conc import helper, gisout, cntr
+from hysplitdata import io
 from hysplitdata.conc import model
 from hysplitdata.const import HeightUnit
-from hysplitdata import io
+from hysplitplot import cmdline, util, const, plotbase, mapbox, mapproj, smooth, multipage
+from hysplitplot.conc import helper, gisout, cntr
 
 
 logger = logging.getLogger(__name__)

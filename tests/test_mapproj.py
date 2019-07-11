@@ -4,8 +4,8 @@ import numpy
 import pytest
 
 from hysplitdata.traj import model
-from hysplit4 import mapproj, mapbox, const
-from hysplit4.traj import plot
+from hysplitplot import mapproj, mapbox, const
+from hysplitplot.traj import plot
 
 
 # Notes:

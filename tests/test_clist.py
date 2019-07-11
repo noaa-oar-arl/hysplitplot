@@ -1,6 +1,7 @@
-import pytest
 import os
-from hysplit4 import clist
+import pytest
+
+from hysplitplot import clist
 
 
 @pytest.fixture

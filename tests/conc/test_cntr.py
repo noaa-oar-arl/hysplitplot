@@ -5,8 +5,8 @@ import os
 import pytest
 
 from hysplitdata.conc import model
-from hysplit4.conc import cntr
-from hysplit4 import const
+from hysplitplot import const
+from hysplitplot.conc import cntr
 
 
 logger = logging.getLogger(__name__)

@@ -2,8 +2,8 @@ import logging
 import math
 import matplotlib.patches
 import numpy
-from hysplit4 import util 
-from numpy.distutils.misc_util import cxx_ext_match
+
+from hysplitplot import util 
 
 
 logger = logging.getLogger(__name__)
