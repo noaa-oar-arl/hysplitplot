@@ -83,6 +83,7 @@ def main():
 
     the_plot.read_background_map()
     the_plot.draw({"resize_event" : on_resize})
+    logger.info("Complete Concplot: {}".format(the_plot.get_plot_count_str()))
 
     return 0
 

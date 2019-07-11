@@ -6,7 +6,7 @@ import pytz
 
 from hysplitdata.const import HeightUnit
 from hysplitdata.conc import model
-from hysplitplot import const, mapfile, mapproj, labels, smooth, util
+from hysplitplot import const, mapfile, mapproj, labels, smooth, util, multipage
 from hysplitplot.conc import plot, helper, gisout
 
 
@@ -513,7 +513,9 @@ def test_ConcentrationPlot___init__():
     assert hasattr(p, "TFACT")
     assert hasattr(p, "initial_time")
     assert hasattr(p, "contour_labels")
-    assert hasattr(p, "current_frame")
+    assert p.current_frame == 1
+    assert p.time_period_count == 0
+    
     
 def test_ConcentrationPlot_merge_plot_settings():
     p = plot.ConcentrationPlot()
@@ -1023,10 +1025,26 @@ def test_ConcentrationPlot_draw():
         p._initialize_map_projection(p.cdump)
         p.contour_labels = [""] * p.settings.contour_level_count
         p.draw({"resize_event" : blank_event_handler}, block=False)
+        assert p.time_period_count == 1
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
-
+    
+    
+def test_ConcentrationPlot_get_plot_count_str():
+    p = plot.ConcentrationPlot()
+    
+    p.plot_saver = multipage.SinglePlotFileWriter("test", "png")
+    p.plot_saver.file_count = 7
+    assert p.get_plot_count_str() == "7 output files"
+    
+    p.plot_saver.file_count = 1
+    p.time_period_count = 1
+    assert p.get_plot_count_str() == "1 time period"
+    
+    p.time_period_count = 2
+    assert p.get_plot_count_str() == "2 time periods"
+    
 
 def test_LabelledContourLevel___init__():
     o = plot.LabelledContourLevel(10.0, "USER1", 0.5, 0.6, 0.7)

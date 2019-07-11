@@ -5,6 +5,15 @@ import pytest
 from hysplitplot import multipage, const
 
 
+class AbstractMultiplePlotFileWriterTest(multipage.AbstractMultiplePlotFileWriter):
+    
+    def save(self, figure, frame_number):
+        pass
+    
+    def close(self):
+        pass
+    
+
 def test_PlotFileWriterFactory_create_instance():
     o = multipage.PlotFileWriterFactory.create_instance(const.Frames.ALL_FILES_ON_ONE, "test", "pdf")
     assert isinstance(o, multipage.MultiplePlotPDFWriter)
@@ -21,8 +30,14 @@ def test_PlotFileWriterFactory_create_instance():
     assert isinstance(o, multipage.SinglePlotFileWriter)
 
 
+def test_AbstractMultiplePlotFileWriter___init__():
+    o = AbstractMultiplePlotFileWriterTest()
+    assert o.file_count == 0
+    
+    
 def test_SinglePlotFileWriter___init__():
     o = multipage.SinglePlotFileWriter("test", "png")
+    assert o.file_count == 0
     assert o.output_basename == "test"
     assert o.output_suffix == "png"
     
@@ -32,10 +47,14 @@ def test_SinglePlotFileWriter_save():
     
     o = multipage.SinglePlotFileWriter("__multipagetest", "png")
     o.save(ax.figure, 1)
+    o.save(ax.figure, 2)
     
     assert os.path.exists( "__multipagetest0001.png" )
+    assert os.path.exists( "__multipagetest0002.png" )
+    assert o.file_count == 2
     
     os.remove( "__multipagetest0001.png" )
+    os.remove( "__multipagetest0002.png" )
     plt.close(ax.figure)
     
     
@@ -60,6 +79,8 @@ def test_MultiplePlotPDFWriter___init__():
         os.remove("__multipagetest.pdf")
         
     o = multipage.MultiplePlotPDFWriter("__multipagetest", "pdf")
+    assert o.file_count == 0
+    
     o.close()
     
     assert o.filename == "__multipagetest.pdf"
@@ -78,6 +99,7 @@ def test_MultiplePlotPDFWriter_save():
     o.close()
     
     assert os.path.exists( "__multipagetest.pdf" )
+    assert o.file_count == 1
     
     os.remove( "__multipagetest.pdf" )
     plt.close(ax.figure)

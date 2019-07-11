@@ -23,6 +23,9 @@ class PlotFileWriterFactory:
 
 class AbstractMultiplePlotFileWriter(ABC):
     
+    def __init__(self):
+        self.file_count = 0
+        
     @abstractmethod
     def save(self, figure, frame_number):
         pass
@@ -35,13 +38,15 @@ class AbstractMultiplePlotFileWriter(ABC):
 class SinglePlotFileWriter(AbstractMultiplePlotFileWriter):
     
     def __init__(self, output_basename, output_suffix):
+        super(SinglePlotFileWriter, self).__init__()
         self.output_basename = output_basename
         self.output_suffix = output_suffix
     
     def save(self, figure, frame_no):
         filename = self._make_filename(frame_no)
-        logger.info("Saving a plot to file %s", filename)
+        logger.debug("Saving a plot to file %s", filename)
         figure.savefig(filename, papertype="letter")
+        self.file_count += 1
     
     def _make_filename(self, frame_no):
         return "{0}{1:04d}.{2}".format(self.output_basename, frame_no, self.output_suffix)
@@ -53,12 +58,15 @@ class SinglePlotFileWriter(AbstractMultiplePlotFileWriter):
 class MultiplePlotPDFWriter(AbstractMultiplePlotFileWriter):
     
     def __init__(self, output_basename, output_suffix):
+        super(MultiplePlotPDFWriter, self).__init__()
         self.filename = "{}.{}".format(output_basename, output_suffix)
-        logger.info("Saving a plot to file %s", self.filename)
+        logger.debug("Saving a plot to file %s", self.filename)
         self.pdf = PdfPages(self.filename)
     
     def save(self, figure, frame_no):
         self.pdf.savefig(figure)
+        if self.file_count == 0:
+            self.file_count += 1
         
     def close(self):
         self.pdf.close()

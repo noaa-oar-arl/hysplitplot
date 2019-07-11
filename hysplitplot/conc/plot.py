@@ -334,6 +334,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.initial_time = None
         self.contour_labels = None
         self.current_frame = 1
+        self.time_period_count = 0
         
   
     def merge_plot_settings(self, filename, args):
@@ -1046,9 +1047,21 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             for g in grids:
                 self.draw_conc_on_ground(g, ev_handlers, level_generator, color_table, gis_writer, *args, **kwargs)
         
+            self.time_period_count += 1
+            
         gis_writer.finalize()
         self.plot_saver.close()
+
+    def get_plot_count_str(self):
+        if self.plot_saver.file_count > 1:
+            return "{} output files".format(self.plot_saver.file_count)
         
+        s = "{} time period".format(self.time_period_count)
+        if self.time_period_count > 1:
+            s += "s"
+
+        return s
+
 
 class LabelledContourLevel:
     
