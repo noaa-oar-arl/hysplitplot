@@ -641,6 +641,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             if mbox.hit_count == 0:
                 if self.settings.IZRO == 0:
                     raise Exception("ALL concentrations are ZERO - no maps")
+                else:
+                    logger.info("ALL concentrations are ZERO")
 
             # first pass only refines grid for small plumes
             if ipass == 0 and map_opt_passes == 2:

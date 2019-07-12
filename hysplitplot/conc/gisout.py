@@ -478,7 +478,8 @@ class AbstractKMLContourWriter(ABC):
     <Folder>
       <name><![CDATA[{}]]></name>\n""".format(self._get_name_cdata(g.ending_datetime)))
 
-        if contour_set is not None:
+        # when not all of the concentration values are a zero
+        if contour_set is not None and len(contour_set.contours) > 0:
             if self.frame_count == 1:
                 f.write("""\
       <visibility>1</visibility>
@@ -612,6 +613,10 @@ class AbstractKMLContourWriter(ABC):
         pass
     
     def _write_max_location(self, f, g, max_conc_str, vert_level, contour_label):
+        if g.extension is None or len(g.extension.max_locs) == 0:
+            logger.warning("No max location is found: skip outputting max location to KML")
+            return
+        
         dx = g.parent.grid_deltas[0]
         dy = g.parent.grid_deltas[1]
         hx = 0.5 * dx
