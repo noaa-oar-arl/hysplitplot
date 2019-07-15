@@ -862,6 +862,14 @@ def test_ConcentrationPlot_draw_concentration_plot():
                                                 [1.0e-16, 1.0e-15, 1.0e-14],
                                                 ["g", "b", "r"])
         assert isinstance(contour_set, QuadContourSet)
+        
+        # no contour levels
+        contour_set = p.draw_concentration_plot(p.cdump.grids[0],
+                                                p.cdump.grids[0].conc,
+                                                p.conc_map,
+                                                [],
+                                                [])
+                
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
@@ -1243,6 +1251,10 @@ def test_UserSpecifiedLevelGenerator___init__(contourLevels):
     assert len(contourLevels) == 4
     assert len(o.contour_levels) == 4
 
+    o = plot.UserSpecifiedLevelGenerator(None)
+    assert o is not None
+    assert len(o.contour_levels) == 0
+    
 
 def test_UserSpecifiedLevelGenerator_make_levels(contourLevels):
     o = plot.UserSpecifiedLevelGenerator(contourLevels)

@@ -730,7 +730,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                           horizontalalignment="center", verticalalignment="center", clip_on=True,
                           transform=self.data_crs)
 
-        if conc_grid.nonzero_conc_count > 0:
+        if conc_grid.nonzero_conc_count > 0 and len(contour_levels) > 1:
             # draw filled contours
             contour_set = axes.contourf(conc_grid.longitudes, conc_grid.latitudes, scaled_conc,
                                         contour_levels,
@@ -1231,7 +1231,7 @@ class UserSpecifiedLevelGenerator(AbstractContourLevelGenerator):
     
     def __init__(self, user_specified_levels):
         AbstractContourLevelGenerator.__init__(self)
-        self.contour_levels = [o.level for o in user_specified_levels]
+        self.contour_levels = [] if user_specified_levels is None else [o.level for o in user_specified_levels]
     
     def make_levels(self, min_conc, max_conc, max_levels):
         return self.contour_levels
