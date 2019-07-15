@@ -12,7 +12,7 @@ import sys
 from hysplitdata import io
 from hysplitdata.conc import model
 from hysplitdata.const import HeightUnit
-from hysplitplot import cmdline, util, const, plotbase, mapbox, mapproj, smooth, multipage
+from hysplitplot import cmdline, util, const, datem, plotbase, mapbox, mapproj, smooth, multipage
 from hysplitplot.conc import helper, gisout, cntr
 
 
@@ -36,12 +36,12 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.last_time_index = 9999 # 1-based index for now. 
         self.time_index_step = 1
         self.contour_level_generator = const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC
-        self.QFILE = "undefined"
+        self.QFILE = None
         self.source_label = "\u2606"    # open star
         self.this_is_test = 0
-        self.LEVEL1 = 0 # bottom display level defaults to deposition surface
-        self.LEVEL2 = 99999 # top level default to whole model atmosphere
-        self.exposure_unit = const.ExposureUnit.CONCENTRATION # KEXP, -e
+        self.LEVEL1 = 0     # bottom display level defaults to deposition surface
+        self.LEVEL2 = 99999 # top level defaults to whole model atmosphere
+        self.exposure_unit = const.ExposureUnit.CONCENTRATION # KEXP; -e
         self.KMAP = const.ConcentrationMapType.CONCENTRATION
         self.KAVG = const.ConcentrationType.EACH_LEVEL
         self.NDEP = const.DepositionType.TIME
@@ -335,6 +335,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.contour_labels = None
         self.current_frame = 1
         self.time_period_count = 0
+        self.datem = None
         
   
     def merge_plot_settings(self, filename, args):
@@ -412,6 +413,10 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         
         if self.settings.use_source_time_zone:
             self.source_time_zone = self.get_time_zone_at(self.cdump.release_locs[0])
+        
+        if self.settings.QFILE is not None:
+            if os.path.exists(self.settings.QFILE):
+                self.datem = datem.Datem().get_reader().read(self.settings.QFILE) 
             
     def _post_file_processing(self, cdump):
         
@@ -696,10 +701,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                           self.cdump.release_locs[0],
                                           self.settings.ring_number,
                                           self.settings.ring_distance)
-
-        # place station locations
-        self._draw_stations_if_exists(axes, self.settings)
-
+          
         logger.debug("Drawing contour at levels %s using colors %s", contour_levels, fill_colors)
         
         # draw a source marker
@@ -714,7 +716,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 axes.text(x[k], y[k], self.settings.source_label,
                           color=self.settings.source_label_color,
                           fontsize=self.settings.source_label_font_size,
-                          horizontalalignment="center", verticalalignment="center",
+                          horizontalalignment="center", verticalalignment="center", clip_on=True,
                           transform=self.data_crs)
 
         if conc_grid.nonzero_conc_count > 0:
@@ -748,7 +750,18 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                                  color=clr,
                                                  transform=self.data_crs)
                 axes.add_patch(r)
-            
+        
+        # place station locations
+        self._draw_stations_if_exists(axes, self.settings)
+         
+        # draw DATEM data
+        if self.datem is not None:
+            self._draw_datem(axes,
+                             self.settings,
+                             self.datem,
+                             conc_grid.starting_datetime,
+                             conc_grid.ending_datetime)
+
         if self.settings.noaa_logo:
             self._draw_noaa_logo(axes)
 
@@ -792,7 +805,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         if conc_map.has_banner():
             str = conc_map.get_banner()
             axes.text(0.5, y, str, color="r", fontsize=small_font_sz,
-                      horizontalalignment="center", verticalalignment="top",
+                      horizontalalignment="center", verticalalignment="top", clip_on=True,
                       transform=axes.transAxes)
             y -= small_line_skip
     
@@ -822,13 +835,13 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             
             label = labels[k] if k < len(labels) else ""
             axes.text(x+0.5*dx, y-0.5*dy, label, color="k", fontsize=font_sz,
-                      horizontalalignment="center", verticalalignment="center",
+                      horizontalalignment="center", verticalalignment="center", clip_on=True,
                       transform=axes.transAxes)
             
             v = conc_map.format_conc(level)
             str = ">{0} ${1}$".format(v, conc_unit)
             axes.text(x + dx + x, y-0.5*dy, str, color="k", fontsize=font_sz,
-                      horizontalalignment="left", verticalalignment="center",
+                      horizontalalignment="left", verticalalignment="center", clip_on=True,
                       transform=axes.transAxes)
             
             y -= dy
@@ -838,13 +851,13 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             
             str = "Maximum: {0:.1e} ${1}$".format(max_conc, conc_unit)
             axes.text(x, y, str, color="k", fontsize=font_sz,
-                      horizontalalignment="left", verticalalignment="top",
+                      horizontalalignment="left", verticalalignment="top", clip_on=True,
                       transform=axes.transAxes)
             y -= line_skip
             
             str = "Minimum: {0:.1e} ${1}$".format(min_conc, conc_unit)
             axes.text(x, y, str, color="k", fontsize=font_sz,
-                      horizontalalignment="left", verticalalignment="top",
+                      horizontalalignment="left", verticalalignment="top", clip_on=True,
                       transform=axes.transAxes)
             y -= line_skip
      
@@ -859,7 +872,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             
             y -= small_line_skip
             axes.text(0.5, y, "THIS IS A TEST", color="r", fontsize=small_font_sz,
-                      horizontalalignment="center", verticalalignment="top",
+                      horizontalalignment="center", verticalalignment="top", clip_on=True,
                       transform=axes.transAxes)
             
             axes.hlines(y-small_line_skip, 0.05, 0.95,

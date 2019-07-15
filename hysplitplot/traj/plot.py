@@ -488,7 +488,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                     # show the value of the first vertical coordinate
                     if k == 0:
                         axes.text(ages[0], vc[0], "{0}  ".format(int(vc[0])),
-                                  horizontalalignment="right", verticalalignment="center")
+                                  horizontalalignment="right", verticalalignment="center", clip_on=True)
                 else:
                     logger.error("skipping a trajectory with no vertical coordinate")
 
@@ -592,8 +592,9 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                 # cluster info
                 if self.cluster_list is not None:
                     cluster_label = self.cluster_list.get_label(k)
-                    axes.text(lons[-1], lats[-1], cluster_label, horizontalalignment="right",
-                              verticalalignment="bottom", transform=self.data_crs)
+                    axes.text(lons[-1], lats[-1], cluster_label,
+                              horizontalalignment="right", verticalalignment="bottom",  clip_on=True,
+                              transform=self.data_crs)
 
         if self.settings.noaa_logo:
             self._draw_noaa_logo(axes)
@@ -635,7 +636,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         t = 1.0 - 0.5 * h
         for k, buff in enumerate(lines):
             axes.text(0.05, t - h*count, buff,
-                      verticalalignment="top",
+                      verticalalignment="top", clip_on=True,
                       transform=axes.transAxes)
             count += 1
 

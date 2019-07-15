@@ -384,7 +384,7 @@ class AbstractPlot:
                 if len(stn.label) > 0:
                     axes.text(stn.longitude, stn.latitude, stn.label,
                               horizontalalignment="center",
-                              verticalalignment="center",
+                              verticalalignment="center", clip_on=True,
                               transform=self.data_crs)
                 else:
                     axes.scatter(stn.longitude, stn.latitude,
@@ -393,6 +393,19 @@ class AbstractPlot:
                                  c=settings.station_marker_color, clip_on=True,
                                  transform=self.data_crs)
 
+    def _draw_datem(self, axes, settings, datem, starting_dt, ending_dt):
+        for m in datem.make_plot_data(starting_dt, ending_dt):
+            axes.scatter(m.longitude, m.latitude,
+                         s=settings.station_marker_size,
+                         marker="+",
+                         c=settings.station_marker_color, clip_on=True,
+                         transform=self.data_crs)
+            if m.value_str is not None:
+                axes.text(m.longitude, m.latitude, m.value_str,
+                          horizontalalignment="left",
+                          verticalalignment="center", clip_on=True,
+                          transform=self.data_crs) 
+        
     @staticmethod
     def _make_maptext_filename(output_suffix):
         return "MAPTEXT.CFG" if output_suffix == "ps" else "MAPTEXT." + output_suffix
@@ -409,7 +422,7 @@ class AbstractPlot:
                 for k, buff in enumerate(lines):
                     if k in selected_lines:
                         axes.text(0.05, 0.928-0.143*count, buff,
-                                  verticalalignment="top",
+                                  verticalalignment="top", clip_on=True,
                                   transform=axes.transAxes)
                         count += 1
 
@@ -423,7 +436,7 @@ class AbstractPlot:
                                                     transform=self.data_crs)
             axes.add_patch(circ)
             str = "{:d} km".format(int(ring_distance * (k+1)))
-            axes.text(lon, lat - radius, str, transform=self.data_crs)
+            axes.text(lon, lat - radius, str, clip_on=True, transform=self.data_crs)
         
     def _draw_noaa_logo(self, axes):
         # position of the right bottom corner in the display coordinate

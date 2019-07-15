@@ -81,7 +81,7 @@ def test_ConcentrationPlotSettings___init__():
     assert s.last_time_index == 9999
     assert s.time_index_step == 1
     assert s.contour_level_generator == const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC
-    assert s.QFILE == "undefined"
+    assert s.QFILE == None
     assert s.source_label == "\u2606"
     assert s.this_is_test == 0
     assert s.LEVEL1 == 0
@@ -515,6 +515,7 @@ def test_ConcentrationPlot___init__():
     assert hasattr(p, "contour_labels")
     assert p.current_frame == 1
     assert p.time_period_count == 0
+    assert p.datem is None
     
     
 def test_ConcentrationPlot_merge_plot_settings():
@@ -543,7 +544,7 @@ def test_ConcentrationPlot_update_gridlines():
 
 def test_ConcentrationPlot_read_data_files():
     p = plot.ConcentrationPlot()
-    p.merge_plot_settings(None, ["-idata/cdump", "-w1", "-d2", "--source-time-zone"])
+    p.merge_plot_settings(None, ["-idata/cdump", "-w1", "-d2", "--source-time-zone", "-qdata/meas-t1.txt"])
 
     p.read_data_files()
 
@@ -567,6 +568,7 @@ def test_ConcentrationPlot_read_data_files():
     assert p.depo_sum is not None
     assert p.settings.smoothing_distance > 0 and p.smoothing_kernel is not None
     assert p.source_time_zone is not None
+    assert p.datem is not None
 
 
 def test_ConcentrationPlot__post_file_processing(cdump2):

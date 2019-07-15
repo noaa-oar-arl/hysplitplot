@@ -787,7 +787,7 @@ class ThresholdLevelsMap(AbstractConcentrationMap):
         y -= line_skip * 1.5
         
         axes.text(0.5, y, title, color="k", fontsize=font_sz,
-                  horizontalalignment="center", verticalalignment="top",
+                  horizontalalignment="center", verticalalignment="top", clip_on=True,
                   transform=axes.transAxes)
         y -= line_skip
         
@@ -800,12 +800,12 @@ class ThresholdLevelsMap(AbstractConcentrationMap):
             y -= line_skip * 0.5
             label = contour_labels[k] if len(contour_labels) > k else ""
             axes.text(x, y, label, color="k", fontsize=font_sz,
-                      horizontalalignment="left", verticalalignment="top",
+                      horizontalalignment="left", verticalalignment="top", clip_on=True,
                       transform=axes.transAxes)
             
             for str in par:
                 axes.text(x + dx + x, y, str, color="k", fontsize=font_sz,
-                          horizontalalignment="left", verticalalignment="top",
+                          horizontalalignment="left", verticalalignment="top", clip_on=True,
                           transform=axes.transAxes)
                 y -= line_skip
             
@@ -853,7 +853,7 @@ class VolcanicEruptionMap(AbstractConcentrationMap):
         
         for str in lines:
             axes.text(x, y, str, color="r", fontsize=font_sz,
-                  horizontalalignment="left", verticalalignment="top",
+                  horizontalalignment="left", verticalalignment="top", clip_on=True,
                   transform=axes.transAxes)
             y -= line_skip
             

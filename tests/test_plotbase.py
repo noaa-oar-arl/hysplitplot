@@ -4,7 +4,7 @@ import pytest
 import pytz
 
 from hysplitdata.const import HeightUnit
-from hysplitplot import plotbase, const, mapproj, mapfile, labels
+from hysplitplot import plotbase, const, datem, labels, mapfile, mapproj
 from hysplitplot.traj import plot
 
 
@@ -361,7 +361,30 @@ def test_AbstractPlot__draw_stations_if_exists():
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
-   
+
+
+def test_AbstractPlot__draw_datem():
+    p = plotbase.AbstractPlot()
+    p.projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    p.projection.corners_xy = [1.0, 1.0, 500.0, 500.0]
+    p.crs = p.projection.create_crs()
+    axes = plt.axes(projection=p.crs)
+
+    s = plotbase.AbstractPlotSettings()
+    
+    d = datem.Datem().get_reader().read("data/meas-t1.txt")
+    
+    utc = pytz.utc
+    dt1 = datetime.datetime(1983, 9, 18, 18, 0, 0, 0, utc)
+    dt2 = datetime.datetime(1983, 9, 18, 21, 0, 0, 0, utc)
+
+    # See if no exception is thrown.
+    try:
+        p._draw_datem(axes, s, d, dt1, dt2)
+        cleanup_plot(p)
+    except Exception as ex:
+        raise pytest.fail("unexpeced exception: {0}".format(ex))
+      
 
 def test_AbstractPlot_make_maptext_filename():
     assert plotbase.AbstractPlot._make_maptext_filename("ps") == "MAPTEXT.CFG"

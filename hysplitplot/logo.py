@@ -94,7 +94,7 @@ class NOAALogoDrawer:
         
         # NOAA label above the seagull        
         axes.text(235.0, 330.0, "noaa", fontsize=self.font_sz1, fontweight="bold",
-                  horizontalalignment="center", verticalalignment="center",
+                  horizontalalignment="center", verticalalignment="center", clip_on=True,
                   color="w", transform=tr)
 
         #self._draw_top_label(axes, tr)
@@ -112,7 +112,7 @@ class NOAALogoDrawer:
             xp = (self.R + 15.0) * math.cos(ang * self._DEG2RAD) + self.cx
             yp = (self.R + 15.0) * math.sin(ang * self._DEG2RAD) + self.cy
             axes.text(xp, yp, c, fontsize=self.font_sz2, rotation=(ang-90.0),
-                      horizontalalignment="center", verticalalignment="center",
+                      horizontalalignment="center", verticalalignment="center", clip_on=True,
                       color="k", transform=tr)
             ang -= delta_ang
             
@@ -126,7 +126,7 @@ class NOAALogoDrawer:
             xp = (self.R + 15.0) * math.cos(ang * self._DEG2RAD) + self.cx
             yp = (self.R + 15.0) * math.sin(ang * self._DEG2RAD) + self.cy
             axes.text(xp, yp, c, fontsize=self.font_sz2, rotation=(ang+90.0),
-                      horizontalalignment="center", verticalalignment="center",
+                      horizontalalignment="center", verticalalignment="center", clip_on=True,
                       color="k", transform=tr)
             ang += delta_ang
     
