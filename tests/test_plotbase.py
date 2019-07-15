@@ -208,7 +208,7 @@ def test_AbstractPlot___init__():
     assert hasattr(p, "data_crs")
     assert hasattr(p, "background_maps")
     assert hasattr(p, "labels")
-    assert hasattr(p, "source_time_zone")
+    assert hasattr(p, "time_zone")
     assert isinstance(p.labels, labels.LabelsConfig)
 
 
@@ -405,7 +405,22 @@ def test_AbstractPlot__draw_maptext_if_exists():
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
+ 
 
+def test_TrajectoryPlot__draw_alt_text_boxes():
+    p = plot.AbstractPlot()
+    p.projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    p.projection.corners_xy = [1.0, 1.0, 500.0, 500.0]
+    p.crs = p.projection.create_crs()
+    axes = plt.axes(projection=p.crs)
+
+    # See if no exception is thrown.
+    try:
+        p._draw_alt_text_boxes(axes, ["line 1", "line 2"])
+        plt.close(axes.figure)
+    except Exception as ex:
+        raise pytest.fail("unexpeced exception: {0}".format(ex))
+ 
 
 def test_AbstractPlot__draw_concentric_circles():
     p = plotbase.AbstractPlot()
@@ -458,11 +473,11 @@ def test_AbstractPlot_get_time_zone_at():
 
 def test_AbstractPlot_adjust_for_time_zone():
     p = plotbase.AbstractPlot()
-    assert p.source_time_zone is None
+    assert p.time_zone is None
     
     dt = datetime.datetime(2019, 7, 10, 14, 3, 0, 0, pytz.utc)
     
-    p.source_time_zone = pytz.timezone("America/New_York")
+    p.time_zone = pytz.timezone("America/New_York")
     t = p.adjust_for_time_zone(dt)
     assert t.year        == 2019
     assert t.month       == 7

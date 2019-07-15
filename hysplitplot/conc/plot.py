@@ -7,6 +7,7 @@ import matplotlib.gridspec
 import matplotlib.pyplot as plt
 import numpy
 import os
+import pytz
 import sys
 
 from hysplitdata import io
@@ -395,6 +396,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.conc_type = helper.ConcentrationTypeFactory.create_instance(self.settings.KAVG)
         if self.settings.KAVG == 1:
             self.conc_type.set_alt_KAVG(3)  # for the above-ground concentration plots
+        if self.labels.has("LAYER"):
+            self.conc_type.set_custom_layer_str( self.labels.get("LAYER") )
         
         self.plot_saver = multipage.PlotFileWriterFactory.create_instance(self.settings.frames_per_file,
                                                                           self.settings.output_basename,
@@ -404,6 +407,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 
         self.conc_map = helper.ConcentrationMapFactory.create_instance(self.settings.KMAP, self.settings.KHEMIN)
         self.depo_map = helper.DepositionMapFactory.create_instance(self.settings.KMAP, self.settings.KHEMIN)
+        if self.labels.has("MAPID"):
+            self.conc_map.map_id = self.labels.get("MAPID")
+            self.depo_map.map_id = self.labels.get("MAPID")
         
         self.depo_sum = helper.DepositSumFactory.create_instance(self.settings.NDEP, self.cdump.has_ground_level_grid())
                 
@@ -411,8 +417,10 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             self.smoothing_kernel = smooth.SmoothingKernelFactory.create_instance(const.SmoothingKernel.SIMPLE,
                                                                                   self.settings.smoothing_distance)
         
+        if self.labels.has("TZONE"):
+            self.time_zone = pytz.timezone( self.labels.get("TZONE") )
         if self.settings.use_source_time_zone:
-            self.source_time_zone = self.get_time_zone_at(self.cdump.release_locs[0])
+            self.time_zone = self.get_time_zone_at(self.cdump.release_locs[0])
         
         if self.settings.QFILE is not None:
             if os.path.exists(self.settings.QFILE):

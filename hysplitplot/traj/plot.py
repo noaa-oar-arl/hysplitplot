@@ -205,7 +205,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                                                                           self.settings.output_suffix)
         
         if self.settings.use_source_time_zone:
-            self.source_time_zone = self.get_time_zone_at(self.data_list[0].trajectories[0].starting_loc)
+            self.time_zone = self.get_time_zone_at(self.data_list[0].trajectories[0].starting_loc)
             
     @staticmethod
     def has_terrain_profile(tdump_list):
@@ -451,7 +451,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
 
         vert_proj = VerticalProjectionFactory.create_instance(axes, self.settings)
         
-        time_zone = self.source_time_zone if self.settings.use_source_time_zone else None
+        time_zone = self.time_zone if self.settings.use_source_time_zone else None
         
         # Adjust x-range.
         x_range = None
@@ -629,16 +629,6 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         else:
             top_spineQ = self.settings.vertical_coordinate != VerticalCoordinate.NONE
             self._turn_off_spines(self.text_axes, top=top_spineQ)
-
-    def _draw_alt_text_boxes(self, axes, lines):
-        count = 0
-        h = 1.0 / (len(lines) + 1)
-        t = 1.0 - 0.5 * h
-        for k, buff in enumerate(lines):
-            axes.text(0.05, t - h*count, buff,
-                      verticalalignment="top", clip_on=True,
-                      transform=axes.transAxes)
-            count += 1
 
     def draw(self, ev_handlers=None, *args, **kw):
         if self.settings.interactive_mode == False:

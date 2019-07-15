@@ -28,8 +28,43 @@ def cdump3():
 # Declare a concrete class needed for testing an abstract class.
 class ConcentrationTypeTest(helper.ConcentrationType):
     
+    def prepare_grids_for_plotting(self, t_grids):
+        pass
+    
+    def update_min_max(self, t_grids):
+        pass
+    
+    def scale_conc(self, CONADJ, DEPADJ):
+        pass
+    
+    def scale_exposure(self, factor):
+        pass
+    
+    def undo_scale_exposure(self):
+        pass    
+   
+    def normalize_min_max(self):
+        pass
+    
+    @property
+    def contour_min_conc(self):
+        pass
+    
+    @property
+    def contour_max_conc(self):
+        pass
+    
+    def get_plot_conc_range(self, grid):
+        pass
+    
+    def get_level_range_str(self, level1, level2):
+        pass
+    
+    def get_upper_level(self, grid_level, settings_level):
+        pass
+        
     @staticmethod
-    def make_gis_basename(self, time_index, output_suffix, level1, level2):
+    def make_gis_basename(time_index, output_suffix, level1, level2):
         pass
 
 
@@ -425,6 +460,7 @@ def test_ConcentrationType___init__():
     assert hasattr(p, "cdump")
     assert hasattr(p, "level_selector")
     assert hasattr(p, "pollutant_selector")
+    assert hasattr(p, "custom_layer_str") and p.custom_layer_str == None
        
 
 def test_ConcentrationType_initialize():
@@ -438,8 +474,17 @@ def test_ConcentrationType_initialize():
     assert p.cdump is cdump
     assert p.level_selector is ls
     assert p.pollutant_selector is ps
-  
 
+
+def test_ConcentrationType_set_custom_layer_str():
+    p = ConcentrationTypeTest()
+    p.set_custom_layer_str("  AVERAGED BETWEEN ") # spaces will be trimmed.
+    assert p.custom_layer_str == "AVERAGED BETWEEN"
+    
+    p.set_custom_layer_str(None)
+    assert p.custom_layer_str is None
+    
+    
 def test_ConcentrationType_get_lower_level():
     p = ConcentrationTypeTest()
     
@@ -556,6 +601,17 @@ def test_VerticalAverageConcentration_update_average_min_max():
     assert p.max_average == 1.50
 
 
+def test_VerticalAverageConcentration_normalize_min_max():
+    p = helper.VerticalAverageConcentration()
+    assert p.min_average == 1.0e+25
+    assert p.max_average == 0.0
+    
+    p.normalize_min_max()
+    
+    assert p.min_average == 0.0
+    assert p.max_average == 1.0e+25
+    
+
 def test_VerticalAverageConcentration_scale_conc():
     p = helper.VerticalAverageConcentration()
     p.cdump = model.ConcentrationDump()
@@ -610,17 +666,6 @@ def test_VerticalAverageConcentration_undo_scale_exposure():
     assert p.max_average == pytest.approx(0.75)
 
 
-def test_VerticalAverageConcentration_normalize_min_max():
-    p = helper.VerticalAverageConcentration()
-    assert p.min_average == 1.0e+25
-    assert p.max_average == 0.0
-    
-    p.normalize_min_max()
-    
-    assert p.min_average == 0.0
-    assert p.max_average == 1.0e+25
-    
-
 def test_VerticalAverageConcentration_contour_min_conc():
     p = helper.VerticalAverageConcentration()
     p.min_average = 0.25
@@ -652,6 +697,9 @@ def test_VerticalAverageConcentration_get_level_range_str():
     level2 = util.LengthInMeters(2.0)
     
     assert p.get_level_range_str(level1, level2) == "averaged between 1 m and 2 m"
+    
+    p.set_custom_layer_str("  AVERAGED BETWEEN ")
+    assert p.get_level_range_str(level1, level2) == "AVERAGED BETWEEN 1 m and 2 m"
     
     
 def test_VerticalAverageConcentration_get_upper_level():
@@ -702,7 +750,40 @@ def test_LevelConcentration_initialize(cdump2):
     assert p.level_selector is ls
     assert p.pollutant_selector is ps
     assert p.ground_index == None
+
+
+def test_LevelConcentration_prepare_grids_for_plotting(cdump2):
+    p = helper.LevelConcentration()
+    # limit to one pollutant and one vertical level
+    ls = helper.VerticalLevelSelector(300, 1000)
+    ps = helper.PollutantSelector(1)
+    p.initialize(cdump2, ls, ps)
+
+    grids, grids_gnd = p.prepare_grids_for_plotting(cdump2.grids)
     
+    assert len(grids) == 1
+    assert len(grids_gnd) == 0
+    assert grids[0].conc[300, 300] * 1.0e+13 == pytest.approx(7.608168)
+    
+
+def test_LevelConcentration_prepare_grids_for_plotting__case2(cdump3):
+    p = helper.LevelConcentration()
+    ls = helper.VerticalLevelSelector(10, 500) # choose one-level
+    ps = helper.PollutantSelector()
+    p.initialize(cdump3, ls, ps)
+
+    # take the grids at zero time index.
+    t_grids = list(filter(lambda g: g.time_index == 0, cdump3.grids))
+    assert len(t_grids) == 2
+
+    # expect one grid above the ground and another on the ground.
+    grids, grids_gnd = p.prepare_grids_for_plotting(t_grids)
+
+    assert len(grids) == 1
+    assert len(grids_gnd) == 1
+    assert grids[0].vert_level == 100
+    assert grids_gnd[0].vert_level == 0
+        
 
 def test_LevelConcentration_update_min_max(cdump2):
     p = helper.LevelConcentration()
@@ -773,39 +854,6 @@ def test_LevelConcentration_normalize_min_max():
     assert p.min_concs == pytest.approx((0.0, 0.0, 0.0))
     assert p.max_concs == pytest.approx((1.0e+25, 1.0e+25, 1.0e+25))
 
-
-def test_LevelConcentration_prepare_grids_for_plotting(cdump2):
-    p = helper.LevelConcentration()
-    # limit to one pollutant and one vertical level
-    ls = helper.VerticalLevelSelector(300, 1000)
-    ps = helper.PollutantSelector(1)
-    p.initialize(cdump2, ls, ps)
-
-    grids, grids_gnd = p.prepare_grids_for_plotting(cdump2.grids)
-    
-    assert len(grids) == 1
-    assert len(grids_gnd) == 0
-    assert grids[0].conc[300, 300] * 1.0e+13 == pytest.approx(7.608168)
-    
-
-def test_LevelConcentration_prepare_grids_for_plotting(cdump3):
-    p = helper.LevelConcentration()
-    ls = helper.VerticalLevelSelector(10, 500) # choose one-level
-    ps = helper.PollutantSelector()
-    p.initialize(cdump3, ls, ps)
-
-    # take the grids at zero time index.
-    t_grids = list(filter(lambda g: g.time_index == 0, cdump3.grids))
-    assert len(t_grids) == 2
-
-    # expect one grid above the ground and another on the ground.
-    grids, grids_gnd = p.prepare_grids_for_plotting(t_grids)
-
-    assert len(grids) == 1
-    assert len(grids_gnd) == 1
-    assert grids[0].vert_level == 100
-    assert grids_gnd[0].vert_level == 0
-    
 
 def test_LevelConcentration_scale_conc():
     p = helper.LevelConcentration()
@@ -909,8 +957,15 @@ def test_LevelConcentration_get_level_range_str():
     
     assert p.get_level_range_str(level1, level2) == "at level 2 m"
     
+    p.set_custom_layer_str("AT LEVEL")
+    assert p.get_level_range_str(level1, level2) == "AT LEVEL 2 m"
+    p.set_custom_layer_str(None)
+    
     p.alt_KAVG = 3
     assert p.get_level_range_str(level1, level2) == "averaged between 1 m and 2 m"
+    
+    p.set_custom_layer_str("BETWEEN")
+    assert p.get_level_range_str(level1, level2) == "BETWEEN 1 m and 2 m"
     
     
 def test_LevelConcentration_get_upper_level():

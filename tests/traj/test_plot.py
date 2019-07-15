@@ -335,7 +335,7 @@ def test_TrajectoryPlot_read_data_files():
     assert len(p.data_list[0].trajectories) == 3
     assert p.settings.color_cycle is not None
     assert p.plot_saver is not None
-    assert p.source_time_zone is not None
+    assert p.time_zone is not None
 
 
 def test_TrajectoryPlot_has_terrain_profile(plotData):
@@ -560,12 +560,12 @@ def test_TrajectoryPlot_make_plot_title(plotData):
            "TEST  Meteorological Data"
 
     # Add time zone
-    p.source_time_zone = pytz.timezone("EST")
+    p.time_zone = pytz.timezone("EST")
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "Forward trajectories starting at 1900 EST 15 Oct 1995\n" + \
            "TEST  Meteorological Data"
-    p.source_time_zone = None
+    p.time_zone = None
     
     # Change the starting time of a trajectory
 
@@ -627,7 +627,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
            "11 UTC 15 Oct  TEST  Forecast Initialization"
 
     # Time zone
-    p.source_time_zone = pytz.timezone("EST")
+    p.time_zone = pytz.timezone("EST")
     
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
@@ -746,22 +746,7 @@ def test_TrajectoryPlot_draw_bottom_text():
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
- 
 
-def test_TrajectoryPlot__draw_alt_text_boxes():
-    p = plot.TrajectoryPlot()
-    p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
-    p.read_data_files()
-    p.read_background_map()
-    p.layout(p.data_list)
-
-    # See if no exception is thrown.
-    try:
-        p._draw_alt_text_boxes(p.text_axes, ["line 1", "line 2"])
-        cleanup_plot(p)
-    except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
- 
 
 def test_TrajectoryPlot_draw():
     p = plot.TrajectoryPlot()

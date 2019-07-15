@@ -272,12 +272,62 @@ class ConcentrationType(ABC):
         self.cdump = None
         self.level_selector = None
         self.pollutant_selector = None
+        self.custom_layer_str = None
     
     def initialize(self, cdump, level_selector, pollutant_selector):
         self.cdump = cdump
         self.level_selector = level_selector
         self.pollutant_selector = pollutant_selector
-
+    
+    def set_custom_layer_str(self, s):
+        self.custom_layer_str = None if s is None else s.strip()
+        
+    @abstractmethod
+    def prepare_grids_for_plotting(self, t_grids):
+        pass
+    
+    @abstractmethod
+    def update_min_max(self, t_grids):
+        pass
+    
+    @abstractmethod
+    def scale_conc(self, CONADJ, DEPADJ):
+        pass
+    
+    @abstractmethod
+    def scale_exposure(self, factor):
+        pass
+    
+    @abstractmethod
+    def undo_scale_exposure(self):
+        pass    
+   
+    @abstractmethod
+    def normalize_min_max(self):
+        pass
+    
+    @property
+    @abstractmethod
+    def contour_min_conc(self):
+        pass
+    
+    @property
+    @abstractmethod
+    def contour_max_conc(self):
+        pass
+    
+    @abstractmethod
+    def get_plot_conc_range(self, grid):
+        pass
+    
+    @abstractmethod
+    def get_level_range_str(self, level1, level2):
+        pass
+    
+    @abstractmethod
+    def get_upper_level(self, grid_level, settings_level):
+        pass
+    
     def get_lower_level(self, current_level, levels):
         sorted_levels = sorted(levels)
     
@@ -287,8 +337,9 @@ class ConcentrationType(ABC):
         else:
             return 0.0
 
+    @staticmethod
     @abstractmethod
-    def make_gis_basename(self, time_index, output_suffix, level1, level2):
+    def make_gis_basename(time_index, output_suffix, level1, level2):
         pass
     
 
@@ -355,6 +406,11 @@ class VerticalAverageConcentration(ConcentrationType):
             self.max_average = max(self.max_average, vmax)
             
         logger.debug("average min %g, max %g", self.min_average, self.max_average)
+        
+    def normalize_min_max(self):
+        if self.min_average > self.max_average:
+            # This happens if all concentration values are zero.
+            self.min_average, self.max_average = self.max_average, self.min_average
 
     def scale_conc(self, CONADJ, DEPADJ):
         self.min_average *= CONADJ
@@ -370,11 +426,6 @@ class VerticalAverageConcentration(ConcentrationType):
     def undo_scale_exposure(self):
         self.min_average = self.__min_average_stashed
         self.max_average = self.__max_average_stashed
-        
-    def normalize_min_max(self):
-        if self.min_average > self.max_average:
-            # This happens if all concentration values are zero.
-            self.min_average, self.max_average = self.max_average, self.min_average
              
     @property
     def contour_min_conc(self):
@@ -389,6 +440,8 @@ class VerticalAverageConcentration(ConcentrationType):
 
     def get_level_range_str(self, level1, level2):
         """level1 and level2 are instances of the LengthInFeet or LengthInMeters class."""
+        if self.custom_layer_str is not None:
+            return "{0} {1} and {2}".format(self.custom_layer_str, level1, level2)
         return "averaged between {0} and {1}".format(level1, level2)
 
     def get_upper_level(self, grid_level, settings_level):
@@ -423,6 +476,29 @@ class LevelConcentration(ConcentrationType):
         except ValueError:
             self.ground_index = None
         
+    def prepare_grids_for_plotting(self, t_grids):
+        
+        v_grids = sum_over_pollutants_per_level(t_grids,
+                                                self.level_selector,
+                                                self.pollutant_selector)
+        
+        # remove grids with vertical level = 0 m.
+        grids = list(filter(lambda g: g.vert_level > 0, v_grids))
+        
+        # sort by vertical level
+        grids = sorted(grids, key=lambda g: g.vert_level)
+        
+        # grids on the ground
+        if 0 in self.level_selector:
+            gnd_grids = list(filter(lambda g: g.vert_level == 0, v_grids))
+        else:
+            ground_level_selector = VerticalLevelSelector(0, 0)
+            gnd_grids = sum_over_pollutants_per_level(t_grids,
+                                                      ground_level_selector,
+                                                      self.pollutant_selector)
+        
+        return grids, gnd_grids
+         
     def update_min_max(self, t_grids):
         for g in t_grids:
             vmin, vmax = find_nonzero_min_max(g.conc)
@@ -466,30 +542,7 @@ class LevelConcentration(ConcentrationType):
                     self.max_concs[k] = 1.0e+25
                     
         logger.debug("after normalization: min %s, max %s", self.min_concs, self.max_concs)
-        
-    def prepare_grids_for_plotting(self, t_grids):
-        
-        v_grids = sum_over_pollutants_per_level(t_grids,
-                                                self.level_selector,
-                                                self.pollutant_selector)
-        
-        # remove grids with vertical level = 0 m.
-        grids = list(filter(lambda g: g.vert_level > 0, v_grids))
-        
-        # sort by vertical level
-        grids = sorted(grids, key=lambda g: g.vert_level)
-        
-        # grids on the ground
-        if 0 in self.level_selector:
-            gnd_grids = list(filter(lambda g: g.vert_level == 0, v_grids))
-        else:
-            ground_level_selector = VerticalLevelSelector(0, 0)
-            gnd_grids = sum_over_pollutants_per_level(t_grids,
-                                                      ground_level_selector,
-                                                      self.pollutant_selector)
-        
-        return grids, gnd_grids
-    
+   
     def scale_conc(self, CONADJ, DEPADJ):
         if self.cdump.vert_levels[0] == 0:
             self.min_concs[0] *= DEPADJ
@@ -536,10 +589,13 @@ class LevelConcentration(ConcentrationType):
         return grid.extension.min_conc, grid.extension.max_conc
 
     def get_level_range_str(self, level1, level2):
-        # TODO: better
         if self.alt_KAVG == 3:
+            if self.custom_layer_str is not None:
+                return "{0} {1} and {2}".format(self.custom_layer_str, level1, level2)
             return "averaged between {0} and {1}".format(level1, level2)
         else:
+            if self.custom_layer_str is not None:
+                return "{0} {1}".format(self.custom_layer_str, level2)
             return "at level {0}".format(level2)
 
     def get_upper_level(self, grid_level, settings_level):

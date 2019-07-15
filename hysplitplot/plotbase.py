@@ -144,7 +144,7 @@ class AbstractPlot:
         self.data_crs = cartopy.crs.PlateCarree()
         self.background_maps = []
         self.labels = labels.LabelsConfig()
-        self.source_time_zone = None
+        self.time_zone = None
         self.time_zone_finder = TimezoneFinder()
         
     def _connect_event_handlers(self, handlers):
@@ -426,6 +426,16 @@ class AbstractPlot:
                                   transform=axes.transAxes)
                         count += 1
 
+    def _draw_alt_text_boxes(self, axes, lines):
+        count = 0
+        h = 1.0 / (len(lines) + 1)
+        t = 1.0 - 0.5 * h
+        for k, buff in enumerate(lines):
+            axes.text(0.05, t - h*count, buff,
+                      verticalalignment="top", clip_on=True,
+                      transform=axes.transAxes)
+            count += 1
+
     def _draw_concentric_circles(self, axes, starting_loc, ring_number, ring_distance):
         lon, lat = starting_loc
         R = ring_distance/111.0
@@ -476,4 +486,4 @@ class AbstractPlot:
         return pytz.utc if time_zone is None else time_zone
     
     def adjust_for_time_zone(self, dt):
-        return dt if self.source_time_zone is None else dt.astimezone(self.source_time_zone)
+        return dt if self.time_zone is None else dt.astimezone(self.time_zone)

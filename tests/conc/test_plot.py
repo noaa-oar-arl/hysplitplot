@@ -567,7 +567,7 @@ def test_ConcentrationPlot_read_data_files():
     assert p.depo_map is not None
     assert p.depo_sum is not None
     assert p.settings.smoothing_distance > 0 and p.smoothing_kernel is not None
-    assert p.source_time_zone is not None
+    assert p.time_zone is not None
     assert p.datem is not None
 
 
@@ -719,7 +719,7 @@ def test_ConcentrationPlot_make_plot_title(cdump):
             "TEST Calculation started at 1700 25 Sep 1983 (UTC)"
 
     # set the time zone
-    p.source_time_zone = pytz.timezone("EST")
+    p.time_zone = pytz.timezone("EST")
     title = p.make_plot_title(plotData, p.conc_map, level1, level2)
     assert title == "NOAA HYSPLIT MODEL\n" + \
             "Concentration ($mass/m^3$) at level 2 m\n" + \
