@@ -23,14 +23,14 @@ def run(mainFunction, programName):
     """
     logging.basicConfig(
         stream=sys.stdout,
-        level=logging.DEBUG,
+        level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s - %(message)s"
     )
 
-    logging.info("This is {0}.".format(programName))
+    logging.info("This is %s.", programName)
 
     exitCode = mainFunction()
-    logging.info("exiting with code [{0}]".format(exitCode))
+    logging.debug("exiting with code %d", exitCode)
 
     sys.exit(exitCode)
 

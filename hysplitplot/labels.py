@@ -71,12 +71,12 @@ class LabelsConfigReader():
                         tbox_count += 1
                     elif k == "NTXBOXL":
                         if tbox_count != expected_count:
-                            logger.error("{0} text box lines must follow NTXBOXL in {1}".format( expected_count, filename))
+                            logger.error("%d text box lines must follow NTXBOXL in %s", expected_count, filename)
                             return False
                         expected_count = int(v)
                         tbox_count = 0
             if expected_count > 0 and tbox_count != expected_count:
-                logger.error("{0} text box lines must follow NTXBOXL in {1}".format( expected_count, filename))
+                logger.error("%d text box lines must follow NTXBOXL in %s", expected_count, filename)
                 return False
 
         return True

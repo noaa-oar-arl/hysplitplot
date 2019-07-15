@@ -16,7 +16,7 @@ class PlotFileWriterFactory:
             if output_suffix.lower() == "pdf":
                 return MultiplePlotPDFWriter(output_basename, output_suffix)
             else:
-                logger.warning("Saving all plots in the [{}] format is not supported. Instead, one file per plot will be generated".format(output_suffix))
+                logger.warning("Saving all plots in one %s file is not supported: each plot will be saved individually", output_suffix)
 
         return SinglePlotFileWriter(output_basename, output_suffix)
     

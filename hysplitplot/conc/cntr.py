@@ -94,6 +94,13 @@ def _separate_paths(seg, path_codes, separator_code):
     return paths
 
 
+def _reduce_points(path, min_pts=5000, step=5):
+    if len(path) > min_pts:
+        logger.warning("More than %d points: keeping only 1 out of %d points", min_pts, step)
+        return path[0::step]
+    return path
+
+
 def convert_matplotlib_quadcontourset(quadContourSet):
     contour_set = ContourSet()
     
@@ -110,7 +117,8 @@ def convert_matplotlib_quadcontourset(quadContourSet):
                 for path in paths:
                     boundary = Boundary(polygon)
                     polygon.boundaries.append(boundary)
-                    boundary.copy_with_dateline_crossing_fix(path)
+                    lonlats = _reduce_points(path)
+                    boundary.copy_with_dateline_crossing_fix(lonlats)
                     boundary.hole = True if boundary.compute_area() < 0 else False
                     
     return contour_set

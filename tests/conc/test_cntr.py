@@ -118,7 +118,29 @@ def test__separate_paths():
     paths = cntr._separate_paths(seg, path_codes, 1)
 
     assert paths == [ [(0,0), (1,1), (2,2), (0,0)], [(5,5), (6,6), (7,7), (5,5)] ]
+
+
+def test__reduce_points():
+    pts = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     
+    # expect no reduction
+    a = cntr._reduce_points(pts)
+    assert len(a) == 11
+    
+    # expect reduction in the number of points
+    a = cntr._reduce_points(pts, 10)
+    assert len(a) == 3
+    assert a[0] == 0
+    assert a[1] == 5
+    assert a[2] == 10
+    
+    a = cntr._reduce_points(pts, 10, 2)
+    assert len(a) == 6
+    assert a[0] == 0
+    assert a[1] == 2
+    assert a[2] == 4
+    assert a[5] == 10
+
 
 def test_convert_matplotlib_quadcontourset(cdump_two_pollutants):
     g = cdump_two_pollutants.grids[0]
