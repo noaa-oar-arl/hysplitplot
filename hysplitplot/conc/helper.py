@@ -48,16 +48,17 @@ def sum_over_pollutants_per_level(grids, level_selector, pollutant_selector):
 
 
 def sum_conc_grids_of_interest(grids, level_selector, pollutant_selector, time_selector): 
+    sum = None
     fn = lambda g: \
             g.time_index in time_selector and \
             g.pollutant_index in pollutant_selector and \
             g.vert_level in level_selector
             
     filtered = list(filter(fn, grids))
-    
-    sum = numpy.copy(filtered[0].conc)
-    for g in filtered[1:]:
-        sum += g.conc
+    if len(filtered) > 0:
+        sum = numpy.copy(filtered[0].conc)
+        for g in filtered[1:]:
+            sum += g.conc
         
     return sum
     

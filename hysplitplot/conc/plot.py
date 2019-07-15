@@ -648,10 +648,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
             # find trajectory hits
             mbox.hit_count = 0
-            for j in range(len(cdump.latitudes)):
-                for i in range(len(cdump.longitudes)):
-                    if conc[j, i] > 0:
-                        mbox.add((cdump.longitudes[i], cdump.latitudes[j]))
+            if conc is not None:
+                for j in range(len(cdump.latitudes)):
+                    for i in range(len(cdump.longitudes)):
+                        if conc[j, i] > 0:
+                            mbox.add((cdump.longitudes[i], cdump.latitudes[j]))
 
             if mbox.hit_count == 0:
                 if self.settings.IZRO == 0:

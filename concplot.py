@@ -97,4 +97,4 @@ if __name__ == "__main__":
             # when reading a shapefile and its corresponding shx file is missing,
             # automatically generate the missing file.
             os.environ['SHAPE_RESTORE_SHX']='YES'
-        hysplitplot.run(main, "CONCPLOT")
+        hysplitplot.run(main, "CONCPLOT", log_level=logging.INFO)

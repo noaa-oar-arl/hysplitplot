@@ -12,7 +12,7 @@ from hysplitplot import const
 logger = logging.getLogger(__name__)
 
 
-def run(mainFunction, programName):
+def run(mainFunction, programName, **kwargs):
     """Provides a common main entry point.
 
     Initializes a logger, prints banner, calls the main function, and exits
@@ -21,9 +21,10 @@ def run(mainFunction, programName):
     :param mainFunction: main function to be executed. It should return an integer.
     :param programName: program name.
     """
+    log_level = kwargs.get("log_level", logging.INFO)
     logging.basicConfig(
         stream=sys.stdout,
-        level=logging.INFO,
+        level=log_level,
         format="%(asctime)s %(levelname)s %(name)s - %(message)s"
     )
 

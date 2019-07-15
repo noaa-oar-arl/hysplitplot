@@ -141,7 +141,19 @@ def test_sum_conc_grids_of_interest(cdump2):
     
     assert conc[300, 300] * 1.e+13 == pytest.approx(8.047535 + 8.173024 + 7.963810 + 7.608168)
     
-     
+    # when no grid can be selected
+    level_selector = helper.VerticalLevelSelector(50000, 90000)
+    try:
+        conc = helper.sum_conc_grids_of_interest(cdump2.grids,
+                                                 level_selector,
+                                                 pollutant_selector,
+                                                 time_selector)
+    except Exception as ex:
+        pytest.fail("unexpected exception: {}".format(ex))
+        
+    assert conc is None
+
+
 def test_find_nonzero_min_max(cdump2):
     vmin, vmax = helper.find_nonzero_min_max(cdump2.grids[0].conc)
     assert vmin * 1.0e+15 == pytest.approx(1.871257)
