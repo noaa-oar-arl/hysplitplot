@@ -410,7 +410,7 @@ class AbstractPlot:
     def _make_maptext_filename(output_suffix):
         return "MAPTEXT.CFG" if output_suffix == "ps" else "MAPTEXT." + output_suffix
 
-    def _draw_maptext_if_exists(self, axes, filename=None):
+    def _draw_maptext_if_exists(self, axes, filename=None, filter_fn=None):
         if filename is None:
             filename = self._make_maptext_filename(self.settings.output_suffix)
             
@@ -420,7 +420,7 @@ class AbstractPlot:
                 lines = f.read().splitlines()
                 count = 0
                 for k, buff in enumerate(lines):
-                    if k in selected_lines:
+                    if (k in selected_lines) and ((filter_fn is None) or filter_fn(buff)):
                         axes.text(0.05, 0.928-0.143*count, buff,
                                   verticalalignment="top", clip_on=True,
                                   transform=axes.transAxes)

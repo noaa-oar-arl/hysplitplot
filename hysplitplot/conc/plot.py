@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import copy
 import datetime
 import geopandas
@@ -75,6 +76,7 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.station_marker = "o"
         self.station_marker_color= "k"     # black
         self.station_marker_size = 6*6
+        self.max_contour_legend_count = 25
         
     def dump(self, stream):
         """Dumps the settings to an output stream.
@@ -789,7 +791,13 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             volume_unit = conc_map.guess_volume_unit(settings.mass_unit)
             
         return "{0}{1}".format(mass_unit, volume_unit)
-        
+    
+    def _limit_contour_levels_for_legends(self, contour_levels, max_legend_count=25):
+        if len(contour_levels) > max_legend_count:
+            logger.warning("Number of contour levels exceed %d: not all legends will be displayed", max_legend_count)
+            return contour_levels[:max_legend_count]
+        return contour_levels
+                    
     def draw_contour_legends(self, grid, conc_map, contour_labels, contour_levels, fill_colors):
         axes = self.legends_axes
         s = self.settings
@@ -834,17 +842,19 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         colors = copy.deepcopy(fill_colors)
         colors.reverse()
         
-        for k, level in enumerate(reversed(contour_levels)):
+        display_levels = self._limit_contour_levels_for_legends(contour_levels, s.max_contour_legend_count)
+        for k, level in enumerate(reversed(display_levels)):
             clr = colors[k]
                         
             box = matplotlib.patches.Rectangle((x, y-dy), dx, dy, color=clr,
                                                transform=axes.transAxes)
             axes.add_patch(box)
             
-            label = labels[k] if k < len(labels) else ""
-            axes.text(x+0.5*dx, y-0.5*dy, label, color="k", fontsize=font_sz,
-                      horizontalalignment="center", verticalalignment="center", clip_on=True,
-                      transform=axes.transAxes)
+            if k < len(labels):
+                label = "NR" if level == -1.0 else labels[k]
+                axes.text(x+0.5*dx, y-0.5*dy, label, color="k", fontsize=font_sz,
+                          horizontalalignment="center", verticalalignment="center", clip_on=True,
+                          transform=axes.transAxes)
             
             v = conc_map.format_conc(level)
             str = ">{0} ${1}$".format(v, conc_unit)
@@ -895,7 +905,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
          
         map_text_filename = self._make_maptext_filename(self.settings.output_suffix)
         if os.path.exists(map_text_filename):
-            self._draw_maptext_if_exists(self.text_axes, map_text_filename)
+            filter_fn = lambda s: not s.startswith("Traj")
+            self._draw_maptext_if_exists(self.text_axes, map_text_filename, filter_fn)
         elif (alt_text_lines is not None) and (len(alt_text_lines) > 0):
             self._draw_alt_text_boxes(self.text_axes, alt_text_lines)
         else:
@@ -1121,7 +1132,7 @@ class ContourLevelGeneratorFactory:
             raise Exception("unknown method {0} for contour level generation".format(generator))
 
 
-class AbstractContourLevelGenerator:
+class AbstractContourLevelGenerator(ABC):
     
     def __init__(self, **kwargs):
         self.global_min = None
@@ -1131,6 +1142,10 @@ class AbstractContourLevelGenerator:
     def set_global_min_max(self, cmin, cmax):
         self.global_min = cmin
         self.global_max = cmax
+        
+    @abstractmethod
+    def make_levels(self, min_conc, max_conc, max_levels):
+        pass
         
 
 class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):

@@ -402,13 +402,14 @@ def test_AbstractPlot__draw_maptext_if_exists():
     # See if no exception is thrown.
     try:
         p._draw_maptext_if_exists(p.text_axes, "data/MAPTEXT.CFG")
+        p._draw_maptext_if_exists(p.text_axes, "data/MAPTEXT.CFG", lambda s: True)
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
  
 
 def test_TrajectoryPlot__draw_alt_text_boxes():
-    p = plot.AbstractPlot()
+    p = plotbase.AbstractPlot()
     p.projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
     p.projection.corners_xy = [1.0, 1.0, 500.0, 500.0]
     p.crs = p.projection.create_crs()

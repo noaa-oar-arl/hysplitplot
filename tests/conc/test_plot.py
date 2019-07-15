@@ -46,7 +46,14 @@ def blank_event_handler(event):
 def cleanup_plot(p):
     if p.fig is not None:
         plt.close(p.fig)
-        
+
+# declare concrete classes below to test their corresponding abstract class.
+
+class AbstractContourLevelGeneratorTest(plot.AbstractContourLevelGenerator):
+    
+    def make_levels(self, min_conc, max_conc, max_levels):
+        pass
+    
 
 def test_ConcentrationPlotSettings___init__():
     s = plot.ConcentrationPlotSettings()
@@ -118,6 +125,7 @@ def test_ConcentrationPlotSettings___init__():
     assert s.station_marker is not None
     assert s.station_marker_color != None
     assert s.station_marker_size > 0
+    assert s.max_contour_legend_count == 25
 
 def test_ConcentrationPlotSettings_process_command_line_arguments():
     s = plot.ConcentrationPlotSettings()
@@ -883,6 +891,15 @@ def test_ConcentrationPlot_get_conc_unit():
     assert p.get_conc_unit(p.conc_map, s) == "ppm"
     
     
+def test_ConcentrationPlot__limit_contour_levels_for_legends():
+    p = plot.ConcentrationPlot()
+    c = [0, 1, 3, 4, 5] # any list will do
+    l = p._limit_contour_levels_for_legends(c, 3)
+    assert len(l) == 3
+    assert l[0] == 0
+    assert l[2] == 3
+    
+    
 def test_ConcentrationPlot_draw_contour_legends():
     p = plot.ConcentrationPlot()
     p.merge_plot_settings(None, ["-idata/cdump", "-jdata/arlmap_truncated"])
@@ -1108,14 +1125,14 @@ def test_ContourLevelGeneratorFactory_create_instance(contourLevels):
 
 
 def test_AbstractContourLevelGenerator___init__():
-    o = plot.AbstractContourLevelGenerator()
+    o = AbstractContourLevelGeneratorTest()
     assert o is not None
     assert hasattr(o, "global_min")
     assert hasattr(o, "global_max")
  
 
 def test_AbstractContourLevelGenerator_set_global_min_max():
-    o = plot.AbstractContourLevelGenerator()
+    o = AbstractContourLevelGeneratorTest()
     o.set_global_min_max(0.25, 0.75)
     assert o.global_min == pytest.approx(0.25)
     assert o.global_max == pytest.approx(0.75)
