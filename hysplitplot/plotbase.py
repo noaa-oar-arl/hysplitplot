@@ -27,9 +27,10 @@ class AbstractPlotSettings:
         #        #      scale square map for # circles
         self.ring_distance = 0.0
         self.center_loc = [0.0, 0.0]    # lon, lat
-        self.output_postscript = "output.ps"
-        self.output_suffix = "ps"
+        self.output_filename = "output.ps"
         self.output_basename = "output"
+        self.output_suffix = "ps"
+        self.output_format = "ps"
         self.noaa_logo = False
         self.lat_lon_label_interval_option = const.LatLonLabel.AUTO
         self.lat_lon_label_interval = 1.0
@@ -87,15 +88,18 @@ class AbstractPlotSettings:
  
         self.map_projection         = args.get_integer_value(["-m", "-M"], self.map_projection)
 
-        self.output_postscript      = args.get_string_value(["-o", "-O"], self.output_postscript)
+        self.output_filename        = args.get_string_value(["-o", "-O"], self.output_filename)
         if args.has_arg(["-o", "-O"]):
             self.interactive_mode = False
 
         self.output_suffix          = args.get_string_value(["-p", "-P"], self.output_suffix)    
         
-        self.output_postscript, self.output_basename, self.output_suffix = \
-            util.normalize_output_filename(self.output_postscript, self.output_suffix)
-                
+        # The output_format is to be normalized with unmodified output_filename.
+        self.output_format = \
+            util.normalize_output_format(self.output_filename, self.output_suffix, self.output_format)
+        self.output_filename, self.output_basename, self.output_suffix = \
+            util.normalize_output_filename(self.output_filename, self.output_suffix)
+
         if args.has_arg(["-z", "-Z"]):
             self.zoom_factor        = self.parse_zoom_factor(args.get_value(["-z", "-Z"]))
         

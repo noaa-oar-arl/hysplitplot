@@ -69,7 +69,7 @@ def test_TrajectoryPlotSettings___init__():
     assert s.ring_number == -1
     assert s.ring_distance == 0.0
     assert s.center_loc == [0.0, 0.0]
-    #assert s.output_postscript == "trajplot.ps"
+    #assert s.output_filename == "trajplot.ps"
     assert s.output_suffix == "ps"
     #assert s.output_basename == "trajplot"
     assert s.noaa_logo == False
@@ -85,7 +85,7 @@ def test_TrajectoryPlotSettings___init__():
     
     assert s.gis_output == 0
     assert s.view == 1
-    assert s.output_postscript == "trajplot.ps"
+    assert s.output_filename == "trajplot.ps"
     assert s.output_basename == "trajplot"
     assert s.time_label_interval == 6
     assert s.vertical_coordinate == VerticalCoordinate.NOT_SET
@@ -123,7 +123,7 @@ def test_TrajectoryPlotSettings_process_command_line_arguments():
     assert s.color == 0
     assert s.time_label_interval == 4
     assert s.map_projection == 1
-    assert s.output_postscript == "plot.ps"
+    assert s.output_filename == "plot.ps"
     assert s.label_source == False
     assert s.vertical_coordinate == 1
     assert s.zoom_factor == 0.90
@@ -288,7 +288,7 @@ def test_TrajectoryPlotSettingsReader_read():
 
     assert s.gis_output == 0
     assert s.view == 1
-    assert s.output_postscript == "trajplot"
+    assert s.output_filename == "trajplot"
     assert s.map_background == "../graphics/arlmap"
     assert s.map_projection == 0
     assert s.time_label_interval == 12

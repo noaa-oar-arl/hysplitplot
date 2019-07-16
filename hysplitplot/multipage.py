@@ -11,14 +11,14 @@ logger = logging.getLogger(__name__)
 class PlotFileWriterFactory:
     
     @staticmethod
-    def create_instance(frames_per_file, output_basename, output_suffix):
+    def create_instance(frames_per_file, output_basename, output_suffix, output_format):
         if frames_per_file == const.Frames.ALL_FILES_ON_ONE:
-            if output_suffix.lower() == "pdf":
+            if output_format.lower() == "pdf":
                 return MultiplePlotPDFWriter(output_basename, output_suffix)
             else:
                 logger.warning("Saving all plots in one %s file is not supported: each plot will be saved individually", output_suffix)
 
-        return SinglePlotFileWriter(output_basename, output_suffix)
+        return SinglePlotFileWriter(output_basename, output_suffix, output_format)
     
 
 class AbstractMultiplePlotFileWriter(ABC):
@@ -37,15 +37,16 @@ class AbstractMultiplePlotFileWriter(ABC):
 
 class SinglePlotFileWriter(AbstractMultiplePlotFileWriter):
     
-    def __init__(self, output_basename, output_suffix):
+    def __init__(self, output_basename, output_suffix, output_format):
         super(SinglePlotFileWriter, self).__init__()
         self.output_basename = output_basename
         self.output_suffix = output_suffix
+        self.output_format = output_format
     
     def save(self, figure, frame_no):
         filename = self._make_filename(frame_no)
         logger.debug("Saving a plot to file %s", filename)
-        figure.savefig(filename, papertype="letter")
+        figure.savefig(filename, papertype="letter", format=self.output_format)
         self.file_count += 1
     
     def _make_filename(self, frame_no):

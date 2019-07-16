@@ -66,7 +66,7 @@ def test_ConcentrationPlotSettings___init__():
     assert s.ring_number == -1
     assert s.ring_distance == 0.0
     assert s.center_loc == [0.0, 0.0]
-    #assert s.output_postscript == "trajplot.ps"
+    #assert s.output_filename == "trajplot.ps"
     assert s.output_suffix == "ps"
     #assert s.output_basename == "trajplot"
     assert s.noaa_logo == False
@@ -80,7 +80,7 @@ def test_ConcentrationPlotSettings___init__():
     assert s.station_marker_size > 0
         
     assert s.input_file == "cdump"
-    assert s.output_postscript == "concplot.ps"
+    assert s.output_filename == "concplot.ps"
     assert s.output_basename == "concplot"
     
     assert s.pollutant_index == 1
@@ -1067,7 +1067,7 @@ def test_ConcentrationPlot_draw():
 def test_ConcentrationPlot_get_plot_count_str():
     p = plot.ConcentrationPlot()
     
-    p.plot_saver = multipage.SinglePlotFileWriter("test", "png")
+    p.plot_saver = multipage.SinglePlotFileWriter("test", "png", "png")
     p.plot_saver.file_count = 7
     assert p.get_plot_count_str() == "7 output files"
     

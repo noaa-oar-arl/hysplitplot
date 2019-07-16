@@ -28,9 +28,10 @@ def test_AbstractPlotSettings___init__():
     assert s.ring_number == -1
     assert s.ring_distance == 0.0
     assert s.center_loc == [0.0, 0.0]
-    assert s.output_postscript == "output.ps"
-    assert s.output_suffix == "ps"
+    assert s.output_filename == "output.ps"
     assert s.output_basename == "output"
+    assert s.output_suffix == "ps"
+    assert s.output_format == "ps"
     assert s.noaa_logo == False
     assert s.lat_lon_label_interval_option == 1
     assert s.lat_lon_label_interval == 1.0
@@ -127,28 +128,34 @@ def test_AbstractPlotSettings__process_cmdline_args():
     assert s.map_projection == 2
 
     # test -o or -O
-    s.output_postscript = None
+    s.output_filename = None
     s.interactive_mode = True
 
     s._process_cmdline_args(["-otest"])
-    assert s.output_postscript == "test.ps"
+    assert s.output_filename == "test.ps"
     assert s.interactive_mode == False
     
-    s.output_postscript = None
+    s.output_filename = None
     s.interactive_mode = True
     
     s._process_cmdline_args(["-Oresult"])
-    assert s.output_postscript == "result.ps"
+    assert s.output_filename == "result.ps"
     assert s.interactive_mode == False
     
     # test -p or -P
+    s.output_filename = "result"
     s.output_suffix = "ps"
 
     s._process_cmdline_args(["-ppdf"])
     assert s.output_suffix == "pdf"
+    assert s.output_format == "pdf"
 
+    s.output_filename = "result"
+    s.output_suffix = "ps"
+    
     s._process_cmdline_args(["-Ppng"])
-    assert s.output_suffix == "png"    
+    assert s.output_suffix == "png"
+    assert s.output_format == "png"
     
      # test -z or -Z
     s.zoom_factor = 0

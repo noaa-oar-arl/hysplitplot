@@ -31,7 +31,7 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
         
         # defined in default_tplot
         self.view = 1
-        self.output_postscript = "trajplot.ps"
+        self.output_filename = "trajplot.ps"
         self.output_basename = "trajplot"
         self.time_label_interval = 6
         self.vertical_coordinate = VerticalCoordinate.NOT_SET
@@ -146,7 +146,7 @@ class TrajectoryPlotSettingsReader:
 
         s.gis_output = int(lines[0])
         s.view = int(lines[1]) # 1 or 0
-        s.output_postscript = lines[2]
+        s.output_filename = lines[2]
         s.map_background = lines[3]
         s.map_projection = int(lines[4])
         s.time_label_interval = int(lines[5])
@@ -202,7 +202,8 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         
         self.plot_saver = multipage.PlotFileWriterFactory.create_instance(self.settings.frames_per_file,
                                                                           self.settings.output_basename,
-                                                                          self.settings.output_suffix)
+                                                                          self.settings.output_suffix,
+                                                                          self.settings.output_format)
         
         if self.settings.use_source_time_zone:
             self.time_zone = self.get_time_zone_at(self.data_list[0].trajectories[0].starting_loc)
@@ -662,7 +663,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         w = gisout.GISFileWriterFactory.create_instance(self.settings.gis_output, self.settings.height_unit)
         if w is not None:
             w.output_suffix = self.settings.output_suffix
-            w.output_name = self.settings.output_postscript  
+            w.output_name = self.settings.output_filename  
             w.kml_option = self.settings.kml_option
                
             for k, plot_data in enumerate(self.data_list):

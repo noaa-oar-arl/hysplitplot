@@ -27,7 +27,7 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         plotbase.AbstractPlotSettings.__init__(self)
 
         self.input_file = "cdump"
-        self.output_postscript = "concplot.ps"
+        self.output_filename = "concplot.ps"
         self.output_basename = "concplot"
         
         # Index of the selected pollutant. It is 1-based for now but it will be changed to 0-based.
@@ -404,7 +404,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         
         self.plot_saver = multipage.PlotFileWriterFactory.create_instance(self.settings.frames_per_file,
                                                                           self.settings.output_basename,
-                                                                          self.settings.output_suffix)
+                                                                          self.settings.output_suffix,
+                                                                          self.settings.output_format)
 
         self._post_file_processing(self.cdump)
                 

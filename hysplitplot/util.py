@@ -99,6 +99,25 @@ def make_file_list(input_endpoints):
 
     return files
 
+def normalize_output_format(pathname, suffix, format="ps"):
+    acceptable = ["eps", "jpeg", "jpg", "pdf", "pgf", "png", "ps", "raw", "rgba", "svg", "svgz", "tif", "tiff"]
+
+    r = format
+
+    doneQ = False
+    n, x = os.path.splitext(pathname)
+    if len(x) > 1:
+        x = x[1:]  # skip the dot
+        if x.lower() in acceptable:
+            r = x
+            doneQ = True
+            
+    if not doneQ:
+        if suffix.lower() in acceptable:
+            r = suffix
+        
+    return r.lower()
+    
 def normalize_output_filename(pathname, ext="ps"):
     n, x = os.path.splitext(pathname)
 

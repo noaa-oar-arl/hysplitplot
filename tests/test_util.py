@@ -96,6 +96,20 @@ def test_make_file_list():
         assert str(ex) == "FATAL ERROR - File not found: data/nonexistent_file"
 
 
+def test_normalize_output_format():
+    # extension in the filename has the highest priority
+    assert util.normalize_output_format("output.pdf", "ps", "png") == "pdf"
+    assert util.normalize_output_format("output.pdf", "ps", "png") == "pdf"
+    assert util.normalize_output_format("output.pdf", "3141", "ps") == "pdf"
+    assert util.normalize_output_format("OUTPUT.PDF", "3141", "ps") == "pdf"
+
+    # when the filename has no extension, the suffix is consulted.
+    assert util.normalize_output_format("output", "pdf", "png") == "pdf"
+    assert util.normalize_output_format("output", "PDF", "png") == "pdf"
+    assert util.normalize_output_format("output", "3141", "png") == "png"
+    assert util.normalize_output_format("output", "3141", "PNG") == "png"
+    
+    
 def test_normalize_output_filename():
     n, b, x = util.normalize_output_filename("output.PS", "ps")
     assert (n, b, x) == ("output.PS", "output", "PS")
