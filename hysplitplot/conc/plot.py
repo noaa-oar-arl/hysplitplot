@@ -347,8 +347,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.settings.process_command_line_arguments(args)
           
     def update_gridlines(self):
+        clr = self._fix_map_color(self.settings.map_color, self.settings.color)
         self._update_gridlines(self.conc_axes,
-                               self.settings.map_color,
+                               clr,
                                self.settings.lat_lon_label_interval_option,
                                self.settings.lat_lon_label_interval)
         return
@@ -492,7 +493,10 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
     @staticmethod
     def _fix_map_color(color, color_mode):
-        return color if color_mode != const.ConcentrationPlotColor.BLACK_AND_WHITE else 'k'
+        if color_mode == const.ConcentrationPlotColor.BLACK_AND_WHITE or \
+           color_mode == const.ConcentrationPlotColor.BW_NO_LINES:
+            return "k"
+        return color
 
     def read_background_map(self):
         self.background_maps = self.load_background_map(self.settings.map_background)
@@ -737,20 +741,17 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                         contour_levels,
                                         colors=fill_colors, extend="max",
                                         transform=self.data_crs)
-            # draw contour lines
-            line_colors = ["k"] * len(fill_colors)
-            axes.contour(conc_grid.longitudes, conc_grid.latitudes, scaled_conc,
-                         contour_levels,
-                         colors=line_colors, linewidths=0.25,
-                         transform=self.data_crs)
+            if self.settings.color != const.ConcentrationPlotColor.COLOR_NO_LINES and \
+               self.settings.color != const.ConcentrationPlotColor.BW_NO_LINES:
+                # draw contour lines
+                line_colors = ["k"] * len(fill_colors)
+                axes.contour(conc_grid.longitudes, conc_grid.latitudes, scaled_conc,
+                             contour_levels,
+                             colors=line_colors, linewidths=0.25,
+                             transform=self.data_crs)
 
         if self.settings.show_max_conc == 1 or self.settings.show_max_conc == 3:
-            if self.settings.color == const.ConcentrationPlotColor.BLACK_AND_WHITE \
-              or self.settings.color == const.ConcentrationPlotColor.VAL_3:
-                clr = "k"   # blank
-            else:
-                clr = conc_map.get_color_at_max()
-            
+            clr = self._fix_map_color(conc_map.get_color_at_max(), self.settings.color)
             conc_grid.extension.max_locs = helper.find_max_locs(conc_grid)
             dx = conc_grid.parent.grid_deltas[0]
             dy = conc_grid.parent.grid_deltas[1]
@@ -1268,7 +1269,7 @@ class ColorTableFactory:
                     for k in range(5):
                         ct.set_rgb(k, (1.0, 1.0, 1.0))
         
-        if settings.color == const.ConcentrationPlotColor.BLACK_AND_WHITE or settings.color == const.ConcentrationPlotColor.VAL_3:
+        if settings.color == const.ConcentrationPlotColor.BLACK_AND_WHITE or settings.color == const.ConcentrationPlotColor.BW_NO_LINES:
             ct.change_to_grayscale()
         
         logger.debug("using color table: %s", ct)
@@ -1304,7 +1305,7 @@ class ColorTable:
     @staticmethod
     def get_luminance(rgb):
         r, g, b = rgb
-        return 0.299*r + 0.587*b + 0.114*b
+        return 0.299*r + 0.587*g + 0.114*b
        
     @staticmethod
     def create_plot_colors(rgbs):

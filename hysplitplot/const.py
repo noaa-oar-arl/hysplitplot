@@ -30,8 +30,8 @@ class Color: # TODO: rename this to TrajectoryPlotColor
 class ConcentrationPlotColor: # KOLOR
     BLACK_AND_WHITE = 0
     COLOR           = 1
-    VAL_2           = 2
-    VAL_3           = 3
+    COLOR_NO_LINES  = 2
+    BW_NO_LINES     = 3
     
 class LatLonLabel:
     NONE    = 0

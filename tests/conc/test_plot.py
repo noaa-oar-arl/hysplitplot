@@ -672,6 +672,12 @@ def test_ConcentrationPlot__fix_map_color():
     color_mode = const.ConcentrationPlotColor.COLOR
     assert p._fix_map_color('#6699cc', color_mode) == '#6699cc'
 
+    color_mode = const.ConcentrationPlotColor.BW_NO_LINES
+    assert p._fix_map_color('#6699cc', color_mode) == 'k' # black
+
+    color_mode = const.ConcentrationPlotColor.COLOR_NO_LINES
+    assert p._fix_map_color('#6699cc', color_mode) == '#6699cc'
+
 
 def test_ConcentrationPlot_read_background_map():
     p = plot.ConcentrationPlot()
@@ -1341,11 +1347,11 @@ def test_ColorTable_change_to_grayscale():
     o.change_to_grayscale()
     
     assert o.rgbs[0] == pytest.approx((0.0, 0.0, 0.0))
-    assert o.rgbs[1] == pytest.approx((0.6402, 0.6402, 0.6402))
+    assert o.rgbs[1] == pytest.approx((0.5815, 0.5815, 0.5815))
     
 
 def test_ColorTable_get_luminance():
-    assert plot.ColorTable.get_luminance((0.5, 0.6, 0.7)) == pytest.approx(0.6402)
+    assert plot.ColorTable.get_luminance((0.5, 0.6, 0.7)) == pytest.approx(0.5815)
 
 
 def test_ColorTable_create_plot_colors():

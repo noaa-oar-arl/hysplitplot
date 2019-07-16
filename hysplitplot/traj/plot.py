@@ -421,8 +421,9 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         return y_label
     
     def update_gridlines(self):
+        clr = self._fix_map_color(self.settings.map_color, self.settings.color)
         self._update_gridlines(self.traj_axes,
-                               self.settings.map_color,
+                               clr,
                                self.settings.lat_lon_label_interval_option,
                                self.settings.lat_lon_label_interval)
         
