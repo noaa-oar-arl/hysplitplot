@@ -201,7 +201,7 @@ def test_TimeIndexSelector___iter__():
     a = []
     for t_index in s:
         a.append(t_index)
-    assert a == [0, 2, 4]    
+    assert a == [1, 3]    
     
 
 def test_TimeIndexSelector___contains__():

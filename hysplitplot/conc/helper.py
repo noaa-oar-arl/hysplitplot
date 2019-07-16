@@ -94,7 +94,7 @@ class TimeIndexSelector:
         self.step = step
  
     def __iter__(self):
-        return iter(range(self.first, self.last + 1, self.step))
+        return iter(range(self.step - 1, self.last + 1, self.step))
  
     def __contains__(self, time_index):
         return True if (time_index >= self.__min and time_index <= self.__max) else False
