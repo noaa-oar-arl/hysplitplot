@@ -947,20 +947,21 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         
         self._turn_off_spines(self.conc_outer)
         self._turn_off_ticks(self.conc_outer)
-        
-        min_conc, max_conc = self.conc_type.get_plot_conc_range(g)
-        level_generator.set_global_min_max(self.conc_type.contour_min_conc, self.conc_type.contour_max_conc)
-        contour_levels = level_generator.make_levels(min_conc, max_conc, self.settings.contour_level_count)
-        
+         
         LEVEL0 = self.conc_type.get_lower_level(g.vert_level, self.cdump.vert_levels)
         LEVEL2 = self.conc_type.get_upper_level(g.vert_level, self.settings.LEVEL2)
         
         level1 = self.length_factory.create_instance(LEVEL0)
         level2 = self.length_factory.create_instance(LEVEL2)
         
+        # Scaling should be done prior to determining the min and max concentration values. 
         f = float(g.vert_level - LEVEL0)
         conc_scaling_factor = self.conc_map.scale_exposure(self.TFACT, self.conc_type, f)
         
+        min_conc, max_conc = self.conc_type.get_plot_conc_range(g)
+        level_generator.set_global_min_max(self.conc_type.contour_min_conc, self.conc_type.contour_max_conc)
+        contour_levels = level_generator.make_levels(min_conc, max_conc, self.settings.contour_level_count)
+       
         scaled_conc = numpy.copy(g.conc)
         if conc_scaling_factor != 1.0:
             scaled_conc *= conc_scaling_factor
@@ -1060,12 +1061,13 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         for t_index in self.time_selector:
             t_grids = helper.TimeIndexGridFilter(self.cdump.grids,
                                                  helper.TimeIndexSelector(t_index, t_index))
+            initial_timeQ = (t_index == self.time_selector.first)
             
             grids_above_ground, grids_on_ground = self.conc_type.prepare_grids_for_plotting(t_grids)
             logger.debug("grid counts: above the ground %d, on the ground %d",
                          len(grids_above_ground), len(grids_on_ground))
 
-            self.depo_sum.add(grids_on_ground, t_index == self.time_selector.first)
+            self.depo_sum.add(grids_on_ground, initial_timeQ)
                     
             # concentration unit conversion factor
             self.TFACT = self.settings.CONADJ

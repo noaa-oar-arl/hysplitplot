@@ -586,8 +586,7 @@ class LevelConcentration(ConcentrationType):
         return self.max_concs[self.ground_index]
     
     def get_plot_conc_range(self, grid):
-        logger.debug("conc plot: min %g, max %g, at level %g", grid.extension.min_conc, grid.extension.max_conc, grid.vert_level)
-        return grid.extension.min_conc, grid.extension.max_conc
+        return self.min_concs[grid.vert_level_index], self.max_concs[grid.vert_level_index]
 
     def get_level_range_str(self, level1, level2):
         if self.alt_KAVG == 3:

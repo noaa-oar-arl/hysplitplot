@@ -955,11 +955,14 @@ def test_LevelConcentration_get_plot_conc_range():
     
     g = model.ConcentrationGrid(None)
     g.vert_level = 10.0
+    g.vert_level_index = 0
     g.extension = helper.GridProperties()
-    g.extension.min_conc = 0.314
-    g.extension.max_conc = 3.141
+    g.extension.min_conc = 0.13
+    g.extension.max_conc = 0.14
     
-    assert p.get_plot_conc_range(g) == pytest.approx((0.314, 3.141))
+    # A plot range is determined from the min_concs and max_concs arrays
+    # because of concentration scaling for exposure.
+    assert p.get_plot_conc_range(g) == pytest.approx((0.1, 0.2))
 
      
 def test_LevelConcentration_get_level_range_str():
