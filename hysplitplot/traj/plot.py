@@ -552,7 +552,8 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                 background_map = o.map.copy()
                 background_map['geometry'] = background_map['geometry'].to_crs(self.crs.proj4_init)
             clr = self._fix_map_color(o.linecolor, self.settings.color)
-            background_map.plot(ax=axes, linestyle=o.linestyle, linewidth=o.linewidth, color=o.linecolor)
+            background_map.plot(ax=axes, linestyle=o.linestyle, linewidth=o.linewidth,
+                                facecolor="none", edgecolor=clr)
 
         # draw optional concentric circles
         if self.settings.ring and self.settings.ring_number > 0:
