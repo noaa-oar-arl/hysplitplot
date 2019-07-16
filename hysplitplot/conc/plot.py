@@ -802,11 +802,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             return contour_levels[:max_legend_count]
         return contour_levels
                     
-    def draw_contour_legends(self, grid, conc_map, contour_labels, contour_levels, fill_colors):
+    def draw_contour_legends(self, grid, conc_map, contour_labels, contour_levels, fill_colors, conc_scaling_factor):
         axes = self.legends_axes
         s = self.settings
         
-        min_conc, max_conc = self.conc_type.get_plot_conc_range(grid)
+        min_conc, max_conc = self.conc_type.get_plot_conc_range(grid, conc_scaling_factor)
         logger.debug("concentration plot min %g, max %g", min_conc, max_conc)
                 
         self._turn_off_ticks(axes)
@@ -916,11 +916,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         else:
             self._turn_off_spines(self.text_axes)
     
-    def _write_gisout(self, gis_writer, g, lower_vert_level, upper_vert_level, quad_contour_set, contour_levels, color_table):
+    def _write_gisout(self, gis_writer, g, lower_vert_level, upper_vert_level, quad_contour_set, contour_levels, color_table, scaling_factor):
         if g.extension.max_locs is None:
                 g.extension.max_locs = helper.find_max_locs(g)
                 
-        min_conc, max_conc = self.conc_type.get_plot_conc_range(g)
+        min_conc, max_conc = self.conc_type.get_plot_conc_range(g, scaling_factor)
         
         contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
         contour_set.raw_colors = color_table.raw_colors
@@ -961,7 +961,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         f = float(g.vert_level - LEVEL0)
         conc_scaling_factor = self.conc_map.scale_exposure(self.TFACT, self.conc_type, f)
         
-        min_conc, max_conc = self.conc_type.get_plot_conc_range(g)
+        min_conc, max_conc = self.conc_type.get_plot_conc_range(g, conc_scaling_factor)
         level_generator.set_global_min_max(self.conc_type.contour_min_conc, self.conc_type.contour_max_conc)
         contour_levels = level_generator.make_levels(min_conc, max_conc, self.settings.contour_level_count)
        
@@ -977,11 +977,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.conc_outer.set_xlabel(self.make_xlabel(g))
         
         quad_contour_set = self.draw_concentration_plot(g, scaled_conc, self.conc_map, contour_levels, color_table.colors)
-        self.draw_contour_legends(g, self.conc_map, self.contour_labels, contour_levels, color_table.colors)
+        self.draw_contour_legends(g, self.conc_map, self.contour_labels, contour_levels, color_table.colors, conc_scaling_factor)
         self.draw_bottom_text()
         
         if gis_writer is not None:
-            self._write_gisout(gis_writer, g, LEVEL0, LEVEL2, quad_contour_set, contour_levels, color_table)
+            self._write_gisout(gis_writer, g, LEVEL0, LEVEL2, quad_contour_set, contour_levels, color_table, conc_scaling_factor)
             
         self.conc_map.undo_scale_exposure(self.conc_type)
         
@@ -1001,13 +1001,14 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         
         self._turn_off_spines(self.conc_outer)
         self._turn_off_ticks(self.conc_outer)
-
-        min_conc, max_conc = self.conc_type.get_plot_conc_range(g)
-        level_generator.set_global_min_max(self.conc_type.ground_min_conc, self.conc_type.ground_max_conc)     
-        contour_levels = level_generator.make_levels(min_conc, max_conc, self.settings.contour_level_count)
-        
+       
         level1 = self.length_factory.create_instance(0)
         level2 = self.length_factory.create_instance(0)
+ 
+        conc_scaling_factor = self.settings.DEPADJ
+        min_conc, max_conc = self.conc_type.get_plot_conc_range(g, conc_scaling_factor)
+        level_generator.set_global_min_max(self.conc_type.ground_min_conc, self.conc_type.ground_max_conc)     
+        contour_levels = level_generator.make_levels(min_conc, max_conc, self.settings.contour_level_count)
         
         scaled_conc = numpy.copy(g.conc)
         if self.settings.DEPADJ != 1.0:
@@ -1021,11 +1022,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.conc_outer.set_xlabel(self.make_xlabel(g))
         
         contour_set = self.draw_concentration_plot(g, scaled_conc, self.depo_map, contour_levels, color_table.colors)
-        self.draw_contour_legends(g, self.depo_map, self.contour_labels, contour_levels, color_table.colors)
+        self.draw_contour_legends(g, self.depo_map, self.contour_labels, contour_levels, color_table.colors, conc_scaling_factor)
         self.draw_bottom_text()
          
         if gis_writer is not None:
-            self._write_gisout(gis_writer, g, 0, 0, contour_set, contour_levels, color_table)
+            self._write_gisout(gis_writer, g, 0, 0, contour_set, contour_levels, color_table, conc_scaling_factor)
        
         if self.settings.interactive_mode:
             plt.show(*args, **kwargs)

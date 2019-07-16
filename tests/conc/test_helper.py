@@ -700,7 +700,7 @@ def test_VerticalAverageConcentration_get_plot_conc_range():
     g.extension.min_vert_avg_conc = 0.4
     g.extension.max_vert_avg_conc = 0.6
     
-    assert p.get_plot_conc_range(g) == pytest.approx((0.40, 0.60))     
+    assert p.get_plot_conc_range(g, 2.0) == pytest.approx((0.80, 1.20))     
      
     
 def test_VerticalAverageConcentration_get_level_range_str():
@@ -960,9 +960,7 @@ def test_LevelConcentration_get_plot_conc_range():
     g.extension.min_conc = 0.13
     g.extension.max_conc = 0.14
     
-    # A plot range is determined from the min_concs and max_concs arrays
-    # because of concentration scaling for exposure.
-    assert p.get_plot_conc_range(g) == pytest.approx((0.1, 0.2))
+    assert p.get_plot_conc_range(g, 2.0) == pytest.approx((0.26, 0.28))
 
      
 def test_LevelConcentration_get_level_range_str():
@@ -1461,8 +1459,8 @@ def test_IdleDeposit_get_grids_to_plot(cdump2):
     ps = helper.PollutantSelector()
     o.initialize(cdump2.grids, ts, ps)
     
-    a = o.get_grids_to_plot(None, cdump2.grids)
-    assert a is None
+    a = o.get_grids_to_plot(cdump2.grids)
+    assert len(a) == 0
 
 
 def test_IdleDeposit_make_gis_basename():
@@ -1473,6 +1471,16 @@ def test_TimeDeposit___init__():
     o = helper.TimeDeposit()
     assert o is not None
     
+
+def test_TimeDeposit_get_grids_to_plot(cdump2):
+    o = helper.TimeDeposit()
+    ts = helper.TimeIndexSelector()
+    ps = helper.PollutantSelector()
+    o.initialize(cdump2.grids, ts, ps)
+    
+    a = o.get_grids_to_plot(cdump2.grids)
+    assert len(a) == 4
+        
 
 def test_TimeDeposit_make_gis_basename():
     assert helper.TimeDeposit.make_gis_basename(2, "ps") == "GIS_DEP_ps_02"

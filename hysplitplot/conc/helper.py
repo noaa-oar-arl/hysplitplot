@@ -318,7 +318,7 @@ class ConcentrationType(ABC):
         pass
     
     @abstractmethod
-    def get_plot_conc_range(self, grid):
+    def get_plot_conc_range(self, grid, scaling_factor):
         pass
     
     @abstractmethod
@@ -436,8 +436,9 @@ class VerticalAverageConcentration(ConcentrationType):
     def contour_max_conc(self):
         return self.max_average
     
-    def get_plot_conc_range(self, grid):
-        return grid.extension.min_vert_avg_conc, grid.extension.max_vert_avg_conc
+    def get_plot_conc_range(self, grid, scaling_factor):
+        return grid.extension.min_vert_avg_conc * scaling_factor, \
+               grid.extension.max_vert_avg_conc * scaling_factor
 
     def get_level_range_str(self, level1, level2):
         """level1 and level2 are instances of the LengthInFeet or LengthInMeters class."""
@@ -585,9 +586,9 @@ class LevelConcentration(ConcentrationType):
     def ground_max_conc(self):
         return self.max_concs[self.ground_index]
     
-    def get_plot_conc_range(self, grid):
-        return self.min_concs[grid.vert_level_index], self.max_concs[grid.vert_level_index]
-
+    def get_plot_conc_range(self, grid, scaling_factor):
+        return grid.extension.min_conc * scaling_factor, grid.extension.max_conc * scaling_factor
+    
     def get_level_range_str(self, level1, level2):
         if self.alt_KAVG == 3:
             if self.custom_layer_str is not None:
@@ -988,7 +989,7 @@ class IdleDeposit:
         return
 
     def get_grids_to_plot(self, grids_on_ground, last_timeQ = False):
-        return grids_on_ground
+        return []
 
     @staticmethod
     def make_gis_basename(time_index, output_suffix):
@@ -999,7 +1000,10 @@ class TimeDeposit(IdleDeposit):
     
     def __init__(self):
         IdleDeposit.__init__(self)
-
+    
+    def get_grids_to_plot(self, grids_on_ground, last_timeQ = False):
+        return grids_on_ground
+    
     @staticmethod
     def make_gis_basename(time_index, output_suffix):
         return "GIS_DEP_{0}_{1:02d}".format(output_suffix, time_index)

@@ -929,7 +929,8 @@ def test_ConcentrationPlot_draw_contour_legends():
             p.conc_map,
             ["AEGL-1", "AEGL-2", "AEGL-3"],
             [1.0-16, 1.0e-15, 1.0e-14],
-            ["g", "b", "y"])
+            ["g", "b", "y"],
+            1.0)
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
