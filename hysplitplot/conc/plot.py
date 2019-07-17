@@ -537,7 +537,10 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         fig_title += "\n"
         fig_title += conc_map.get_map_id_line(self.conc_type, conc_unit, lower_vert_level, upper_vert_level)
         
-        dt = self.adjust_for_time_zone(conc_grid.starting_datetime)
+        if s.NSSLBL == 1:
+            dt = self.adjust_for_time_zone(conc_grid.parent.release_datetimes[0])
+        else:
+            dt = self.adjust_for_time_zone(conc_grid.starting_datetime)
         fig_title += dt.strftime("\nIntegrated from %H%M %d %b to")
         
         dt = self.adjust_for_time_zone(conc_grid.ending_datetime)
