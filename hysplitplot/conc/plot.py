@@ -1173,18 +1173,25 @@ class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
         if nexp < 0:
             nexp -= 1
         
+        # Use a numpy ndarray to allow the *= operator.
         levels = numpy.empty(max_levels, dtype=float)
+        
         a = math.pow(10.0, nexp)
         if a < self.UCMIN:
             levels[0] = self.UCMIN
-            levels[1:] = 0.0
+            levels.resize( 1 )
         else:
             levels[0] = a
             for k in range(1, max_levels):
                 a = levels[k - 1] * cint_inverse
-                levels[k] = 0.0 if a < self.UCMIN else a
+                if a >= self.UCMIN:
+                    levels[ k ] = a
+                else:
+                    levels.resize( k )
+                    break
         
         logger.debug("contour levels: %s", levels)
+        
         return numpy.flip(levels)
 
 
@@ -1194,10 +1201,9 @@ class ExponentialFixedLevelGenerator(ExponentialDynamicLevelGenerator):
         ExponentialDynamicLevelGenerator.__init__(self, UCMIN, **kwargs)
         
     def make_levels(self, min_conc, max_conc, max_levels):
-        return ExponentialDynamicLevelGenerator.make_levels(self,
-                                                            self.global_min,
-                                                            self.global_max,
-                                                            max_levels)
+        return super(ExponentialFixedLevelGenerator, self).make_levels(self.global_min,
+                                                                       self.global_max,
+                                                                       max_levels)
     
     
 class LinearDynamicLevelGenerator(AbstractContourLevelGenerator):

@@ -1162,7 +1162,7 @@ def test_ExponentialDynamicLevelGenerator___init__():
 
 
 def test_ExponentialDynamicLevelGenerator_make_levels():
-    o = plot.ExponentialDynamicLevelGenerator(UCMIN = 3.14e-19)
+    o = plot.ExponentialDynamicLevelGenerator(3.14e-19)
     
     # base 10.0
     
@@ -1190,7 +1190,18 @@ def test_ExponentialDynamicLevelGenerator_make_levels():
     levels = o.make_levels(0, 0, 4)
     assert levels == pytest.approx((0.001, 0.01, 0.1, 1.0))
     
+    # When UCMIN exceeds the min and max values.
+    o = plot.ExponentialDynamicLevelGenerator( 1.0 )
+    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
+    assert levels == pytest.approx((1.0))
     
+    # When UCMIN is between the min and max values
+    o = plot.ExponentialDynamicLevelGenerator( 1.0e-14 )
+    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
+    levels *= 1.0e+16
+    assert levels == pytest.approx((100.0, 1000.0))
+    
+      
 def test_ExponentialFixedLevelGenerator___init__():
     UCMIN = 3.14e-15
     o = plot.ExponentialFixedLevelGenerator(UCMIN, force_base_10=True)
@@ -1200,7 +1211,7 @@ def test_ExponentialFixedLevelGenerator___init__():
 
 
 def test_ExponentialFixedLevelGenerator_make_levels():
-    o = plot.ExponentialFixedLevelGenerator(UCMIN = 3.14e-19)
+    o = plot.ExponentialFixedLevelGenerator(3.14e-19)
     o.set_global_min_max(1.39594e-15, 8.17302e-13)
 
     levels = o.make_levels(1.39594e-16, 8.17302e-12, 4)
@@ -1213,6 +1224,19 @@ def test_ExponentialFixedLevelGenerator_make_levels():
     o.set_global_min_max(0, 0)
     levels = o.make_levels(1.39594e-16, 8.17302e-12, 4)
     assert levels == pytest.approx((0.001, 0.01, 0.1, 1.0))
+
+    # When UCMIN exceeds the min and max values.
+    o = plot.ExponentialFixedLevelGenerator( 1.0 )
+    o.set_global_min_max(1.0e-16, 1.0e-12)
+    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
+    assert levels == pytest.approx((1.0))
+    
+    # When UCMIN is between the min and max values
+    o = plot.ExponentialFixedLevelGenerator( 1.0e-14 )
+    o.set_global_min_max(1.0e-16, 1.0e-12)
+    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
+    levels *= 1.0e+16
+    assert levels == pytest.approx((100.0, 1000.0))
 
 
 def test_LinearDynamicLevelGenerator___init__():
