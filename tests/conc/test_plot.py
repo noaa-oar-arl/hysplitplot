@@ -1096,43 +1096,43 @@ def test_LabelledContourLevel___repr__():
 
 def test_ContourLevelGeneratorFactory_create_instance(contourLevels):
     cntr_levels = None
-    UCMIN = 3.14e-15
+    cutoff = 3.14e-15
     user_color = None
     
     o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC,
                                                           cntr_levels,
-                                                          UCMIN,
+                                                          cutoff,
                                                           user_color)
     assert isinstance(o, plot.ExponentialDynamicLevelGenerator)
     
     o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.EXPONENTIAL_FIXED,
                                                           cntr_levels,
-                                                          UCMIN,
+                                                          cutoff,
                                                           user_color)
     assert isinstance(o, plot.ExponentialFixedLevelGenerator)
     
     o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.LINEAR_DYNAMIC,
                                                           cntr_levels,
-                                                          UCMIN,
+                                                          cutoff,
                                                           user_color)
     assert isinstance(o, plot.LinearDynamicLevelGenerator)
     
     o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.LINEAR_FIXED,
                                                           cntr_levels,
-                                                          UCMIN,
+                                                          cutoff,
                                                           user_color)
     assert isinstance(o, plot.LinearFixedLevelGenerator)
     
     o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.USER_SPECIFIED,
                                                           contourLevels,
-                                                          UCMIN,
+                                                          cutoff,
                                                           None)
     assert isinstance(o, plot.UserSpecifiedLevelGenerator)
     
     try:
         o = plot.ContourLevelGeneratorFactory.create_instance(100000,
                                                               None,
-                                                              UCMIN,
+                                                              cutoff,
                                                               None)
         pytest.fail("expected an exception")
     except Exception as ex:
@@ -1154,10 +1154,10 @@ def test_AbstractContourLevelGenerator_set_global_min_max():
        
 
 def test_ExponentialDynamicLevelGenerator___init__():
-    UCMIN = 3.14e-15
-    o = plot.ExponentialDynamicLevelGenerator(UCMIN, force_base_10=True)
+    cutoff = 3.14e-15
+    o = plot.ExponentialDynamicLevelGenerator(cutoff, force_base_10=True)
     assert o is not None
-    assert o.UCMIN == pytest.approx(3.14e-15)
+    assert o.cutoff == pytest.approx(3.14e-15)
     assert o.force_base_10 == True  
 
 
@@ -1190,12 +1190,12 @@ def test_ExponentialDynamicLevelGenerator_make_levels():
     levels = o.make_levels(0, 0, 4)
     assert levels == pytest.approx((0.001, 0.01, 0.1, 1.0))
     
-    # When UCMIN exceeds the min and max values.
+    # When the cutoff exceeds the min and max values.
     o = plot.ExponentialDynamicLevelGenerator( 1.0 )
     levels = o.make_levels(1.0e-16, 1.0e-12, 4)
     assert levels == pytest.approx((1.0))
     
-    # When UCMIN is between the min and max values
+    # When the cutoff is between the min and max values
     o = plot.ExponentialDynamicLevelGenerator( 1.0e-14 )
     levels = o.make_levels(1.0e-16, 1.0e-12, 4)
     levels *= 1.0e+16
@@ -1203,10 +1203,10 @@ def test_ExponentialDynamicLevelGenerator_make_levels():
     
       
 def test_ExponentialFixedLevelGenerator___init__():
-    UCMIN = 3.14e-15
-    o = plot.ExponentialFixedLevelGenerator(UCMIN, force_base_10=True)
+    cutoff = 3.14e-15
+    o = plot.ExponentialFixedLevelGenerator(cutoff, force_base_10=True)
     assert o is not None
-    assert o.UCMIN == pytest.approx(3.14e-15)
+    assert o.cutoff == pytest.approx(3.14e-15)
     assert o.force_base_10 == True  
 
 
@@ -1225,13 +1225,13 @@ def test_ExponentialFixedLevelGenerator_make_levels():
     levels = o.make_levels(1.39594e-16, 8.17302e-12, 4)
     assert levels == pytest.approx((0.001, 0.01, 0.1, 1.0))
 
-    # When UCMIN exceeds the min and max values.
+    # When the cutoff exceeds the min and max values.
     o = plot.ExponentialFixedLevelGenerator( 1.0 )
     o.set_global_min_max(1.0e-16, 1.0e-12)
     levels = o.make_levels(1.0e-16, 1.0e-12, 4)
     assert levels == pytest.approx((1.0))
     
-    # When UCMIN is between the min and max values
+    # When the cutoff is between the min and max values
     o = plot.ExponentialFixedLevelGenerator( 1.0e-14 )
     o.set_global_min_max(1.0e-16, 1.0e-12)
     levels = o.make_levels(1.0e-16, 1.0e-12, 4)

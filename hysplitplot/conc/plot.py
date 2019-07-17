@@ -1046,6 +1046,10 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                                                        self.settings.contour_levels,
                                                                        self.settings.UCMIN,
                                                                        self.settings.user_color)
+        level_gen_depo  = ContourLevelGeneratorFactory.create_instance(self.settings.contour_level_generator,
+                                                                       self.settings.contour_levels,
+                                                                       self.settings.UDMIN,
+                                                                       self.settings.user_color)
         color_table = ColorTableFactory.create_instance(self.settings)
         
         gis_writer = gisout.GISFileWriterFactory.create_instance(self.settings.gis_output,
@@ -1086,7 +1090,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             
             grids = self.depo_sum.get_grids_to_plot(grids_on_ground, t_index == self.time_selector.last)
             for g in grids:
-                self.draw_conc_on_ground(g, ev_handlers, level_generator, color_table, gis_writer, *args, **kwargs)
+                self.draw_conc_on_ground(g, ev_handlers, level_gen_depo, color_table, gis_writer, *args, **kwargs)
         
             self.time_period_count += 1
             
@@ -1120,15 +1124,15 @@ class LabelledContourLevel:
 class ContourLevelGeneratorFactory:
     
     @staticmethod
-    def create_instance(generator, cntr_levels, UCMIN, user_colorQ):
+    def create_instance(generator, cntr_levels, cutoff, user_colorQ):
         if generator == const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC:
-            return ExponentialDynamicLevelGenerator(UCMIN)
+            return ExponentialDynamicLevelGenerator(cutoff)
         elif generator == const.ContourLevelGenerator.CLG_50:
-            return ExponentialDynamicLevelGenerator(UCMIN, force_base_ten=True)
+            return ExponentialDynamicLevelGenerator(cutoff, force_base_ten=True)
         elif generator == const.ContourLevelGenerator.CLG_51:
-            return ExponentialDynamicLevelGenerator(UCMIN, force_base_ten=True)
+            return ExponentialDynamicLevelGenerator(cutoff, force_base_ten=True)
         elif generator == const.ContourLevelGenerator.EXPONENTIAL_FIXED:
-            return ExponentialFixedLevelGenerator(UCMIN)
+            return ExponentialFixedLevelGenerator(cutoff)
         elif generator == const.ContourLevelGenerator.LINEAR_DYNAMIC:
             return LinearDynamicLevelGenerator()
         elif generator == const.ContourLevelGenerator.LINEAR_FIXED:
@@ -1157,9 +1161,9 @@ class AbstractContourLevelGenerator(ABC):
 
 class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
     
-    def __init__(self, UCMIN, **kwargs):
+    def __init__(self, cutoff, **kwargs):
         AbstractContourLevelGenerator.__init__(self, **kwargs)
-        self.UCMIN = UCMIN
+        self.cutoff = cutoff
         self.force_base_10 = kwargs.get("force_base_10", False)
 
     def make_levels(self, min_conc, max_conc, max_levels):
@@ -1177,14 +1181,14 @@ class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
         levels = numpy.empty(max_levels, dtype=float)
         
         a = math.pow(10.0, nexp)
-        if a < self.UCMIN:
-            levels[0] = self.UCMIN
+        if a < self.cutoff:
+            levels[0] = self.cutoff
             levels.resize( 1 )
         else:
             levels[0] = a
             for k in range(1, max_levels):
                 a = levels[k - 1] * cint_inverse
-                if a >= self.UCMIN:
+                if a >= self.cutoff:
                     levels[ k ] = a
                 else:
                     levels.resize( k )
@@ -1197,8 +1201,8 @@ class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
 
 class ExponentialFixedLevelGenerator(ExponentialDynamicLevelGenerator):
     
-    def __init__(self, UCMIN, **kwargs):
-        ExponentialDynamicLevelGenerator.__init__(self, UCMIN, **kwargs)
+    def __init__(self, cutoff, **kwargs):
+        ExponentialDynamicLevelGenerator.__init__(self, cutoff, **kwargs)
         
     def make_levels(self, min_conc, max_conc, max_levels):
         return super(ExponentialFixedLevelGenerator, self).make_levels(self.global_min,
