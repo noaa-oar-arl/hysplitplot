@@ -964,7 +964,10 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         min_conc, max_conc = self.conc_type.get_plot_conc_range(g, conc_scaling_factor)
         level_generator.set_global_min_max(self.conc_type.contour_min_conc, self.conc_type.contour_max_conc)
         contour_levels = level_generator.make_levels(min_conc, max_conc, self.settings.contour_level_count)
-       
+        
+        color_offset = level_generator.compute_color_table_offset( contour_levels )
+        color_table.set_offset( color_offset )
+               
         scaled_conc = numpy.copy(g.conc)
         if conc_scaling_factor != 1.0:
             scaled_conc *= conc_scaling_factor
@@ -1009,6 +1012,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         min_conc, max_conc = self.conc_type.get_plot_conc_range(g, conc_scaling_factor)
         level_generator.set_global_min_max(self.conc_type.ground_min_conc, self.conc_type.ground_max_conc)     
         contour_levels = level_generator.make_levels(min_conc, max_conc, self.settings.contour_level_count)
+        
+        color_offset = level_generator.compute_color_table_offset( contour_levels )
+        color_table.set_offset( color_offset )
         
         scaled_conc = numpy.copy(g.conc)
         if self.settings.DEPADJ != 1.0:
@@ -1157,6 +1163,10 @@ class AbstractContourLevelGenerator(ABC):
     @abstractmethod
     def make_levels(self, min_conc, max_conc, max_levels):
         pass
+    
+    @abstractmethod
+    def compute_color_table_offset(self, levels):
+        pass
         
 
 class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
@@ -1166,12 +1176,16 @@ class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
         self.cutoff = cutoff
         self.force_base_10 = kwargs.get("force_base_10", False)
 
-    def make_levels(self, min_conc, max_conc, max_levels):
-        logger.debug("making %d levels using min_conc %g, max_conc %g", max_levels, min_conc, max_conc)
-        
+    def _compute_interval(self, min_conc, max_conc):
         cint = 10.0; cint_inverse = 0.1
         if (not self.force_base_10) and max_conc > 1.0e+8 * min_conc:
             cint = 100.0; cint_inverse = 0.01
+        return cint, cint_inverse
+        
+    def make_levels(self, min_conc, max_conc, max_levels):
+        logger.debug("making %d levels using min_conc %g, max_conc %g", max_levels, min_conc, max_conc)
+        
+        cint, cint_inverse = self._compute_interval(min_conc, max_conc)
 
         nexp = int(math.log10(max_conc)) if max_conc > 0 else 0
         if nexp < 0:
@@ -1197,7 +1211,24 @@ class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
         logger.debug("contour levels: %s", levels)
         
         return numpy.flip(levels)
+    
+    def compute_color_table_offset(self, levels):
+        if len(levels) > 1:
+            cint = levels[1] / levels[0]
+        else:
+            cint = self._compute_interval(self.global_min, self.global_max)
 
+        # Limit looping to 32 is the number of colors in CLRTBL.CFG
+        current = levels[-1]
+        for k in range(0, 32):
+            offset = k
+            if current <= self.global_max < current * cint:
+                break;
+            else:
+                current *= cint
+            
+        return offset
+    
 
 class ExponentialFixedLevelGenerator(ExponentialDynamicLevelGenerator):
     
@@ -1209,19 +1240,25 @@ class ExponentialFixedLevelGenerator(ExponentialDynamicLevelGenerator):
                                                                        self.global_max,
                                                                        max_levels)
     
+    def compute_color_table_offset(self, levels):
+        return 0    
     
 class LinearDynamicLevelGenerator(AbstractContourLevelGenerator):
     
     def __init__(self):
         AbstractContourLevelGenerator.__init__(self)
         
-    def make_levels(self, min_conc, max_conc, max_levels):
+    def _compute_interval(self, min_conc, max_conc):
         nexp = util.nearest_int(math.log10(max_conc * 0.25)) if max_conc > 0 else 0
         if nexp < 0:
             nexp -= 1
         cint = math.pow(10.0, nexp)
         if max_conc > 6 * cint:
             cint *= 2.0
+        return cint
+        
+    def make_levels(self, min_conc, max_conc, max_levels):
+        cint = self._compute_interval(min_conc, max_conc)
             
         levels = numpy.empty(max_levels, dtype=float)
         for k in range(len(levels)):
@@ -1229,6 +1266,23 @@ class LinearDynamicLevelGenerator(AbstractContourLevelGenerator):
             
         logger.debug("contour levels: %s using max %g, levels %d", levels, max_conc, max_levels)
         return levels
+    
+    def compute_color_table_offset(self, levels):
+        if len(levels) > 1:
+            cint = levels[1] - levels[0]
+        else:
+            cint = self._compute_interval(self.global_min, self.global_max)
+
+        # Limit looping to 32 is the number of colors in CLRTBL.CFG
+        current = levels[-1]
+        for k in range(0, 32):
+            offset = k
+            if current <= self.global_max < current + cint:
+                break;
+            else:
+                current += cint
+            
+        return offset 
 
 
 class LinearFixedLevelGenerator(LinearDynamicLevelGenerator):
@@ -1241,6 +1295,9 @@ class LinearFixedLevelGenerator(LinearDynamicLevelGenerator):
                                                        self.global_min,
                                                        self.global_max,
                                                        max_levels)
+    
+    def compute_color_table_offset(self, levels):
+        return 0 
 
 
 class UserSpecifiedLevelGenerator(AbstractContourLevelGenerator):
@@ -1251,7 +1308,10 @@ class UserSpecifiedLevelGenerator(AbstractContourLevelGenerator):
     
     def make_levels(self, min_conc, max_conc, max_levels):
         return self.contour_levels
-    
+
+    def compute_color_table_offset(self, levels):
+        return 0     
+
     
 class ColorTableFactory:
     
@@ -1301,6 +1361,7 @@ class ColorTable:
     def __init__(self, ncolors):
         self.rgbs = []
         self.ncolors = ncolors
+        self.offset = 0
         return
     
     def get_reader(self):
@@ -1323,12 +1384,18 @@ class ColorTable:
     def create_plot_colors(rgbs):
         return [util.make_color(o[0], o[1], o[2]) for o in rgbs]
 
+    def set_offset(self, offset):
+        self.offset = offset
+    
         
 class DefaultColorTable(ColorTable):
     
     def __init__(self, ncolors, skip_std_colors):
         ColorTable.__init__(self, ncolors)
         self.skip_std_colors = skip_std_colors
+        self.__colors = None
+        self.__raw_colors = None
+        self.__current_offset = 0
         self.rgbs = [
             (1.0, 1.0, 1.0), (1.0, 1.0, 0.0), (0.0, 0.0, 1.0), (0.0, 1.0, 0.0),
             (0.0, 1.0, 1.0), (1.0, 0.0, 0.0), (1.0, 0.6, 0.0), (1.0, 1.0, 0.0),
@@ -1338,22 +1405,22 @@ class DefaultColorTable(ColorTable):
             (0.6, 0.0, 0.0), (1.0, 0.8, 1.0), (0.4, 0.4, 1.0), (1.0, 1.0, 1.0),
             (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
             (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0)]
-        self.__colors = None
-        self.__raw_colors = None
     
     @property
     def raw_colors(self):
-        if self.__raw_colors is None:
+        if self.__raw_colors is None or self.__current_offset != self.offset:
             if self.skip_std_colors:
-                self.__raw_colors = self.rgbs[5 + self.ncolors - 1:4:-1]
+                self.__raw_colors = self.rgbs[5 + self.offset + self.ncolors - 1: self.offset + 4:-1]
             else:
-                self.__raw_colors = self.rgbs[1 + self.ncolors - 1:0:-1]
+                self.__raw_colors = self.rgbs[1 + self.offset + self.ncolors - 1: self.offset + 0:-1]
+                
+            self.__current_offset = self.offset
 
         return self.__raw_colors
     
     @property
     def colors(self):
-        if self.__colors is None:
+        if self.__colors is None or self.__current_offset != self.offset:
             self.__colors = self.create_plot_colors(self.raw_colors)
         
         return self.__colors
@@ -1366,6 +1433,7 @@ class DefaultChemicalThresholdColorTable(ColorTable):
         self.skip_std_colors = skip_std_colors
         self.__colors = None
         self.__raw_colors = None
+        self.__current_offset = 0
         self.rgbs = [
             (1.0, 1.0, 1.0), (0.8, 0.8, 0.8), (1.0, 1.0, 0.0), (1.0, 0.5, 0.0),
             (1.0, 0.0, 0.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
@@ -1378,17 +1446,19 @@ class DefaultChemicalThresholdColorTable(ColorTable):
     
     @property
     def raw_colors(self):
-        if self.__raw_colors is None:
+        if self.__raw_colors is None or self.__current_offset != self.offset:
             if self.skip_std_colors:
-                self.__raw_colors = self.rgbs[5 + self.ncolors - 1:4:-1]
+                self.__raw_colors = self.rgbs[5 + self.offset + self.ncolors - 1: self.offset + 4:-1]
             else:
-                self.__raw_colors = self.rgbs[1 + self.ncolors - 1:0:-1]
-
+                self.__raw_colors = self.rgbs[1 + self.offset + self.ncolors - 1: self.offset + 0:-1]
+            
+            self.__current_offset = self.offset
+            
         return self.__raw_colors
     
     @property
     def colors(self):
-        if self.__colors is None:
+        if self.__colors is None or self.__current_offset != self.offset:
             self.__colors = self.create_plot_colors(self.raw_colors)
         
         return self.__colors
