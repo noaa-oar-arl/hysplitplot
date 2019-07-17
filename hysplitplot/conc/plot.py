@@ -1410,9 +1410,9 @@ class DefaultColorTable(ColorTable):
     def raw_colors(self):
         if self.__raw_colors is None or self.__current_offset != self.offset:
             if self.skip_std_colors:
-                self.__raw_colors = self.rgbs[5 + self.offset + self.ncolors - 1: self.offset + 4:-1]
+                self.__raw_colors = self.rgbs[4 + self.offset + self.ncolors : self.offset + 4 : -1]
             else:
-                self.__raw_colors = self.rgbs[1 + self.offset + self.ncolors - 1: self.offset + 0:-1]
+                self.__raw_colors = self.rgbs[self.offset + self.ncolors : self.offset : -1]
                 
             self.__current_offset = self.offset
 
@@ -1448,9 +1448,9 @@ class DefaultChemicalThresholdColorTable(ColorTable):
     def raw_colors(self):
         if self.__raw_colors is None or self.__current_offset != self.offset:
             if self.skip_std_colors:
-                self.__raw_colors = self.rgbs[5 + self.offset + self.ncolors - 1: self.offset + 4:-1]
+                self.__raw_colors = self.rgbs[5 + self.offset : 5 + self.offset + self.ncolors]
             else:
-                self.__raw_colors = self.rgbs[1 + self.offset + self.ncolors - 1: self.offset + 0:-1]
+                self.__raw_colors = self.rgbs[1 + self.offset : 1 + self.offset + self.ncolors]
             
             self.__current_offset = self.offset
             

@@ -1555,48 +1555,48 @@ def test_DefaultChemicalThresholdColorTable_raw_colors():
     o = plot.DefaultChemicalThresholdColorTable(3, False)
     clrs = o.raw_colors
     assert len(clrs) == 3
-    assert clrs[0] == pytest.approx((1.0, 0.5, 0.0))
+    assert clrs[2] == pytest.approx((1.0, 0.5, 0.0))
     assert clrs[1] == pytest.approx((1.0, 1.0, 0.0))
-    assert clrs[2] == pytest.approx((0.8, 0.8, 0.8))
+    assert clrs[0] == pytest.approx((0.8, 0.8, 0.8))
 
     o.set_offset( 1 )
     
     clrs = o.raw_colors
     assert len(clrs) == 3
-    assert clrs[0] == pytest.approx((1.0, 0.0, 0.0))
+    assert clrs[2] == pytest.approx((1.0, 0.0, 0.0))
     assert clrs[1] == pytest.approx((1.0, 0.5, 0.0))
-    assert clrs[2] == pytest.approx((1.0, 1.0, 0.0))
+    assert clrs[0] == pytest.approx((1.0, 1.0, 0.0))
     
     o = plot.DefaultChemicalThresholdColorTable(3, True)
     clrs = o.raw_colors
     assert len(clrs) == 3
-    assert clrs[0] == pytest.approx((1.0, 1.0, 1.0))
+    assert clrs[2] == pytest.approx((1.0, 1.0, 1.0))
     assert clrs[1] == pytest.approx((1.0, 1.0, 1.0))
-    assert clrs[2] == pytest.approx((1.0, 1.0, 1.0)) 
+    assert clrs[0] == pytest.approx((1.0, 1.0, 1.0)) 
 
 
 def test_DefaultChemicalThresholdColorTable_colors():
     o = plot.DefaultChemicalThresholdColorTable(3, False)
     clrs = o.colors
     assert len(clrs) == 3
-    assert clrs[0] == "#ff8000"
+    assert clrs[2] == "#ff8000"
     assert clrs[1] == "#ffff00"
-    assert clrs[2] == "#cccccc"
+    assert clrs[0] == "#cccccc"
 
     o.set_offset( 1 )
     
     clrs = o.colors
     assert len(clrs) == 3
-    assert clrs[0] == "#ff0000"
+    assert clrs[2] == "#ff0000"
     assert clrs[1] == "#ff8000"
-    assert clrs[2] == "#ffff00"
+    assert clrs[0] == "#ffff00"
     
     o = plot.DefaultChemicalThresholdColorTable(3, True)
     clrs = o.colors
     assert len(clrs) == 3
-    assert clrs[0] == "#ffffff"
+    assert clrs[2] == "#ffffff"
     assert clrs[1] == "#ffffff"
-    assert clrs[2] == "#ffffff"   
+    assert clrs[0] == "#ffffff"   
 
 
 def test_UserColorTable___init__(contourLevels):
