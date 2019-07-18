@@ -1344,6 +1344,9 @@ class ColorTableFactory:
                     for k in range(5):
                         ct.set_rgb(k, (1.0, 1.0, 1.0))
         
+        if settings.IDYNC == 1:
+            ct.enable_offset(True)
+            
         if settings.color == const.ConcentrationPlotColor.BLACK_AND_WHITE or settings.color == const.ConcentrationPlotColor.BW_NO_LINES:
             ct.change_to_grayscale()
         
@@ -1365,6 +1368,7 @@ class ColorTable:
         self.rgbs = []
         self.ncolors = ncolors
         self.offset = 0
+        self.use_offset = False
         return
     
     def get_reader(self):
@@ -1388,7 +1392,10 @@ class ColorTable:
         return [util.make_color(o[0], o[1], o[2]) for o in rgbs]
 
     def set_offset(self, offset):
-        self.offset = offset
+        self.offset = offset if self.use_offset else 0
+        
+    def enable_offset(self, flag=True):
+        self.use_offset = flag
     
         
 class DefaultColorTable(ColorTable):

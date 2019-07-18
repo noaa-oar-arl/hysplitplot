@@ -1445,6 +1445,7 @@ def test_ColorTable___init__():
     assert hasattr(o, "offset")
     assert o.ncolors == 4
     assert o.offset == 0
+    assert o.use_offset == False
 
 
 def test_ColorTable_get_reader():
@@ -1485,11 +1486,35 @@ def test_ColorTable_create_plot_colors():
 
 def test_ColorTable_set_offset():
     o = plot.ColorTable(4)
+    
+    o.enable_offset( True )
+    
     o.set_offset( 1 )
     assert o.offset == 1
     
     o.set_offset( 2 )
     assert o.offset == 2
+        
+    o.enable_offset( False )
+    
+    o.set_offset( 1 )
+    assert o.offset == 0
+    
+    o.set_offset( 2 )
+    assert o.offset == 0
+    
+    
+def test_ColorTable_enable_offset():
+    o = plot.ColorTable(4)
+    
+    o.enable_offset()
+    assert o.use_offset == True
+    
+    o.enable_offset( False )
+    assert o.use_offset == False
+    
+    o.enable_offset( True )
+    assert o.use_offset == True
     
     
 def test_DefaultColorTable___init__():
@@ -1518,6 +1543,7 @@ def test_DefaultColorTable_raw_colors():
     assert clrs[1] == pytest.approx((1.0, 0.6, 0.0))
     assert clrs[2] == pytest.approx((1.0, 0.0, 0.0)) 
     
+    o.enable_offset( True )
     o.set_offset(1)
     
     clrs = o.raw_colors
@@ -1542,6 +1568,7 @@ def test_DefaultColorTable_colors():
     assert clrs[1] == "#ff9900"
     assert clrs[2] == "#ff0000"
     
+    o.enable_offset( True )
     o.set_offset( 1 )
     
     clrs = o.colors
@@ -1572,6 +1599,7 @@ def test_DefaultChemicalThresholdColorTable_raw_colors():
     assert clrs[1] == pytest.approx((1.0, 1.0, 0.0))
     assert clrs[0] == pytest.approx((0.8, 0.8, 0.8))
 
+    o.enable_offset( True )
     o.set_offset( 1 )
     
     clrs = o.raw_colors
@@ -1596,6 +1624,7 @@ def test_DefaultChemicalThresholdColorTable_colors():
     assert clrs[1] == "#ffff00"
     assert clrs[0] == "#cccccc"
 
+    o.enable_offset( True )
     o.set_offset( 1 )
     
     clrs = o.colors
