@@ -528,7 +528,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         if event_handlers is not None:
             self._connect_event_handlers(event_handlers)
     
-    def make_plot_title(self, conc_grid, conc_map, lower_vert_level, upper_vert_level):
+    def make_plot_title(self, conc_grid, conc_map, lower_vert_level, upper_vert_level, starting_datetime):
         s = self.settings
         
         fig_title = self.labels.get("TITLE")
@@ -540,7 +540,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         if s.NSSLBL == 1:
             dt = self.adjust_for_time_zone(conc_grid.parent.release_datetimes[0])
         else:
-            dt = self.adjust_for_time_zone(conc_grid.starting_datetime)
+            dt = self.adjust_for_time_zone(starting_datetime)
         fig_title += dt.strftime("\nIntegrated from %H%M %d %b to")
         
         dt = self.adjust_for_time_zone(conc_grid.ending_datetime)
@@ -979,7 +979,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             scaled_conc = self.smoothing_kernel.smooth_with_max_preserved(scaled_conc)
         
         # plot title
-        self.conc_outer.set_title(self.make_plot_title(g, self.conc_map, level1, level2))
+        title = self.make_plot_title(g, self.conc_map, level1, level2, g.starting_datetime)
+        self.conc_outer.set_title(title)
         self.conc_outer.set_xlabel(self.make_xlabel(g))
         
         quad_contour_set = self.draw_concentration_plot(g, scaled_conc, self.conc_map, contour_levels, color_table.colors)
@@ -1027,7 +1028,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             scaled_conc = self.smoothing_kernel.smooth_with_max_preserved(scaled_conc)
         
         # plot title
-        self.conc_outer.set_title(self.make_plot_title(g, self.depo_map, level1, level2))
+        title = self.make_plot_title(g, self.depo_map, level1, level2, self.depo_sum.summation_from_datetime)
+        self.conc_outer.set_title(title)
         self.conc_outer.set_xlabel(self.make_xlabel(g))
         
         contour_set = self.draw_concentration_plot(g, scaled_conc, self.depo_map, contour_levels, color_table.colors)

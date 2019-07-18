@@ -1410,7 +1410,7 @@ def test_MassLoadingMap_undo_scale_exposure(cdump2):
 
 def test_DepositSumFactory_create_instance():
     o = helper.DepositSumFactory.create_instance(const.DepositionType.NONE)
-    assert isinstance(o, helper.IdleDeposit)
+    assert isinstance(o, helper.NullDeposit)
     
     o = helper.DepositSumFactory.create_instance(const.DepositionType.TIME)
     assert isinstance(o, helper.TimeDeposit)
@@ -1422,7 +1422,7 @@ def test_DepositSumFactory_create_instance():
     assert isinstance(o, helper.TotalDeposit)
     
     o = helper.DepositSumFactory.create_instance(const.DepositionType.TOTAL, False)
-    assert isinstance(o, helper.IdleDeposit)
+    assert isinstance(o, helper.NullDeposit)
     
     try:
         o = helper.DepositSumFactory.create_instance(99999)
@@ -1431,36 +1431,39 @@ def test_DepositSumFactory_create_instance():
         assert str(ex) == "unknown deposition type 99999"
     
 
-def test_IdleDeposit___init__():
-    o = helper.IdleDeposit()
+def test_NullDeposit___init__():
+    o = helper.NullDeposit()
     assert o is not None
+    assert o.summation_from_datetime == None
     
 
-def test_IdleDeposit_initialize(cdump2):
-    o = helper.IdleDeposit()
+def test_NullDeposit_initialize(cdump3):
+    o = helper.NullDeposit()
     ts = helper.TimeIndexSelector()
     ps = helper.PollutantSelector()
     
     try:
-        o.initialize(cdump2.grids, ts, ps)
+        o.initialize(cdump3.grids, ts, ps)
+        assert o.summation_from_datetime == datetime.datetime(1983, 9, 25, 18, 0, 0, 0, pytz.utc)
     except Exception as ex:
         pytest.fail("unexpected exception: {0}".format(ex))
         
 
-def test_IdleDeposit_add(cdump2):
-    o = helper.IdleDeposit()
+def test_NullDeposit_add(cdump3):
+    o = helper.NullDeposit()
     ts = helper.TimeIndexSelector()
     ps = helper.PollutantSelector()
-    o.initialize(cdump2.grids, ts, ps)
+    o.initialize(cdump3.grids, ts, ps)
     
     try:
-        o.add(cdump2.grids)
+        o.add( [cdump3.grids[2]] )  # next time index
+        assert o.summation_from_datetime == datetime.datetime(1983, 9, 25, 21, 0, 0, 0, pytz.utc)
     except Exception as ex:
         pytest.fail("unexpected exception: {0}".format(ex))
     
 
-def test_IdleDeposit_get_grids_to_plot(cdump2):
-    o = helper.IdleDeposit()
+def test_NullDeposit_get_grids_to_plot(cdump2):
+    o = helper.NullDeposit()
     ts = helper.TimeIndexSelector()
     ps = helper.PollutantSelector()
     o.initialize(cdump2.grids, ts, ps)
@@ -1469,8 +1472,8 @@ def test_IdleDeposit_get_grids_to_plot(cdump2):
     assert len(a) == 0
 
 
-def test_IdleDeposit_make_gis_basename():
-    assert helper.IdleDeposit.make_gis_basename(2, "ps") == None
+def test_NullDeposit_make_gis_basename():
+    assert helper.NullDeposit.make_gis_basename(2, "ps") == None
     
 
 def test_TimeDeposit___init__():
@@ -1504,6 +1507,8 @@ def test_SumDeposit_initialize(cdump3):
     
     o.initialize(cdump3.grids, ts, ps)
     
+    assert o.summation_from_datetime == datetime.datetime(1983, 9, 25, 18, 0, 0, 0, pytz.utc)
+    
     # the summation grid should have accumulated concentrations from time index 0 to 1.
     assert o.summation_grid.conc[23, 26] * 1.0e+7 == pytest.approx(19.36063 + 5.659043)
     
@@ -1524,10 +1529,15 @@ def test_SumDeposit_add(cdump3):
     # initialize with grids at time index at 0.
     o.initialize(cdump3.grids, ts, ps)
     
+    assert o.summation_from_datetime == datetime.datetime(1983, 9, 25, 18, 0, 0, 0, pytz.utc)
+    
     # find grids at time index 1.
     t_grids = list(filter(lambda g: g.vert_level == 0 and g.time_index == 1, cdump3.grids))
 
     o.add(t_grids, True)
+    
+    # summation_from_datetime should not change.
+    assert o.summation_from_datetime == datetime.datetime(1983, 9, 25, 18, 0, 0, 0, pytz.utc)
     
     # the summation grid should have accumulated concentrations from time index 0 to 1.
     assert o.summation_grid.conc[23, 26] * 1.0e+7 == pytest.approx(19.36063 + 5.659043)
@@ -1551,7 +1561,7 @@ def test_SumDeposit_get_grids_to_plot(cdump3):
     assert grids[0] is o.summation_grid
     
 
-def test_SumDeposit_update_properties(cdump3):
+def test_SumDeposit__update_properties(cdump3):
     o = helper.SumDeposit()
     ts = helper.TimeIndexSelector(1, 99999)
     ps = helper.PollutantSelector()
@@ -1571,7 +1581,7 @@ def test_SumDeposit_update_properties(cdump3):
     # find grids at time index 1.
     t_grids = list(filter(lambda g: g.vert_level == 0 and g.time_index == 1, cdump3.grids))
 
-    o.update_properties(t_grids)
+    o._update_properties(t_grids)
     
     assert o.summation_grid.time_index == 1
     assert o.summation_grid.ending_datetime == datetime.datetime(1983, 9, 26, 0, 0, 0, 0, utc)

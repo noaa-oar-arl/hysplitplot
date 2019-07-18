@@ -721,7 +721,7 @@ def test_ConcentrationPlot_make_plot_title(cdump):
     level1 = util.LengthInMeters(1.0)
     level2 = util.LengthInMeters(2.0)
     
-    title = p.make_plot_title(g, p.conc_map, level1, level2)
+    title = p.make_plot_title(g, p.conc_map, level1, level2, g.starting_datetime)
     assert title == "NOAA HYSPLIT MODEL\n" + \
             "Concentration ($mass/m^3$) at level 2 m\n" + \
             "Integrated from 1700 25 Sep to 0500 26 Sep 1983 (UTC)\n" + \
@@ -731,7 +731,7 @@ def test_ConcentrationPlot_make_plot_title(cdump):
     p.settings.NSSLBL = 1
     saved = g.parent.release_datetimes[0]
     g.parent.release_datetimes[0] = datetime.datetime(1983, 9, 25, 21, 13, 0, 0, pytz.utc)
-    title = p.make_plot_title(g, p.conc_map, level1, level2)
+    title = p.make_plot_title(g, p.conc_map, level1, level2, g.starting_datetime)
     assert title == "NOAA HYSPLIT MODEL\n" + \
             "Concentration ($mass/m^3$) at level 2 m\n" + \
             "Integrated from 2113 25 Sep to 0500 26 Sep 1983 (UTC)\n" + \
@@ -742,7 +742,7 @@ def test_ConcentrationPlot_make_plot_title(cdump):
     # swap start and end datetimes
     g.starting_datetime, g.ending_datetime = g.ending_datetime, g.starting_datetime
     
-    title = p.make_plot_title(g, p.conc_map, level1, level2)
+    title = p.make_plot_title(g, p.conc_map, level1, level2, g.starting_datetime)
     assert title == "NOAA HYSPLIT MODEL\n" + \
             "Concentration ($mass/m^3$) at level 2 m\n" + \
             "Integrated from 0500 26 Sep to 1700 25 Sep 1983 (UTC) [backward]\n" + \
@@ -750,7 +750,7 @@ def test_ConcentrationPlot_make_plot_title(cdump):
 
     # set the time zone
     p.time_zone = pytz.timezone("EST")
-    title = p.make_plot_title(g, p.conc_map, level1, level2)
+    title = p.make_plot_title(g, p.conc_map, level1, level2, g.starting_datetime)
     assert title == "NOAA HYSPLIT MODEL\n" + \
             "Concentration ($mass/m^3$) at level 2 m\n" + \
             "Integrated from 0000 26 Sep to 1200 25 Sep 1983 (EST) [backward]\n" + \
@@ -980,9 +980,6 @@ def test_ConcentrationPlot_draw_conc_above_ground():
                                                              p.settings.user_color)
     ctbl = plot.ColorTableFactory.create_instance(p.settings)
     
-    dsum = helper.DepositSumFactory.create_instance(p.settings.NDEP,
-                                                    p.cdump.has_ground_level_grid())
-        
     gis_writer = gisout.GISFileWriterFactory.create_instance(p.settings.gis_output,
                                                              p.settings.kml_option)
                                                              
@@ -996,7 +993,7 @@ def test_ConcentrationPlot_draw_conc_above_ground():
     # See if no exception is thrown.
     try:
         p._initialize_map_projection(p.cdump)
-        dsum.initialize(p.cdump.grids, p.time_selector, p.pollutant_selector)
+        p.depo_sum.initialize(p.cdump.grids, p.time_selector, p.pollutant_selector)
         p.contour_labels = [""] * p.settings.contour_level_count
         p.draw_conc_above_ground(p.cdump.grids[0],
                                  {"resize_event" : blank_event_handler},
@@ -1028,9 +1025,6 @@ def test_ConcentrationPlot_draw_conc_on_ground():
                                                              p.settings.user_color)
     ctbl = plot.ColorTableFactory.create_instance(p.settings)
     
-    dsum = helper.DepositSumFactory.create_instance(p.settings.NDEP,
-                                                    p.cdump.has_ground_level_grid())
-        
     gis_writer = gisout.GISFileWriterFactory.create_instance(p.settings.gis_output,
                                                              p.settings.kml_option)
                                                              
@@ -1044,7 +1038,7 @@ def test_ConcentrationPlot_draw_conc_on_ground():
     # See if no exception is thrown.
     try:
         p._initialize_map_projection(p.cdump)
-        dsum.initialize(p.cdump.grids, p.time_selector, p.pollutant_selector)
+        p.depo_sum.initialize(p.cdump.grids, p.time_selector, p.pollutant_selector)
         p.contour_labels = [""] * p.settings.contour_level_count
         p.draw_conc_on_ground(p.cdump.grids[0],
                               {"resize_event" : blank_event_handler},

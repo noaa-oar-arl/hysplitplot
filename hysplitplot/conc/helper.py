@@ -966,7 +966,7 @@ class DepositSumFactory:
     @staticmethod
     def create_instance(type, has_ground_level_grid=True):
         if has_ground_level_grid == False or type == const.DepositionType.NONE:
-            return IdleDeposit()
+            return NullDeposit()
         elif type == const.DepositionType.TIME:
             return TimeDeposit()
         elif type == const.DepositionType.SUM:
@@ -977,16 +977,19 @@ class DepositSumFactory:
         raise Exception("unknown deposition type {0}".format(type))
 
 
-class IdleDeposit:
+class NullDeposit:
     
     def __init__(self):
+        self.summation_from_datetime = None
         return
     
     def initialize(self, grids, time_selector, pollutant_selector):
-        return
+        if len(grids) > 0:
+            self.summation_from_datetime = grids[0].starting_datetime
     
     def add(self, grids, first_timeQ = False):
-        return
+        if len(grids) > 0:
+            self.summation_from_datetime = grids[0].starting_datetime
 
     def get_grids_to_plot(self, grids_on_ground, last_timeQ = False):
         return []
@@ -996,10 +999,10 @@ class IdleDeposit:
         return None
     
 
-class TimeDeposit(IdleDeposit):
+class TimeDeposit(NullDeposit):
     
     def __init__(self):
-        IdleDeposit.__init__(self)
+        super(TimeDeposit, self).__init__()
     
     def get_grids_to_plot(self, grids_on_ground, last_timeQ = False):
         return grids_on_ground
@@ -1009,13 +1012,15 @@ class TimeDeposit(IdleDeposit):
         return "GIS_DEP_{0}_{1:02d}".format(output_suffix, time_index)
     
 
-class SumDeposit(IdleDeposit):
+class SumDeposit(NullDeposit):
     
     def __init__(self):
-        IdleDeposit.__init__(self)
+        super(SumDeposit, self).__init__()
         self.summation_grid = None
     
     def initialize(self, grids, time_selector, pollutant_selector):
+        super(SumDeposit, self).initialize(grids, time_selector, pollutant_selector)
+        
         # sum concentration grids right before the first time index
         a = list(filter(lambda g: \
                         g.time_index < time_selector.first and \
@@ -1043,6 +1048,7 @@ class SumDeposit(IdleDeposit):
                 self.summation_grid.extension = GridProperties()
     
     def add(self, grids_on_ground, first_timeQ = False):
+        # do not update self.summation_from_datetime
         for k, g in enumerate(grids_on_ground):
             self.summation_grid.conc += g.conc
             if first_timeQ and k == 0:
@@ -1050,10 +1056,10 @@ class SumDeposit(IdleDeposit):
                 self.summation_grid.starting_forecast_hr = g.starting_forecast_hr
 
     def get_grids_to_plot(self, grids_on_ground, last_timeQ = False):
-        self.update_properties(grids_on_ground)
+        self._update_properties(grids_on_ground)
         return [self.summation_grid]
 
-    def update_properties(self, grids_on_ground):
+    def _update_properties(self, grids_on_ground):
         if len(grids_on_ground) > 0 and self.summation_grid is not None:
             g = grids_on_ground[0]
             s = self.summation_grid
@@ -1072,11 +1078,11 @@ class SumDeposit(IdleDeposit):
 class TotalDeposit(SumDeposit):
     
     def __init__(self):
-        SumDeposit.__init__(self)
+        super(TotalDeposit, self).__init__()
 
     def get_grids_to_plot(self, grids_on_ground, last_timeQ = False):
         if last_timeQ:
-            self.update_properties(grids_on_ground)
+            self._update_properties(grids_on_ground)
             return [self.summation_grid]
         
         return []
