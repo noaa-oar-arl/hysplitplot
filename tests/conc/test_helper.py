@@ -203,7 +203,13 @@ def test_TimeIndexSelector___iter__():
         a.append(t_index)
     assert a == [1, 3]    
     
-
+    s = helper.TimeIndexSelector(6-1, 8-1, 1)
+    a = []
+    for t_index in s:
+        a.append(t_index)
+    assert a == [5, 6, 7]    
+    
+    
 def test_TimeIndexSelector___contains__():
     s = helper.TimeIndexSelector(0, 10)
     assert ( -1 in s) == False
