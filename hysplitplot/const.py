@@ -44,6 +44,7 @@ class MapProjection:
     LAMBERT     = 2
     MERCATOR    = 3
     CYL_EQU     = 4
+    WEB_MERCATOR= 5
 
 class ZoomFactor:
     LEAST_ZOOM  = 0

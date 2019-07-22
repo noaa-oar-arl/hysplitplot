@@ -319,6 +319,27 @@ class CylindricalCoordinate(CoordinateBase):
         return plat, plon
 
 
+class WebMercatorCoordinate(CoordinateBase):
+
+    def __init__(self, crs):
+        CoordinateBase.__init__(self)
+        self.crs = crs
+        self.latlon_crs = cartopy.crs.PlateCarree()
+        
+    def set_tangent_lat(self, center_loc):
+        self.tnglat = 0.0
+        self.slat = center_loc[1]
+        self.slon = center_loc[0]
+        self.glat = 0.0
+        self.glon = self.reflon
+        
+    def calc_xy(self, plon, plat):
+        return self.crs.transform_point(plon, plat, self.latlon_crs)
+
+    def calc_lonlat(self, x, y):
+        return self.latlon_crs.transform_point(x, y, self.crs)
+
+    
 class MapProjectionFactory:
     
     @staticmethod
@@ -335,6 +356,8 @@ class MapProjectionFactory:
             obj = MercatorProjection(kproj, zoom_factor, center_loc, scale, grid_deltas)
         elif kproj == const.MapProjection.CYL_EQU:
             obj = CylindricalEquidistantProjection(kproj, zoom_factor, center_loc, scale, grid_deltas)
+        elif kproj == const.MapProjection.WEB_MERCATOR:
+            obj = WebMercatorProjection(kproj, zoom_factor, center_loc, scale, grid_deltas)
         else:
             raise Exception("unknown map projection {0}".format(kproj))
 
@@ -679,3 +702,15 @@ class CylindricalEquidistantProjection(MapProjection):
 
     def create_crs(self):
         return cartopy.crs.LambertCylindrical(central_longitude=self.coord.reflon)
+
+
+class WebMercatorProjection(MapProjection):
+
+    def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
+        MapProjection.__init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas)
+        self.proj_type = const.MapProjection.WEB_MERCATOR
+        self.crs = cartopy.crs.epsg(3857) # Internet connection is required.
+        self.coord = WebMercatorCoordinate(self.crs)
+    
+    def create_crs(self):
+        return self.crs

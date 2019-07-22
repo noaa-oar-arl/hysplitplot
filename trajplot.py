@@ -34,6 +34,9 @@ def print_usage():
    -v[Vertical: 0-pressure (1)-agl, 2-theta 3-meteo 4-none]'
    -z[Zoom factor:  0-least zoom, (50), 100-most zoom]'
    
+   --source-time-zone[Local dates and times are shown using the time zone at the source location]
+   --street-map
+   
  NOTE: leave no space between option and value""")
 
 

@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+import cartopy
+import contextily
 import geopandas
 import logging
 import matplotlib.dates
@@ -162,6 +164,9 @@ class TrajectoryPlotSettingsReader:
         s.center_loc[0] = float(lines[15])
 
         return s
+
+
+class Foo(cartopy.crs.CRS): pass
 
 
 class TrajectoryPlot(plotbase.AbstractPlot):
@@ -546,16 +551,17 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         # set the data range
         axes.set_extent(self.projection.corners_lonlat, self.data_crs)
 
-        # draw the background map
-        for o in self.background_maps:
-            if isinstance(o.map, geopandas.geoseries.GeoSeries):
-                background_map = o.map.to_crs(self.crs.proj4_init)
-            else:
-                background_map = o.map.copy()
-                background_map['geometry'] = background_map['geometry'].to_crs(self.crs.proj4_init)
-            clr = self._fix_map_color(o.linecolor, self.settings.color)
-            background_map.plot(ax=axes, linestyle=o.linestyle, linewidth=o.linewidth,
-                                facecolor="none", edgecolor=clr)
+        if not self.settings.use_street_map:
+            # draw the background map
+            for o in self.background_maps:
+                if isinstance(o.map, geopandas.geoseries.GeoSeries):
+                    background_map = o.map.to_crs(self.crs.proj4_init)
+                else:
+                    background_map = o.map.copy()
+                    background_map['geometry'] = background_map['geometry'].to_crs(self.crs.proj4_init)
+                clr = self._fix_map_color(o.linecolor, self.settings.color)
+                background_map.plot(ax=axes, linestyle=o.linestyle, linewidth=o.linewidth,
+                                    facecolor="none", edgecolor=clr)
 
         # draw optional concentric circles
         if self.settings.ring and self.settings.ring_number > 0:
@@ -602,6 +608,9 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         if self.settings.noaa_logo:
             self._draw_noaa_logo(axes)
         
+        if self.settings.use_street_map:
+            self.add_street_map(axes)
+            
     def draw_bottom_plot(self, data_list):
         if self.settings.vertical_coordinate == VerticalCoordinate.NONE:
             self._turn_off_spines(self.height_axes_outer, top=True)

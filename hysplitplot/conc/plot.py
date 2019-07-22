@@ -704,16 +704,17 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         # set the data range
         axes.set_extent(self.projection.corners_lonlat, self.data_crs)
 
-        # draw the background map
-        for o in self.background_maps:
-            if isinstance(o.map, geopandas.geoseries.GeoSeries):
-                background_map = o.map.to_crs(self.crs.proj4_init)
-            else:
-                background_map = o.map.copy()
-                background_map['geometry'] = background_map['geometry'].to_crs(self.crs.proj4_init)
-            clr = self._fix_map_color(o.linecolor, self.settings.color)
-            background_map.plot(ax=axes, linestyle=o.linestyle, linewidth=o.linewidth,
-                                facecolor="none", edgecolor=clr)
+        if not self.settings.use_street_map:
+            # draw the background map
+            for o in self.background_maps:
+                if isinstance(o.map, geopandas.geoseries.GeoSeries):
+                    background_map = o.map.to_crs(self.crs.proj4_init)
+                else:
+                    background_map = o.map.copy()
+                    background_map['geometry'] = background_map['geometry'].to_crs(self.crs.proj4_init)
+                clr = self._fix_map_color(o.linecolor, self.settings.color)
+                background_map.plot(ax=axes, linestyle=o.linestyle, linewidth=o.linewidth,
+                                    facecolor="none", edgecolor=clr)
             
         # draw optional concentric circles
         if self.settings.ring and self.settings.ring_number > 0:
@@ -781,7 +782,10 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         if self.settings.noaa_logo:
             self._draw_noaa_logo(axes)
-
+        
+        if self.settings.use_street_map:
+            self.add_street_map(axes)
+            
         return contour_set
     
     def get_conc_unit(self, conc_map, settings):

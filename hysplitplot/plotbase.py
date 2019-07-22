@@ -1,7 +1,9 @@
 from abc import abstractmethod
 import cartopy.crs
+import contextily
 import logging
 import matplotlib.patches
+import matplotlib.pyplot as plt
 import os
 import pytz
 from timezonefinder import TimezoneFinder
@@ -38,6 +40,7 @@ class AbstractPlotSettings:
         self.gis_output = const.GISOutput.NONE
         self.kml_option = const.KMLOption.NONE
         self.use_source_time_zone = False   # for the --source-time-zone option
+        self.use_street_map = False # for the --street-map option
         
         # internally defined
         self.interactive_mode = True    # becomes False if the -o or -O option is specified.
@@ -108,6 +111,12 @@ class AbstractPlotSettings:
         
         if args.has_arg(["--source-time-zone"]):
             self.use_source_time_zone   = True
+        
+        if args.has_arg(["--street-map"]):
+            self.use_street_map         = True
+            if self.map_projection != const.MapProjection.WEB_MERCATOR:
+                logger.warning("The --street-map option changes the map projection to WEB_MERCATOR")
+                self.map_projection     = const.MapProjection.WEB_MERCATOR
             
     @staticmethod
     def parse_lat_lon_label_interval(str):
@@ -491,3 +500,21 @@ class AbstractPlot:
     
     def adjust_for_time_zone(self, dt):
         return dt if self.time_zone is None else dt.astimezone(self.time_zone)
+    
+    def add_street_map(self, ax, url=contextily.sources.ST_TERRAIN):
+        xmin, xmax, ymin, ymax = ax.axis()
+        zoom = 1 # TODO: sensible determination of the zoom parameter from the extent?
+        
+        contextily.howmany(xmin, ymin, xmax, ymax, zoom)
+        basemap, extent = contextily.bounds2img(xmin, ymin, xmax, ymax, zoom=zoom, url=url)
+        
+        #ax.imshow(basemap, extent=extent, interpolation="bilinear")
+        # Ad hoc fix because ax.imshow() incorrectly shows the basemap.
+        saved = None if ax is plt.gca() else plt.gca()
+        if saved is not None:
+            plt.sca(ax)
+        plt.imshow(basemap, extent=extent, interpolation='bilinear')
+        if saved is not None:
+            plt.sca(saved)
+        
+        ax.axis( (xmin, xmax, ymin, ymax) )
