@@ -137,7 +137,7 @@ def test_get_iso_8601_str():
 def test_calc_ring_distance():
     kspan, ring_distance = util.calc_ring_distance((40.0, 10.0),
                                                    1.0,
-                                                   (0, 0), # TODO: check this??
+                                                   (0, 0),
                                                    5,
                                                    105.0)
     assert kspan == 5

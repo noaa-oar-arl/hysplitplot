@@ -4,7 +4,7 @@ import pytest
 import pytz
 
 from hysplitdata.const import HeightUnit
-from hysplitplot import plotbase, const, datem, labels, mapfile, mapproj
+from hysplitplot import const, datem, labels, mapbox, mapfile, mapproj, plotbase, streetmap
 from hysplitplot.traj import plot
 
 
@@ -17,6 +17,16 @@ def cleanup_plot(p):
     if p.fig is not None:
         plt.close(p.fig)
         
+
+class AbstractPlotTest(plotbase.AbstractPlot):
+    
+    def __init__(self):
+        super(AbstractPlotTest, self).__init__()
+        self.target_axes = None
+        
+    def get_street_map_target_axes(self):
+        return self.target_axes
+
 
 def test_AbstractPlotSettings___init__():
     s = plotbase.AbstractPlotSettings()
@@ -46,6 +56,7 @@ def test_AbstractPlotSettings___init__():
     assert s.station_marker_color != None
     assert s.station_marker_size > 0
     assert s.height_unit == HeightUnit.METERS
+    assert s.street_map_update_delay > 0
     
 
 def test_AbstractPlotSettings__process_cmdline_args():
@@ -206,21 +217,21 @@ def test_AbstractPlotSettings_parse_zoom_factor():
 
 
 def test_AbstractPlot___init__():
-    p = plotbase.AbstractPlot()
+    p = AbstractPlotTest()
 
     assert p._GRIDLINE_DENSITY == 0.25
     assert hasattr(p, "fig")
     assert hasattr(p, "projection")
-    assert hasattr(p, "crs")
     assert hasattr(p, "data_crs")
     assert hasattr(p, "background_maps")
-    assert hasattr(p, "labels")
+    assert hasattr(p, "labels") and isinstance(p.labels, labels.LabelsConfig)
     assert hasattr(p, "time_zone")
-    assert isinstance(p.labels, labels.LabelsConfig)
+    assert hasattr(p, "time_zone_finder")
+    assert hasattr(p, "street_map") and isinstance(p.street_map, streetmap.StreetMap)
 
 
 def test_AbstractPlot__connect_event_handlers():
-    p = plotbase.AbstractPlot()
+    p = AbstractPlotTest()
     axes = plt.axes()
     p.fig = axes.figure
 
@@ -238,7 +249,7 @@ def test_AbstractPlot_compute_pixel_aspect_ratio():
   
 
 def test_AbstractPlot__turn_off_spines():
-    p = plotbase.AbstractPlot()
+    p = AbstractPlotTest()
     axes = plt.axes()
 
     # See if no exception is thrown.
@@ -250,7 +261,7 @@ def test_AbstractPlot__turn_off_spines():
 
 
 def test_AbstractPlot__turn_off_ticks():
-    p = plotbase.AbstractPlot()
+    p = AbstractPlotTest()
     axes = plt.axes()
 
     # See if no exception is thrown.
@@ -266,13 +277,27 @@ def test_AbstractPlot__collect_tick_values():
     assert t == pytest.approx((-130, -120, -110, -100, -90, -80, -70))
 
 
+def test_AbstractPlot_update_plot_extents():
+    p = AbstractPlotTest()
+    p.projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    p.projection.corners_xy = [-645202.80, 248127.59, -499632.13, 248127.59]
+    p.projection.corners_lonlat = [-132.6424, -121.7551, 40.2331, 47.1785]
+    
+    p.target_axes = plt.axes(projection=p.projection.crs)
+    p.target_axes.axis( (-642202.80, 245127.59, -496632.13, 246127.59) )
+    
+    p.update_plot_extents()
+
+    assert p.projection.corners_xy == pytest.approx((-642202.80, 245127.59, -496632.13, 246127.59))
+    assert p.projection.corners_lonlat == pytest.approx((-132.6100, -121.7954, 40.2624, 47.1616))
+
+
 def test_AbstractPlot__update_gridlines():
-    p = plotbase.AbstractPlot()
+    p = AbstractPlotTest()
     p.projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
     p.projection.corners_xy = [1.0, 1.0, 500.0, 500.0]
     p.projection.corners_lonlat = [-95.0, -75.0, 25.0, 45.0]
-    p.crs = p.projection.create_crs()
-    axes = plt.axes(projection=p.crs)
+    axes = plt.axes(projection=p.projection.crs)
 
     try:
         p._update_gridlines(axes, 'k', const.LatLonLabel.AUTO, 1.0)
@@ -282,14 +307,14 @@ def test_AbstractPlot__update_gridlines():
 
 
 def test_AbstractPlot__get_gridline_spacing():
-    p = plotbase.AbstractPlot()
+    p = AbstractPlotTest()
     assert p._get_gridline_spacing([-130.0, -110.0, 45.0, 55.0], const.LatLonLabel.NONE, 1.0) == 0.0
     assert p._get_gridline_spacing([-130.0, -110.0, 45.0, 55.0], const.LatLonLabel.SET, 3.14) == 3.14
     assert p._get_gridline_spacing([-130.0, -110.0, 45.0, 55.0], const.LatLonLabel.AUTO, 1.0) == 5.0
     
     
 def test_AbstractPlot__calc_gridline_spacing():
-    p = plotbase.AbstractPlot()
+    p = AbstractPlotTest()
     assert p._calc_gridline_spacing([-130.0, -110.0, 45.0, 55.0]) == 5.0
     assert p._calc_gridline_spacing([-120.0, -110.0, 35.0, 55.0]) == 5.0
     # across the dateline
@@ -304,13 +329,13 @@ def test_AbstractPlot__fix_arlmap_filename():
 
  
 def test_AbstractPlot_load_background_map():
-    p = plotbase.AbstractPlot()
+    p = AbstractPlotTest()
     maps = p.load_background_map("data/arlmap_truncated")
 
     assert maps is not None
     assert len(maps) > 0
     assert isinstance(maps[0], mapfile.DrawableBackgroundMap)
-    assert maps[0].map.crs == mapproj.MapProjection._WGS84
+    assert maps[0].map.crs == mapproj.AbstractMapProjection._WGS84
     
     
 def test_AbstractPlot__make_labels_filename():
@@ -334,10 +359,13 @@ def test_AbstractPlot_read_custom_labels_if_exists():
 
 
 def test_AbstractPlot__draw_latlon_labels():
-    p = plotbase.AbstractPlot()
+    p = AbstractPlotTest()
     p.projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
-    p.projection.corners_xy = [1.0, 1.0, 500.0, 500.0]
-    p.crs = p.projection.create_crs()
+    map_box = mapbox.MapBox()
+    map_box.allocate()
+    map_box.add((-120.5, 45.5))
+    map_box.determine_plume_extent()
+    p.projection.do_initial_estimates(map_box, [-125.0, 45.0])
     axes = plt.axes()
     
     try:
@@ -354,11 +382,10 @@ def test_AbstractPlot__make_stationplot_filename():
 
 
 def test_AbstractPlot__draw_stations_if_exists():
-    p = plotbase.AbstractPlot()
+    p = AbstractPlotTest()
     p.projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
     p.projection.corners_xy = [1.0, 1.0, 500.0, 500.0]
-    p.crs = p.projection.create_crs()
-    axes = plt.axes(projection=p.crs)
+    axes = plt.axes(projection=p.projection.crs)
 
     s = plotbase.AbstractPlotSettings()
     
@@ -371,11 +398,10 @@ def test_AbstractPlot__draw_stations_if_exists():
 
 
 def test_AbstractPlot__draw_datem():
-    p = plotbase.AbstractPlot()
+    p = AbstractPlotTest()
     p.projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
     p.projection.corners_xy = [1.0, 1.0, 500.0, 500.0]
-    p.crs = p.projection.create_crs()
-    axes = plt.axes(projection=p.crs)
+    axes = plt.axes(projection=p.projection.crs)
 
     s = plotbase.AbstractPlotSettings()
     
@@ -400,7 +426,7 @@ def test_AbstractPlot_make_maptext_filename():
 
 def test_AbstractPlot__draw_maptext_if_exists():
     p = plot.TrajectoryPlot() # need a concrete class
-    #p = plotbase.AbstractPlot()
+    #p = AbstractPlotTest()
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
     p.read_background_map()
@@ -416,11 +442,10 @@ def test_AbstractPlot__draw_maptext_if_exists():
  
 
 def test_TrajectoryPlot__draw_alt_text_boxes():
-    p = plotbase.AbstractPlot()
+    p = AbstractPlotTest()
     p.projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
     p.projection.corners_xy = [1.0, 1.0, 500.0, 500.0]
-    p.crs = p.projection.create_crs()
-    axes = plt.axes(projection=p.crs)
+    axes = plt.axes(projection=p.projection.crs)
 
     # See if no exception is thrown.
     try:
@@ -431,11 +456,10 @@ def test_TrajectoryPlot__draw_alt_text_boxes():
  
 
 def test_AbstractPlot__draw_concentric_circles():
-    p = plotbase.AbstractPlot()
+    p = AbstractPlotTest()
     p.projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
     p.projection.corners_xy = [1.0, 1.0, 500.0, 500.0]
-    p.crs = p.projection.create_crs()
-    axes = plt.axes(projection=p.crs)
+    axes = plt.axes(projection=p.projection.crs)
 
     try:
         p._draw_concentric_circles(axes, [-84.0, 35.0], 4, 100.0)
@@ -445,7 +469,7 @@ def test_AbstractPlot__draw_concentric_circles():
 
     
 def test_AbstractPlot__draw_noaa_logo():
-    p = plotbase.AbstractPlot()
+    p = AbstractPlotTest()
     axes = plt.axes()
     
     try:
@@ -456,7 +480,7 @@ def test_AbstractPlot__draw_noaa_logo():
 
 
 def test_AbstractPlot_get_time_zone_at():
-    p = plotbase.AbstractPlot()
+    p = AbstractPlotTest()
     
     tz = p.get_time_zone_at((-73.9620, 40.7874))
     assert tz is not None
@@ -480,7 +504,7 @@ def test_AbstractPlot_get_time_zone_at():
 
 
 def test_AbstractPlot_adjust_for_time_zone():
-    p = plotbase.AbstractPlot()
+    p = AbstractPlotTest()
     assert p.time_zone is None
     
     dt = datetime.datetime(2019, 7, 10, 14, 3, 0, 0, pytz.utc)
@@ -494,4 +518,3 @@ def test_AbstractPlot_adjust_for_time_zone():
     assert t.minute      == 3
     assert t.second      == 0
     assert t.tzinfo.zone == "America/New_York"
-

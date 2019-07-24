@@ -536,7 +536,15 @@ def test_ConcentrationPlot_merge_plot_settings():
     p.merge_plot_settings("data/default_cplot", ["-m4"])
 
     assert p.settings.map_projection == 4
-
+    
+    
+def test_ConcentrationPlot_get_street_map_target_axes():
+    p = plot.ConcentrationPlot()
+    ax = plt.axes()
+    p.conc_axes = ax
+    assert p.get_street_map_target_axes() is ax
+    plt.close(ax.get_figure())
+    
     
 def test_ConcentrationPlot_update_gridlines():
     p = plot.ConcentrationPlot()
@@ -548,6 +556,9 @@ def test_ConcentrationPlot_update_gridlines():
     
     # See if no exception is thrown.
     try:
+        p.settings.use_street_map = False
+        p.update_gridlines()
+        p.settings.use_street_map = True
         p.update_gridlines()
         cleanup_plot(p)
     except Exception as ex:
@@ -692,7 +703,7 @@ def test_ConcentrationPlot_read_background_map():
     assert p.background_maps is not None
     assert len(p.background_maps) > 0
     assert isinstance(p.background_maps[0], mapfile.DrawableBackgroundMap)
-    assert p.background_maps[0].map.crs == mapproj.MapProjection._WGS84
+    assert p.background_maps[0].map.crs == mapproj.AbstractMapProjection._WGS84
 
 
 def test_ConcentrationPlot_layout():
@@ -802,8 +813,7 @@ def test_ConcentrationPlot__initialize_map_projection():
 
     p._initialize_map_projection( p.cdump )
 
-    assert isinstance(p.projection, mapproj.MapProjection)
-    assert p.crs is not None
+    assert isinstance(p.projection, mapproj.AbstractMapProjection)
     assert p.settings.center_loc == pytest.approx((-84.22, 39.90))
 
 
@@ -966,6 +976,11 @@ def test_ConcentrationPlot_draw_bottom_text():
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
+
+
+def test_ConcentrationPlot__write_gisout():
+    # TODO
+    pass
 
 
 def test_ConcentrationPlot_draw_conc_above_ground():

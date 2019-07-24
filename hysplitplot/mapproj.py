@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import cartopy.crs
 import logging
 import math
@@ -9,344 +10,13 @@ from hysplitplot import util, const
 logger = logging.getLogger(__name__)
 
 
-class CoordinateBase:
-
-    EARTH_RADIUS = 6371.2 # radius of earth in km
-    RADPDG = math.pi / 180.0
-    DGPRAD = 180.0 / math.pi
-
-    def __init__(self):
-        self.parmap = numpy.zeros(9, dtype=float)
-        self.grid = 0.0
-        self.reflon = 0.0
-        self.tnglat = 0.0
-        self.slat = 0.0
-        self.slon = 0.0
-        self.glat = 0.0
-        self.glon = 0.0
-        return
-
-    def setup(self, center_loc, xc, yc, deltas):
-        # grid spacing as 0.5 of input grid spacing
-        self.grid = 0.5*min(deltas)*100.0
-        logger.debug("Spacing %f", self.grid)
-
-        # projection cut
-        self.reflon = center_loc[0]
-
-        self.set_tangent_lat(center_loc)
-        self.init_params(xc, yc)
-
-    def init_params(self, xc, yc):
-        # create projection
-        self._STLMBR(self.parmap, self.tnglat, self.reflon)
-        self._STCM1P(self.parmap, xc, yc, self.slat, self.slon, self.glat, self.glon, self.grid, 0.0)
-
-    def rescale(self, xy, corners_lonlat):
-        x1, y1 = xy
-        alonl, alonr, alatb, alatt = corners_lonlat
-        self._STLMBR(self.parmap, self.tnglat, self.reflon)
-        self._STCM1P(self.parmap, x1, y1, alatb, alonl, self.glat, self.glon, self.grid, 0.0)
-        return self.calc_xy(alonr, alatt)
-
-    def calc_xy(self, plon, plat):
-        return CoordinateBase._CLL2XY(self.parmap, plat, plon)
-
-    def calc_lonlat(self, x, y):
-        plat, plon = CoordinateBase._CXY2LL(self.parmap, x, y)
-        return plon, plat
-
-    @staticmethod
-    def _STLMBR(stcprm, tnglat, xlong):
-        stcprm[0] = math.sin(tnglat * CoordinateBase.RADPDG) # gamma = sine of the tangent latitude
-        stcprm[1] = CoordinateBase._CSPANF(xlong, -180.0, 180.0) # lambda_0 = reference longitude
-        stcprm[2] = 0.0 # x_0 = x-grid coordinate of origin (xi, eta) = (0, 0)
-        stcprm[3] = 0.0 # y_0 = y-grid coordinate of origin (xi, eta) = (0, 0)
-        stcprm[4] = 1.0 # cosine of rotation angle from xi, eta to x, y
-        stcprm[5] = 0.0 # sine of rotation angle from xi, eta to x, y
-        stcprm[6] = CoordinateBase.EARTH_RADIUS # gridsize in km at the equator
-        xi, eta = CoordinateBase._CNLLXY(stcprm, 89.0, xlong)
-        stcprm[7] = 2. * eta - stcprm[0] * eta * eta # radial coordinate for 1 deg from north pole
-        xi, eta = CoordinateBase._CNLLXY(stcprm, -89.0, xlong)
-        stcprm[8] = 2. * eta - stcprm[0] * eta * eta # radial coordinate for 1 deg from south pole
-        logger.debug("_STLMBR: %s", stcprm)
-
-    @staticmethod
-    def _STCM1P(stcprm, x1, y1, xlat1, xlong1, xlatg, xlongg, gridsz, orient):
-        stcprm[2] = 0
-        stcprm[3] = 0
-        turn = CoordinateBase.RADPDG * (orient - stcprm[0] *
-                                       CoordinateBase._CSPANF(xlongg - stcprm[1], -180.0, 180.0))
-        stcprm[4] = math.cos(turn)
-        stcprm[5] = -math.sin(turn)
-        stcprm[6] = 1.0
-        stcprm[6] = gridsz * stcprm[6] / CoordinateBase._CGSZLL(stcprm, xlatg, stcprm[1])
-        x1a, y1a = CoordinateBase._CLL2XY(stcprm, xlat1, xlong1)
-        stcprm[2] += x1 - x1a
-        stcprm[3] += y1 - y1a
-        logger.debug("_STCM1P: %s", stcprm)
-
-    @staticmethod
-    def _CGSZLL(stcprm, xlat, xlong):
-        if xlat > 89.995:
-            # close to north pole
-            if stcprm[1] > 0.9999:
-                # and gamma is 1.0
-                return 2.0 * stcprm[6]
-            efact = math.cos(CoordinateBase.RADPDG * xlat)
-            if efact <= 0:
-                return 0.0
-            else:
-                ymerc = -math.log(efact/(1.0 + math.sin(CoordinateBase.RADPDG * xlat)))
-        elif xlat < -89.995:
-            # close to south pole
-            if stcprm[0] < -0.9999:
-                return 2.0 * stcprm[6]
-            efact = math.cos(CoordinateBase.RADPDG * xlat)
-            if efact <= 0:
-                return 0.0
-            else:
-                ymerc = math.log(efact/(1.0 - math.sin(CoordinateBase.RADPDG * xlat)))
-        else:
-            slat = math.sin(CoordinateBase.RADPDG * xlat)
-            ymerc = math.log((1.0 + slat)/(1.0 - slat)) * 0.5
-        return stcprm[6] * math.cos(CoordinateBase.RADPDG * xlat) * math.exp(stcprm[0] * ymerc)
-
-    @staticmethod
-    def _CLL2XY(stcprm, xlat, xlong):
-        xi, eta = CoordinateBase._CNLLXY(stcprm, xlat, xlong)
-        x = stcprm[2] + CoordinateBase.EARTH_RADIUS/stcprm[6] * (xi*stcprm[4] + eta * stcprm[5])
-        y = stcprm[3] + CoordinateBase.EARTH_RADIUS/stcprm[6] * (eta*stcprm[4] - xi * stcprm[5])
-        logger.debug("_CLL2XY: xi %f, eta %f -> x %f, y %f", xi, eta, x, y)
-        return x, y
-
-    @staticmethod
-    def _CXY2LL(stcprm, x, y):
-        xi0 = (x - stcprm[2]) * stcprm[6] / CoordinateBase.EARTH_RADIUS
-        eta0 = (y - stcprm[3]) * stcprm[6] / CoordinateBase.EARTH_RADIUS
-        xi = xi0 * stcprm[4] - eta0 * stcprm[5]
-        eta = eta0 * stcprm[4] + xi0 * stcprm[5]
-        plat, plon = CoordinateBase._CNXYLL(stcprm, xi, eta)
-        plon = CoordinateBase._CSPANF(plon, -180.0, 180.0)
-        return plat, plon
-
-    @staticmethod
-    def _CSPANF(value, fbegin, fend):
-        first = min(fbegin, fend)
-        last = max(fbegin, fend)
-        val = (value - first) % (last - first)
-        return val + last if val < 0.0 else val + first
-
-    @staticmethod
-    def _CNLLXY(stcprm, xlat, xlong):
-        almst1 = 0.99999
-        gamma = stcprm[0]
-        dlat = xlat
-        dlong = CoordinateBase._CSPANF(xlong - stcprm[1], -180.0, 180.0)
-        dlong *= CoordinateBase.RADPDG
-        gdlong = gamma * dlong
-        if abs(gdlong) < 0.01:
-            gdlong *= gdlong
-            sndgam = dlong * (1.0 - gdlong/6.0*(1.0 - gdlong/20.0 * (1.0 - gdlong/42.)))
-            csdgam = dlong * dlong * 0.5 * (1.0 - gdlong/12.0*(1.0 - gdlong/30.0*(1.0 - gdlong/56.0)))
-        else:
-            sndgam = math.sin(gdlong)/gamma
-            csdgam = (1.0 - math.cos(gdlong))/(gamma*gamma)
-        slat = math.sin(CoordinateBase.RADPDG * dlat)
-        if (slat >= almst1) or (slat <= -almst1):
-            eta = 1.0/stcprm[0]
-            xi = 0.0
-            return xi, eta
-        mercy = 0.5 * math.log((1.0 + slat)/(1.0 - slat))
-        gmercy = gamma * mercy
-        if abs(gmercy) < 0.001:
-            rhog1 = mercy * (1.0 - 0.5*gmercy*(1.0 - gmercy/3.0*(1.0 - gmercy/4.0)))
-        else:
-            rhog1 = (1.0 - math.exp(-gmercy)) / gamma
-        eta = rhog1 + (1.0 - gamma*rhog1) * gamma * csdgam
-        xi = (1.0 - gamma*rhog1) * sndgam
-        return xi, eta
-
-    @staticmethod
-    def _CNXYLL(stcprm, xi, eta):
-        gamma = stcprm[0]
-        cgeta = 1.0 - gamma * eta
-        gxi = gamma * xi
-        # calculate equivalent mercator coordinate
-        arg2 = eta + (eta * cgeta - gxi * xi)
-        arg1 = gamma * arg2
-        if arg1 >= 1.0:
-            # distance to north (or south) pole is zero (or imaginary).
-            xlat = 90.0 if stcprm[0] >= 0 else -90.0
-            xlong = 90.0 + xlat
-            return xlat, xlong
-        if abs(arg1) < 0.01:
-            # code for gamma small or zero to avoid round-off error or divide-by-zero.
-            temp = pow(arg1 / (2.0 - arg1), 2.0)
-            ymerc = arg2 / (2.0 - arg1) * (1.0 + temp*(1./3. + temp*(1./5. + temp*(1./7))))
-        else:
-            # code for moderate values of gamma
-            ymerc = -math.log(1.0 - arg1) / (2.0 * gamma)
-        # convert ymerc to latitude
-        temp = math.exp(-abs(ymerc))
-        xlat = util.sign(math.atan2((1.0 - temp)*(1.0 + temp), 2.0 * temp), ymerc)
-        # find longitudes
-        if abs(gxi) < 0.01*cgeta:
-            # code for gamma small or zero to avoid round-off error or divide-by-zero.
-            temp = pow(gxi/cgeta, 2.0)
-            along = xi/cgeta * (1.0 - temp*(1./3. - temp*(1./5. - temp*(1./7.))))
-        else:
-            # code for moderate values of gamma
-            along = math.atan2(gxi, cgeta) / gamma
-        xlong = stcprm[1] + CoordinateBase.DGPRAD * along
-        xlat = xlat * CoordinateBase.DGPRAD
-        return xlat, xlong
-
-    @staticmethod
-    def normalize_lon(lon):
-        if lon < 0.0:
-            lon += 360.0
-        if lon > 360.0:
-            lon -= 360.0
-        return lon
-
-
-class LambertCoordinate(CoordinateBase):
-
-    def __init__(self):
-        CoordinateBase.__init__(self)
-        return
-
-    def set_tangent_lat(self, center_loc):
-        self.tnglat = center_loc[1]
-        self.slat = center_loc[1]
-        self.slon = center_loc[0]
-        self.glat = center_loc[1]
-        self.glon = center_loc[0]
-
-
-class PolarCoordinate(CoordinateBase):
-
-    def __init__(self):
-        CoordinateBase.__init__(self)
-        return
-
-    def set_tangent_lat(self, center_loc):
-        self.tnglat = 90.0 if center_loc[1] >= 0.0 else -90.0
-        self.slat = self.tnglat
-        self.slon = 0.0
-        self.glat = center_loc[1]
-        self.glon = self.reflon
-
-
-class MercatorCoordinate(CoordinateBase):
-
-    def __init__(self):
-        CoordinateBase.__init__(self)
-        return
-
-    def set_tangent_lat(self, center_loc):
-        self.tnglat = 0.0
-        self.slat = center_loc[1]
-        self.slon = center_loc[0]
-        self.glat = 0.0
-        self.glon = self.reflon
-
-
-class CylindricalCoordinate(CoordinateBase):
-
-    def __init__(self):
-        CoordinateBase.__init__(self)
-        self.xypdeg = 0.0
-        self.coslat = 0.0
-        self.rlat = 0.0
-        self.rlon = 0.0
-        self.xr = 0.0
-        self.yr = 0.0
-
-    def set_tangent_lat(self, center_loc):
-        self.tnglat = 0.0
-        self.slat = center_loc[1]
-        self.slon = center_loc[0]
-        self.glat = 0.0
-        self.glon = self.reflon
-
-    def init_params(self, xc, yc):
-        self._CYLSET(self.grid, self.tnglat, self.slat, self.slon, xc, yc)
-
-    def rescale(self, xy, corners_lonlat):
-        x1, y1 = xy
-        alonl, alonr, alatb, alatt = corners_lonlat
-        self._CYLSET(self.grid, self.tnglat, alatb, alonl, x1, y1)
-        return self.calc_xy(alonr, alatt)
-
-    def calc_xy(self, plon, plat):
-        return self._CYL2XY(plat, plon)
-
-    def calc_lonlat(self, x, y):
-        plat, plon = self._CYL2LL(x, y)
-        return plon, plat
-
-    def _CYLSET(self, distxy, clat, plat, plon, xp, yp):
-        # position in x-y at reference lat-lon
-        self.rlat = plat
-        self.rlon = plon
-        self.xr = xp
-        self.yr = yp
-
-        # internal system always 0-360
-        self.rlon = self.normalize_lon(self.rlon)
-
-        # latitude scale factor
-        self.coslat = math.cos(clat * CoordinateBase.RADPDG)
-
-        # gp/deg = (km/deg) / (km/gp)
-        self.xypdeg = CoordinateBase.EARTH_RADIUS * CoordinateBase.RADPDG / distxy
-
-    def _CYL2XY(self, plat, plon):
-        # compute difference from reference longitude
-        tlon = self.normalize_lon(plon) - self.rlon
-        x = self.xypdeg * tlon * self.coslat + self.xr
-        y = self.xypdeg * (plat - self.rlat) + self.yr
-        return x, y
-
-    def _CYL2LL(self, x, y):
-        plat = self.rlat + (y - self.yr) / self.xypdeg
-        tlon = self.rlon + (x - self.xr) / (self.coslat * self.xypdeg)
-        # return with (-180,+180), (-90,+90) system
-        plon = CoordinateBase._CSPANF(tlon, -180.0, 180.0)
-        plat = CoordinateBase._CSPANF(plat, -90.0, 90.0)
-        return plat, plon
-
-
-class WebMercatorCoordinate(CoordinateBase):
-
-    def __init__(self, crs):
-        CoordinateBase.__init__(self)
-        self.crs = crs
-        self.latlon_crs = cartopy.crs.PlateCarree()
-        
-    def set_tangent_lat(self, center_loc):
-        self.tnglat = 0.0
-        self.slat = center_loc[1]
-        self.slon = center_loc[0]
-        self.glat = 0.0
-        self.glon = self.reflon
-        
-    def calc_xy(self, plon, plat):
-        return self.crs.transform_point(plon, plat, self.latlon_crs)
-
-    def calc_lonlat(self, x, y):
-        return self.latlon_crs.transform_point(x, y, self.crs)
-
-    
 class MapProjectionFactory:
     
     @staticmethod
     def create_instance(map_proj, zoom_factor, center_loc, scale, grid_deltas, map_box):
         obj = None
 
-        kproj = MapProjection.determine_projection(map_proj, center_loc)
+        kproj = AbstractMapProjection.determine_projection(map_proj, center_loc)
 
         if kproj == const.MapProjection.POLAR:
             obj = PolarProjection(kproj, zoom_factor, center_loc, scale, grid_deltas)
@@ -365,14 +35,14 @@ class MapProjectionFactory:
 
         # Lambert grids not permitted to encompass the poles
         if obj.sanity_check() == False:
-            proj = obj.create_proper_projection(kproj, zoom_factor, center_loc, scale, grid_deltas)
+            proj = obj.create_sane_projection(kproj, zoom_factor, center_loc, scale, grid_deltas)
             proj.do_initial_estimates(map_box, center_loc)
             return proj
 
         return obj
 
 
-class MapProjection:
+class AbstractMapProjection(ABC):
     
     _WGS84 = {"init": "epsg:4326"}  # A coordinate reference system.
     
@@ -385,12 +55,25 @@ class MapProjection:
         self.scale = scale
         self.deltas = grid_deltas       # (dlon, dlat)
         #
-        self.coord = None # set by a child class
+        self.crs = None # to be created by a child class
+        self.crs_plate_carree = cartopy.crs.PlateCarree()
         self.center_loc = center_loc    # (lon, lat)
-        self.corners_xy = None # [x1, x2, y1, y2]
-        self.corners_lonlat = None # [lon_left, lon_right, lat_bottom, lat_top]
-        self.point_counts = None # [Nx, Ny]
+        self.corners_xy = None      # [x1, x2, y1, y2]
+        self.corners_lonlat = None  # [lon_left, lon_right, lat_bottom, lat_top]
+        #
+        self.reflon = center_loc[0]
+        self.tnglat = self.get_tangent_lat(center_loc)
 
+    def calc_xy(self, plon, plat):
+        return self.crs.transform_point(plon, plat, self.crs_plate_carree)
+
+    def calc_lonlat(self, x, y):
+        return self.crs_plate_carree.transform_point(x, y, self.crs)
+
+    @abstractmethod
+    def get_tangent_lat(self, center_loc):
+        pass
+    
     @staticmethod
     def determine_projection(map_proj, center_loc):
         kproj = map_proj
@@ -431,17 +114,10 @@ class MapProjection:
         if self.need_pole_exclusion(corners_lonlat):
             corners_xy, corners_lonlat = self.exclude_pole(corners_xy, corners_lonlat)
 
-        # rescale map by defining 1, 1 at lower left corner
-        x1, y1 = 1.0, 1.0
-        x2, y2 = self.coord.rescale((x1, y1), corners_lonlat)
-        corners_xy = (x1, x2, y1, y2)
-
         self.corners_xy = corners_xy
         self.corners_lonlat = corners_lonlat
         logger.debug("Final: %s", corners_xy)
         logger.debug("Final: lonlat %s", self.corners_lonlat)
-
-        self.point_counts = (util.nearest_int(x2), util.nearest_int(y2))
 
     def validate_corners(self, corners):
         x1, x2, y1, y2 = corners
@@ -449,10 +125,10 @@ class MapProjection:
         # save x1, x2, y1, y2 before validation
         x1s, x2s, y1s, y2s = x1, x2, y1, y2
 
-        alonl, alatb = self.coord.calc_lonlat(x1, y1)
-        alonr, alatt = self.coord.calc_lonlat(x2, y2)
-        x1, y1 = self.coord.calc_xy(alonl, alatb)
-        x2, y2 = self.coord.calc_xy(alonr, alatt)
+        alonl, alatb = self.calc_lonlat(x1, y1)
+        alonr, alatt = self.calc_lonlat(x2, y2)
+        x1, y1 = self.calc_xy(alonl, alatb)
+        x2, y2 = self.calc_xy(alonr, alatt)
 
         # move lower left corner toward center
         if max(abs(x1-x1s), abs(y1s-y1)) >= self.TOLERANCE:
@@ -494,10 +170,10 @@ class MapProjection:
         # save x1, x2, y1, y2
         x1s, x2s, y1s, y2s = x1, x2, y1, y2
 
-        alonl, alatb = self.coord.calc_lonlat(x1, y1)
-        alonr, alatt = self.coord.calc_lonlat(x2, y2)
-        x1, y1 = self.coord.calc_xy(alonl, alatb)
-        x2, y2 = self.coord.calc_xy(alonr, alatt)
+        alonl, alatb = self.calc_lonlat(x1, y1)
+        alonr, alatt = self.calc_lonlat(x2, y2)
+        x1, y1 = self.calc_xy(alonl, alatb)
+        x2, y2 = self.calc_xy(alonr, alatt)
 
         if max(abs(x1-x1s), abs(x2-x2s), abs(y1-y1s), abs(y2-y2s)) >= self.TOLERANCE:
             return corners_prev
@@ -538,8 +214,8 @@ class MapProjection:
     def calc_corners_lonlat(self, corners_xy):
         x1, x2, y1, y2 = corners_xy
 
-        alonl, alatb = self.coord.calc_lonlat(x1, y1)
-        alonr, alatt = self.coord.calc_lonlat(x2, y2)
+        alonl, alatb = self.calc_lonlat(x1, y1)
+        alonr, alatt = self.calc_lonlat(x2, y2)
         logger.debug("Corners: %f %f %f %f", alonl, alonr, alatb, alatt)
 
         # map exceeds limits
@@ -559,28 +235,24 @@ class MapProjection:
 
         if alatt > 80.0:
             alatt = 80.0
-            x2, y2 = self.coord.calc_xy(alonr, alatt)
+            x2, y2 = self.calc_xy(alonr, alatt)
         if alatb < -80.0:
             alatb = -80.0
-            x1, y1 = self.coord.calc_xy(alonl, alatb)
+            x1, y1 = self.calc_xy(alonl, alatb)
 
         return (x1, x2, y1, y2), (alonl, alonr, alatb, alatt)
 
     def do_initial_estimates(self, map_box, center_loc):
 
-        # initial point
-        xc = 500.0; yc = 500.0
-
-        # set up the coordinate reference system
-        self.coord.setup(center_loc, xc, yc, self.deltas)
+        # the coordinate reference system must have been set up.
         logger.debug("Map Prj: %d", self.proj_type)
         logger.debug("Center : %f %f", center_loc[1], center_loc[0])
-        logger.debug("Tangent: %f  Reflon: %f", self.coord.tnglat, self.coord.reflon)
+        logger.debug("Tangent: %f  Reflon: %f", self.tnglat, self.reflon)
 
         # find new map corners
         half_delta = map_box.grid_delta * 0.5
-        x1, y1 = self.coord.calc_xy(center_loc[0] - half_delta, center_loc[1] - half_delta)
-        x2, y2 = self.coord.calc_xy(center_loc[0] + half_delta, center_loc[1] + half_delta)
+        x1, y1 = self.calc_xy(center_loc[0] - half_delta, center_loc[1] - half_delta)
+        x2, y2 = self.calc_xy(center_loc[0] + half_delta, center_loc[1] + half_delta)
 
         logger.debug("X, Y Set : %f %f %f %f", x1, y1, x2, y2)
         logger.debug("Grid corner, increment from mapbox or conndx : %f %f %f",
@@ -596,7 +268,7 @@ class MapProjection:
                     plat = j * map_box.grid_delta + map_box.grid_corner[1]
                     if plon > 180.0:
                         plon -= 360.0
-                    xc, yc = self.coord.calc_xy(plon, plat)
+                    xc, yc = self.calc_xy(plon, plat)
                     x1 = min(x1, xc)
                     y1 = min(y1, yc)
                     x2 = max(x2, xc)
@@ -607,13 +279,13 @@ class MapProjection:
         # find new map center
         xc = 0.5*(x1 + x2)
         yc = 0.5*(y1 + y2)
-        qlon, qlat = self.coord.calc_lonlat(xc, yc)
+        qlon, qlat = self.calc_lonlat(xc, yc)
         logger.debug("Center : %f %f", qlat, qlon)
         self.center_loc = (qlon, qlat)
 
         # compute new map corners
-        alonl, alatb = self.coord.calc_lonlat(x1, y1)
-        alonr, alatt = self.coord.calc_lonlat(x2, y2)
+        alonl, alatb = self.calc_lonlat(x1, y1)
+        alonr, alatt = self.calc_lonlat(x2, y2)
         self.corners_lonlat = (alonl, alonr, alatb, alatt)
         logger.debug("Corners: %f %f %f %f", alonl, alonr, alatb, alatt)
 
@@ -621,32 +293,35 @@ class MapProjection:
         # A child class may override this.
         return True
 
-    def create_proper_projection(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
-        # A child class should override this.
+    def create_sane_projection(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
+        # A child class should override this if its sanity_check() can return False.
         raise Exception("This should not happen")
 
+    @abstractmethod
     def create_crs(self):
-        # A child class should override this.
-        raise Exception("This should not happen")
+        pass
 
 
-class LambertProjection(MapProjection):
+class LambertProjection(AbstractMapProjection):
 
     def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
-        MapProjection.__init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas)
+        super(LambertProjection, self).__init__(map_proj, zoom_factor, center_loc, scale, grid_deltas)
         self.proj_type = const.MapProjection.LAMBERT
-        self.coord = LambertCoordinate()
+        self.crs = self.create_crs()
 
+    def get_tangent_lat(self, center_loc):
+        return center_loc[1]
+        
     def sanity_check(self):
         x1, x2, y1, y2 = self.corners_xy
-        xc, yc = self.coord.calc_xy(0.0, util.sign(90.0, self.center_loc[1]))
+        xc, yc = self.calc_xy(0.0, util.sign(90.0, self.center_loc[1]))
         logger.debug("Pole xy: %f %f", xc, yc)
-        if xc >= x1 and xc <= x2 and yc >= y1 and yc <= y2:
+        if (xc >= x1 and xc <= x2 and yc >= y1 and yc <= y2) or (math.isnan(xc) or math.isnan(yc)):
             logger.debug("Force polar stereographic!")
             return False
         return True
 
-    def create_proper_projection(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
+    def create_sane_projection(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
         obj = PolarProjection(map_proj, zoom_factor, center_loc, scale, grid_deltas)
         return obj
 
@@ -655,62 +330,73 @@ class LambertProjection(MapProjection):
         return True if alatt > 80.0 or alatb < -80.0 else False
 
     def create_crs(self):
-        return cartopy.crs.LambertConformal(central_longitude=self.coord.reflon,
-                                            central_latitude=self.coord.tnglat,
+        return cartopy.crs.LambertConformal(central_longitude=self.reflon,
+                                            central_latitude=self.tnglat,
                                             false_easting=1.0*1000.0,
                                             false_northing=1.0*1000.0)
 
 
-class PolarProjection(MapProjection):
+class PolarProjection(AbstractMapProjection):
 
     def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
-        MapProjection.__init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas)
+        super(PolarProjection, self).__init__(map_proj, zoom_factor, center_loc, scale, grid_deltas)
         self.proj_type = const.MapProjection.POLAR
-        self.coord = PolarCoordinate()
-
+        self.crs = self.create_crs()
+    
+    def get_tangent_lat(self, center_loc):
+        return 90.0 if center_loc[1] >= 0.0 else -90.0
+        
     def create_crs(self):
         if self.center_loc[1] >= 0.0:
-            return cartopy.crs.NorthPolarStereo(central_longitude=self.coord.reflon)
+            return cartopy.crs.NorthPolarStereo(central_longitude=self.reflon)
         else:
-            return cartopy.crs.SouthPolarStereo(central_longitude=self.coord.reflon)
+            return cartopy.crs.SouthPolarStereo(central_longitude=self.reflon)
 
 
-class MercatorProjection(MapProjection):
+class MercatorProjection(AbstractMapProjection):
 
     def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
-        MapProjection.__init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas)
+        super(MercatorProjection, self).__init__(map_proj, zoom_factor, center_loc, scale, grid_deltas)
         self.proj_type = const.MapProjection.MERCATOR
-        self.coord = MercatorCoordinate()
+        self.crs = self.create_crs()
 
+    def get_tangent_lat(self, center_loc):
+        return 0.0
+    
     def need_pole_exclusion(self, corners_lonlat):
         alonl, alonr, alatb, alatt = corners_lonlat
         return True if alatt > 80.0 or alatb < -80.0 else False
 
     def create_crs(self):
-        return cartopy.crs.Mercator(central_longitude=self.coord.reflon,
-                                    latitude_true_scale=self.coord.tnglat,
+        return cartopy.crs.Mercator(central_longitude=self.reflon,
+                                    latitude_true_scale=self.tnglat,
                                     false_easting=1.0*1000.0,
                                     false_northing=1.0*1000.0)
 
 
-class CylindricalEquidistantProjection(MapProjection):
+class CylindricalEquidistantProjection(AbstractMapProjection):
 
     def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
         super(CylindricalEquidistantProjection, self).__init__(map_proj, zoom_factor, center_loc, scale, grid_deltas)
         self.proj_type = const.MapProjection.CYL_EQU
-        self.coord = CylindricalCoordinate()
+        self.crs = self.create_crs()
 
+    def get_tangent_lat(self, center_loc):
+        return 0.0
+        
     def create_crs(self):
-        return cartopy.crs.LambertCylindrical(central_longitude=self.coord.reflon)
+        return cartopy.crs.LambertCylindrical(central_longitude=self.reflon)
 
 
-class WebMercatorProjection(MapProjection):
+class WebMercatorProjection(AbstractMapProjection):
 
     def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
-        MapProjection.__init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas)
+        super(WebMercatorProjection, self).__init__(map_proj, zoom_factor, center_loc, scale, grid_deltas)
         self.proj_type = const.MapProjection.WEB_MERCATOR
-        self.crs = cartopy.crs.epsg(3857) # Internet connection is required.
-        self.coord = WebMercatorCoordinate(self.crs)
+        self.crs = self.create_crs()
     
+    def get_tangent_lat(self, center_loc):
+        return 0.0
+        
     def create_crs(self):
-        return self.crs
+        return cartopy.crs.epsg(3857) # Internet connection is required.

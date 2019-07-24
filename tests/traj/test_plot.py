@@ -455,8 +455,7 @@ def test_TrajectoryPlot__initialize_map_projection():
 
     p._initialize_map_projection(p.data_list)
 
-    assert isinstance(p.projection, mapproj.MapProjection)
-    assert p.crs is not None
+    assert isinstance(p.projection, mapproj.AbstractMapProjection)
 
 
 def test_TrajectoryPlot_read_background_map():
@@ -468,7 +467,7 @@ def test_TrajectoryPlot_read_background_map():
     assert p.background_maps is not None
     assert len(p.background_maps) > 0
     assert isinstance(p.background_maps[0], mapfile.DrawableBackgroundMap)
-    assert p.background_maps[0].map.crs == mapproj.MapProjection._WGS84
+    assert p.background_maps[0].map.crs == mapproj.AbstractMapProjection._WGS84
 
 
 def test_TrajectoryPlot__determine_map_limits(plotData):
@@ -672,6 +671,14 @@ def test_TrajectoryPlot_make_ylabel():
     assert label == "Source * at multiple locations"
     
     
+def test_TrajectoryPlot_get_street_map_target_axes():
+    p = plot.TrajectoryPlot()
+    ax = plt.axes()
+    p.traj_axes = ax
+    assert p.get_street_map_target_axes() is ax
+    plt.close(ax.get_figure())
+    
+    
 def test_TrajectoryPlot_update_gridlines():
     p = plot.TrajectoryPlot()
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
@@ -681,6 +688,9 @@ def test_TrajectoryPlot_update_gridlines():
 
     # See if no exception is thrown.
     try:
+        p.settings.use_street_map = False
+        p.update_gridlines()
+        p.settings.use_street_map = True
         p.update_gridlines()
         cleanup_plot(p)
     except Exception as ex:

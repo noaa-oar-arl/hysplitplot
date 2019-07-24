@@ -115,7 +115,7 @@ class ARLMapConverter:
         drawables = []
         for k, v in segments.items():
             gs = geopandas.GeoSeries(v)
-            gs.crs = mapproj.MapProjection._WGS84
+            gs.crs = mapproj.AbstractMapProjection._WGS84
             drawables.append( DrawableBackgroundMap(gs, colors[k], thicknesses[k]) )
 
         return drawables
@@ -228,7 +228,7 @@ class ShapeFileConverter:
     def convert(shapefile):
         map = geopandas.read_file(shapefile.filename)
         if len(map.crs) == 0:
-            map.crs = mapproj.MapProjection._WGS84
+            map.crs = mapproj.AbstractMapProjection._WGS84
         o = DrawableBackgroundMap(map,
                                   util.make_color(shapefile.red, shapefile.green, shapefile.blue),
                                   shapefile.thickness)

@@ -345,14 +345,21 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         if filename is not None:
             self.settings.get_reader().read(filename)
         self.settings.process_command_line_arguments(args)
-          
+    
+    def get_street_map_target_axes(self):
+        return self.conc_axes
+   
     def update_gridlines(self):
-        clr = self._fix_map_color(self.settings.map_color, self.settings.color)
-        self._update_gridlines(self.conc_axes,
-                               clr,
-                               self.settings.lat_lon_label_interval_option,
-                               self.settings.lat_lon_label_interval)
-        return
+        if self.settings.use_street_map:
+            self.street_map.draw(self.conc_axes,
+                                 self.projection.corners_xy,
+                                 self.projection.corners_lonlat)
+        else:
+            clr = self._fix_map_color(self.settings.map_color, self.settings.color)
+            self._update_gridlines(self.conc_axes,
+                                   clr,
+                                   self.settings.lat_lon_label_interval_option,
+                                   self.settings.lat_lon_label_interval)
     
     def read_data_files(self):
         if not os.path.exists(self.settings.input_file):
@@ -521,7 +528,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         self.fig = fig
         self.conc_outer = fig.add_subplot(outer_grid[0, 0])
-        self.conc_axes = fig.add_subplot(inner_grid[0, 0], projection=self.crs)
+        self.conc_axes = fig.add_subplot(inner_grid[0, 0], projection=self.projection.crs)
         self.legends_axes = fig.add_subplot(inner_grid[0, 1])
         self.text_axes = fig.add_subplot(outer_grid[1, 0])
 
@@ -621,8 +628,6 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         # copy the map projection because it might have been changed.
         self.settings.map_projection = self.projection.proj_type
 
-        self.crs = self.projection.create_crs()
-
     def _create_map_box_instance(self, cdump):
         lat_span = cdump.grid_sz[1] * cdump.grid_deltas[1]
         lon_span = cdump.grid_sz[0] * cdump.grid_deltas[0]
@@ -708,10 +713,10 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             # draw the background map
             for o in self.background_maps:
                 if isinstance(o.map, geopandas.geoseries.GeoSeries):
-                    background_map = o.map.to_crs(self.crs.proj4_init)
+                    background_map = o.map.to_crs(self.projection.crs.proj4_init)
                 else:
                     background_map = o.map.copy()
-                    background_map['geometry'] = background_map['geometry'].to_crs(self.crs.proj4_init)
+                    background_map['geometry'] = background_map['geometry'].to_crs(self.projection.crs.proj4_init)
                 clr = self._fix_map_color(o.linecolor, self.settings.color)
                 background_map.plot(ax=axes, linestyle=o.linestyle, linewidth=o.linewidth,
                                     facecolor="none", edgecolor=clr)
@@ -783,9 +788,6 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         if self.settings.noaa_logo:
             self._draw_noaa_logo(axes)
         
-        if self.settings.use_street_map:
-            self.add_street_map(axes)
-            
         return contour_set
     
     def get_conc_unit(self, conc_map, settings):
@@ -1000,6 +1002,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             plt.show(*args, **kwargs)
         else:
             self.fig.canvas.draw()  # to get the plot spines right.
+            self.update_plot_extents()
             self.update_gridlines()
             self.plot_saver.save(self.fig, self.current_frame)
         
@@ -1047,6 +1050,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             plt.show(*args, **kwargs)
         else:
             self.fig.canvas.draw()  # to get the plot spines right.
+            self.update_plot_extents()
             self.update_gridlines()
             self.plot_saver.save(self.fig, self.current_frame)
             

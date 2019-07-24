@@ -1,6 +1,5 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 import cartopy.crs
-import contextily
 import logging
 import matplotlib.patches
 import matplotlib.pyplot as plt
@@ -9,7 +8,7 @@ import pytz
 from timezonefinder import TimezoneFinder
 
 from hysplitdata.const import HeightUnit
-from hysplitplot import util, const, mapfile, logo, labels, cmdline, stnplot
+from hysplitplot import cmdline, const, labels, logo, mapfile, stnplot, streetmap, util
 
 
 logger = logging.getLogger(__name__)
@@ -49,6 +48,7 @@ class AbstractPlotSettings:
         self.station_marker_color= "k"     # black
         self.station_marker_size = 6*6
         self.height_unit = HeightUnit.METERS
+        self.street_map_update_delay = 0.3  # in seconds
         
     
     def _process_cmdline_args(self, args0):
@@ -146,19 +146,19 @@ class AbstractPlotSettings:
         return max(kMin, min(kMax, kMax - int(str))) * 0.01
 
             
-class AbstractPlot:
+class AbstractPlot(ABC):
     
     _GRIDLINE_DENSITY = 0.25        # 4 gridlines at minimum in each direction
 
     def __init__(self):
         self.fig = None
         self.projection = None
-        self.crs = None
         self.data_crs = cartopy.crs.PlateCarree()
         self.background_maps = []
         self.labels = labels.LabelsConfig()
         self.time_zone = None
         self.time_zone_finder = TimezoneFinder()
+        self.street_map = streetmap.StreetMap()
         
     def _connect_event_handlers(self, handlers):
         for ev in handlers:
@@ -212,7 +212,18 @@ class AbstractPlot:
                     state = 2
             
         return list
-                
+    
+    @abstractmethod
+    def get_street_map_target_axes(self):
+        pass
+    
+    def update_plot_extents(self):
+        ax = self.get_street_map_target_axes()
+        xmin, xmax, ymin, ymax = self.projection.corners_xy = ax.axis()
+        lonl, latb = self.data_crs.transform_point(xmin, ymin, self.projection.crs)
+        lonr, latt = self.data_crs.transform_point(xmax, ymax, self.projection.crs)
+        self.projection.corners_lonlat = (lonl, lonr, latb, latt)
+        
     def _update_gridlines(self, axes, map_color, latlon_label_opt, latlon_spacing):
         deltax = deltay = self._get_gridline_spacing(self.projection.corners_lonlat,
                                                      latlon_label_opt,
@@ -258,7 +269,7 @@ class AbstractPlot:
         
         # lat/lon line labels
         self._draw_latlon_labels(axes, lonlat_ext, deltax, deltay, map_color)
-    
+            
     def _get_gridline_spacing(self, corners_lonlat, latlon_label_opt, latlon_spacing):
         if latlon_label_opt == const.LatLonLabel.NONE:
             return 0.0
@@ -346,7 +357,7 @@ class AbstractPlot:
             return
         
         x1, x2, y1, y2 = self.projection.corners_xy
-        clon, clat = self.projection.coord.calc_lonlat(0.5*(x1+x2), 0.5*(y1+y2))
+        clon, clat = self.projection.calc_lonlat(0.5*(x1+x2), 0.5*(y1+y2))
         clon = util.nearest_int(clon/deltax)*deltax
         clat = util.nearest_int(clat/deltay)*deltay
         logger.debug("label reference at lon %f, lat %f", clon, clat)
@@ -358,7 +369,7 @@ class AbstractPlot:
             
             # 5/17/2019
             # The clip_on option does not work with the eps/ps renderer. It is done here.
-            ax, ay = axes.transLimits.transform(self.crs.transform_point(lon, lat, self.data_crs))
+            ax, ay = axes.transLimits.transform(self.projection.crs.transform_point(lon, lat, self.data_crs))
             if ax < 0.0 or ax > 1.0 or ay < 0.0 or ay > 1.0:
                 continue
             
@@ -374,7 +385,7 @@ class AbstractPlot:
                         
             # 5/17/2019
             # The clip_on option does not work with the eps/ps renderer. It is done here.
-            ax, ay = axes.transLimits.transform(self.crs.transform_point(lon, lat, self.data_crs))
+            ax, ay = axes.transLimits.transform(self.projection.crs.transform_point(lon, lat, self.data_crs))
             if ax < 0.0 or ax > 1.0 or ay < 0.0 or ay > 1.0:
                 continue
             
@@ -500,21 +511,3 @@ class AbstractPlot:
     
     def adjust_for_time_zone(self, dt):
         return dt if self.time_zone is None else dt.astimezone(self.time_zone)
-    
-    def add_street_map(self, ax, url=contextily.sources.ST_TERRAIN):
-        xmin, xmax, ymin, ymax = ax.axis()
-        zoom = 1 # TODO: sensible determination of the zoom parameter from the extent?
-        
-        contextily.howmany(xmin, ymin, xmax, ymax, zoom)
-        basemap, extent = contextily.bounds2img(xmin, ymin, xmax, ymax, zoom=zoom, url=url)
-        
-        #ax.imshow(basemap, extent=extent, interpolation="bilinear")
-        # Ad hoc fix because ax.imshow() incorrectly shows the basemap.
-        saved = None if ax is plt.gca() else plt.gca()
-        if saved is not None:
-            plt.sca(ax)
-        plt.imshow(basemap, extent=extent, interpolation='bilinear')
-        if saved is not None:
-            plt.sca(saved)
-        
-        ax.axis( (xmin, xmax, ymin, ymax) )

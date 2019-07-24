@@ -1,13 +1,17 @@
 # trajplot.py
 
 import logging
+import matplotlib.pyplot as plt
 import os
 import sys
+import threading
+
 import hysplitplot
 
 
 logger = logging.getLogger(__name__)
 the_plot = None
+the_timer = None
 
 
 def print_usage():
@@ -38,17 +42,35 @@ def print_usage():
    --street-map
    
  NOTE: leave no space between option and value""")
-
-
+   
 def on_resize(event):
     logger.debug("on_resize: event %s", event)
     logger.debug("canvas width %d, height %d (pixel)", event.width, event.height)
 
     # Important to call canvas.draw() here to get spines of the initial plot right.
     event.canvas.draw()
-
+    the_plot.update_plot_extents()
+    
     the_plot.update_gridlines()
 
+
+def draw_at_last(event):
+    the_plot.update_plot_extents()
+    the_plot.update_gridlines()
+    event.canvas.draw()
+        
+
+def on_release_button(event):
+    global the_timer
+    
+    if the_timer is not None:
+        the_timer.cancel()
+        
+    the_timer = threading.Timer(the_plot.settings.street_map_update_delay,
+                                draw_at_last,
+                                args=(event,))
+    the_timer.start()
+    
 
 def main():
     global the_plot
@@ -63,7 +85,7 @@ def main():
     hysplitplot.print_version()
     
     the_plot.read_background_map()
-    the_plot.draw({"resize_event" : on_resize})
+    the_plot.draw({"resize_event" : on_resize, "button_release_event": on_release_button})
 
     return 0
 

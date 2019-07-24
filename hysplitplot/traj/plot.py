@@ -166,9 +166,6 @@ class TrajectoryPlotSettingsReader:
         return s
 
 
-class Foo(cartopy.crs.CRS): pass
-
-
 class TrajectoryPlot(plotbase.AbstractPlot):
 
     def __init__(self):
@@ -281,8 +278,6 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         # map projection might have changed.
         self.settings.map_projection = self.projection.proj_type
 
-        self.crs = self.projection.create_crs()
-
     def read_background_map(self):
         self.background_maps = self.load_background_map(self.settings.map_background)
 
@@ -355,7 +350,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                                                                  subplot_spec=outer_grid[1, 0])
 
         self.fig = fig
-        self.traj_axes = fig.add_subplot(outer_grid[0, 0], projection=self.crs)
+        self.traj_axes = fig.add_subplot(outer_grid[0, 0], projection=self.projection.crs)
         self.height_axes_outer = fig.add_subplot(outer_grid[1, 0])
         self.height_axes = fig.add_subplot(inner_grid[1, 1])
         self.text_axes = fig.add_subplot(outer_grid[2, 0])
@@ -426,12 +421,20 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         logger.debug("using ylabel %s", y_label)
         return y_label
     
+    def get_street_map_target_axes(self):
+        return self.traj_axes
+        
     def update_gridlines(self):
-        clr = self._fix_map_color(self.settings.map_color, self.settings.color)
-        self._update_gridlines(self.traj_axes,
-                               clr,
-                               self.settings.lat_lon_label_interval_option,
-                               self.settings.lat_lon_label_interval)
+        if self.settings.use_street_map:
+            self.street_map.draw(self.traj_axes,
+                                 self.projection.corners_xy,
+                                 self.projection.corners_lonlat)
+        else:
+            clr = self._fix_map_color(self.settings.map_color, self.settings.color)
+            self._update_gridlines(self.traj_axes,
+                                   clr,
+                                   self.settings.lat_lon_label_interval_option,
+                                   self.settings.lat_lon_label_interval)
         
     def draw_height_profile(self, data_list, terrain_profileQ):
         axes = self.height_axes
@@ -555,10 +558,10 @@ class TrajectoryPlot(plotbase.AbstractPlot):
             # draw the background map
             for o in self.background_maps:
                 if isinstance(o.map, geopandas.geoseries.GeoSeries):
-                    background_map = o.map.to_crs(self.crs.proj4_init)
+                    background_map = o.map.to_crs(self.projection.crs.proj4_init)
                 else:
                     background_map = o.map.copy()
-                    background_map['geometry'] = background_map['geometry'].to_crs(self.crs.proj4_init)
+                    background_map['geometry'] = background_map['geometry'].to_crs(self.projection.crs.proj4_init)
                 clr = self._fix_map_color(o.linecolor, self.settings.color)
                 background_map.plot(ax=axes, linestyle=o.linestyle, linewidth=o.linewidth,
                                     facecolor="none", edgecolor=clr)
@@ -607,9 +610,6 @@ class TrajectoryPlot(plotbase.AbstractPlot):
 
         if self.settings.noaa_logo:
             self._draw_noaa_logo(axes)
-        
-        if self.settings.use_street_map:
-            self.add_street_map(axes)
             
     def draw_bottom_plot(self, data_list):
         if self.settings.vertical_coordinate == VerticalCoordinate.NONE:
@@ -659,6 +659,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                 plt.show(*args, **kw)
             else:
                 self.fig.canvas.draw()  # to get the plot spines right.
+                self.update_plot_extents()
                 self.update_gridlines()
                 self.plot_saver.save(self.fig, self.current_frame)
                 
