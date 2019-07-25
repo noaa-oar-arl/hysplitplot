@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 import copy
 import datetime
-import geopandas
 import logging
 import math
 import matplotlib.gridspec
@@ -14,7 +13,7 @@ import sys
 from hysplitdata import io
 from hysplitdata.conc import model
 from hysplitdata.const import HeightUnit
-from hysplitplot import cmdline, util, const, datem, plotbase, mapbox, mapproj, smooth, multipage
+from hysplitplot import cmdline, util, const, datem, plotbase, mapbox, mapproj, smooth, streetmap, multipage
 from hysplitplot.conc import helper, gisout, cntr
 
 
@@ -349,18 +348,6 @@ class ConcentrationPlot(plotbase.AbstractPlot):
     def get_street_map_target_axes(self):
         return self.conc_axes
    
-    def update_gridlines(self):
-        if self.settings.use_street_map:
-            self.street_map.draw(self.conc_axes,
-                                 self.projection.corners_xy,
-                                 self.projection.corners_lonlat)
-        else:
-            clr = self._fix_map_color(self.settings.map_color, self.settings.color)
-            self._update_gridlines(self.conc_axes,
-                                   clr,
-                                   self.settings.lat_lon_label_interval_option,
-                                   self.settings.lat_lon_label_interval)
-    
     def read_data_files(self):
         if not os.path.exists(self.settings.input_file):
             raise Exception("File not found: {0}".format(self.settings.input_file))
@@ -436,7 +423,15 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         if self.settings.QFILE is not None:
             if os.path.exists(self.settings.QFILE):
                 self.datem = datem.Datem().get_reader().read(self.settings.QFILE) 
-            
+
+        self.street_map = streetmap.MapBackgroundFactory.create_instance(self.settings.use_street_map,
+                                                                         self.settings.street_map_type)
+        self.street_map.set_color(self.settings.map_color)
+        self.street_map.set_color_mode(self.settings.color)
+        self.street_map.set_lat_lon_label_option(self.settings.lat_lon_label_interval_option,
+                                                 self.settings.lat_lon_label_interval)
+        self.street_map.override_fix_map_color_fn(ConcentrationPlot._fix_map_color)
+           
     def _post_file_processing(self, cdump):
         
         self.conc_type.initialize(cdump,
@@ -507,7 +502,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         return color
 
     def read_background_map(self):
-        self.background_maps = self.load_background_map(self.settings.map_background)
+        self.street_map.read_background_map(self.settings.map_background)
 
     def layout(self, grid, event_handlers=None):
 
@@ -709,17 +704,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         # set the data range
         axes.set_extent(self.projection.corners_lonlat, self.data_crs)
 
-        if not self.settings.use_street_map:
-            # draw the background map
-            for o in self.background_maps:
-                if isinstance(o.map, geopandas.geoseries.GeoSeries):
-                    background_map = o.map.to_crs(self.projection.crs.proj4_init)
-                else:
-                    background_map = o.map.copy()
-                    background_map['geometry'] = background_map['geometry'].to_crs(self.projection.crs.proj4_init)
-                clr = self._fix_map_color(o.linecolor, self.settings.color)
-                background_map.plot(ax=axes, linestyle=o.linestyle, linewidth=o.linewidth,
-                                    facecolor="none", edgecolor=clr)
+        # draw the background map
+        self.street_map.draw_underlay(axes,
+                                      self.projection.crs)
             
         # draw optional concentric circles
         if self.settings.ring and self.settings.ring_number > 0:

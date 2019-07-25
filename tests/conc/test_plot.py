@@ -546,24 +546,6 @@ def test_ConcentrationPlot_get_street_map_target_axes():
     plt.close(ax.get_figure())
     
     
-def test_ConcentrationPlot_update_gridlines():
-    p = plot.ConcentrationPlot()
-    p.merge_plot_settings(None, ["-idata/cdump", "-jdata/arlmap_truncated"])
-    p.read_data_files()
-    p.read_background_map()
-    p._initialize_map_projection(p.cdump)
-    p.layout(p.cdump.grids[0])
-    
-    # See if no exception is thrown.
-    try:
-        p.settings.use_street_map = False
-        p.update_gridlines()
-        p.settings.use_street_map = True
-        p.update_gridlines()
-        cleanup_plot(p)
-    except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
-
 
 def test_ConcentrationPlot_read_data_files():
     p = plot.ConcentrationPlot()
@@ -592,6 +574,8 @@ def test_ConcentrationPlot_read_data_files():
     assert p.settings.smoothing_distance > 0 and p.smoothing_kernel is not None
     assert p.time_zone is not None
     assert p.datem is not None
+    assert p.street_map is not None
+    assert p.street_map.fix_map_color_fn is not None
 
 
 def test_ConcentrationPlot__post_file_processing(cdump2):
@@ -696,14 +680,15 @@ def test_ConcentrationPlot__fix_map_color():
 
 def test_ConcentrationPlot_read_background_map():
     p = plot.ConcentrationPlot()
-    p.merge_plot_settings(None, ["-jdata/arlmap_truncated"])
+    p.merge_plot_settings(None, ["-jdata/arlmap_truncated", "-idata/cdump"])
+    p.read_data_files() # creates a street map object.
+    
+    p.read_background_map()
 
-    crs = p.read_background_map()
-
-    assert p.background_maps is not None
-    assert len(p.background_maps) > 0
-    assert isinstance(p.background_maps[0], mapfile.DrawableBackgroundMap)
-    assert p.background_maps[0].map.crs == mapproj.AbstractMapProjection._WGS84
+    assert p.street_map.background_maps is not None
+    assert len(p.street_map.background_maps) > 0
+    assert isinstance(p.street_map.background_maps[0], mapfile.DrawableBackgroundMap)
+    assert p.street_map.background_maps[0].map.crs == mapproj.AbstractMapProjection._WGS84
 
 
 def test_ConcentrationPlot_layout():

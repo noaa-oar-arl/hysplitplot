@@ -336,7 +336,8 @@ def test_TrajectoryPlot_read_data_files():
     assert p.settings.color_cycle is not None
     assert p.plot_saver is not None
     assert p.time_zone is not None
-
+    assert p.street_map is not None
+    
 
 def test_TrajectoryPlot_has_terrain_profile(plotData):
     assert plot.TrajectoryPlot.has_terrain_profile([plotData]) == False
@@ -346,19 +347,6 @@ def test_TrajectoryPlot_has_terrain_profile(plotData):
 
     plotData.trajectories[0].others["TERR_MSL"].append(0.0)
     assert plot.TrajectoryPlot.has_terrain_profile([plotData]) == True
-
-
-def test_TrajectoryPlot__fix_map_color():
-    p = plot.TrajectoryPlot()
-
-    color_mode = const.Color.BLACK_AND_WHITE
-    assert p._fix_map_color('#6699cc', color_mode) == 'k' # black
-
-    color_mode = const.Color.COLOR
-    assert p._fix_map_color('#6699cc', color_mode) == '#6699cc'
-
-    color_mode = const.Color.ITEMIZED
-    assert p._fix_map_color('#6699cc', color_mode) == '#6699cc'
 
 
 def test_TrajectoryPlot_set_trajectory_color():
@@ -460,14 +448,15 @@ def test_TrajectoryPlot__initialize_map_projection():
 
 def test_TrajectoryPlot_read_background_map():
     p = plot.TrajectoryPlot()
-    p.merge_plot_settings("data/default_tplot", ["-jdata/arlmap_truncated"])
+    p.merge_plot_settings("data/default_tplot", ["-jdata/arlmap_truncated", "-idata/tdump"])
+    p.read_data_files() # creates a street map object.
 
-    crs = p.read_background_map()
+    p.read_background_map()
 
-    assert p.background_maps is not None
-    assert len(p.background_maps) > 0
-    assert isinstance(p.background_maps[0], mapfile.DrawableBackgroundMap)
-    assert p.background_maps[0].map.crs == mapproj.AbstractMapProjection._WGS84
+    assert p.street_map.background_maps is not None
+    assert len(p.street_map.background_maps) > 0
+    assert isinstance(p.street_map.background_maps[0], mapfile.DrawableBackgroundMap)
+    assert p.street_map.background_maps[0].map.crs == mapproj.AbstractMapProjection._WGS84
 
 
 def test_TrajectoryPlot__determine_map_limits(plotData):
@@ -677,24 +666,6 @@ def test_TrajectoryPlot_get_street_map_target_axes():
     p.traj_axes = ax
     assert p.get_street_map_target_axes() is ax
     plt.close(ax.get_figure())
-    
-    
-def test_TrajectoryPlot_update_gridlines():
-    p = plot.TrajectoryPlot()
-    p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
-    p.read_data_files()
-    p.read_background_map()
-    p.layout(p.data_list)
-
-    # See if no exception is thrown.
-    try:
-        p.settings.use_street_map = False
-        p.update_gridlines()
-        p.settings.use_street_map = True
-        p.update_gridlines()
-        cleanup_plot(p)
-    except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
     
 
 def test_TrajectoryPlot_draw_height_profile():

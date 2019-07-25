@@ -1,7 +1,5 @@
 from abc import ABC, abstractmethod
 import cartopy
-import contextily
-import geopandas
 import logging
 import matplotlib.dates
 import matplotlib.gridspec
@@ -12,7 +10,7 @@ import sys
 
 from hysplitdata.const import VerticalCoordinate
 from hysplitdata.traj import model
-from hysplitplot import cmdline, clist, stnplot, util, const, mapproj, mapbox, plotbase, multipage
+from hysplitplot import clist, cmdline, const, mapbox, mapproj, multipage, plotbase, stnplot, streetmap, util
 from hysplitplot.traj import gisout
 
 
@@ -209,17 +207,20 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         
         if self.settings.use_source_time_zone:
             self.time_zone = self.get_time_zone_at(self.data_list[0].trajectories[0].starting_loc)
-            
+        
+        self.street_map = streetmap.MapBackgroundFactory.create_instance(self.settings.use_street_map,
+                                                                         self.settings.street_map_type)
+        self.street_map.set_color(self.settings.map_color)
+        self.street_map.set_color_mode(self.settings.color)
+        self.street_map.set_lat_lon_label_option(self.settings.lat_lon_label_interval_option,
+                                                 self.settings.lat_lon_label_interval)
+
     @staticmethod
     def has_terrain_profile(tdump_list):
         for tdump in tdump_list:
             if tdump.has_terrain_profile():
                 return True
         return False
-
-    @staticmethod
-    def _fix_map_color(clr, color_mode):
-        return clr if color_mode != const.Color.BLACK_AND_WHITE else 'k'
     
     def set_trajectory_color(self, plot_data, settings):
         if settings.color == const.Color.ITEMIZED:
@@ -279,7 +280,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         self.settings.map_projection = self.projection.proj_type
 
     def read_background_map(self):
-        self.background_maps = self.load_background_map(self.settings.map_background)
+        self.street_map.read_background_map(self.settings.map_background)
 
     def _determine_map_limits(self, plot_data, map_opt_passes):
         mb = mapbox.MapBox()
@@ -423,19 +424,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
     
     def get_street_map_target_axes(self):
         return self.traj_axes
-        
-    def update_gridlines(self):
-        if self.settings.use_street_map:
-            self.street_map.draw(self.traj_axes,
-                                 self.projection.corners_xy,
-                                 self.projection.corners_lonlat)
-        else:
-            clr = self._fix_map_color(self.settings.map_color, self.settings.color)
-            self._update_gridlines(self.traj_axes,
-                                   clr,
-                                   self.settings.lat_lon_label_interval_option,
-                                   self.settings.lat_lon_label_interval)
-        
+    
     def draw_height_profile(self, data_list, terrain_profileQ):
         axes = self.height_axes
 
@@ -554,17 +543,9 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         # set the data range
         axes.set_extent(self.projection.corners_lonlat, self.data_crs)
 
-        if not self.settings.use_street_map:
-            # draw the background map
-            for o in self.background_maps:
-                if isinstance(o.map, geopandas.geoseries.GeoSeries):
-                    background_map = o.map.to_crs(self.projection.crs.proj4_init)
-                else:
-                    background_map = o.map.copy()
-                    background_map['geometry'] = background_map['geometry'].to_crs(self.projection.crs.proj4_init)
-                clr = self._fix_map_color(o.linecolor, self.settings.color)
-                background_map.plot(ax=axes, linestyle=o.linestyle, linewidth=o.linewidth,
-                                    facecolor="none", edgecolor=clr)
+        # draw the background map
+        self.street_map.draw_underlay(axes,
+                                      self.projection.crs)
 
         # draw optional concentric circles
         if self.settings.ring and self.settings.ring_number > 0:

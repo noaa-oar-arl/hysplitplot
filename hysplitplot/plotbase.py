@@ -2,13 +2,12 @@ from abc import ABC, abstractmethod
 import cartopy.crs
 import logging
 import matplotlib.patches
-import matplotlib.pyplot as plt
 import os
 import pytz
 from timezonefinder import TimezoneFinder
 
 from hysplitdata.const import HeightUnit
-from hysplitplot import cmdline, const, labels, logo, mapfile, stnplot, streetmap, util
+from hysplitplot import cmdline, const, labels, logo, stnplot, util
 
 
 logger = logging.getLogger(__name__)
@@ -49,6 +48,7 @@ class AbstractPlotSettings:
         self.station_marker_size = 6*6
         self.height_unit = HeightUnit.METERS
         self.street_map_update_delay = 0.3  # in seconds
+        self.street_map_type = 0
         
     
     def _process_cmdline_args(self, args0):
@@ -114,6 +114,7 @@ class AbstractPlotSettings:
         
         if args.has_arg(["--street-map"]):
             self.use_street_map         = True
+            self.street_map_type        = args.get_integer_value("--street-map", self.street_map_type)
             if self.map_projection != const.MapProjection.WEB_MERCATOR:
                 logger.warning("The --street-map option changes the map projection to WEB_MERCATOR")
                 self.map_projection     = const.MapProjection.WEB_MERCATOR
@@ -148,8 +149,6 @@ class AbstractPlotSettings:
             
 class AbstractPlot(ABC):
     
-    _GRIDLINE_DENSITY = 0.25        # 4 gridlines at minimum in each direction
-
     def __init__(self):
         self.fig = None
         self.projection = None
@@ -158,7 +157,7 @@ class AbstractPlot(ABC):
         self.labels = labels.LabelsConfig()
         self.time_zone = None
         self.time_zone_finder = TimezoneFinder()
-        self.street_map = streetmap.StreetMap()
+        self.street_map = None
         
     def _connect_event_handlers(self, handlers):
         for ev in handlers:
@@ -192,149 +191,21 @@ class AbstractPlot(ABC):
     def _turn_off_ticks(self, axes):
         axes.set_xticks([])
         axes.set_yticks([])
-
-    @staticmethod
-    def _collect_tick_values(istart, iend, idelta, scale, lmt):
-        amin, amax = lmt
-        logger.debug("collecting tick values in the range [%f, %f] using spacing %f", amin, amax, scale*idelta)
-        state = 0
-        list = []
-        for i in range(istart, iend, idelta):
-            v = i * scale
-            if state == 0:
-                if v >= amin:
-                    list.append( util.make_int_if_same((i - idelta) * scale) )
-                    list.append( util.make_int_if_same(v) )
-                    state = 1
-            elif state == 1:
-                list.append( util.make_int_if_same(v) )
-                if v > amax:
-                    state = 2
-            
-        return list
     
     @abstractmethod
     def get_street_map_target_axes(self):
         pass
     
-    def update_plot_extents(self):
-        ax = self.get_street_map_target_axes()
+    def update_plot_extents(self, ax):
         xmin, xmax, ymin, ymax = self.projection.corners_xy = ax.axis()
         lonl, latb = self.data_crs.transform_point(xmin, ymin, self.projection.crs)
         lonr, latt = self.data_crs.transform_point(xmax, ymax, self.projection.crs)
         self.projection.corners_lonlat = (lonl, lonr, latb, latt)
         
-    def _update_gridlines(self, axes, map_color, latlon_label_opt, latlon_spacing):
-        deltax = deltay = self._get_gridline_spacing(self.projection.corners_lonlat,
-                                                     latlon_label_opt,
-                                                     latlon_spacing)
-        ideltax = ideltay = int(deltax*10.0)
-        if ideltax == 0:
-            logger.debug("not updating gridlines because deltas are %f, %f", deltax, deltay)
-            return
-
-        lonlat_ext = axes.get_extent(self.data_crs)
-        logger.debug("determining gridlines for extent %s using deltas %f, %f", lonlat_ext, deltax, deltay)
-
-        alonl, alonr, alatb, alatt = lonlat_ext
-        # check for crossing dateline
-        if util.sign(1.0, alonl) != util.sign(1.0, alonr) and alonr < 0.0:
-            alonr += 360.0
-            
-        xticks = self._collect_tick_values(-1800, 1800, ideltax, 0.1, lonlat_ext[0:2])
-        logger.debug("gridlines at lons %s", xticks)
-        if len(xticks) == 0 or deltax >= abs(self._GRIDLINE_DENSITY*(alonr - alonl)):
-            # recompute deltax with zero latitude span and try again
-            deltax = self._calc_gridline_spacing([alonl, alonr, alatb, alatb])
-            ideltax = int(deltax*10.0)
-            xticks = self._collect_tick_values(-1800, 1800, ideltax, 0.1, lonlat_ext[0:2])
-            logger.debug("gridlines at lats %s", xticks)
-            
-        yticks = self._collect_tick_values(-900+ideltay, 900, ideltay, 0.1, lonlat_ext[2:4])
-        logger.debug("gridlines at lats %s", yticks)
-        if len(yticks) == 0 or deltay >= abs(self._GRIDLINE_DENSITY*(alatt - alatb)):
-            # recompute deltay with zero longitude span and try again
-            deltay = self._calc_gridline_spacing([alonl, alonl, alatb, alatt])
-            ideltay = int(deltay*10.0)
-            yticks = self._collect_tick_values(-900+ideltay, 900, ideltay, 0.1, lonlat_ext[2:4])
-            logger.debug("gridlines at lats %s", yticks)
-            
-        # draw dotted gridlines
-        kwargs = {"crs": self.data_crs, "linestyle": ":", "linewidth": 0.5, "color": map_color}
-        if len(xticks) > 0:
-            kwargs["xlocs"] = xticks
-        if len(yticks) > 0:
-            kwargs["ylocs"] = yticks
-        gl = axes.gridlines(**kwargs)
-        
-        # lat/lon line labels
-        self._draw_latlon_labels(axes, lonlat_ext, deltax, deltay, map_color)
-            
-    def _get_gridline_spacing(self, corners_lonlat, latlon_label_opt, latlon_spacing):
-        if latlon_label_opt == const.LatLonLabel.NONE:
-            return 0.0
-        elif latlon_label_opt == const.LatLonLabel.SET:
-            return latlon_spacing
-        else:
-            return self._calc_gridline_spacing(corners_lonlat)
-
-    def _calc_gridline_spacing(self, corners_lonlat):
-        # potential gridline spacings
-        spacings = [45.0, 30.0, 20.0, 15.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2]
-
-        alonl, alonr, alatb, alatt = corners_lonlat
-
-        # check for crossing dateline
-        if util.sign(1.0, alonl) != util.sign(1.0, alonr) and alonr < 0.0:
-            alonr += 360.0
-
-        logger.debug("calculating gridline spacing for lons %f, %f and lats %f, %f", alonl, alonr, alatb, alatt)
-
-        # interval to have at least 4 lat/lon lines on a map
-        ref = max(abs(alatt-alatb)*self._GRIDLINE_DENSITY, abs(alonl-alonr)*self._GRIDLINE_DENSITY, spacings[-1])
-        logger.debug("searching optimal spacing starting from %f", ref)
-                     
-        delta = None
-        for s in spacings:
-            if s <= ref:
-                delta = s
-                logger.debug("optimal spacing %f", delta)
-                break;
-        
-        if delta is None:
-            delta = spacings[-1]
-            logger.debug("optimal spacing %f", delta)
-            
-        return delta
-
-    @staticmethod
-    def _fix_arlmap_filename(filename):
-        if os.path.exists(filename):
-            return filename
-
-        candidates = ["graphics/arlmap", "../graphics/arlmap"]
-        for f in candidates:
-            if os.path.exists(f):
-                return f
-    
-        return None
-    
-    def load_background_map(self, filename):
-        background_maps = []
-        if filename.startswith("shapefiles"):
-            shapefiles = mapfile.ShapeFilesReader().read(filename)
-            for sf in shapefiles:
-                map = mapfile.ShapeFileConverter.convert(sf)
-                background_maps.append(map)
-        else:
-            fname = self._fix_arlmap_filename(filename)
-            if fname is None:
-                logger.warning("map background file %s not found", fname)
-            else:
-                arlmap = mapfile.ARLMap().get_reader().read(fname)
-                for m in mapfile.ARLMapConverter.convert(arlmap):
-                    background_maps.append(m)
-        return background_maps
+    def on_update_plot_extent(self):
+        ax = self.get_street_map_target_axes()
+        self.update_plot_extents(ax)
+        self.street_map.update_extent(ax, self.projection, self.data_crs)
 
     @staticmethod
     def _make_labels_filename(output_suffix):
@@ -347,52 +218,6 @@ class AbstractPlot(ABC):
         if os.path.exists(filename):
             self.labels.get_reader().read(filename)
             self.labels.after_reading_file(self.settings)
-
-    def _draw_latlon_labels(self, axes, lonlat_ext, deltax, deltay, map_color):
-        logger.debug("latlon labels at intervals %f, %f", deltax, deltay)
-        ideltax = int(deltax*10.0)
-        ideltay = int(deltay*10.0)
-        if ideltax == 0 or ideltay == 0:
-            logger.debug("not drawing latlon labels because deltas are %f, %f", deltax, deltay)
-            return
-        
-        x1, x2, y1, y2 = self.projection.corners_xy
-        clon, clat = self.projection.calc_lonlat(0.5*(x1+x2), 0.5*(y1+y2))
-        clon = util.nearest_int(clon/deltax)*deltax
-        clat = util.nearest_int(clat/deltay)*deltay
-        logger.debug("label reference at lon %f, lat %f", clon, clat)
-        
-        # lon labels
-        lat = (clat - 0.5 * deltay) if (clat > 80.0) else clat + 0.5 * deltay
-        for k in range(-(1800-ideltax), 1800, ideltax):
-            lon = 0.1 * k
-            
-            # 5/17/2019
-            # The clip_on option does not work with the eps/ps renderer. It is done here.
-            ax, ay = axes.transLimits.transform(self.projection.crs.transform_point(lon, lat, self.data_crs))
-            if ax < 0.0 or ax > 1.0 or ay < 0.0 or ay > 1.0:
-                continue
-            
-            str = "{0:.1f}".format(lon) if deltax < 1.0 else "{0}".format(int(lon))
-            axes.text(lon, lat, str, transform=self.data_crs,
-                      horizontalalignment="center", verticalalignment="center",
-                      color=map_color, clip_on=True)
-        
-        # lat labels
-        lon = clon + 0.5 * deltax
-        for k in range(-(900-ideltay), 900, ideltay):
-            lat = 0.1 * k
-                        
-            # 5/17/2019
-            # The clip_on option does not work with the eps/ps renderer. It is done here.
-            ax, ay = axes.transLimits.transform(self.projection.crs.transform_point(lon, lat, self.data_crs))
-            if ax < 0.0 or ax > 1.0 or ay < 0.0 or ay > 1.0:
-                continue
-            
-            str = "{0:.1f}".format(lat) if deltay < 1.0 else "{0}".format(int(lat))
-            axes.text(lon, lat, str, transform=self.data_crs,
-                      horizontalalignment="center", verticalalignment="center",
-                      color=map_color, clip_on=True)
 
     @staticmethod
     def _make_stationplot_filename(output_suffix):

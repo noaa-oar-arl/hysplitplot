@@ -89,4 +89,9 @@ class ConcentrationMapType: # KMAP
 
 class SmoothingKernel:
     SIMPLE  = 0
+    
+class StreetMap:
+    STAMEN_TERRAIN      = 0
+    STAMEN_TONER        = 1
+
 

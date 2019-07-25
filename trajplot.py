@@ -1,7 +1,6 @@
 # trajplot.py
 
 import logging
-import matplotlib.pyplot as plt
 import os
 import sys
 import threading
@@ -49,14 +48,12 @@ def on_resize(event):
 
     # Important to call canvas.draw() here to get spines of the initial plot right.
     event.canvas.draw()
-    the_plot.update_plot_extents()
     
-    the_plot.update_gridlines()
+    the_plot.on_update_plot_extent()
 
 
 def draw_at_last(event):
-    the_plot.update_plot_extents()
-    the_plot.update_gridlines()
+    the_plot.on_update_plot_extent()
     event.canvas.draw()
         
 
