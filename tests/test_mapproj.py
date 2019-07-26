@@ -8,27 +8,6 @@ from hysplitplot import mapproj, mapbox, const
 from hysplitplot.traj import plot
 
 
-# Notes:
-# 1) _CYLSET, _CYL2XY, and _CYL2LL of the CylindricalCoordinate class are indirectly tested.
-#    We will not write unit tests for them.
-# 2) Numerical results for coordinate transforms and projections are compared with
-#    values obtained by running the FORTRAN code.
-
-
-@pytest.fixture
-def lambert_coord():
-    coord = mapproj.LambertCoordinate()
-    coord.setup([-125.0, 45.0], 500.0, 500.0, (1.0, 1.0))
-    return coord
-
-
-@pytest.fixture
-def cyl_coord():
-    coord = mapproj.CylindricalCoordinate()
-    coord.setup([-125.0, 45.0], 500.0, 500.0, [1.0, 1.0])
-    return coord
-
-
 def create_map_box(s):
     d = model.TrajectoryDump()
     r = model.TrajectoryDumpFileReader(d)
@@ -64,6 +43,7 @@ def lambert_proj():
     return m
 
 
+# For testing the AbstractMapProjection abstract class
 class AbstractMapProjectionTest(mapproj.AbstractMapProjection):
     
     def __init__(self, proj_type, zoom_factor, center_loc, scale, grid_deltas):
@@ -76,6 +56,19 @@ class AbstractMapProjectionTest(mapproj.AbstractMapProjection):
         raise Exception("This should not happen")
 
 
+# For testing the PoleExcludingProjection abstract class
+class PoleExcludingPorjectionTest(mapproj.PoleExcludingProjection):
+    
+    def __init__(self, proj_type, zoom_factor, center_loc, scale, grid_deltas):
+        super(PoleExcludingPorjectionTest, self).__init__(proj_type, zoom_factor, center_loc, scale, grid_deltas)
+     
+    def get_tangent_lat(self, center_loc):
+        pass
+   
+    def create_crs(self):
+        pass
+    
+    
 def test_MapProjectionFactory_create_instance():
     zoom_factor = 0.50
     
@@ -154,7 +147,17 @@ def test_AbstractMapProjection_calc_xy():
     map_box = create_map_box(s)
     m = mapproj.MapProjectionFactory.create_instance(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
 
-    assert m.calc_xy(-125.0, 45.0) == pytest.approx((1000.0,1000.0))
+    assert m.calc_xy(-125.0,  45.0) == pytest.approx((1000.0, 1000.0))
+    assert m.calc_xy(-125.0,  91.0) == pytest.approx((1000.0, 6343095.6))
+    assert m.calc_xy(-125.0,  90.0) == pytest.approx((1000.0, 6343095.6))
+    
+    s.center_loc = [-125.0, -45.0]
+    map_box = create_map_box(s)
+    m = mapproj.MapProjectionFactory.create_instance(const.MapProjection.LAMBERT, 0.5, [-125.0, -45.0], 1.3, [1.0, 1.0], map_box)
+    
+    assert m.calc_xy(-125.0, -45.0) == pytest.approx((1000.0, 1000.0))
+    assert m.calc_xy(-125.0, -90.0) == pytest.approx((1000.0, -6341095.6))
+    assert m.calc_xy(-125.0, -91.0) == pytest.approx((1000.0, -6341095.6))
 
 
 def test_AbstractMapProjection_calc_lonlat():
@@ -200,14 +203,8 @@ def test_AbstractMapProjection_refine_corners__lambert():
 
     m.refine_corners([-125.0, 45.0])
 
-    assert m.corners_xy[0] == pytest.approx(-649760.00)
-    assert m.corners_xy[1] == pytest.approx( 651148.00)
-    assert m.corners_xy[2] == pytest.approx(-498315.00)
-    assert m.corners_xy[3] == pytest.approx( 502382.99)
-    assert m.corners_lonlat[0] == pytest.approx(-132.697321)
-    assert m.corners_lonlat[1] == pytest.approx(-116.161854)
-    assert m.corners_lonlat[2] == pytest.approx(  40.241474)
-    assert m.corners_lonlat[3] == pytest.approx(  49.204332)
+    assert m.corners_xy == pytest.approx((-646204.00, 647521.00, -496513.00, 498660.00))
+    assert m.corners_lonlat == pytest.approx((-132.6304, -116.0894, 40.22594, 49.17515))
 
 
 def test_AbstractMapProjection_refine_corners__polar():
@@ -314,7 +311,7 @@ def test_AbstractMapProjection_round_map_corners():
 
 def test_AbstractMapProjection_calc_corners_lonlat(lambert_proj):
     c = lambert_proj.calc_corners_lonlat([-645202.80, 248127.59, -499632.13, 248127.59])
-    assert c == pytest.approx((-132.6424, -121.7551, 40.2331, 47.1785))
+    assert c == pytest.approx((-132.6152, -121.7225, 40.19877, 47.18976))
 
 
 def test_AbstractMapProjection_need_pole_exclusion():
@@ -330,7 +327,7 @@ def test_AbstractMapProjection_exclude_pole(lambert_proj):
     corners = (x1, x2, y1, y2)
     # corners = (-645202.80, 248127.59, -499632.13, 248127.59)
     xy2, ll2 = lambert_proj.exclude_pole(corners, lonlat)
-    assert xy2 == pytest.approx((corners[0], 265179.03, corners[2], 4487726.71))
+    assert xy2 == pytest.approx((corners[0], 233688.20, corners[2], 4245257.96))
     assert ll2 == pytest.approx((lonlat[0], lonlat[1], lonlat[2], 80.0))
 
     lonlat = (-132.642365, -116.065727, -81.0, -40.2330704)
@@ -339,7 +336,7 @@ def test_AbstractMapProjection_exclude_pole(lambert_proj):
     corners = (x1, x2, y1, y2)
     # corners = (-5172737.76, 1979594.58, -54208823.32, -12894066.05)
     xy2, ll2 = lambert_proj.exclude_pole(corners, lonlat)
-    assert xy2 == pytest.approx((-4838798.80, corners[1], -50247375.98, corners[3]))
+    assert xy2 == pytest.approx((-6225037.2, corners[1], -59349580.7, corners[3]))
     assert ll2 == pytest.approx((lonlat[0], lonlat[1], -80.0, lonlat[3]))
 
 
@@ -352,11 +349,22 @@ def test_AbstractMapProjection_do_initial_estimates():
     map_box = create_map_box(s)
     proj = mapproj.LambertProjection(s.map_projection, s.zoom_factor, s.center_loc, 1.3, [1.0, 1.0])
 
-    proj.do_initial_estimates(map_box, [-125.0, 45.0])
-
-    assert proj.corners_xy == pytest.approx((-38728.7940, 40117.3283, -331532.280, 335599.864))
-    assert proj.corners_lonlat == pytest.approx((-125.48152, -124.47958, 41.999048, 47.999000))
-    assert proj.center_loc == pytest.approx((-125.00388, 45.009302))
+    proj.do_initial_estimates(map_box, [-125.0,  45.0])
+    assert proj.corners_xy == pytest.approx((-38549.362, 39866.075, -330651.037, 332797.615))
+    assert proj.corners_lonlat == pytest.approx((-125.47928, -124.47701, 41.99894, 47.99887))
+    assert proj.center_loc == pytest.approx((-125.00436, 45.000663))
+    
+    proj.do_initial_estimates(map_box, [-125.0,  91.0])
+    assert proj.corners_xy == pytest.approx((-1549.1589, 2560.0334, -330651.04, 6090755.3))
+    assert proj.corners_lonlat == pytest.approx((-125.0309, -124.5000, 42.00000, 89.50000))
+    assert proj.center_loc == pytest.approx((-125.0116, 70.03166))
+    
+    s.center_loc = [-125.0, -45.0]
+    map_box = create_map_box(s)
+    proj.do_initial_estimates(map_box, [-125.0, -91.0])
+    assert proj.corners_xy == pytest.approx((-2087174.5, 3413163.2, -331425723.2, -14878255.5))
+    assert proj.corners_lonlat == pytest.approx((-125.5000, -112.1061, -89.00000, -43.75291))
+    assert proj.center_loc == pytest.approx((-124.70172, -87.55922))
 
 
 def test_AbstractMapProjection_sanity_check():
@@ -373,6 +381,43 @@ def test_AbstractMapProjection_create_sane_projection():
         assert str(ex) == "This should not happen"
 
 
+def test_PoleExcludingProjection__init__():
+    m = PoleExcludingPorjectionTest(const.MapProjection.AUTO, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    assert m.zoom_factor == 0.5
+    assert m.proj_type == const.MapProjection.AUTO
+    assert m.scale == 1.3
+    assert m.deltas == pytest.approx( (1.0, 1.0) )
+    assert m.center_loc == pytest.approx( (-125.0, 45.0) )
+
+
+def test_PoleExcludingProjection_sanity_check(lambert_proj):
+    assert lambert_proj.sanity_check() == True
+
+    # (xc, yc) = (253264.7, 6336724.2)
+    delta = 10.0
+    lambert_proj.corners_xy = (253264.7 - delta, 253264.7 + delta, 6336724.2 - delta, 6336724.2 + delta)
+    assert lambert_proj.sanity_check() == False
+
+
+def test_PoleExcludingProjection_create_sane_projection(lambert_proj):
+    m = lambert_proj
+    o = lambert_proj.create_sane_projection(const.MapProjection.LAMBERT,
+                                              0.5,
+                                              m.center_loc,
+                                              m.scale,
+                                              m.deltas)
+    assert isinstance(o, mapproj.PolarProjection)
+
+
+def test_PoleExcludingProjection_need_pole_exclusion(lambert_proj):
+    assert lambert_proj.need_pole_exclusion([-135.0, -115.0,-81.0, 55.0]) == True
+    assert lambert_proj.need_pole_exclusion([-135.0, -115.0,-80.0, 55.0]) == False
+    assert lambert_proj.need_pole_exclusion([-135.0, -115.0,-35.0, 55.0]) == False
+    assert lambert_proj.need_pole_exclusion([-135.0, -115.0, 35.0, 55.0]) == False
+    assert lambert_proj.need_pole_exclusion([-135.0, -115.0, 35.0, 80.0]) == False
+    assert lambert_proj.need_pole_exclusion([-135.0, -115.0, 35.0, 80.1]) == True
+
+
 def test_LambertProjection___init__():
     m = mapproj.LambertProjection(const.MapProjection.AUTO, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
     assert m.zoom_factor == 0.5
@@ -387,34 +432,6 @@ def test_LambertProjection_get_tangent_lat():
     assert m.get_tangent_lat([-125.0,  0.0]) ==   0.0
     assert m.get_tangent_lat([-125.0, -1.0]) ==  -1.0
  
-
-def test_LambertProjection_sanity_check(lambert_proj):
-    assert lambert_proj.sanity_check() == True
-
-    c = list(lambert_proj.corners_xy)
-    c[3] = 1000000000.0
-    lambert_proj.corners_xy = c
-    assert lambert_proj.sanity_check() == False
-
-
-def test_LambertProjection_create_sane_projection(lambert_proj):
-    m = lambert_proj
-    o = lambert_proj.create_sane_projection(const.MapProjection.LAMBERT,
-                                              0.5,
-                                              m.center_loc,
-                                              m.scale,
-                                              m.deltas)
-    assert isinstance(o, mapproj.PolarProjection)
-
-
-def test_LambertProjection_need_pole_exclusion(lambert_proj):
-    assert lambert_proj.need_pole_exclusion([-135.0, -115.0,-81.0, 55.0]) == True
-    assert lambert_proj.need_pole_exclusion([-135.0, -115.0,-80.0, 55.0]) == False
-    assert lambert_proj.need_pole_exclusion([-135.0, -115.0,-35.0, 55.0]) == False
-    assert lambert_proj.need_pole_exclusion([-135.0, -115.0, 35.0, 55.0]) == False
-    assert lambert_proj.need_pole_exclusion([-135.0, -115.0, 35.0, 80.0]) == False
-    assert lambert_proj.need_pole_exclusion([-135.0, -115.0, 35.0, 80.1]) == True
-
 
 def test_LambertProjection_create_crs(lambert_proj):
     o = lambert_proj.create_crs()
@@ -459,17 +476,6 @@ def test_MercatorProjection_get_tangent_lat():
     m = mapproj.MercatorProjection(s.map_projection, s.zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0])
     assert m.get_tangent_lat([-125.0, 45.0]) == 0.0
  
-
-def test_MercatorProjection_need_pole_exclusion():
-    s = plot.TrajectoryPlotSettings()
-    m = mapproj.MercatorProjection(s.map_projection, s.zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0])
-    assert m.need_pole_exclusion([-135.0, -115.0,-81.0, 55.0]) == True
-    assert m.need_pole_exclusion([-135.0, -115.0,-80.0, 55.0]) == False
-    assert m.need_pole_exclusion([-135.0, -115.0,-35.0, 55.0]) == False
-    assert m.need_pole_exclusion([-135.0, -115.0, 35.0, 55.0]) == False
-    assert m.need_pole_exclusion([-135.0, -115.0, 35.0, 80.0]) == False
-    assert m.need_pole_exclusion([-135.0, -115.0, 35.0, 80.1]) == True
-
 
 def test_MercatorProjection_create_crs():
     s = plot.TrajectoryPlotSettings()

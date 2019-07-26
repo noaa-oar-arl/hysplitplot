@@ -103,7 +103,6 @@ def main():
     logger.info("Started Concentration Drawing")
     hysplitplot.print_version()
 
-    the_plot.read_background_map()
     the_plot.draw({"resize_event" : on_resize, "button_release_event": on_release_button})
     logger.info("Complete Concplot: {}".format(the_plot.get_plot_count_str()))
 

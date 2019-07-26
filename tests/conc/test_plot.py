@@ -7,8 +7,8 @@ import pytz
 
 from hysplitdata.const import HeightUnit
 from hysplitdata.conc import model
-from hysplitplot import const, mapfile, mapproj, labels, smooth, util, multipage
-from hysplitplot.conc import plot, helper, gisout
+from hysplitplot import const, labels, mapfile, mapproj, multipage, smooth, streetmap, util
+from hysplitplot.conc import gisout, helper, plot
 
 
 @pytest.fixture
@@ -574,8 +574,20 @@ def test_ConcentrationPlot_read_data_files():
     assert p.settings.smoothing_distance > 0 and p.smoothing_kernel is not None
     assert p.time_zone is not None
     assert p.datem is not None
-    assert p.street_map is not None
-    assert p.street_map.fix_map_color_fn is not None
+
+
+def test_ConcentrationPlot_create_street_map():
+    p = plot.ConcentrationPlot()
+    p.merge_plot_settings(None, ["-jdata/arlmap_truncated", "-idata/cdump"])
+
+    # use a projection except for WEB_MERCATOR.
+    street_map = p.create_street_map(const.MapProjection.LAMBERT, False, const.StreetMap.STAMEN_TERRAIN)
+
+    assert street_map.background_maps is not None
+    assert len(street_map.background_maps) > 0
+    assert isinstance(street_map.background_maps[0], mapfile.DrawableBackgroundMap)
+    assert street_map.background_maps[0].map.crs == mapproj.AbstractMapProjection._WGS84
+    assert street_map.fix_map_color_fn is not None
 
 
 def test_ConcentrationPlot__post_file_processing(cdump2):
@@ -676,19 +688,6 @@ def test_ConcentrationPlot__fix_map_color():
 
     color_mode = const.ConcentrationPlotColor.COLOR_NO_LINES
     assert p._fix_map_color('#6699cc', color_mode) == '#6699cc'
-
-
-def test_ConcentrationPlot_read_background_map():
-    p = plot.ConcentrationPlot()
-    p.merge_plot_settings(None, ["-jdata/arlmap_truncated", "-idata/cdump"])
-    p.read_data_files() # creates a street map object.
-    
-    p.read_background_map()
-
-    assert p.street_map.background_maps is not None
-    assert len(p.street_map.background_maps) > 0
-    assert isinstance(p.street_map.background_maps[0], mapfile.DrawableBackgroundMap)
-    assert p.street_map.background_maps[0].map.crs == mapproj.AbstractMapProjection._WGS84
 
 
 def test_ConcentrationPlot_layout():
@@ -796,11 +795,14 @@ def test_ConcentrationPlot__initialize_map_projection():
     p.merge_plot_settings(None, ["-idata/cdump"])
     p.read_data_files()
 
+    assert p.street_map is None
+    
     p._initialize_map_projection( p.cdump )
 
     assert isinstance(p.projection, mapproj.AbstractMapProjection)
     assert p.settings.center_loc == pytest.approx((-84.22, 39.90))
-
+    assert isinstance(p.street_map, streetmap.AbstractMapBackground)
+    
 
 def test_ConcentrationPlot__create_map_box_instance():
     p = plot.ConcentrationPlot()
@@ -867,7 +869,6 @@ def test_ConcentrationPlot_draw_concentration_plot():
     p = plot.ConcentrationPlot()
     p.merge_plot_settings(None, ["-idata/cdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
-    p.read_background_map()
     
     # See if no exception is thrown.
     try:
@@ -929,7 +930,6 @@ def test_ConcentrationPlot_draw_contour_legends():
     p = plot.ConcentrationPlot()
     p.merge_plot_settings(None, ["-idata/cdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
-    p.read_background_map()
     
     # See if no exception is thrown.
     try:
@@ -951,7 +951,6 @@ def test_ConcentrationPlot_draw_bottom_text():
     p = plot.ConcentrationPlot()
     p.merge_plot_settings(None, ["-idata/cdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
-    p.read_background_map()
 
     # See if no exception is thrown.
     try:
@@ -972,7 +971,6 @@ def test_ConcentrationPlot_draw_conc_above_ground():
     p = plot.ConcentrationPlot()
     p.merge_plot_settings(None, ["-idata/cdump_deposit", "-jdata/arlmap_truncated", "-d1"])
     p.read_data_files()
-    p.read_background_map()
     
     lgen = plot.ContourLevelGeneratorFactory.create_instance(p.settings.contour_level_generator,
                                                              p.settings.contour_levels,
@@ -1017,7 +1015,6 @@ def test_ConcentrationPlot_draw_conc_on_ground():
     p = plot.ConcentrationPlot()
     p.merge_plot_settings(None, ["-idata/cdump_deposit", "-jdata/arlmap_truncated", "-d1"])
     p.read_data_files()
-    p.read_background_map()
     
     lgen = plot.ContourLevelGeneratorFactory.create_instance(p.settings.contour_level_generator,
                                                              p.settings.contour_levels,
@@ -1062,7 +1059,6 @@ def test_ConcentrationPlot_draw():
     p = plot.ConcentrationPlot()
     p.merge_plot_settings(None, ["-idata/cdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
-    p.read_background_map()
     
     # See if no exception is thrown.
     try:
@@ -1570,8 +1566,6 @@ def test_DefaultColorTable_colors():
     assert clrs[0] == "#ccff00"
     assert clrs[1] == "#ffff00"
     assert clrs[2] == "#ff9900"
-
-    
 
 
 def test_DefaultChemicalThresholdColorTable___init__():

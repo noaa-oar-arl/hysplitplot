@@ -207,13 +207,17 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         
         if self.settings.use_source_time_zone:
             self.time_zone = self.get_time_zone_at(self.data_list[0].trajectories[0].starting_loc)
-        
-        self.street_map = streetmap.MapBackgroundFactory.create_instance(self.settings.use_street_map,
-                                                                         self.settings.street_map_type)
-        self.street_map.set_color(self.settings.map_color)
-        self.street_map.set_color_mode(self.settings.color)
-        self.street_map.set_lat_lon_label_option(self.settings.lat_lon_label_interval_option,
-                                                 self.settings.lat_lon_label_interval)
+    
+    def create_street_map(self, projection_type, use_street_map, street_map_type):
+        street_map = streetmap.MapBackgroundFactory.create_instance(projection_type,
+                                                                    use_street_map,
+                                                                    street_map_type)
+        street_map.read_background_map(self.settings.map_background)
+        street_map.set_color(self.settings.map_color)
+        street_map.set_color_mode(self.settings.color)
+        street_map.set_lat_lon_label_option(self.settings.lat_lon_label_interval_option,
+                                            self.settings.lat_lon_label_interval)
+        return street_map
 
     @staticmethod
     def has_terrain_profile(tdump_list):
@@ -276,11 +280,13 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                                                                        map_box)
         self.projection.refine_corners(self.settings.center_loc)
 
-        # map projection might have changed.
+        # The map projection might have changed to avoid singularities.
+        if self.street_map is None or self.settings.map_projection != self.projection.proj_type:
+            self.street_map = self.create_street_map(self.projection.proj_type,
+                                                     self.settings.use_street_map,
+                                                     self.settings.street_map_type)
+        
         self.settings.map_projection = self.projection.proj_type
-
-    def read_background_map(self):
-        self.street_map.read_background_map(self.settings.map_background)
 
     def _determine_map_limits(self, plot_data, map_opt_passes):
         mb = mapbox.MapBox()

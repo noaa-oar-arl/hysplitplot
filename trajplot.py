@@ -80,8 +80,7 @@ def main():
 
     logger.info("Started Trajectory Drawing")
     hysplitplot.print_version()
-    
-    the_plot.read_background_map()
+
     the_plot.draw({"resize_event" : on_resize, "button_release_event": on_release_button})
 
     return 0

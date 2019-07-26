@@ -46,21 +46,27 @@ class AbstractStreetMapTest(streetmap.AbstractStreetMap):
     
     
 def test_MapBackgroundFactory_create_instance():
-    o = streetmap.MapBackgroundFactory.create_instance(False, 0)
+    # when use_street_map is false.
+    o = streetmap.MapBackgroundFactory.create_instance(const.MapProjection.WEB_MERCATOR, False, 0)
     assert isinstance(o, streetmap.HYSPLITMapBackground)
     
-    o = streetmap.MapBackgroundFactory.create_instance(True, const.StreetMap.STAMEN_TERRAIN)
+    o = streetmap.MapBackgroundFactory.create_instance(const.MapProjection.WEB_MERCATOR, True, const.StreetMap.STAMEN_TERRAIN)
     assert isinstance(o, streetmap.StamenStreetMap)
     assert o.tile_url == contextily.sources.ST_TERRAIN
         
-    o = streetmap.MapBackgroundFactory.create_instance(True, const.StreetMap.STAMEN_TONER)
+    o = streetmap.MapBackgroundFactory.create_instance(const.MapProjection.WEB_MERCATOR, True, const.StreetMap.STAMEN_TONER)
     assert isinstance(o, streetmap.StamenStreetMap)
     assert o.tile_url == contextily.sources.ST_TONER_LITE
-            
-    o = streetmap.MapBackgroundFactory.create_instance(True, 999999)
+    
+    # when an invalid street map type is used.
+    o = streetmap.MapBackgroundFactory.create_instance(const.MapProjection.WEB_MERCATOR, True, 999999)
     assert isinstance(o, streetmap.StamenStreetMap)
     assert o.tile_url == contextily.sources.ST_TERRAIN
 
+    # when a non-WEB-MERCATOR projection is used.
+    o = streetmap.MapBackgroundFactory.create_instance(const.MapProjection.POLAR, True, const.StreetMap.STAMEN_TERRAIN)
+    assert isinstance(o, streetmap.HYSPLITMapBackground)
+    
 
 def test_AbstractMapBackground___init__():
     o = AbstractMapBackgroundTest()
@@ -331,4 +337,24 @@ def test_StamenStreetMap___init__():
     assert o.max_zoom == 15
     assert o.tile_url == contextily.sources.ST_TERRAIN
     assert o.attribution.startswith("Map tiles by Stamen Design,")  
-    
+ 
+
+def test_StamenStreetMap_min_zoom():
+    # Tested by test_StamenStreetMap___init__.
+    pass
+ 
+
+def test_StamenStreetMap_max_zoom():
+    # Tested by test_StamenStreetMap___init__.
+    pass
+ 
+
+def test_StamenStreetMap_tile_url():
+    # Tested by test_StamenStreetMap___init__.
+    pass
+ 
+
+def test_StamenStreetMap_attribution():
+    # Tested by test_StamenStreetMap___init__.
+    pass
+

@@ -33,7 +33,7 @@ class MapProjectionFactory:
 
         obj.do_initial_estimates(map_box, center_loc)
 
-        # Lambert grids not permitted to encompass the poles
+        # Mercator/Lambert grids not permitted to encompass the poles
         if obj.sanity_check() == False:
             proj = obj.create_sane_projection(kproj, zoom_factor, center_loc, scale, grid_deltas)
             proj.do_initial_estimates(map_box, center_loc)
@@ -65,6 +65,10 @@ class AbstractMapProjection(ABC):
         self.tnglat = self.get_tangent_lat(center_loc)
 
     def calc_xy(self, plon, plat):
+        if plat <= -90.0:
+            plat = -90.0
+        elif plat > 90.0:
+            plat = 90.0
         return self.crs.transform_point(plon, plat, self.crs_plate_carree)
 
     def calc_lonlat(self, x, y):
@@ -251,8 +255,14 @@ class AbstractMapProjection(ABC):
 
         # find new map corners
         half_delta = map_box.grid_delta * 0.5
-        x1, y1 = self.calc_xy(center_loc[0] - half_delta, center_loc[1] - half_delta)
-        x2, y2 = self.calc_xy(center_loc[0] + half_delta, center_loc[1] + half_delta)
+        if center_loc[1] <= -90.0 - map_box.grid_delta or center_loc[1] >= 90.0 + map_box.grid_delta:
+            lat1 = util.sign(90.0 - map_box.grid_delta, center_loc[1])
+            lat2 = util.sign(90.0 - half_delta, center_loc[1])
+            x1, y1 = self.calc_xy(center_loc[0] - half_delta, lat1)
+            x2, y2 = self.calc_xy(center_loc[0] + half_delta, lat2)
+        else:
+            x1, y1 = self.calc_xy(center_loc[0] - half_delta, center_loc[1] - half_delta)
+            x2, y2 = self.calc_xy(center_loc[0] + half_delta, center_loc[1] + half_delta)
 
         logger.debug("X, Y Set : %f %f %f %f", x1, y1, x2, y2)
         logger.debug("Grid corner, increment from mapbox or conndx : %f %f %f",
@@ -302,19 +312,14 @@ class AbstractMapProjection(ABC):
         pass
 
 
-class LambertProjection(AbstractMapProjection):
-
+class PoleExcludingProjection(AbstractMapProjection):
+    
     def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
-        super(LambertProjection, self).__init__(map_proj, zoom_factor, center_loc, scale, grid_deltas)
-        self.proj_type = const.MapProjection.LAMBERT
-        self.crs = self.create_crs()
-
-    def get_tangent_lat(self, center_loc):
-        return center_loc[1]
+        super(PoleExcludingProjection, self).__init__(map_proj, zoom_factor, center_loc, scale, grid_deltas)
         
     def sanity_check(self):
         x1, x2, y1, y2 = self.corners_xy
-        xc, yc = self.calc_xy(0.0, util.sign(90.0, self.center_loc[1]))
+        xc, yc = self.calc_xy(0.0, util.sign(89.5, self.center_loc[1]))
         logger.debug("Pole xy: %f %f", xc, yc)
         if (xc >= x1 and xc <= x2 and yc >= y1 and yc <= y2) or (math.isnan(xc) or math.isnan(yc)):
             logger.debug("Force polar stereographic!")
@@ -329,9 +334,21 @@ class LambertProjection(AbstractMapProjection):
         alonl, alonr, alatb, alatt = corners_lonlat
         return True if alatt > 80.0 or alatb < -80.0 else False
 
+
+class LambertProjection(PoleExcludingProjection):
+
+    def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
+        super(LambertProjection, self).__init__(map_proj, zoom_factor, center_loc, scale, grid_deltas)
+        self.proj_type = const.MapProjection.LAMBERT
+        self.crs = self.create_crs()
+
+    def get_tangent_lat(self, center_loc):
+        return center_loc[1]
+
     def create_crs(self):
         return cartopy.crs.LambertConformal(central_longitude=self.reflon,
                                             central_latitude=self.tnglat,
+                                            standard_parallels=(self.tnglat-6.0, self.tnglat+6.0),
                                             false_easting=1.0*1000.0,
                                             false_northing=1.0*1000.0)
 
@@ -353,7 +370,7 @@ class PolarProjection(AbstractMapProjection):
             return cartopy.crs.SouthPolarStereo(central_longitude=self.reflon)
 
 
-class MercatorProjection(AbstractMapProjection):
+class MercatorProjection(PoleExcludingProjection):
 
     def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
         super(MercatorProjection, self).__init__(map_proj, zoom_factor, center_loc, scale, grid_deltas)
@@ -363,12 +380,10 @@ class MercatorProjection(AbstractMapProjection):
     def get_tangent_lat(self, center_loc):
         return 0.0
     
-    def need_pole_exclusion(self, corners_lonlat):
-        alonl, alonr, alatb, alatt = corners_lonlat
-        return True if alatt > 80.0 or alatb < -80.0 else False
-
     def create_crs(self):
         return cartopy.crs.Mercator(central_longitude=self.reflon,
+                                    min_latitude=-80.0,
+                                    max_latitude=84.0,
                                     latitude_true_scale=self.tnglat,
                                     false_easting=1.0*1000.0,
                                     false_northing=1.0*1000.0)
@@ -388,15 +403,15 @@ class CylindricalEquidistantProjection(AbstractMapProjection):
         return cartopy.crs.LambertCylindrical(central_longitude=self.reflon)
 
 
-class WebMercatorProjection(AbstractMapProjection):
+class WebMercatorProjection(PoleExcludingProjection):
 
     def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
         super(WebMercatorProjection, self).__init__(map_proj, zoom_factor, center_loc, scale, grid_deltas)
         self.proj_type = const.MapProjection.WEB_MERCATOR
         self.crs = self.create_crs()
-    
+        
     def get_tangent_lat(self, center_loc):
         return 0.0
-        
+    
     def create_crs(self):
         return cartopy.crs.epsg(3857) # Internet connection is required.

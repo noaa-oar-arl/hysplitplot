@@ -16,14 +16,14 @@ logger = logging.getLogger(__name__)
 class MapBackgroundFactory:
     
     @staticmethod
-    def create_instance(use_street_map, selector):
-        if use_street_map:
-            if selector == const.StreetMap.STAMEN_TERRAIN:
+    def create_instance(projection_type, use_street_map, street_map_selector):
+        if projection_type == const.MapProjection.WEB_MERCATOR and use_street_map:
+            if street_map_selector == const.StreetMap.STAMEN_TERRAIN:
                 o = StamenStreetMap("TERRAIN")
-            elif selector == const.StreetMap.STAMEN_TONER:
+            elif street_map_selector == const.StreetMap.STAMEN_TONER:
                 o = StamenStreetMap("TONER")
             else:
-                logger.warning("Change unknown street map type {} to 0.".format(selector))
+                logger.warning("Change unknown street map type {} to 0.".format(street_map_selector))
                 o = StamenStreetMap("TERRAIN")
         else:
             o = HYSPLITMapBackground()
@@ -345,11 +345,14 @@ class AbstractStreetMap(AbstractMapBackground):
         # The return value of ax.axis() is assumed to be the same as corners_xy. 
         xmin, xmax, ymin, ymax = corners_xy
         
+        # Find a zoom level that does not fail HTTP pulls.
+        ntiles = 0
         continueQ = True
         while continueQ:
             try:
-                contextily.howmany(xmin, ymin, xmax, ymax, zoom)
-                basemap, extent = contextily.bounds2img(xmin, ymin, xmax, ymax, zoom=zoom, url=self.tile_url)
+                ntiles = contextily.howmany(xmin, ymin, xmax, ymax, zoom)
+                if ntiles > 0:
+                    basemap, extent = contextily.bounds2img(xmin, ymin, xmax, ymax, zoom=zoom, url=self.tile_url)
                 continueQ = False
             except urllib.error.HTTPError as ex:
                 logger.error("Could not pull street map images at zoom level {}: {}".format(zoom, ex))
@@ -357,20 +360,22 @@ class AbstractStreetMap(AbstractMapBackground):
                     continueQ = False
                 else:
                     zoom -= 1
+
+        if ntiles > 0:
+            # Ad hoc fix because ax.imshow() incorrectly shows the basemap.
+            #ax.imshow(basemap, extent=extent, interpolation="bilinear")
+            saved = None if ax is plt.gca() else plt.gca()
+            if saved is not None:
+                plt.sca(ax)
+                    
+            plt.imshow(basemap, extent=extent, interpolation='bilinear')
                 
-        # Ad hoc fix because ax.imshow() incorrectly shows the basemap.
-        #ax.imshow(basemap, extent=extent, interpolation="bilinear")
-        saved = None if ax is plt.gca() else plt.gca()
-        if saved is not None:
-            plt.sca(ax)
-                
-        plt.imshow(basemap, extent=extent, interpolation='bilinear')
+            if saved is not None:
+                plt.sca(saved)
+        
+            self.last_extent = corners_xy 
             
-        if saved is not None:
-            plt.sca(saved)
-    
-        self.last_extent = corners_xy 
-        ax.axis( self.last_extent )
+        ax.axis( corners_xy )
         
         str = " {}".format(self.attribution)
         ax.text(0, 0, str, fontsize=8,

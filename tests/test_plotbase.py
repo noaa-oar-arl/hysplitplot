@@ -295,7 +295,7 @@ def test_AbstractPlot_update_plot_extents():
     p.update_plot_extents(p.target_axes)
 
     assert p.projection.corners_xy == pytest.approx((-642202.80, 245127.59, -496632.13, 246127.59))
-    assert p.projection.corners_lonlat == pytest.approx((-132.6100, -121.7954, 40.2624, 47.1616))
+    assert p.projection.corners_lonlat == pytest.approx((-132.5834, -121.7633, 40.22826, 47.17279))
 
 
 def test_AbstractPlot_on_update_plot_extent():
@@ -389,7 +389,6 @@ def test_AbstractPlot__draw_maptext_if_exists():
     #p = AbstractPlotTest()
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
-    p.read_background_map()
     p.layout(p.data_list)
 
     # See if no exception is thrown.

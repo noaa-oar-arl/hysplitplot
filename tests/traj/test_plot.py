@@ -8,7 +8,7 @@ import pytz
 
 from hysplitdata.const import HeightUnit, VerticalCoordinate
 from hysplitdata.traj import model
-from hysplitplot import labels, clist, mapfile, mapproj, const
+from hysplitplot import clist, const, labels, mapfile, mapproj, streetmap
 from hysplitplot.traj import plot
 
 
@@ -336,8 +336,21 @@ def test_TrajectoryPlot_read_data_files():
     assert p.settings.color_cycle is not None
     assert p.plot_saver is not None
     assert p.time_zone is not None
-    assert p.street_map is not None
     
+
+def test_TrajectoryPlot_create_street_map():
+    p = plot.TrajectoryPlot()
+    p.merge_plot_settings("data/default_tplot", ["-jdata/arlmap_truncated", "-idata/tdump"])
+
+    # use a projection except for WEB_MERCATOR.
+    street_map = p.create_street_map(const.MapProjection.LAMBERT, False, const.StreetMap.STAMEN_TERRAIN)
+
+    assert street_map.background_maps is not None
+    assert len(street_map.background_maps) > 0
+    assert isinstance(street_map.background_maps[0], mapfile.DrawableBackgroundMap)
+    assert street_map.background_maps[0].map.crs == mapproj.AbstractMapProjection._WGS84
+    assert street_map.fix_map_color_fn is None
+
 
 def test_TrajectoryPlot_has_terrain_profile(plotData):
     assert plot.TrajectoryPlot.has_terrain_profile([plotData]) == False
@@ -441,22 +454,12 @@ def test_TrajectoryPlot__initialize_map_projection():
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump"])
     p.read_data_files()
 
+    assert p.street_map is None
+    
     p._initialize_map_projection(p.data_list)
 
     assert isinstance(p.projection, mapproj.AbstractMapProjection)
-
-
-def test_TrajectoryPlot_read_background_map():
-    p = plot.TrajectoryPlot()
-    p.merge_plot_settings("data/default_tplot", ["-jdata/arlmap_truncated", "-idata/tdump"])
-    p.read_data_files() # creates a street map object.
-
-    p.read_background_map()
-
-    assert p.street_map.background_maps is not None
-    assert len(p.street_map.background_maps) > 0
-    assert isinstance(p.street_map.background_maps[0], mapfile.DrawableBackgroundMap)
-    assert p.street_map.background_maps[0].map.crs == mapproj.AbstractMapProjection._WGS84
+    assert isinstance(p.street_map, streetmap.AbstractMapBackground)
 
 
 def test_TrajectoryPlot__determine_map_limits(plotData):
@@ -672,7 +675,6 @@ def test_TrajectoryPlot_draw_height_profile():
     p = plot.TrajectoryPlot()
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
-    p.read_background_map()
     p.layout(p.data_list)
 
     # See if no exception is thrown.
@@ -688,7 +690,6 @@ def test_TrajectoryPlot_draw_trajectory_plot():
     p = plot.TrajectoryPlot()
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
-    p.read_background_map()
     p.layout(p.data_list)
 
     # See if no exception is thrown.
@@ -703,7 +704,6 @@ def test_TrajectoryPlot_draw_bottom_plot():
     p = plot.TrajectoryPlot()
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
-    p.read_background_map()
     p.layout(p.data_list)
 
     # See if no exception is thrown.
@@ -718,7 +718,6 @@ def test_TrajectoryPlot_draw_bottom_text():
     p = plot.TrajectoryPlot()
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
-    p.read_background_map()
     p.layout(p.data_list)
 
     # See if no exception is thrown.
@@ -733,8 +732,6 @@ def test_TrajectoryPlot_draw():
     p = plot.TrajectoryPlot()
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
-    p.read_background_map()
-    #p.layout(p.data_list)
 
     # See if no exception is thrown.
     try:
@@ -956,7 +953,7 @@ def test_AgeIntervalSymbolDrawer_draw(plotData):
     plt.close(axes.get_figure())
 
 
-def test_AgeIntervalSymbolDrawer__filter_datadraw(plotData):
+def test_AgeIntervalSymbolDrawer__filter_data(plotData):
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
     d = plot.AgeIntervalSymbolDrawer(axes, s, 12)

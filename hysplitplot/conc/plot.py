@@ -424,14 +424,18 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             if os.path.exists(self.settings.QFILE):
                 self.datem = datem.Datem().get_reader().read(self.settings.QFILE) 
 
-        self.street_map = streetmap.MapBackgroundFactory.create_instance(self.settings.use_street_map,
-                                                                         self.settings.street_map_type)
-        self.street_map.set_color(self.settings.map_color)
-        self.street_map.set_color_mode(self.settings.color)
-        self.street_map.set_lat_lon_label_option(self.settings.lat_lon_label_interval_option,
-                                                 self.settings.lat_lon_label_interval)
-        self.street_map.override_fix_map_color_fn(ConcentrationPlot._fix_map_color)
-           
+    def create_street_map(self, projection_type, use_street_map, street_map_type):
+        street_map = streetmap.MapBackgroundFactory.create_instance(projection_type,
+                                                                    use_street_map,
+                                                                    street_map_type)
+        street_map.read_background_map(self.settings.map_background)
+        street_map.set_color(self.settings.map_color)
+        street_map.set_color_mode(self.settings.color)
+        street_map.set_lat_lon_label_option(self.settings.lat_lon_label_interval_option,
+                                            self.settings.lat_lon_label_interval)
+        street_map.override_fix_map_color_fn(ConcentrationPlot._fix_map_color)
+        return street_map
+    
     def _post_file_processing(self, cdump):
         
         self.conc_type.initialize(cdump,
@@ -500,9 +504,6 @@ class ConcentrationPlot(plotbase.AbstractPlot):
            color_mode == const.ConcentrationPlotColor.BW_NO_LINES:
             return "k"
         return color
-
-    def read_background_map(self):
-        self.street_map.read_background_map(self.settings.map_background)
 
     def layout(self, grid, event_handlers=None):
 
@@ -620,7 +621,12 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                                                        map_box)
         self.projection.refine_corners(self.settings.center_loc)
 
-        # copy the map projection because it might have been changed.
+        # The map projection might have changed to avoid singularities.
+        if self.street_map is None or self.settings.map_projection != self.projection.proj_type:
+            self.street_map = self.create_street_map(self.projection.proj_type,
+                                                     self.settings.use_street_map,
+                                                     self.settings.street_map_type)
+            
         self.settings.map_projection = self.projection.proj_type
 
     def _create_map_box_instance(self, cdump):
@@ -1516,6 +1522,4 @@ class ColorTableReader(io.FormattedTextFileReader):
         self.close()
         
         return self.color_table
- 
- 
  
