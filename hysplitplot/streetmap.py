@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import contextily
+import copy
 import geopandas
 import logging
 import matplotlib.pyplot as plt
@@ -74,6 +75,8 @@ class HYSPLITMapBackground(AbstractMapBackground):
     def __init__(self):
         super(HYSPLITMapBackground, self).__init__()
         self.background_maps = []
+        self.text_objs = []
+        self.frozen_collection_count = None
 
     def read_background_map(self, filename):
         self.background_maps.clear()
@@ -128,6 +131,18 @@ class HYSPLITMapBackground(AbstractMapBackground):
                                self.lat_lon_label_interval_option,
                                self.lat_lon_label_interval)
     
+    def _erase_gridlines(self, axes):
+        # From reading cartopy source code, gridliners are added to the collecitons.
+        axes._gridliners.clear()
+
+        # this works because gridlines are the last arrivals to the collections.               
+        if self.frozen_collection_count is None:
+            self.frozen_collection_count = len(axes.collections)
+        else:
+            a = copy.copy(axes.collections)
+            for k in range(self.frozen_collection_count, len(a)):
+                axes.collections.remove( a[k] )
+    
     def _update_gridlines(self, axes, projection, data_crs, map_color, latlon_label_opt, latlon_spacing):
         deltax = deltay = self._get_gridline_spacing(projection.corners_lonlat,
                                                      latlon_label_opt,
@@ -162,7 +177,10 @@ class HYSPLITMapBackground(AbstractMapBackground):
             ideltay = int(deltay*10.0)
             yticks = self._collect_tick_values(-900+ideltay, 900, ideltay, 0.1, lonlat_ext[2:4])
             logger.debug("gridlines at lats %s", yticks)
-            
+
+        # erase gridlines
+        self._erase_gridlines(axes)
+        
         # draw dotted gridlines
         kwargs = {"crs": data_crs, "linestyle": ":", "linewidth": 0.5, "color": map_color}
         if len(xticks) > 0:
@@ -245,6 +263,11 @@ class HYSPLITMapBackground(AbstractMapBackground):
         clat = util.nearest_int(clat/deltay)*deltay
         logger.debug("label reference at lon %f, lat %f", clon, clat)
         
+        # clear labels from a previous call
+        for t in self.text_objs:
+            t.remove()
+        self.text_objs.clear()
+            
         # lon labels
         lat = (clat - 0.5 * deltay) if (clat > 80.0) else clat + 0.5 * deltay
         for k in range(-(1800-ideltax), 1800, ideltax):
@@ -257,9 +280,10 @@ class HYSPLITMapBackground(AbstractMapBackground):
                 continue
             
             str = "{0:.1f}".format(lon) if deltax < 1.0 else "{0}".format(int(lon))
-            axes.text(lon, lat, str, transform=data_crs,
-                      horizontalalignment="center", verticalalignment="center",
-                      color=map_color, clip_on=True)
+            t = axes.text(lon, lat, str, transform=data_crs,
+                          horizontalalignment="center", verticalalignment="center",
+                          color=map_color, clip_on=True)
+            self.text_objs.append(t)
         
         # lat labels
         lon = clon + 0.5 * deltax
@@ -273,10 +297,10 @@ class HYSPLITMapBackground(AbstractMapBackground):
                 continue
             
             str = "{0:.1f}".format(lat) if deltay < 1.0 else "{0}".format(int(lat))
-            axes.text(lon, lat, str, transform=data_crs,
-                      horizontalalignment="center", verticalalignment="center",
-                      color=map_color, clip_on=True)
-
+            t = axes.text(lon, lat, str, transform=data_crs,
+                          horizontalalignment="center", verticalalignment="center",
+                          color=map_color, clip_on=True)
+            self.text_objs.append(t)
 
 class AbstractStreetMap(AbstractMapBackground):
     

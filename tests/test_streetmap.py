@@ -111,6 +111,8 @@ def test_HYSPLITMapBackground___init__():
     o = streetmap.HYSPLITMapBackground()
     assert o._GRIDLINE_DENSITY == pytest.approx( 0.25 )
     assert len(o.background_maps) == 0
+    assert len(o.text_objs) == 0
+    assert hasattr(o, "frozen_collection_count") and o.frozen_collection_count is None
 
  
 def test_HYSPLITMapBackground_read_background_map():
@@ -194,7 +196,33 @@ def test_HYSPLITMapBackground_update_extent():
         plt.close(axes.figure)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
+   
+
+def test_HYSPLITMapBackground__erase_gridlines():
+    o = streetmap.HYSPLITMapBackground()
     
+    projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    projection.corners_xy = [1.0, 500.0, 1.0, 500.0]
+    projection.corners_lonlat = [-95.0, -75.0, 25.0, 45.0]
+    data_crs = cartopy.crs.PlateCarree()
+    
+    axes = plt.axes(projection=projection.crs)
+
+    axes.collections.append( 0 )
+
+    o._erase_gridlines(axes)
+    
+    assert o.frozen_collection_count == 1
+
+    axes.collections.append( 1 )
+    axes.collections.append( 2 )
+    
+    o._erase_gridlines(axes)
+    
+    assert len(axes.collections) == 1
+    
+    plt.close(axes.figure)
+        
 
 def test_HYSPLITMapBackground__update_gridlines():
     o = streetmap.HYSPLITMapBackground()
@@ -208,9 +236,12 @@ def test_HYSPLITMapBackground__update_gridlines():
 
     try:
         o._update_gridlines(axes, projection, data_crs, 'k', const.LatLonLabel.AUTO, 1.0)
-        plt.close(axes.figure)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
+    
+    #assert len(o.text_objs) > 0
+    assert o.frozen_collection_count is not None
+    plt.close(axes.figure)
 
 
 def test_HYSPLITMapBackground__get_gridline_spacing():
