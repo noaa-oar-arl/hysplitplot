@@ -2,6 +2,7 @@ import datetime
 import matplotlib.pyplot as plt
 from matplotlib.contour import QuadContourSet
 import numpy
+import os
 import pytest
 import pytz
 
@@ -1066,11 +1067,22 @@ def test_ConcentrationPlot_draw():
         p.contour_labels = [""] * p.settings.contour_level_count
         p.draw({"resize_event" : blank_event_handler}, block=False)
         assert p.time_period_count == 1
-        cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
+
+    # Save to a file
+    p.settings.interactive_mode = False
+    p.plot_saver = multipage.PlotFileWriterFactory.create_instance(p.settings.frames_per_file,
+                                                                   "__conc",
+                                                                   "png",
+                                                                   "png")
+    p.draw()
+    assert os.path.exists("__conc0002.png")
+    os.remove("__conc0002.png")
     
-    
+    cleanup_plot(p)    
+
+
 def test_ConcentrationPlot_get_plot_count_str():
     p = plot.ConcentrationPlot()
     

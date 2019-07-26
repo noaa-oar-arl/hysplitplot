@@ -11,6 +11,7 @@ import hysplitplot
 logger = logging.getLogger(__name__)
 the_plot = None
 the_timer = None
+call_refresh_overlay = True
 
 
 def print_usage():
@@ -64,31 +65,40 @@ def print_usage():
  NOTE: leave no space between option and value""")
 
 
+def refresh_overlay(event):
+    the_plot.on_update_plot_extent()    
+
+    # next on_draw() should not call this.
+    global call_refresh_overlay
+    call_refresh_overlay = False
+    event.canvas.draw()
+
+
+def delayed_refresh_overlay(event):
+    global the_timer
+    if the_timer is not None:
+        the_timer.cancel()
+    the_timer = threading.Timer(the_plot.settings.street_map_update_delay,
+                                refresh_overlay,
+                                args=(event,))
+    the_timer.start()    
+    
+    
+def on_draw(event):
+    global call_refresh_overlay
+    if call_refresh_overlay:
+        # Consecutive on_draw() calls are contracted to one call.
+        delayed_refresh_overlay(event)
+    else:
+        call_refresh_overlay = True
+
+
 def on_resize(event):
     logger.debug("on_resize: event %s", event)
     logger.debug("canvas width %d, height %d (pixel)", event.width, event.height)
 
     # Important to call canvas.draw() here to get spines of the initial plot right.
     event.canvas.draw()
-    
-    the_plot.on_update_plot_extent()
-    
-
-def draw_at_last(event):
-    the_plot.on_update_plot_extent()
-    event.canvas.draw()
-        
-
-def on_release_button(event):
-    global the_timer
-    
-    if the_timer is not None:
-        the_timer.cancel()
-        
-    the_timer = threading.Timer(the_plot.settings.street_map_update_delay,
-                                draw_at_last,
-                                args=(event,))
-    the_timer.start()
     
 
 def main():
@@ -103,7 +113,7 @@ def main():
     logger.info("Started Concentration Drawing")
     hysplitplot.print_version()
 
-    the_plot.draw({"resize_event" : on_resize, "button_release_event": on_release_button})
+    the_plot.draw({"resize_event" : on_resize, "draw_event": on_draw})
     logger.info("Complete Concplot: {}".format(the_plot.get_plot_count_str()))
 
     return 0

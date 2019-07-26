@@ -40,6 +40,7 @@ class AbstractMapBackground(ABC):
         self.lat_lon_label_interval_option = const.LatLonLabel.AUTO
         self.lat_lon_label_interval = 1.0
         self.fix_map_color_fn = None
+        self.text_objs = []
     
     def set_color(self, colr):
         self.map_color = colr
@@ -55,7 +56,13 @@ class AbstractMapBackground(ABC):
         self.lat_lon_label_interval_option = label_opt
         self.lat_lon_label_interval = label_interval
 
-    @abstractmethod    
+    def clear_text_objs(self):
+        # clear labels from a previous call
+        for t in self.text_objs:
+            t.remove()
+        self.text_objs.clear()
+
+    @abstractmethod
     def draw_underlay(self, ax, crs):
         pass
 
@@ -75,7 +82,6 @@ class HYSPLITMapBackground(AbstractMapBackground):
     def __init__(self):
         super(HYSPLITMapBackground, self).__init__()
         self.background_maps = []
-        self.text_objs = []
         self.frozen_collection_count = None
 
     def read_background_map(self, filename):
@@ -257,16 +263,13 @@ class HYSPLITMapBackground(AbstractMapBackground):
             logger.debug("not drawing latlon labels because deltas are %f, %f", deltax, deltay)
             return
         
+        self.clear_text_objs()
+        
         x1, x2, y1, y2 = projection.corners_xy
         clon, clat = projection.calc_lonlat(0.5*(x1+x2), 0.5*(y1+y2))
         clon = util.nearest_int(clon/deltax)*deltax
         clat = util.nearest_int(clat/deltay)*deltay
         logger.debug("label reference at lon %f, lat %f", clon, clat)
-        
-        # clear labels from a previous call
-        for t in self.text_objs:
-            t.remove()
-        self.text_objs.clear()
             
         # lon labels
         lat = (clat - 0.5 * deltay) if (clat > 80.0) else clat + 0.5 * deltay
@@ -387,24 +390,29 @@ class AbstractStreetMap(AbstractMapBackground):
 
         if ntiles > 0:
             # Ad hoc fix because ax.imshow() incorrectly shows the basemap.
-            #ax.imshow(basemap, extent=extent, interpolation="bilinear")
-            saved = None if ax is plt.gca() else plt.gca()
-            if saved is not None:
-                plt.sca(ax)
+            if 0 == 1:
+                ax.imshow(basemap, extent=extent, interpolation="bilinear")
+            else:
+                saved = None if ax is plt.gca() else plt.gca()
+                if saved is not None:
+                    plt.sca(ax)
+                        
+                plt.imshow(basemap, extent=extent, interpolation='bilinear')
                     
-            plt.imshow(basemap, extent=extent, interpolation='bilinear')
-                
-            if saved is not None:
-                plt.sca(saved)
+                if saved is not None:
+                    plt.sca(saved)
         
             self.last_extent = corners_xy 
             
         ax.axis( corners_xy )
         
+        self.clear_text_objs()
+        
         str = " {}".format(self.attribution)
-        ax.text(0, 0, str, fontsize=8,
-                horizontalalignment="left", verticalalignment="bottom",
-                transform=ax.transAxes)
+        t = ax.text(0, 0, str, fontsize=8,
+                    horizontalalignment="left", verticalalignment="bottom",
+                    transform=ax.transAxes)
+        self.text_objs.append( t )
 
 
 class StamenStreetMap(AbstractStreetMap):

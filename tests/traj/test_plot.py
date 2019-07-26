@@ -8,7 +8,7 @@ import pytz
 
 from hysplitdata.const import HeightUnit, VerticalCoordinate
 from hysplitdata.traj import model
-from hysplitplot import clist, const, labels, mapfile, mapproj, streetmap
+from hysplitplot import clist, const, labels, mapfile, mapproj, multipage, streetmap
 from hysplitplot.traj import plot
 
 
@@ -739,6 +739,18 @@ def test_TrajectoryPlot_draw():
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
 
+    # Save to a file
+    p.settings.interactive_mode = False
+    p.plot_saver = multipage.PlotFileWriterFactory.create_instance(p.settings.frames_per_file,
+                                                                   "__traj",
+                                                                   "png",
+                                                                   "png")
+    p.draw()
+    assert os.path.exists("__traj0002.png")
+    os.remove("__traj0002.png")
+
+    cleanup_plot(p)
+    
 
 def test_TrajectoryPlot_write_gis_files():
     # TODO:

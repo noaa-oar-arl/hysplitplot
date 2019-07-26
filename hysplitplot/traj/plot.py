@@ -646,8 +646,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                 plt.show(*args, **kw)
             else:
                 self.fig.canvas.draw()  # to get the plot spines right.
-                self.update_plot_extents()
-                self.update_gridlines()
+                self.on_update_plot_extent()
                 self.plot_saver.save(self.fig, self.current_frame)
                 
             plt.close(self.fig)

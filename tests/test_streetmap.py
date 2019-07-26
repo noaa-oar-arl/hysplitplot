@@ -75,7 +75,8 @@ def test_AbstractMapBackground___init__():
     assert o.lat_lon_label_interval_option == const.LatLonLabel.AUTO
     assert o.lat_lon_label_interval == pytest.approx(1.0)
     assert o.fix_map_color_fn is None
-
+    assert len(o.text_objs) == 0
+    
 
 def test_AbstractMapBackground_set_color():
     o = AbstractMapBackgroundTest()
@@ -107,11 +108,23 @@ def test_AbstractMapBackground_set_lat_lon_label_option():
     assert o.lat_lon_label_interval == pytest.approx( 0.25 )
 
 
+def test_AbstractMapBackground_clear_text_objs():
+    o = AbstractMapBackgroundTest()
+    axes = plt.axes()
+    t = axes.text(0, 0, "test")
+    o.text_objs.append(t)
+    
+    o.clear_text_objs()
+    
+    assert len(o.text_objs) == 0
+    
+    plt.close(axes.figure)
+
+    
 def test_HYSPLITMapBackground___init__():
     o = streetmap.HYSPLITMapBackground()
     assert o._GRIDLINE_DENSITY == pytest.approx( 0.25 )
     assert len(o.background_maps) == 0
-    assert len(o.text_objs) == 0
     assert hasattr(o, "frozen_collection_count") and o.frozen_collection_count is None
 
  
