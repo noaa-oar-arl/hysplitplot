@@ -24,7 +24,7 @@ class AbstractPlotSettings:
         # ring_number values:
         #       -1      skip all related code sections
         #        0      draw no circle but set square map scaling
-        #        #      scale square map for # circles
+        #        n      scale square map for n circles
         self.ring_distance = 0.0
         self.center_loc = [0.0, 0.0]    # lon, lat
         self.output_filename = "output.ps"
@@ -38,6 +38,7 @@ class AbstractPlotSettings:
         self.gis_output = const.GISOutput.NONE
         self.kml_option = const.KMLOption.NONE
         self.use_source_time_zone = False   # for the --source-time-zone option
+        self.time_zone_str = None   # for the --time-zone option
         self.use_street_map = False # for the --street-map option
         
         # internally defined
@@ -110,14 +111,20 @@ class AbstractPlotSettings:
         self.kml_option             = args.get_integer_value("-A", self.kml_option)
         
         if args.has_arg(["--source-time-zone"]):
-            self.use_source_time_zone   = True
+            self.use_source_time_zone = True
         
+        if args.has_arg(["--time-zone"]):
+            if self.use_source_time_zone:
+                logger.warning("Discarding the --source-time-zone option because of --time-zone")
+                self.use_source_time_zone = False
+            self.time_zone_str = args.get_string_value("--time-zone", self.time_zone_str)
+            
         if args.has_arg(["--street-map"]):
-            self.use_street_map         = True
-            self.street_map_type        = args.get_integer_value("--street-map", self.street_map_type)
+            self.use_street_map = True
+            self.street_map_type = args.get_integer_value("--street-map", self.street_map_type)
             if self.map_projection != const.MapProjection.WEB_MERCATOR:
                 logger.warning("The --street-map option changes the map projection to WEB_MERCATOR")
-                self.map_projection     = const.MapProjection.WEB_MERCATOR
+                self.map_projection = const.MapProjection.WEB_MERCATOR
             
     @staticmethod
     def parse_lat_lon_label_interval(str):
@@ -313,6 +320,16 @@ class AbstractPlot(ABC):
          
         logo.NOAALogoDrawer().draw(axes, box_axes)
     
+    def lookup_time_zone(self, time_zone_name):
+        time_zone = None
+        try:
+            time_zone = pytz.timezone(time_zone_name)
+        except pytz.exceptions.UnknownTimeZoneError as ex:
+            logger.error("unrecognized time zone {}".format(time_zone_name))
+            pass
+        
+        return time_zone
+    
     def get_time_zone_at(self, lonlat):
         lon, lat = lonlat
 
@@ -324,12 +341,9 @@ class AbstractPlot(ABC):
                 time_zone_name = self.time_zone_finder.closest_timezone_at(lng=lon, lat=lat)
             logger.warning("cannot find time zone for lon %f, lat %f: using UTC", lon, lat)
             
-            time_zone = pytz.timezone(time_zone_name)
+            time_zone = self.lookup_time_zone(time_zone_name)
         except ValueError as ex:
             logger.error("cannot find time zone for lon {}, lat {}: {}".format(lon, lat, ex))
-            pass
-        except pytz.exceptions.UnknownTimeZoneError as ex:
-            logger.error("unknown time zone {} for lon {}, lat {}: {}".format(time_zone_name, lon, lat, ex))
             pass
         
         return pytz.utc if time_zone is None else time_zone

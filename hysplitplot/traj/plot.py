@@ -205,9 +205,13 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                                                                           self.settings.output_suffix,
                                                                           self.settings.output_format)
         
-        if self.settings.use_source_time_zone:
+        if self.settings.time_zone_str is not None:
+            self.time_zone = self.lookup_time_zone(self.settings.time_zone_str)
+        elif self.settings.use_source_time_zone:
             self.time_zone = self.get_time_zone_at(self.data_list[0].trajectories[0].starting_loc)
-    
+        elif self.labels.has("TZONE"):
+            self.time_zone = pytz.timezone( self.labels.get("TZONE") )
+            
     def create_street_map(self, projection_type, use_street_map, street_map_type):
         street_map = streetmap.MapBackgroundFactory.create_instance(projection_type,
                                                                     use_street_map,

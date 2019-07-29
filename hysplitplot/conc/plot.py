@@ -415,10 +415,12 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             self.smoothing_kernel = smooth.SmoothingKernelFactory.create_instance(const.SmoothingKernel.SIMPLE,
                                                                                   self.settings.smoothing_distance)
         
-        if self.labels.has("TZONE"):
-            self.time_zone = pytz.timezone( self.labels.get("TZONE") )
-        if self.settings.use_source_time_zone:
+        if self.settings.time_zone_str is not None:
+            self.time_zone = self.lookup_time_zone(self.settings.time_zone_str)
+        elif self.settings.use_source_time_zone:
             self.time_zone = self.get_time_zone_at(self.cdump.release_locs[0])
+        elif self.labels.has("TZONE"):
+            self.time_zone = pytz.timezone( self.labels.get("TZONE") )
         
         if self.settings.QFILE is not None:
             if os.path.exists(self.settings.QFILE):

@@ -59,8 +59,9 @@ def print_usage():
    -8[Create map(s) even if all values zero: (0)-no, 1-yes]
    -9[Force sample start time label to start of release: (0)-no, 1-yes]
    
-   --source-time-zone[Local dates and times are shown using the time zone at the source location]
-   --street-map
+   --source-time-zone     show local time at the source location
+   --street-map[=n]       show street map in the background; n = 0 or 1.
+   --time-zone=tz         show local time at a time zone; tz = US/Eastern, US/Central, etc. 
    
  NOTE: leave no space between option and value""")
 

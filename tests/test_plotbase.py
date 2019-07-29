@@ -49,6 +49,8 @@ def test_AbstractPlotSettings___init__():
     assert s.gis_output == const.GISOutput.NONE
     assert s.kml_option == const.KMLOption.NONE
     assert s.use_source_time_zone == False
+    assert s.time_zone_str is None
+    assert s.use_street_map == False
     
     assert s.interactive_mode == True
     assert s.map_color == "#1f77b4"
@@ -203,6 +205,12 @@ def test_AbstractPlotSettings__process_cmdline_args():
     s._process_cmdline_args(["--street-map=3"])
     assert s.use_street_map == True
     assert s.street_map_type == 3
+    
+    # test --time-zone option
+    s.use_source_time_zone = True
+    s._process_cmdline_args(["--time-zone=US/Eastern"])
+    assert s.time_zone_str == "US/Eastern"
+    assert s.use_source_time_zone == False
 
 
 def test_AbstractPlotSettings_parse_lat_lon_label_interval():
@@ -438,6 +446,17 @@ def test_AbstractPlot__draw_noaa_logo():
         raise pytest.fail("unexpected exception: {0}".format(ex))
 
 
+def test_AbstractPlot_lookup_time_zone():
+    p = AbstractPlotTest()
+    
+    tz = p.lookup_time_zone("US/Eastern")
+    assert tz is not None
+    assert tz.zone == "US/Eastern"
+    
+    tz = p.lookup_time_zone("Deep/InTheSpace")
+    assert tz is None
+    
+    
 def test_AbstractPlot_get_time_zone_at():
     p = AbstractPlotTest()
     
