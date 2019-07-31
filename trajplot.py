@@ -4,6 +4,7 @@ import logging
 import os
 import sys
 import threading
+import matplotlib.pyplot as plt
 
 import hysplitplot
 
@@ -55,13 +56,16 @@ def refresh_overlay(event):
 
 
 def delayed_refresh_overlay(event):
-    global the_timer
-    if the_timer is not None:
-        the_timer.cancel()
-    the_timer = threading.Timer(the_plot.settings.street_map_update_delay,
-                                refresh_overlay,
-                                args=(event,))
-    the_timer.start()    
+    if plt.isinteractive():
+        global the_timer
+        if the_timer is not None:
+            the_timer.cancel()
+        the_timer = threading.Timer(the_plot.settings.street_map_update_delay,
+                                    refresh_overlay,
+                                    args=(event,))
+        the_timer.start()
+    else:
+        refresh_overlay(event)
     
     
 def on_draw(event):
