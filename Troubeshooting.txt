@@ -1,0 +1,7 @@
+1. Segmentation fault
+
+When Shapely 1.6.4.post2 is used with Cartopy 1.17.0, a segmentation fault occurs.
+Rolling back Shapely to 1.6.4.post1 resolves the issue.
+
+Cartopy 1.17.0 and Shapely 1.6.4.post2 are using different versions of the GEOS
+dynamic library, which seems to cause the segmentation fault.
