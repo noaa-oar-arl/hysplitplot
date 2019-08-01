@@ -714,6 +714,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         # draw the background map
         self.street_map.draw_underlay(axes,
+                                      self.projection.corners_xy,
                                       self.projection.crs)
             
         # draw optional concentric circles

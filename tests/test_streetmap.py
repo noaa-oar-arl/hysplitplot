@@ -1,8 +1,10 @@
 import cartopy
 import contextily
+import geopandas
 import matplotlib.pyplot as plt
 import os
 import pytest
+import shapely.geometry
 
 from hysplitplot import const, mapbox, mapfile, mapproj, streetmap
 
@@ -12,7 +14,7 @@ class AbstractMapBackgroundTest(streetmap.AbstractMapBackground):
     def __init__(self):
         super(AbstractMapBackgroundTest, self).__init__()
     
-    def draw_underlay(self, ax, crs):
+    def draw_underlay(self, ax, corners_xy, crs):
         pass
     
     def update_extent(self, ax, projection, data_crs):
@@ -160,6 +162,81 @@ def test_HYSPLITMapBackground__fix_map_color():
     assert o._fix_map_color('#6699cc', color_mode) == 'r'
 
 
+def test_HYSPLITMapBackground__is_crossing_bounds():
+    o = streetmap.HYSPLITMapBackground()
+    outside = lambda x: x < -10 or x > 10
+    assert o._is_crossing_bounds([6, 8, 10, -9], outside) == False
+    assert o._is_crossing_bounds([-5, -2, 2, 5], outside) == False
+    assert o._is_crossing_bounds([8, 10, 12, -10], outside) == True
+
+
+def test_HYSPLITMapBackground__remove_spurious_hlines():
+    o = streetmap.HYSPLITMapBackground()
+    corners_xy = [-50, 50, -80, 80]
+    data_crs = cartopy.crs.PlateCarree()
+    
+    try:
+        o._remove_spurious_hlines(data_crs, corners_xy, data_crs)
+        pytest.fail("expected an exception")
+    except Exception as ex:
+        assert str(ex).startswith("Unexpected map type")
+
+    a = shapely.geometry.LineString([[-10, 0], [10, 0]])
+    g = geopandas.GeoSeries(a)
+    fixed = o._remove_spurious_hlines(g, corners_xy, data_crs)
+    assert len(fixed.values) == 1
+        
+    # a geometry object that crosses the longitudinal bound
+    a = shapely.geometry.LineString([[-51, 0], [50, 0]])
+    g = geopandas.GeoSeries(a)
+    fixed = o._remove_spurious_hlines(g, corners_xy, data_crs)
+    assert len(fixed.values) == 0
+        
+    a = shapely.geometry.Polygon([[-10, 0], [10, 0], [-10, 0]])
+    g = geopandas.GeoSeries(a)
+    fixed = o._remove_spurious_hlines(g, corners_xy, data_crs)
+    assert len(fixed.values) == 1
+    
+    a = shapely.geometry.Polygon([[-51, 0], [50, 0], [-51, 0]])
+    g = geopandas.GeoSeries(a)
+    fixed = o._remove_spurious_hlines(g, corners_xy, data_crs)
+    assert len(fixed.values) == 0
+            
+    a = shapely.geometry.MultiLineString([[[-10, 0], [10, 0]]])
+    g = geopandas.GeoSeries(a)
+    fixed = o._remove_spurious_hlines(g, corners_xy, data_crs)
+    assert len(fixed.values) == 1
+    
+    a = shapely.geometry.MultiLineString([[[-51, 0], [50, 0]]])
+    g = geopandas.GeoSeries(a)
+    fixed = o._remove_spurious_hlines(g, corners_xy, data_crs)
+    assert len(fixed.values) == 0
+    
+    a = shapely.geometry.MultiPolygon([(
+        ((-10, 0), (0, 10), (10, 0), (-10, 0)),
+        [((0.1,0.1), (0.1,0.2), (0.2,0.2), (0.2,0.1))]
+    )])
+    g = geopandas.GeoSeries(a)
+    fixed = o._remove_spurious_hlines(g, corners_xy, data_crs)
+    assert len(fixed.values) == 1
+    
+    a = shapely.geometry.MultiPolygon([(
+        ((-51, 0), (50, 0), (25, 10), (-51, 0)),
+        [((0.1,0.1), (0.1,0.2), (0.2,0.2), (0.2,0.1))]
+    )])
+    g = geopandas.GeoSeries(a)
+    fixed = o._remove_spurious_hlines(g, corners_xy, data_crs)
+    assert len(fixed.values) == 0
+    
+    a = shapely.geometry.Point( (100, 100) )
+    g = geopandas.GeoSeries(a)
+    try:
+        fixed = o._remove_spurious_hlines(g, corners_xy, data_crs)
+        pytest.fail("expected an exception")
+    except Exception as ex:
+        assert str(ex).startswith("Unexpected geometry type")
+
+
 def test_HYSPLITMapBackground_draw_underlay():
     o = streetmap.HYSPLITMapBackground()
         
@@ -172,14 +249,14 @@ def test_HYSPLITMapBackground_draw_underlay():
 
     # with no map
     try:
-        o.draw_underlay(axes, data_crs)
+        o.draw_underlay(axes, projection.corners_xy, data_crs)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
 
     # with an arlmap
     o.read_background_map("data/arlmap_truncated")
     try:
-        o.draw_underlay(axes, data_crs)
+        o.draw_underlay(axes, projection.corners_xy, data_crs)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
     
@@ -187,7 +264,7 @@ def test_HYSPLITMapBackground_draw_underlay():
     os.chdir("data")
     o.read_background_map("shapefiles_arl.txt")
     try:
-        o.draw_underlay(axes, data_crs)
+        o.draw_underlay(axes, projection.corners_xy, data_crs)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
     os.chdir("..")

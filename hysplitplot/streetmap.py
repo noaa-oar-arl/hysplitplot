@@ -6,9 +6,12 @@ import logging
 import matplotlib.pyplot as plt
 import numpy
 import os
+import shapely.geometry
 import urllib
 
 from hysplitplot import const, mapfile, util
+from matplotlib.lines import segment_hits
+from numpy import isin
 
 
 logger = logging.getLogger(__name__)
@@ -63,7 +66,7 @@ class AbstractMapBackground(ABC):
         self.text_objs.clear()
 
     @abstractmethod
-    def draw_underlay(self, ax, crs):
+    def draw_underlay(self, ax, corners_xy, crs):
         pass
 
     @abstractmethod
@@ -117,16 +120,65 @@ class HYSPLITMapBackground(AbstractMapBackground):
             return self.fix_map_color_fn(clr, color_mode)
         return clr if color_mode != const.Color.BLACK_AND_WHITE else 'k'
     
-    def draw_underlay(self, axes, crs):
+    def _is_crossing_bounds(self, xs, outside):
+        for k, x in enumerate(xs[1:]):
+            # Detect a sign change outside the view.
+            if xs[k] * x < 0 and (outside(xs[k]) or outside(x)):
+                return True
+        return False
+    
+    def _remove_spurious_hlines(self, map, corners_xy, crs):
+        if not isinstance(map, geopandas.geoseries.GeoSeries):
+            raise Exception("Unexpected map type {}".format(map))
+        # Work around a map projection issue to remove spurious horizontal lines on the background map.
+        xmin, xmax, _, _ = corners_xy
+        outside = lambda x: x < xmin or x > xmax
+        a = []
+        # Examine all geometry objects and check if a line segment goes from min to max or vice versa.
+        for o in map.values:
+            # Show the object if it is within the view.
+            x0, _, x1, _ = o.bounds
+            if x0 >= xmin and x1 <= xmax:
+                a.append( o )
+                continue
+            # Check min-max crossing
+            if isinstance(o, shapely.geometry.LineString):
+                if not self._is_crossing_bounds(o.xy[0], outside):
+                    a.append( o )
+            elif isinstance(o, shapely.geometry.Polygon):
+                if not self._is_crossing_bounds(o.exterior.xy[0], outside):
+                    a.append( o )
+            elif isinstance(o, shapely.geometry.MultiLineString):
+                crossing = False
+                for g in o.geoms:
+                    if self._is_crossing_bounds(g.xy[0], outside):
+                        crossing = True
+                        break
+                if not crossing:
+                    a.append( o )
+            elif isinstance(o, shapely.geometry.MultiPolygon):
+                crossing = False
+                for g in o.geoms:
+                    if self._is_crossing_bounds(g.exterior.xy[0], outside):
+                        crossing = True
+                        break
+                if not crossing:
+                    a.append( o )
+            else:
+                raise Exception("Unexpected geometry type {}".format(o))
+        gs = geopandas.GeoSeries(a)
+        gs.crs = crs.proj4_init
+        return gs
+    
+    def draw_underlay(self, axes, corners_xy, crs):
         for o in self.background_maps:
             if isinstance(o.map, geopandas.geoseries.GeoSeries):
-                background_map = o.map.to_crs(crs.proj4_init)
+                fixed = self._remove_spurious_hlines( o.map.to_crs(crs.proj4_init), corners_xy, crs )
             else:
-                background_map = o.map.copy()
-                background_map['geometry'] = background_map['geometry'].to_crs(crs.proj4_init)
+                fixed = o.map.copy()
+                fixed['geometry'] = self._remove_spurious_hlines( fixed['geometry'].to_crs(crs.proj4_init), corners_xy, crs )
             clr = self._fix_map_color(o.linecolor, self.color_mode)
-            background_map.plot(ax=axes, linestyle=o.linestyle, linewidth=o.linewidth,
-                                facecolor="none", edgecolor=clr)        
+            fixed.plot(ax=axes, linestyle=o.linestyle, linewidth=o.linewidth, facecolor="none", edgecolor=clr)        
     
     def update_extent(self, ax, projection, data_crs):
         clr = self._fix_map_color(self.map_color, self.color_mode)
@@ -352,7 +404,7 @@ class AbstractStreetMap(AbstractMapBackground):
         # Nothing to do
         pass
 
-    def draw_underlay(self, ax, crs):
+    def draw_underlay(self, ax, corners_xy, crs):
         # Nothing to do
         pass
     

@@ -1,10 +1,10 @@
 # trajplot.py
 
 import logging
+import matplotlib.pyplot as plt
 import os
 import sys
 import threading
-import matplotlib.pyplot as plt
 
 import hysplitplot
 
