@@ -14,7 +14,18 @@ def test_NOAALogoDrawer___init__():
     assert hasattr(d, "base_font_sz")
     assert hasattr(d, "font_sz1")
     assert hasattr(d, "font_sz2")
+    assert hasattr(d, "plot_objs") and len(d.plot_objs) == 0
     
+
+def test_NOAALogoDrawer_clear():
+    d = logo.NOAALogoDrawer()
+    axes = plt.axes()
+    d.draw(axes, ((0.7, 0.0), (0.8, 0.1)))
+    assert len(d.plot_objs) > 0
+    d.clear()
+    assert len(d.plot_objs) == 0
+    plt.close(axes.figure)
+
 
 def test_NOAALogoDrawer_draw():
     d = logo.NOAALogoDrawer()

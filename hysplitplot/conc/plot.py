@@ -530,7 +530,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.legends_axes = fig.add_subplot(inner_grid[0, 1])
         self.text_axes = fig.add_subplot(outer_grid[1, 0])
 
-        if event_handlers is not None:
+        if event_handlers is not None and self.settings.interactive_mode:
             self._connect_event_handlers(event_handlers)
     
     def make_plot_title(self, conc_grid, conc_map, lower_vert_level, upper_vert_level, starting_datetime):
@@ -781,9 +781,6 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                              conc_grid.starting_datetime,
                              conc_grid.ending_datetime)
 
-        if self.settings.noaa_logo:
-            self._draw_noaa_logo(axes)
-        
         return contour_set
     
     def get_conc_unit(self, conc_map, settings):
@@ -1045,8 +1042,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             plt.show(*args, **kwargs)
         else:
             self.fig.canvas.draw()  # to get the plot spines right.
-            self.update_plot_extents()
-            self.update_gridlines()
+            self.on_update_plot_extent()
             self.plot_saver.save(self.fig, self.current_frame)
             
         plt.close(self.fig)

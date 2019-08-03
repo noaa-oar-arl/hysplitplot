@@ -23,6 +23,7 @@ class AbstractPlotTest(plotbase.AbstractPlot):
     def __init__(self):
         super(AbstractPlotTest, self).__init__()
         self.target_axes = None
+        self.settings = plotbase.AbstractPlotSettings()
         
     def get_street_map_target_axes(self):
         return self.target_axes
@@ -247,6 +248,8 @@ def test_AbstractPlot___init__():
     assert hasattr(p, "time_zone")
     assert hasattr(p, "time_zone_finder")
     assert hasattr(p, "street_map") and p.street_map is None
+    assert hasattr(p, "logo_drawer")
+    assert hasattr(p, "settings")
 
 
 def test_AbstractPlot__connect_event_handlers():
@@ -262,8 +265,12 @@ def test_AbstractPlot__connect_event_handlers():
 
 
 def test_AbstractPlot_compute_pixel_aspect_ratio():
+    p = AbstractPlotTest()
     axes = plt.axes()
-    assert plotbase.AbstractPlot.compute_pixel_aspect_ratio(axes) == pytest.approx(1.39909)
+    p.settings.interactive_mode = True
+    assert p.compute_pixel_aspect_ratio(axes) == pytest.approx(1.39909)
+    p.settings.interactive_mode = False
+    assert p.compute_pixel_aspect_ratio(axes) == pytest.approx(1.0)
     plt.close(axes.figure)
   
 

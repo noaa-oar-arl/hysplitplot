@@ -366,7 +366,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         self.height_axes = fig.add_subplot(inner_grid[1, 1])
         self.text_axes = fig.add_subplot(outer_grid[2, 0])
 
-        if ev_handlers is not None:
+        if ev_handlers is not None and self.settings.interactive_mode:
             self._connect_event_handlers(ev_handlers)
 
     def make_plot_title(self, plot_data):
@@ -599,9 +599,6 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                     axes.text(lons[-1], lats[-1], cluster_label,
                               horizontalalignment="right", verticalalignment="bottom",  clip_on=True,
                               transform=self.data_crs)
-
-        if self.settings.noaa_logo:
-            self._draw_noaa_logo(axes)
             
     def draw_bottom_plot(self, data_list):
         if self.settings.vertical_coordinate == VerticalCoordinate.NONE:

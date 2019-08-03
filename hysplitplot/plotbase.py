@@ -165,13 +165,17 @@ class AbstractPlot(ABC):
         self.time_zone = None
         self.time_zone_finder = TimezoneFinder()
         self.street_map = None
+        self.logo_drawer = None
+        self.settings = None    # child class should create an instance.
         
     def _connect_event_handlers(self, handlers):
         for ev in handlers:
             self.fig.canvas.mpl_connect(ev, handlers[ev])
        
-    @staticmethod
-    def compute_pixel_aspect_ratio(axes):
+    def compute_pixel_aspect_ratio(self, axes):
+        if not self.settings.interactive_mode:
+            return 1.0
+        
         # compute the pixel aspect ratio
         w_fig = axes.figure.get_figwidth()
         h_fig = axes.figure.get_figheight()
@@ -182,7 +186,6 @@ class AbstractPlot(ABC):
         pixel_aspect_ratio *= 1.0 / 0.953   # empirical adjustment
         logger.debug("fig size %f x %f in; display %f x %f px; pixel aspect ratio %f",
                      w_fig, h_fig, w_dis, h_dis, pixel_aspect_ratio)
-        
         return pixel_aspect_ratio
                 
     def _turn_off_spines(self, axes, **kw):
@@ -213,7 +216,9 @@ class AbstractPlot(ABC):
         ax = self.get_street_map_target_axes()
         self.update_plot_extents(ax)
         self.street_map.update_extent(ax, self.projection, self.data_crs)
-
+        if self.settings.noaa_logo:
+            self._draw_noaa_logo(ax)
+            
     @staticmethod
     def _make_labels_filename(output_suffix):
         return "LABELS.CFG" if output_suffix == "ps" else "LABELS." + output_suffix
@@ -312,13 +317,18 @@ class AbstractPlot(ABC):
         pt_dis += [-10, +10]
         
         # bounding box in the display coordinate
-        h = 90; w = h * self.compute_pixel_aspect_ratio(axes)
+        r = self.compute_pixel_aspect_ratio(axes)
+        h = 90; w = h * r
         box_dis = [[pt_dis[0]-w, pt_dis[1]], [pt_dis[0], pt_dis[1]+h]]
 
         # in the axes coordinate        
         box_axes = axes.transAxes.inverted().transform(box_dis)
-         
-        logo.NOAALogoDrawer().draw(axes, box_axes)
+        
+        if self.logo_drawer is None:
+            self.logo_drawer = logo.NOAALogoDrawer()
+        else:
+            self.logo_drawer.clear()
+        self.logo_drawer.draw(axes, box_axes)
     
     def lookup_time_zone(self, time_zone_name):
         time_zone = None

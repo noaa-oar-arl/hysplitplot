@@ -1,7 +1,6 @@
 # trajplot.py
 
 import logging
-import matplotlib.pyplot as plt
 import os
 import sys
 import threading
@@ -56,7 +55,7 @@ def refresh_overlay(event):
 
 
 def delayed_refresh_overlay(event):
-    if plt.isinteractive():
+    if the_plot.settings.interactive_mode:
         global the_timer
         if the_timer is not None:
             the_timer.cancel()

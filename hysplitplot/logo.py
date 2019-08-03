@@ -52,7 +52,13 @@ class NOAALogoDrawer:
         self.base_font_sz = 12.0   # to be computed
         self.font_sz1 = 2.5*12.0   # to be computed
         self.font_sz2 = 1.1*12.0   # to be computed
-        
+        self.plot_objs = []
+    
+    def clear(self):
+        for t in self.plot_objs:
+            t.remove()
+        self.plot_objs.clear()
+
     def draw(self, axes, bbox):
         # bbox in the axes coordinates
         (x0, y0), (x1, y1) = bbox
@@ -77,8 +83,9 @@ class NOAALogoDrawer:
         for k in range(55):
             pts[107 + k, 0] = self._top[k*2]
             pts[107 + k, 1] = self._top[k*2 + 1]
-        sg1 = matplotlib.patches.Polygon(pts, color=clr, fill=True, transform=tr)
+        sg1 = matplotlib.patches.Polygon(pts, color=clr, fill=True, zorder=3, transform=tr)
         axes.add_patch(sg1)
+        self.plot_objs.append(sg1)
 
         # below the seagull
         clr = util.make_color(0.0, 0.6, 1.0)
@@ -89,13 +96,15 @@ class NOAALogoDrawer:
         for k in range(98):
             pts[215 + k, 0] = self._bot[k*2]
             pts[215 + k, 1] = self._bot[k*2 + 1]
-        sg2 = matplotlib.patches.Polygon(pts, color=clr, fill=True, transform=tr)
+        sg2 = matplotlib.patches.Polygon(pts, color=clr, fill=True, zorder=3, transform=tr)
         axes.add_patch(sg2)
+        self.plot_objs.append(sg2)
         
         # NOAA label above the seagull        
-        axes.text(235.0, 330.0, "noaa", fontsize=self.font_sz1, fontweight="bold",
-                  horizontalalignment="center", verticalalignment="center", clip_on=True,
-                  color="w", transform=tr)
+        t = axes.text(235.0, 330.0, "noaa", fontsize=self.font_sz1, fontweight="bold",
+                      horizontalalignment="center", verticalalignment="center", clip_on=True,
+                      color="w", zorder=4, transform=tr)
+        self.plot_objs.append(t)
 
         #self._draw_top_label(axes, tr)
         #self._draw_bottom_label(axes, tr)
