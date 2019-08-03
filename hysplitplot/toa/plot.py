@@ -687,7 +687,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
 
         return mbox
 
-    def draw_concentration_plot(self, conc_grid, scaled_conc, conc_map, contour_levels, fill_colors):
+    def draw_concentration_plot(self, conc_grid, scaled_conc, conc_map, contour_levels, prev_bitmask, fill_colors):
         """
         Draws a concentration contour plot and returns the contour data points.
         """
@@ -756,6 +756,14 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
                 plotdata[loc] = vals[k]
                 print("BITMASK", s, "VALUE", vals[k], "COUNT", len(loc[0]))
             
+            if prev_bitmask is not None:
+                c = numpy.copy(scaled_conc)
+                c &= prev_bitmask
+                loc = numpy.where(c > 0)
+                plotdata[loc] = 120
+                vals.append( 120 )
+                fill_colors.append( "#808080" ) # gray
+                
             cntr_level_vals = [epsilon] + vals
             # draw filled contours
             contour_set = axes.contourf(conc_grid.longitudes, conc_grid.latitudes, plotdata,
@@ -1016,7 +1024,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         plt.close(self.fig)
         self.current_frame += 1
    
-    def draw_toa_above_ground(self, g, event_handlers, contour_levels, color_table, gis_writer=None, *args, **kwargs):
+    def draw_toa_above_ground(self, g, event_handlers, contour_levels, prev_bitmask, color_table, gis_writer=None, *args, **kwargs):
         
         self.layout(g, event_handlers)
         
@@ -1053,7 +1061,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         self.conc_outer.set_title(title)
         self.conc_outer.set_xlabel(self.make_xlabel(g))
         
-        quad_contour_set = self.draw_concentration_plot(g, scaled_conc, self.conc_map, contour_levels, color_table.colors)
+        quad_contour_set = self.draw_concentration_plot(g, scaled_conc, self.conc_map, contour_levels, prev_bitmask, color_table.colors)
         self.draw_contour_legends(g, self.conc_map, self.contour_labels, contour_levels, color_table.colors, conc_scaling_factor)
         self.draw_bottom_text()
         
@@ -1206,9 +1214,9 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         
         #self.save_toa_data(toa_bits.conc)
         
-        self.draw_toa_above_ground(toa_bits, ev_handlers, [1, 2, 4, 8], color_table, gis_writer, *args, **kwargs)
-        self.draw_toa_above_ground(toa_bits, ev_handlers, [16, 32, 64, 128], color_table, gis_writer, *args, **kwargs)
-        self.draw_toa_above_ground(toa_bits, ev_handlers, [256, 512, 1024, 2048], color_table, gis_writer, *args, **kwargs)
+        self.draw_toa_above_ground(toa_bits, ev_handlers, [1, 2, 4, 8], None, color_table, gis_writer, *args, **kwargs)
+        self.draw_toa_above_ground(toa_bits, ev_handlers, [16, 32, 64, 128], 0x00f, color_table, gis_writer, *args, **kwargs)
+        self.draw_toa_above_ground(toa_bits, ev_handlers, [256, 512, 1024, 2048], 0x0ff, color_table, gis_writer, *args, **kwargs)
         
         gis_writer.finalize()
         self.plot_saver.close()
