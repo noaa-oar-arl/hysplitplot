@@ -338,7 +338,6 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.current_frame = 1
         self.time_period_count = 0
         self.datem = None
-        
   
     def merge_plot_settings(self, filename, args):
         if filename is not None:
@@ -630,6 +629,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                                      self.settings.street_map_type)
             
         self.settings.map_projection = self.projection.proj_type
+        self.initial_corners_xy = copy.deepcopy(self.projection.corners_xy)
+        self.initial_corners_lonlat = copy.deepcopy(self.projection.corners_lonlat)
 
     def _create_map_box_instance(self, cdump):
         lat_span = cdump.grid_sz[1] * cdump.grid_deltas[1]
@@ -710,11 +711,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         axes.set_yticks([])
 
         # set the data range
-        axes.set_extent(self.projection.corners_lonlat, self.data_crs)
+        axes.set_extent(self.initial_corners_lonlat, self.data_crs)
 
         # draw the background map
         self.street_map.draw_underlay(axes,
-                                      self.projection.corners_xy,
+                                      self.initial_corners_xy,
                                       self.projection.crs)
             
         # draw optional concentric circles

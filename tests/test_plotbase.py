@@ -250,6 +250,8 @@ def test_AbstractPlot___init__():
     assert hasattr(p, "street_map") and p.street_map is None
     assert hasattr(p, "logo_drawer")
     assert hasattr(p, "settings")
+    assert hasattr(p, "initial_corners_xy") and p.initial_corners_xy is None
+    assert hasattr(p, "initial_corners_lonlat") and p.initial_corners_lonlat is None
 
 
 def test_AbstractPlot__connect_event_handlers():

@@ -460,6 +460,8 @@ def test_TrajectoryPlot__initialize_map_projection():
 
     assert isinstance(p.projection, mapproj.AbstractMapProjection)
     assert isinstance(p.street_map, streetmap.AbstractMapBackground)
+    assert p.initial_corners_xy == pytest.approx((-171532.0, 573785.0, -421432.0, 151889.0))
+    assert p.initial_corners_lonlat == pytest.approx((-91.92366, -83.13186, 36.15948, 41.16591))
 
 
 def test_TrajectoryPlot__determine_map_limits(plotData):

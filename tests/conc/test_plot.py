@@ -803,6 +803,8 @@ def test_ConcentrationPlot__initialize_map_projection():
     assert isinstance(p.projection, mapproj.AbstractMapProjection)
     assert p.settings.center_loc == pytest.approx((-84.22, 39.90))
     assert isinstance(p.street_map, streetmap.AbstractMapBackground)
+    assert p.initial_corners_xy == pytest.approx((-189489.0, 414083.0, -154687.0, 448885.0))
+    assert p.initial_corners_lonlat == pytest.approx((-86.41419, -79.06401, 38.46890, 43.84349))
     
 
 def test_ConcentrationPlot__create_map_box_instance():

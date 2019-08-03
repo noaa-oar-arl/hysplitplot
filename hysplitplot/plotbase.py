@@ -167,6 +167,8 @@ class AbstractPlot(ABC):
         self.street_map = None
         self.logo_drawer = None
         self.settings = None    # child class should create an instance.
+        self.initial_corners_xy = None
+        self.initial_corners_lonlat = None
         
     def _connect_event_handlers(self, handlers):
         for ev in handlers:

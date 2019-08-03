@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import cartopy
+import copy
 import logging
 import matplotlib.dates
 import matplotlib.gridspec
@@ -291,7 +292,9 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                                                      self.settings.street_map_type)
         
         self.settings.map_projection = self.projection.proj_type
-
+        self.initial_corners_xy = copy.deepcopy(self.projection.corners_xy)
+        self.initial_corners_lonlat = copy.deepcopy(self.projection.corners_lonlat)
+        
     def _determine_map_limits(self, plot_data, map_opt_passes):
         mb = mapbox.MapBox()
 
@@ -551,11 +554,11 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         axes.set_yticks([])
 
         # set the data range
-        axes.set_extent(self.projection.corners_lonlat, self.data_crs)
+        axes.set_extent(self.initial_corners_lonlat, self.data_crs)
 
         # draw the background map
         self.street_map.draw_underlay(axes,
-                                      self.projection.corners_xy,
+                                      self.initial_corners_xy,
                                       self.projection.crs)
 
         # draw optional concentric circles
