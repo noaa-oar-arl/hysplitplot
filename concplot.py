@@ -59,6 +59,7 @@ def print_usage():
    -8[Create map(s) even if all values zero: (0)-no, 1-yes]
    -9[Force sample start time label to start of release: (0)-no, 1-yes]
    
+   --debug                print debug messages
    --source-time-zone     show local time at the source location
    --street-map[=n]       show street map in the background; n = 0 or 1.
    --time-zone=tz         show local time at a time zone; tz = US/Eastern, US/Central, etc. 
@@ -132,4 +133,5 @@ if __name__ == "__main__":
             # when reading a shapefile and its corresponding shx file is missing,
             # automatically generate the missing file.
             os.environ['SHAPE_RESTORE_SHX']='YES'
-        hysplitplot.run(main, "CONCPLOT", log_level=logging.INFO)
+        log_level = logging.DEBUG if sys.argv.count("--debug") > 0 else logging.INFO
+        hysplitplot.run(main, "CONCPLOT", log_level=log_level)

@@ -38,6 +38,7 @@ def print_usage():
    -v[Vertical: 0-pressure (1)-agl, 2-theta 3-meteo 4-none]'
    -z[Zoom factor:  0-least zoom, (50), 100-most zoom]'
    
+   --debug                print debug messages
    --source-time-zone     show local time at the source location
    --street-map[=n]       show street map in the background; n = 0 or 1.
    --time-zone=tz         show local time at a time zone; tz = US/Eastern, US/Central, etc. 
@@ -110,4 +111,5 @@ if __name__ == "__main__":
             # when reading a shapefile and its corresponding shx file is missing,
             # automatically generate the missing file.
             os.environ['SHAPE_RESTORE_SHX']='YES'
-        hysplitplot.run(main, "TRAJPLOT")
+        log_level = logging.DEBUG if sys.argv.count("--debug") > 0 else logging.INFO
+        hysplitplot.run(main, "TRAJPLOT", log_level=log_level)
