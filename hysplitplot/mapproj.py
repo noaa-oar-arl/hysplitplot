@@ -350,7 +350,8 @@ class LambertProjection(PoleExcludingProjection):
                                             central_latitude=self.tnglat,
                                             standard_parallels=(self.tnglat-6.0, self.tnglat+6.0),
                                             false_easting=1.0*1000.0,
-                                            false_northing=1.0*1000.0)
+                                            false_northing=1.0*1000.0,
+                                            cutoff=-60.0 if self.tnglat > 0 else 60.0)
 
 
 class PolarProjection(AbstractMapProjection):

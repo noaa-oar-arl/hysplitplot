@@ -210,9 +210,11 @@ class AbstractPlot(ABC):
     
     def update_plot_extents(self, ax):
         xmin, xmax, ymin, ymax = self.projection.corners_xy = ax.axis()
+        logger.debug("update_plot_extents: xy: %f %f %f %f", xmin, xmax, ymin, ymax)
         lonl, latb = self.data_crs.transform_point(xmin, ymin, self.projection.crs)
         lonr, latt = self.data_crs.transform_point(xmax, ymax, self.projection.crs)
         self.projection.corners_lonlat = (lonl, lonr, latb, latt)
+        logger.debug("update_plot_extents: lonlat: %f %f %f %f", lonl, lonr, latb, latt)
         
     def on_update_plot_extent(self):
         ax = self.get_street_map_target_axes()

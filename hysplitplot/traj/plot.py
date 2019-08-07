@@ -554,7 +554,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         axes.set_yticks([])
 
         # set the data range
-        axes.set_extent(self.initial_corners_lonlat, self.data_crs)
+        axes.axis(self.initial_corners_xy)
 
         # draw the background map
         self.street_map.draw_underlay(axes,
