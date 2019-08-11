@@ -15,6 +15,7 @@ from hysplitdata.conc import model
 from hysplitdata.const import HeightUnit
 from hysplitplot import cmdline, util, const, datem, plotbase, mapbox, mapproj, smooth, streetmap, multipage
 from hysplitplot.conc import helper, gisout, cntr
+from hysplitplot.conc.plot import ColorTableFactory
 
 
 logger = logging.getLogger(__name__)
@@ -26,8 +27,8 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         plotbase.AbstractPlotSettings.__init__(self)
 
         self.input_file = "cdump"
-        self.output_filename = "concplot.ps"
-        self.output_basename = "concplot"
+        self.output_filename = "toaplot.ps"
+        self.output_basename = "toaplot"
         
         # Index of the selected pollutant. It is 1-based for now but it will be changed to 0-based.
         # If the index is -1 after the change, all pollutants are selected. 
@@ -46,7 +47,7 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         self.KMAP = const.ConcentrationMapType.CONCENTRATION
         self.KAVG = const.ConcentrationType.EACH_LEVEL
         self.NDEP = const.DepositionType.TIME
-        self.show_max_conc = 1
+        self.show_max_conc = 0
         self.mass_unit = "mass"
         self.mass_unit_by_user = False
         self.smoothing_distance = 0
@@ -324,6 +325,9 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         self.depo_map = None
         self.prev_forecast_time = None
         self.length_factory = None
+        self.toa_grid = None
+        self.toa_hours = None
+        self.toa_bitmasks = None
         
         self.fig = None
         self.conc_outer = None
@@ -425,6 +429,8 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
             if os.path.exists(self.settings.QFILE):
                 self.datem = datem.Datem().get_reader().read(self.settings.QFILE) 
 
+        self._prepare_toa_data(cdump)
+
     def create_street_map(self, projection_type, use_street_map, street_map_type):
         street_map = streetmap.MapBackgroundFactory.create_instance(projection_type,
                                                                     use_street_map,
@@ -457,6 +463,59 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         self._normalize_settings(cdump)
            
         self.length_factory = util.AbstractLengthFactory.create_factory(self.settings.height_unit)
+
+    def _prepare_toa_data(self, cdump):
+        self.toa_hours = numpy.linspace(6, 72, num=12)
+        self.toa_bitmasks = [(1 << k) for k in range(len(self.toa_hours))]
+        self.toa_grid = None
+        
+        hour_index = 0
+        release_date_time = self.cdump.release_datetimes[0]
+        dt_range_lower = release_date_time
+        dt_range_upper = release_date_time + datetime.timedelta(hours=self.toa_hours[hour_index])
+        
+        for t_index in self.time_selector:
+            t_grids = helper.TimeIndexGridFilter(self.cdump.grids,
+                                                 helper.TimeIndexSelector(t_index, t_index))
+            initial_timeQ = (t_index == self.time_selector.first)
+            
+            grids_above_ground, grids_on_ground = self.conc_type.prepare_grids_for_plotting(t_grids)
+            logger.debug("grid counts: above the ground %d, on the ground %d",
+                         len(grids_above_ground), len(grids_on_ground))
+
+            self.depo_sum.add(grids_on_ground, initial_timeQ)
+                    
+            # concentration unit conversion factor
+            self.TFACT = self.settings.CONADJ
+
+            if self.conc_map.need_time_scaling():
+                f = abs(grids_above_ground[0].get_duration_in_sec())
+                self.TFACT = self.conc_map.scale_time(self.TFACT, self.conc_type, f, initial_timeQ)
+            logger.debug("CONADJ %g, TFACT %g", self.settings.CONADJ, self.TFACT)
+            
+            if t_grids[0].ending_datetime > dt_range_upper:
+                if hour_index + 1 < len(self.toa_hours):
+                    hour_index += 1
+                    dt_range_lower = dt_range_upper
+                    dt_range_upper = release_date_time + datetime.timedelta(hours=self.toa_hours[hour_index])
+                self.toa_grid.nonzero_conc_count = 0
+        
+            if t_grids[0].starting_datetime >= dt_range_lower and t_grids[0].ending_datetime <= dt_range_upper:
+                logger.debug("Time-of-arrival: start time {}, hour-index {}".format(t_grids[0].starting_datetime, hour_index))
+                if self.toa_grid is None:
+                    self.toa_grid = t_grids[0].clone_except_conc()
+                    self.toa_grid.conc = numpy.zeros(t_grids[0].conc.shape, dtype=int)
+                    self.toa_grid.nonzero_conc_count = 0
+                for g in grids_above_ground:
+                    loc = numpy.where(g.conc > 0)
+                    self.toa_grid.conc[loc] |= self.toa_bitmasks[hour_index]
+                    self.toa_grid.nonzero_conc_count += len(loc[0])
+                    
+#             grids = self.depo_sum.get_grids_to_plot(grids_on_ground, t_index == self.time_selector.last)
+#             for g in grids:
+#                 self.draw_conc_on_ground(g, ev_handlers, level_gen_depo, color_table, gis_writer, *args, **kwargs)
+        
+            self.time_period_count += 1
 
     def _normalize_settings(self, cdump):
         s = self.settings
@@ -687,7 +746,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
 
         return mbox
 
-    def draw_concentration_plot(self, conc_grid, scaled_conc, conc_map, contour_levels, prev_bitmask, fill_colors):
+    def draw_toa_plot(self, conc_grid, scaled_conc, conc_map, contour_levels, prev_bitmask, fill_colors):
         """
         Draws a concentration contour plot and returns the contour data points.
         """
@@ -711,7 +770,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         axes.set_yticks([])
 
         # set the data range
-        axes.set_extent(self.initial_corners_lonlat, self.data_crs)
+        axes.axis(self.initial_corners_xy)
 
         # draw the background map
         self.street_map.draw_underlay(axes,
@@ -754,7 +813,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
                 c &= s
                 loc = numpy.where(c > 0)
                 plotdata[loc] = vals[k]
-                print("BITMASK", s, "VALUE", vals[k], "COUNT", len(loc[0]))
+                logger.debug("Time-of-arrival: bitmask {}, value {}, count {}".format(s, vals[k], len(loc[0])))
             
             if prev_bitmask is not None:
                 c = numpy.copy(scaled_conc)
@@ -969,61 +1028,6 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
 
         gis_writer.write(basename, g, contour_set, lower_vert_level, upper_vert_level)
    
-    def draw_conc_above_ground(self, g, event_handlers, level_generator, color_table, gis_writer=None, *args, **kwargs):
-        
-        self.layout(g, event_handlers)
-        
-        self._turn_off_spines(self.conc_outer)
-        self._turn_off_ticks(self.conc_outer)
-         
-        LEVEL0 = self.conc_type.get_lower_level(g.vert_level, self.cdump.vert_levels)
-        LEVEL2 = self.conc_type.get_upper_level(g.vert_level, self.settings.LEVEL2)
-        
-        level1 = self.length_factory.create_instance(LEVEL0)
-        level2 = self.length_factory.create_instance(LEVEL2)
-        
-        # Scaling should be done prior to determining the min and max concentration values. 
-        f = float(g.vert_level - LEVEL0)
-        conc_scaling_factor = self.conc_map.scale_exposure(self.TFACT, self.conc_type, f)
-        
-        min_conc, max_conc = self.conc_type.get_plot_conc_range(g, conc_scaling_factor)
-        level_generator.set_global_min_max(self.conc_type.contour_min_conc, self.conc_type.contour_max_conc)
-        contour_levels = level_generator.make_levels(min_conc, max_conc, self.settings.contour_level_count)
-        
-        color_offset = level_generator.compute_color_table_offset( contour_levels )
-        color_table.set_offset( color_offset )
-               
-        scaled_conc = numpy.copy(g.conc)
-        if conc_scaling_factor != 1.0:
-            scaled_conc *= conc_scaling_factor
-        
-        if self.smoothing_kernel is not None:
-            scaled_conc = self.smoothing_kernel.smooth_with_max_preserved(scaled_conc)
-        
-        # plot title
-        title = self.make_plot_title(g, self.conc_map, level1, level2, g.starting_datetime)
-        self.conc_outer.set_title(title)
-        self.conc_outer.set_xlabel(self.make_xlabel(g))
-        
-        quad_contour_set = self.draw_concentration_plot(g, scaled_conc, self.conc_map, contour_levels, color_table.colors)
-        self.draw_contour_legends(g, self.conc_map, self.contour_labels, contour_levels, color_table.colors, conc_scaling_factor)
-        self.draw_bottom_text()
-        
-        if gis_writer is not None:
-            self._write_gisout(gis_writer, g, LEVEL0, LEVEL2, quad_contour_set, contour_levels, color_table, conc_scaling_factor)
-            
-        self.conc_map.undo_scale_exposure(self.conc_type)
-        
-        if self.settings.interactive_mode:
-            plt.show(*args, **kwargs)
-        else:
-            self.fig.canvas.draw()  # to get the plot spines right.
-            self.on_update_plot_extent()
-            self.plot_saver.save(self.fig, self.current_frame)
-        
-        plt.close(self.fig)
-        self.current_frame += 1
-   
     def draw_toa_above_ground(self, g, event_handlers, contour_levels, prev_bitmask, color_table, gis_writer=None, *args, **kwargs):
         
         self.layout(g, event_handlers)
@@ -1061,7 +1065,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         self.conc_outer.set_title(title)
         self.conc_outer.set_xlabel(self.make_xlabel(g))
         
-        quad_contour_set = self.draw_concentration_plot(g, scaled_conc, self.conc_map, contour_levels, prev_bitmask, color_table.colors)
+        quad_contour_set = self.draw_toa_plot(g, scaled_conc, self.conc_map, contour_levels, prev_bitmask, color_table.colors)
         self.draw_contour_legends(g, self.conc_map, self.contour_labels, contour_levels, color_table.colors, conc_scaling_factor)
         self.draw_bottom_text()
         
@@ -1110,7 +1114,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         self.conc_outer.set_title(title)
         self.conc_outer.set_xlabel(self.make_xlabel(g))
         
-        contour_set = self.draw_concentration_plot(g, scaled_conc, self.depo_map, contour_levels, color_table.colors)
+        contour_set = self.draw_toa_plot(g, scaled_conc, self.depo_map, contour_levels, color_table.colors)
         self.draw_contour_legends(g, self.depo_map, self.contour_labels, contour_levels, color_table.colors, conc_scaling_factor)
         self.draw_bottom_text()
          
@@ -1131,14 +1135,6 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         if self.settings.interactive_mode == False:
             plt.ioff()
 
-        level_generator = ContourLevelGeneratorFactory.create_instance(self.settings.contour_level_generator,
-                                                                       self.settings.contour_levels,
-                                                                       self.settings.UCMIN,
-                                                                       self.settings.user_color)
-        level_gen_depo  = ContourLevelGeneratorFactory.create_instance(self.settings.contour_level_generator,
-                                                                       self.settings.contour_levels,
-                                                                       self.settings.UDMIN,
-                                                                       self.settings.user_color)
         color_table = ColorTableFactory.create_instance(self.settings)
         
         gis_writer = gisout.GISFileWriterFactory.create_instance(self.settings.gis_output,
@@ -1153,70 +1149,11 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         
         self._initialize_map_projection(self.cdump)
 
-        self.depo_sum.initialize(self.cdump.grids, self.time_selector, self.pollutant_selector)
+        #self.save_toa_data(self.toa_grid.conc)
         
-        toa_bitmasks = [(1 << k) for k in range(12)]
-        print("TOA_VALUES", toa_bitmasks)
-        hours = numpy.linspace(6, 72, num=12)
-        print("HOURS", hours)
-        release_date_time = self.cdump.release_datetimes[0]
-        hour_index = 0
-        dt_range_lower = release_date_time
-        dt_range_upper = release_date_time + datetime.timedelta(hours=hours[hour_index])
-        
-        toa_bits = None
-        
-        for t_index in self.time_selector:
-            t_grids = helper.TimeIndexGridFilter(self.cdump.grids,
-                                                 helper.TimeIndexSelector(t_index, t_index))
-            initial_timeQ = (t_index == self.time_selector.first)
-            
-            grids_above_ground, grids_on_ground = self.conc_type.prepare_grids_for_plotting(t_grids)
-            logger.debug("grid counts: above the ground %d, on the ground %d",
-                         len(grids_above_ground), len(grids_on_ground))
-
-            self.depo_sum.add(grids_on_ground, initial_timeQ)
-                    
-            # concentration unit conversion factor
-            self.TFACT = self.settings.CONADJ
-
-            if self.conc_map.need_time_scaling():
-                f = abs(grids_above_ground[0].get_duration_in_sec())
-                self.TFACT = self.conc_map.scale_time(self.TFACT, self.conc_type, f, initial_timeQ)
-            logger.debug("CONADJ %g, TFACT %g", self.settings.CONADJ, self.TFACT)
-            
-            if t_grids[0].ending_datetime > dt_range_upper:
-                if hour_index + 1 < len(hours):
-                    hour_index += 1
-                    dt_range_lower = dt_range_upper
-                    dt_range_upper = release_date_time + datetime.timedelta(hours=hours[hour_index])
-                toa_bits.nonzero_conc_count = 0
-        
-            if t_grids[0].starting_datetime >= dt_range_lower and t_grids[0].ending_datetime <= dt_range_upper:
-                print("DATA", t_grids[0].starting_datetime, "INDEX", hour_index)
-                if toa_bits is None:
-                    toa_bits = t_grids[0].clone_except_conc()
-                    toa_bits.conc = numpy.zeros(t_grids[0].conc.shape, dtype=int)
-                    toa_bits.nonzero_conc_count = 0
-                for g in grids_above_ground:
-                    loc = numpy.where(g.conc > 0)
-                    toa_bits.conc[loc] |= toa_bitmasks[hour_index]
-                    toa_bits.nonzero_conc_count += len(loc[0])
-                    
-#             for g in grids_above_ground:
-#                 self.draw_conc_above_ground(g, ev_handlers, level_generator, color_table, gis_writer, *args, **kwargs)
-#             
-#             grids = self.depo_sum.get_grids_to_plot(grids_on_ground, t_index == self.time_selector.last)
-#             for g in grids:
-#                 self.draw_conc_on_ground(g, ev_handlers, level_gen_depo, color_table, gis_writer, *args, **kwargs)
-        
-            self.time_period_count += 1
-        
-        #self.save_toa_data(toa_bits.conc)
-        
-        self.draw_toa_above_ground(toa_bits, ev_handlers, [1, 2, 4, 8], None, color_table, gis_writer, *args, **kwargs)
-        self.draw_toa_above_ground(toa_bits, ev_handlers, [16, 32, 64, 128], 0x00f, color_table, gis_writer, *args, **kwargs)
-        self.draw_toa_above_ground(toa_bits, ev_handlers, [256, 512, 1024, 2048], 0x0ff, color_table, gis_writer, *args, **kwargs)
+        self.draw_toa_above_ground(self.toa_grid, ev_handlers, [1, 2, 4, 8], None, color_table, gis_writer, *args, **kwargs)
+        self.draw_toa_above_ground(self.toa_grid, ev_handlers, [16, 32, 64, 128], 0x00f, color_table, gis_writer, *args, **kwargs)
+        self.draw_toa_above_ground(self.toa_grid, ev_handlers, [256, 512, 1024, 2048], 0x0ff, color_table, gis_writer, *args, **kwargs)
         
         gis_writer.finalize()
         self.plot_saver.close()
@@ -1259,394 +1196,3 @@ class LabelledContourLevel:
     def __repr__(self):
         return "LabelledContourLevel({0}, {1}, r{2}, g{3}, b{4})".format(self.label, self.level, self.r, self.g, self.b)
 
-    
-class ContourLevelGeneratorFactory:
-    
-    @staticmethod
-    def create_instance(generator, cntr_levels, cutoff, user_colorQ):
-        if generator == const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC:
-            return ExponentialDynamicLevelGenerator(cutoff)
-        elif generator == const.ContourLevelGenerator.CLG_50:
-            return ExponentialDynamicLevelGenerator(cutoff, force_base_ten=True)
-        elif generator == const.ContourLevelGenerator.CLG_51:
-            return ExponentialDynamicLevelGenerator(cutoff, force_base_ten=True)
-        elif generator == const.ContourLevelGenerator.EXPONENTIAL_FIXED:
-            return ExponentialFixedLevelGenerator(cutoff)
-        elif generator == const.ContourLevelGenerator.LINEAR_DYNAMIC:
-            return LinearDynamicLevelGenerator()
-        elif generator == const.ContourLevelGenerator.LINEAR_FIXED:
-            return LinearFixedLevelGenerator()
-        elif generator == const.ContourLevelGenerator.USER_SPECIFIED:
-            return UserSpecifiedLevelGenerator(cntr_levels)
-        else:
-            raise Exception("unknown method {0} for contour level generation".format(generator))
-
-
-class AbstractContourLevelGenerator(ABC):
-    
-    def __init__(self, **kwargs):
-        self.global_min = None
-        self.global_max = None
-        return
-
-    def set_global_min_max(self, cmin, cmax):
-        self.global_min = cmin
-        self.global_max = cmax
-        
-    @abstractmethod
-    def make_levels(self, min_conc, max_conc, max_levels):
-        pass
-    
-    @abstractmethod
-    def compute_color_table_offset(self, levels):
-        pass
-        
-
-class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
-    
-    def __init__(self, cutoff, **kwargs):
-        AbstractContourLevelGenerator.__init__(self, **kwargs)
-        self.cutoff = cutoff
-        self.force_base_10 = kwargs.get("force_base_10", False)
-
-    def _compute_interval(self, min_conc, max_conc):
-        cint = 10.0; cint_inverse = 0.1
-        if (not self.force_base_10) and max_conc > 1.0e+8 * min_conc:
-            cint = 100.0; cint_inverse = 0.01
-        return cint, cint_inverse
-        
-    def make_levels(self, min_conc, max_conc, max_levels):
-        logger.debug("making %d levels using min_conc %g, max_conc %g", max_levels, min_conc, max_conc)
-        
-        cint, cint_inverse = self._compute_interval(min_conc, max_conc)
-
-        nexp = int(math.log10(max_conc)) if max_conc > 0 else 0
-        if nexp < 0:
-            nexp -= 1
-        
-        # Use a numpy ndarray to allow the *= operator.
-        levels = numpy.empty(max_levels, dtype=float)
-        
-        a = math.pow(10.0, nexp)
-        if a < self.cutoff:
-            levels[0] = self.cutoff
-            levels.resize( 1 )
-        else:
-            levels[0] = a
-            for k in range(1, max_levels):
-                a = levels[k - 1] * cint_inverse
-                if a >= self.cutoff:
-                    levels[ k ] = a
-                else:
-                    levels.resize( k )
-                    break
-        
-        logger.debug("contour levels: %s", levels)
-        
-        return numpy.flip(levels)
-    
-    def compute_color_table_offset(self, levels):
-        if len(levels) > 1:
-            cint = levels[1] / levels[0]
-        else:
-            cint = self._compute_interval(self.global_min, self.global_max)
-
-        # Limit looping to 32 is the number of colors in CLRTBL.CFG
-        current = levels[-1]
-        for k in range(0, 32):
-            offset = k
-            if current <= self.global_max < current * cint:
-                break;
-            else:
-                current *= cint
-            
-        return offset
-    
-
-class ExponentialFixedLevelGenerator(ExponentialDynamicLevelGenerator):
-    
-    def __init__(self, cutoff, **kwargs):
-        ExponentialDynamicLevelGenerator.__init__(self, cutoff, **kwargs)
-        
-    def make_levels(self, min_conc, max_conc, max_levels):
-        return super(ExponentialFixedLevelGenerator, self).make_levels(self.global_min,
-                                                                       self.global_max,
-                                                                       max_levels)
-    
-    def compute_color_table_offset(self, levels):
-        return 0    
-    
-class LinearDynamicLevelGenerator(AbstractContourLevelGenerator):
-    
-    def __init__(self):
-        AbstractContourLevelGenerator.__init__(self)
-        
-    def _compute_interval(self, min_conc, max_conc):
-        nexp = util.nearest_int(math.log10(max_conc * 0.25)) if max_conc > 0 else 0
-        if nexp < 0:
-            nexp -= 1
-        cint = math.pow(10.0, nexp)
-        if max_conc > 6 * cint:
-            cint *= 2.0
-        return cint
-        
-    def make_levels(self, min_conc, max_conc, max_levels):
-        cint = self._compute_interval(min_conc, max_conc)
-            
-        levels = numpy.empty(max_levels, dtype=float)
-        for k in range(len(levels)):
-            levels[k] = cint * (k + 1)
-            
-        logger.debug("contour levels: %s using max %g, levels %d", levels, max_conc, max_levels)
-        return levels
-    
-    def compute_color_table_offset(self, levels):
-        if len(levels) > 1:
-            cint = levels[1] - levels[0]
-        else:
-            cint = self._compute_interval(self.global_min, self.global_max)
-
-        # Limit looping to 32 is the number of colors in CLRTBL.CFG
-        current = levels[-1]
-        for k in range(0, 32):
-            offset = k
-            if current <= self.global_max < current + cint:
-                break;
-            else:
-                current += cint
-            
-        return offset 
-
-
-class LinearFixedLevelGenerator(LinearDynamicLevelGenerator):
-    
-    def __init__(self):
-        LinearDynamicLevelGenerator.__init__(self)
-    
-    def make_levels(self, min_conc, max_conc, max_levels):
-        return LinearDynamicLevelGenerator.make_levels(self,
-                                                       self.global_min,
-                                                       self.global_max,
-                                                       max_levels)
-    
-    def compute_color_table_offset(self, levels):
-        return 0 
-
-
-class UserSpecifiedLevelGenerator(AbstractContourLevelGenerator):
-    
-    def __init__(self, user_specified_levels):
-        AbstractContourLevelGenerator.__init__(self)
-        self.contour_levels = [] if user_specified_levels is None else [o.level for o in user_specified_levels]
-    
-    def make_levels(self, min_conc, max_conc, max_levels):
-        return self.contour_levels
-
-    def compute_color_table_offset(self, levels):
-        return 0     
-
-    
-class ColorTableFactory:
-    
-    COLOR_TABLE_FILE_NAMES = ["CLRTBL.CFG", "../graphics/CLRTBL.CFG"]
-
-    @staticmethod
-    def create_instance(settings):
-        ncolors = settings.contour_level_count
-        logger.debug("ColorTableFactory::create_instance: color count %d", ncolors)
-        
-        skip_std_colors = False
-        if settings.contour_level_generator == const.ContourLevelGenerator.USER_SPECIFIED:
-            skip_std_colors = True
-        elif settings.contour_level_generator == const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC and settings.IDYNC != 0:
-            skip_std_colors = True
-        
-        if settings.KMAP == const.ConcentrationMapType.THRESHOLD_LEVELS and settings.KHEMIN == 1:
-            ct = DefaultChemicalThresholdColorTable(ncolors, skip_std_colors)
-        elif settings.user_color:
-            ct = UserColorTable(settings.contour_levels)
-        else:
-            ct = DefaultColorTable(ncolors, skip_std_colors)
-            f = ColorTableFactory._get_color_table_filename()
-            if f is not None:
-                ct.get_reader().read(f)
-                if settings.contour_level_generator == const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC and settings.IDYNC != 0:
-                    for k in range(5):
-                        ct.set_rgb(k, (1.0, 1.0, 1.0))
-        
-        if settings.IDYNC == 1:
-            ct.enable_offset(True)
-            
-        if settings.color == const.ConcentrationPlotColor.BLACK_AND_WHITE or settings.color == const.ConcentrationPlotColor.BW_NO_LINES:
-            ct.change_to_grayscale()
-        
-        logger.debug("using color table: %s", ct)
-        return ct
-    
-    @staticmethod
-    def _get_color_table_filename():      
-        for s in ColorTableFactory.COLOR_TABLE_FILE_NAMES:
-            if os.path.exists(s):
-                return s
-            
-        return None
-    
-    
-class ColorTable:
-    
-    def __init__(self, ncolors):
-        self.rgbs = []
-        self.ncolors = ncolors
-        self.offset = 0
-        self.use_offset = False
-        return
-    
-    def get_reader(self):
-        return ColorTableReader(self)
-    
-    def set_rgb(self, k, rgb):
-        self.rgbs[k] = rgb
-    
-    def change_to_grayscale(self):
-        for k, rgb in enumerate(self.rgbs):
-            l = self.get_luminance(rgb)
-            self.rgbs[k] = (l, l, l)
-            
-    @staticmethod
-    def get_luminance(rgb):
-        r, g, b = rgb
-        return 0.299*r + 0.587*g + 0.114*b
-       
-    @staticmethod
-    def create_plot_colors(rgbs):
-        return [util.make_color(o[0], o[1], o[2]) for o in rgbs]
-
-    def set_offset(self, offset):
-        self.offset = offset if self.use_offset else 0
-        
-    def enable_offset(self, flag=True):
-        self.use_offset = flag
-    
-        
-class DefaultColorTable(ColorTable):
-    
-    def __init__(self, ncolors, skip_std_colors):
-        ColorTable.__init__(self, ncolors)
-        self.skip_std_colors = skip_std_colors
-        self.__colors = None
-        self.__raw_colors = None
-        self.__current_offset = 0
-        self.rgbs = [
-            (1.0, 1.0, 1.0), (1.0, 1.0, 0.0), (0.0, 0.0, 1.0), (0.0, 1.0, 0.0),
-            (0.0, 1.0, 1.0), (1.0, 0.0, 0.0), (1.0, 0.6, 0.0), (1.0, 1.0, 0.0),
-            (0.8, 1.0, 0.0), (0.0, 0.6, 0.0), (0.0, 1.0, 0.4), (0.0, 1.0, 1.0),
-            (0.0, 0.4, 1.0), (0.2, 0.0, 1.0), (0.6, 0.0, 1.0), (0.8, 0.0, 1.0),
-            (0.4, 0.0, 0.4), (0.6, 0.0, 0.4), (0.4, 0.0, 0.2), (0.2, 0.0, 0.2),
-            (0.6, 0.0, 0.0), (1.0, 0.8, 1.0), (0.4, 0.4, 1.0), (1.0, 1.0, 1.0),
-            (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
-            (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0)]
-    
-    @property
-    def raw_colors(self):
-        if self.__raw_colors is None or self.__current_offset != self.offset:
-            if self.skip_std_colors:
-                self.__raw_colors = self.rgbs[4 + self.offset + self.ncolors : self.offset + 4 : -1]
-            else:
-                self.__raw_colors = self.rgbs[self.offset + self.ncolors : self.offset : -1]
-                
-            self.__current_offset = self.offset
-
-        return self.__raw_colors
-    
-    @property
-    def colors(self):
-        if self.__colors is None or self.__current_offset != self.offset:
-            self.__colors = self.create_plot_colors(self.raw_colors)
-        
-        return self.__colors
-
-
-class DefaultChemicalThresholdColorTable(ColorTable):
-    
-    def __init__(self, ncolors, skip_std_colors):
-        ColorTable.__init__(self, ncolors)
-        self.skip_std_colors = skip_std_colors
-        self.__colors = None
-        self.__raw_colors = None
-        self.__current_offset = 0
-        self.rgbs = [
-            (1.0, 1.0, 1.0), (0.8, 0.8, 0.8), (1.0, 1.0, 0.0), (1.0, 0.5, 0.0),
-            (1.0, 0.0, 0.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
-            (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
-            (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
-            (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
-            (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
-            (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
-            (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0)]
-    
-    @property
-    def raw_colors(self):
-        if self.__raw_colors is None or self.__current_offset != self.offset:
-            if self.skip_std_colors:
-                self.__raw_colors = self.rgbs[5 + self.offset : 5 + self.offset + self.ncolors]
-            else:
-                self.__raw_colors = self.rgbs[1 + self.offset : 1 + self.offset + self.ncolors]
-            
-            self.__current_offset = self.offset
-            
-        return self.__raw_colors
-    
-    @property
-    def colors(self):
-        if self.__colors is None or self.__current_offset != self.offset:
-            self.__colors = self.create_plot_colors(self.raw_colors)
-        
-        return self.__colors
-
-
-class UserColorTable(ColorTable):
-    
-    def __init__(self, contour_levels):
-        ColorTable.__init__(self, len(contour_levels))
-        self.rgbs = [(o.r, o.g, o.b) for o in contour_levels]
-        self.__colors = None
-    
-    @property
-    def raw_colors(self):
-        return self.rgbs
-    
-    @property
-    def colors(self):
-        if self.__colors is None:
-            self.__colors = self.create_plot_colors(self.raw_colors)
-            
-        return self.__colors
-
-
-class ColorTableReader(io.FormattedTextFileReader):
-    
-    def __init__(self, color_table):
-        io.FormattedTextFileReader.__init__(self)
-        self.color_table = color_table
-        
-    def read(self, filename):
-        self.open(filename)
-        
-        # skip two header lines
-        self.fetch_line()
-        self.fetch_line()
-        
-        w = 1.0 / 255.0
-        rgbs = []
-        k = 0
-        while self.has_next() and k < 32:
-            v = self.parse_line("A15,I3,4X,I3,4X,I3")
-            logger.debug("color [%s], r %d, g %d, b %d", v[0], v[1], v[2], v[3])
-            rgbs.append((v[1]*w, v[2]*w, v[3]*w))
-            k += 1
-        
-        self.color_table.rgbs = rgbs
-        self.close()
-        
-        return self.color_table
- 
