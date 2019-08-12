@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 import copy
 import datetime
 import logging
-import math
 import matplotlib.gridspec
 import matplotlib.pyplot as plt
 import numpy
@@ -16,6 +15,7 @@ from hysplitdata.const import HeightUnit
 from hysplitplot import cmdline, util, const, datem, plotbase, mapbox, mapproj, smooth, streetmap, multipage
 from hysplitplot.conc import helper, gisout, cntr
 from hysplitplot.conc.plot import ColorTableFactory
+from hysplitplot.toa import helper as thelper
 
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         self.LEVEL2 = 99999 # top level defaults to whole model atmosphere
         self.exposure_unit = const.ExposureUnit.CONCENTRATION # KEXP; -e
         self.KMAP = const.ConcentrationMapType.CONCENTRATION
-        self.KAVG = const.ConcentrationType.EACH_LEVEL
+        self.KAVG = const.ConcentrationType.VERTICAL_AVERAGE
         self.NDEP = const.DepositionType.TIME
         self.show_max_conc = 0
         self.mass_unit = "mass"
@@ -137,8 +137,9 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         self.exposure_unit = args.get_integer_value(["-e", "-E"], self.exposure_unit)
         self.exposure_unit = max(0, min(4, self.exposure_unit))
         
-        self.KAVG = args.get_integer_value(["-d", "-D"], self.KAVG)
-        self.KAVG = max(1, min(2, self.KAVG))
+        # KAVG is fixed.
+        #self.KAVG = args.get_integer_value(["-d", "-D"], self.KAVG)
+        #self.KAVG = max(1, min(2, self.KAVG))
         
         self.NDEP = args.get_integer_value(["-r", "-R"], self.NDEP)
         self.NDEP = max(0, min(3, self.NDEP))
@@ -325,9 +326,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         self.depo_map = None
         self.prev_forecast_time = None
         self.length_factory = None
-        self.toa_grid = None
-        self.toa_hours = None
-        self.toa_bitmasks = None
+        self.toa_generator = None
         
         self.fig = None
         self.conc_outer = None
@@ -429,7 +428,8 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
             if os.path.exists(self.settings.QFILE):
                 self.datem = datem.Datem().get_reader().read(self.settings.QFILE) 
 
-        self._prepare_toa_data(cdump)
+        self.toa_generator = thelper.TimeOfArrivalGenerator(self.time_selector, self.conc_type)
+        self.toa_generator.process_conc_data(cdump)
 
     def create_street_map(self, projection_type, use_street_map, street_map_type):
         street_map = streetmap.MapBackgroundFactory.create_instance(projection_type,
@@ -463,59 +463,6 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         self._normalize_settings(cdump)
            
         self.length_factory = util.AbstractLengthFactory.create_factory(self.settings.height_unit)
-
-    def _prepare_toa_data(self, cdump):
-        self.toa_hours = numpy.linspace(6, 72, num=12)
-        self.toa_bitmasks = [(1 << k) for k in range(len(self.toa_hours))]
-        self.toa_grid = None
-        
-        hour_index = 0
-        release_date_time = self.cdump.release_datetimes[0]
-        dt_range_lower = release_date_time
-        dt_range_upper = release_date_time + datetime.timedelta(hours=self.toa_hours[hour_index])
-        
-        for t_index in self.time_selector:
-            t_grids = helper.TimeIndexGridFilter(self.cdump.grids,
-                                                 helper.TimeIndexSelector(t_index, t_index))
-            initial_timeQ = (t_index == self.time_selector.first)
-            
-            grids_above_ground, grids_on_ground = self.conc_type.prepare_grids_for_plotting(t_grids)
-            logger.debug("grid counts: above the ground %d, on the ground %d",
-                         len(grids_above_ground), len(grids_on_ground))
-
-            self.depo_sum.add(grids_on_ground, initial_timeQ)
-                    
-            # concentration unit conversion factor
-            self.TFACT = self.settings.CONADJ
-
-            if self.conc_map.need_time_scaling():
-                f = abs(grids_above_ground[0].get_duration_in_sec())
-                self.TFACT = self.conc_map.scale_time(self.TFACT, self.conc_type, f, initial_timeQ)
-            logger.debug("CONADJ %g, TFACT %g", self.settings.CONADJ, self.TFACT)
-            
-            if t_grids[0].ending_datetime > dt_range_upper:
-                if hour_index + 1 < len(self.toa_hours):
-                    hour_index += 1
-                    dt_range_lower = dt_range_upper
-                    dt_range_upper = release_date_time + datetime.timedelta(hours=self.toa_hours[hour_index])
-                self.toa_grid.nonzero_conc_count = 0
-        
-            if t_grids[0].starting_datetime >= dt_range_lower and t_grids[0].ending_datetime <= dt_range_upper:
-                logger.debug("Time-of-arrival: start time {}, hour-index {}".format(t_grids[0].starting_datetime, hour_index))
-                if self.toa_grid is None:
-                    self.toa_grid = t_grids[0].clone_except_conc()
-                    self.toa_grid.conc = numpy.zeros(t_grids[0].conc.shape, dtype=int)
-                    self.toa_grid.nonzero_conc_count = 0
-                for g in grids_above_ground:
-                    loc = numpy.where(g.conc > 0)
-                    self.toa_grid.conc[loc] |= self.toa_bitmasks[hour_index]
-                    self.toa_grid.nonzero_conc_count += len(loc[0])
-                    
-#             grids = self.depo_sum.get_grids_to_plot(grids_on_ground, t_index == self.time_selector.last)
-#             for g in grids:
-#                 self.draw_conc_on_ground(g, ev_handlers, level_gen_depo, color_table, gis_writer, *args, **kwargs)
-        
-            self.time_period_count += 1
 
     def _normalize_settings(self, cdump):
         s = self.settings
@@ -591,23 +538,18 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         if event_handlers is not None and self.settings.interactive_mode:
             self._connect_event_handlers(event_handlers)
     
-    def make_plot_title(self, conc_grid, conc_map, lower_vert_level, upper_vert_level, starting_datetime):
+    def make_plot_title(self, toa, conc_grid, lower_vert_level, upper_vert_level):
         s = self.settings
         
         fig_title = self.labels.get("TITLE")
         
-        conc_unit = self.get_conc_unit(conc_map, s)
         fig_title += "\n"
-        fig_title += conc_map.get_map_id_line(self.conc_type, conc_unit, lower_vert_level, upper_vert_level)
+        fig_title += "Time of arrival (h) averaged between {} and {}".format(lower_vert_level, upper_vert_level)
         
-        if s.NSSLBL == 1:
-            dt = self.adjust_for_time_zone(conc_grid.parent.release_datetimes[0])
-        else:
-            dt = self.adjust_for_time_zone(starting_datetime)
-        fig_title += dt.strftime("\nIntegrated from %H%M %d %b to")
-        
-        dt = self.adjust_for_time_zone(conc_grid.ending_datetime)
-        fig_title += dt.strftime(" %H%M %d %b %Y (%Z)")
+        starting_dt = self.adjust_for_time_zone(toa.starting_datetime)
+        ending_dt = self.adjust_for_time_zone(toa.ending_datetime)
+        fig_title += "\n"
+        fig_title += toa.get_map_id(starting_dt, ending_dt)
         
         if not conc_grid.is_forward_calculation():
             fig_title += " [backward]"           
@@ -746,9 +688,9 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
 
         return mbox
 
-    def draw_toa_plot(self, conc_grid, scaled_conc, conc_map, contour_levels, prev_bitmask, fill_colors):
+    def draw_toa_plot(self, toa_data, conc_map):
         """
-        Draws a concentration contour plot and returns the contour data points.
+        Draws a time-of-arrival plot and returns the contour data points.
         """
         contour_set = None
         axes = self.conc_axes
@@ -783,13 +725,11 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
                                           self.cdump.release_locs[0],
                                           self.settings.ring_number,
                                           self.settings.ring_distance)
-          
-        logger.debug("Drawing contour at levels %s using colors %s", contour_levels, fill_colors)
         
         # draw a source marker
         if self.settings.label_source:
             x = []; y = []
-            for loc in conc_grid.parent.release_locs:
+            for loc in toa_data.grid.parent.release_locs:
                 if util.is_valid_lonlat(loc):
                     x.append(loc[0])
                     y.append(loc[1])
@@ -801,51 +741,33 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
                           horizontalalignment="center", verticalalignment="center", clip_on=True,
                           transform=self.data_crs)
 
-        if conc_grid.nonzero_conc_count > 0 and len(contour_levels) > 1:
-            cntr_levels = copy.deepcopy(contour_levels)
-            cntr_levels.reverse()
-            vals = [40, 60, 80, 100]
-            epsilon = 1.0e-7
+        if toa_data.has_data():
+            logger.debug("Drawing contour at levels %s using colors %s",
+                         toa_data.contour_levels,
+                         toa_data.fill_colors)
             
-            plotdata = numpy.zeros(scaled_conc.shape, dtype=int)
-            for k, s in enumerate(cntr_levels):
-                c = numpy.copy(scaled_conc)
-                c &= s
-                loc = numpy.where(c > 0)
-                plotdata[loc] = vals[k]
-                logger.debug("Time-of-arrival: bitmask {}, value {}, count {}".format(s, vals[k], len(loc[0])))
-            
-            if prev_bitmask is not None:
-                c = numpy.copy(scaled_conc)
-                c &= prev_bitmask
-                loc = numpy.where(c > 0)
-                plotdata[loc] = 120
-                vals.append( 120 )
-                fill_colors.append( "#808080" ) # gray
-                
-            cntr_level_vals = [epsilon] + vals
             # draw filled contours
-            contour_set = axes.contourf(conc_grid.longitudes, conc_grid.latitudes, plotdata,
-                                        cntr_level_vals,
-                                        colors=fill_colors, extend="max",
+            contour_set = axes.contourf(toa_data.longitudes, toa_data.latitudes, toa_data.data,
+                                        toa_data.contour_levels,
+                                        colors=toa_data.fill_colors, extend="max",
                                         transform=self.data_crs)
             if self.settings.color != const.ConcentrationPlotColor.COLOR_NO_LINES and \
                self.settings.color != const.ConcentrationPlotColor.BW_NO_LINES:
                 # draw contour lines
-                line_colors = ["k"] * len(fill_colors)
-                axes.contour(conc_grid.longitudes, conc_grid.latitudes, plotdata,
-                             cntr_level_vals,
+                line_colors = ["k"] * len(toa_data.fill_colors)
+                axes.contour(toa_data.longitudes, toa_data.latitudes, toa_data.data,
+                             toa_data.contour_levels,
                              colors=line_colors, linewidths=0.25,
                              transform=self.data_crs)
 
         if self.settings.show_max_conc == 1 or self.settings.show_max_conc == 3:
             clr = self._fix_map_color(conc_map.get_color_at_max(), self.settings.color)
-            conc_grid.extension.max_locs = helper.find_max_locs(conc_grid)
-            dx = conc_grid.parent.grid_deltas[0]
-            dy = conc_grid.parent.grid_deltas[1]
+            toa_data.grid.extension.max_locs = helper.find_max_locs(toa_data.grid)
+            dx = toa_data.grid.parent.grid_deltas[0]
+            dy = toa_data.grid.parent.grid_deltas[1]
             hx = 0.5 * dx
             hy = 0.5 * dy
-            for loc in conc_grid.extension.max_locs:
+            for loc in toa_data.grid.extension.max_locs:
                 x, y = loc
                 r = matplotlib.patches.Rectangle((x-hx, y-hy), dx, dy,
                                                  color=clr,
@@ -860,8 +782,8 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
             self._draw_datem(axes,
                              self.settings,
                              self.datem,
-                             conc_grid.starting_datetime,
-                             conc_grid.ending_datetime)
+                             toa_data.grid.starting_datetime,
+                             toa_data.grid.ending_datetime)
 
         return contour_set
     
@@ -938,35 +860,13 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
                                                transform=axes.transAxes)
             axes.add_patch(box)
             
-            if k < len(labels):
-                label = "NR" if level == -1.0 else labels[k]
-                axes.text(x+0.5*dx, y-0.5*dy, label, color="k", fontsize=font_sz,
-                          horizontalalignment="center", verticalalignment="center", clip_on=True,
-                          transform=axes.transAxes)
-            
-            v = conc_map.format_conc(level)
-            str = ">{0} ${1}$".format(v, conc_unit)
+            str = "{}".format(level)
             axes.text(x + dx + x, y-0.5*dy, str, color="k", fontsize=font_sz,
                       horizontalalignment="left", verticalalignment="center", clip_on=True,
                       transform=axes.transAxes)
             
             y -= dy
-            
-        if max_conc > 0 and (s.show_max_conc ==1 or s.show_max_conc == 2):
-            y -= line_skip * 0.5
-            
-            str = "Maximum: {0:.1e} ${1}$".format(max_conc, conc_unit)
-            axes.text(x, y, str, color="k", fontsize=font_sz,
-                      horizontalalignment="left", verticalalignment="top", clip_on=True,
-                      transform=axes.transAxes)
-            y -= line_skip
-            
-            str = "Minimum: {0:.1e} ${1}$".format(min_conc, conc_unit)
-            axes.text(x, y, str, color="k", fontsize=font_sz,
-                      horizontalalignment="left", verticalalignment="top", clip_on=True,
-                      transform=axes.transAxes)
-            y -= line_skip
-     
+               
         y = conc_map.draw_explanation_text(axes, x, y, small_font_sz, small_line_skip, labels)
         
         if self.settings.this_is_test:
@@ -1010,7 +910,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         contour_set.raw_colors = color_table.raw_colors
         contour_set.colors = color_table.colors
         contour_set.levels = contour_levels
-        contour_set.levels_str = [self.conc_map.format_conc(level) for level in contour_levels]
+        contour_set.levels_str = [level for level in contour_levels]
         contour_set.labels = self.contour_labels
         contour_set.concentration_unit = self.get_conc_unit(self.conc_map, self.settings)
         contour_set.min_concentration = min_conc
@@ -1028,7 +928,9 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
 
         gis_writer.write(basename, g, contour_set, lower_vert_level, upper_vert_level)
    
-    def draw_toa_above_ground(self, g, event_handlers, contour_levels, prev_bitmask, color_table, gis_writer=None, *args, **kwargs):
+    def draw_toa_above_ground(self, toa_data, event_handlers, color_table, gis_writer=None, *args, **kwargs):
+        
+        g = toa_data.grid
         
         self.layout(g, event_handlers)
         
@@ -1041,36 +943,19 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         level1 = self.length_factory.create_instance(LEVEL0)
         level2 = self.length_factory.create_instance(LEVEL2)
         
-        # Scaling should be done prior to determining the min and max concentration values. 
-        f = float(g.vert_level - LEVEL0)
-        conc_scaling_factor = self.conc_map.scale_exposure(self.TFACT, self.conc_type, f)
-        
-        min_conc, max_conc = self.conc_type.get_plot_conc_range(g, conc_scaling_factor)
-        #level_generator.set_global_min_max(self.conc_type.contour_min_conc, self.conc_type.contour_max_conc)
-        #contour_levels = level_generator.make_levels(min_conc, max_conc, self.settings.contour_level_count)
-        
-        color_offset = 0 #level_generator.compute_color_table_offset( contour_levels )
-        color_table.set_offset( color_offset )
-        
-        scaled_conc = g.conc      
-        #scaled_conc = numpy.copy(g.conc)
-        #if conc_scaling_factor != 1.0:
-        #    scaled_conc *= conc_scaling_factor
-        
-        #if self.smoothing_kernel is not None:
-        #    scaled_conc = self.smoothing_kernel.smooth_with_max_preserved(scaled_conc)
+        conc_scaling_factor = 1.0
         
         # plot title
-        title = self.make_plot_title(g, self.conc_map, level1, level2, g.starting_datetime)
+        title = self.make_plot_title(toa_data, g, level1, level2)
         self.conc_outer.set_title(title)
         self.conc_outer.set_xlabel(self.make_xlabel(g))
         
-        quad_contour_set = self.draw_toa_plot(g, scaled_conc, self.conc_map, contour_levels, prev_bitmask, color_table.colors)
-        self.draw_contour_legends(g, self.conc_map, self.contour_labels, contour_levels, color_table.colors, conc_scaling_factor)
+        quad_contour_set = self.draw_toa_plot(toa_data, self.conc_map)
+        self.draw_contour_legends(g, self.conc_map, self.contour_labels, toa_data.display_levels, toa_data.fill_colors, conc_scaling_factor)
         self.draw_bottom_text()
         
         if gis_writer is not None:
-            self._write_gisout(gis_writer, g, LEVEL0, LEVEL2, quad_contour_set, contour_levels, color_table, conc_scaling_factor)
+            self._write_gisout(gis_writer, g, LEVEL0, LEVEL2, quad_contour_set, toa_data.display_levels, color_table, conc_scaling_factor)
             
         self.conc_map.undo_scale_exposure(self.conc_type)
         
@@ -1083,53 +968,6 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         
         plt.close(self.fig)
         self.current_frame += 1
-
-    def draw_conc_on_ground(self, g, event_handlers, level_generator, color_table, gis_writer=None, *args, **kwargs):
-        
-        self.layout(g, event_handlers)
-        
-        self._turn_off_spines(self.conc_outer)
-        self._turn_off_ticks(self.conc_outer)
-       
-        level1 = self.length_factory.create_instance(0)
-        level2 = self.length_factory.create_instance(0)
- 
-        conc_scaling_factor = self.settings.DEPADJ
-        min_conc, max_conc = self.conc_type.get_plot_conc_range(g, conc_scaling_factor)
-        level_generator.set_global_min_max(self.conc_type.ground_min_conc, self.conc_type.ground_max_conc)     
-        contour_levels = level_generator.make_levels(min_conc, max_conc, self.settings.contour_level_count)
-        
-        color_offset = level_generator.compute_color_table_offset( contour_levels )
-        color_table.set_offset( color_offset )
-        
-        scaled_conc = numpy.copy(g.conc)
-        if self.settings.DEPADJ != 1.0:
-            scaled_conc *= self.settings.DEPADJ
-        
-        if self.smoothing_kernel is not None:
-            scaled_conc = self.smoothing_kernel.smooth_with_max_preserved(scaled_conc)
-        
-        # plot title
-        title = self.make_plot_title(g, self.depo_map, level1, level2, self.depo_sum.summation_from_datetime)
-        self.conc_outer.set_title(title)
-        self.conc_outer.set_xlabel(self.make_xlabel(g))
-        
-        contour_set = self.draw_toa_plot(g, scaled_conc, self.depo_map, contour_levels, color_table.colors)
-        self.draw_contour_legends(g, self.depo_map, self.contour_labels, contour_levels, color_table.colors, conc_scaling_factor)
-        self.draw_bottom_text()
-         
-        if gis_writer is not None:
-            self._write_gisout(gis_writer, g, 0, 0, contour_set, contour_levels, color_table, conc_scaling_factor)
-       
-        if self.settings.interactive_mode:
-            plt.show(*args, **kwargs)
-        else:
-            self.fig.canvas.draw()  # to get the plot spines right.
-            self.on_update_plot_extent()
-            self.plot_saver.save(self.fig, self.current_frame)
-            
-        plt.close(self.fig)
-        self.current_frame += 1       
         
     def draw(self, ev_handlers=None, *args, **kwargs):
         if self.settings.interactive_mode == False:
@@ -1149,34 +987,32 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         
         self._initialize_map_projection(self.cdump)
 
-        #self.save_toa_data(self.toa_grid.conc)
+        toa_data = self.toa_generator.make_instantaneous_data(thelper.TimeOfArrival.DAY_0, color_table)
+        self.draw_toa_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
         
-        self.draw_toa_above_ground(self.toa_grid, ev_handlers, [1, 2, 4, 8], None, color_table, gis_writer, *args, **kwargs)
-        self.draw_toa_above_ground(self.toa_grid, ev_handlers, [16, 32, 64, 128], 0x00f, color_table, gis_writer, *args, **kwargs)
-        self.draw_toa_above_ground(self.toa_grid, ev_handlers, [256, 512, 1024, 2048], 0x0ff, color_table, gis_writer, *args, **kwargs)
+        toa_data = self.toa_generator.make_instantaneous_data(thelper.TimeOfArrival.DAY_1, color_table)
+        self.draw_toa_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
+        
+        toa_data = self.toa_generator.make_instantaneous_data(thelper.TimeOfArrival.DAY_2, color_table)
+        self.draw_toa_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
+
+        toa_data = self.toa_generator.make_integrated_data(thelper.TimeOfArrival.DAY_0, color_table)
+        self.draw_toa_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
+        
+        toa_data = self.toa_generator.make_integrated_data(thelper.TimeOfArrival.DAY_1, color_table)
+        self.draw_toa_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
+        
+        toa_data = self.toa_generator.make_integrated_data(thelper.TimeOfArrival.DAY_2, color_table)
+        self.draw_toa_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
         
         gis_writer.finalize()
         self.plot_saver.close()
-
-    def save_toa_data(self, bits):
-        filename = "toa_data.txt"
-        print("WRITING DATA TO", filename)
-        with open(filename, "wt") as f:
-            nrow, ncol = bits.shape
-            for j in range(nrow):
-                row = bits[j]
-                n = 0
-                for i in range(ncol):
-                    if row[i] != 0:
-                        f.write("{} {} {}\n".format(i, j, row[i]))
-                        n += 1
-                if n > 0:
-                    f.write("\n")
 
     def get_plot_count_str(self):
         if self.plot_saver.file_count > 1:
             return "{} output files".format(self.plot_saver.file_count)
         
+        self.time_period_count = self.toa_generator.time_period_count
         s = "{} time period".format(self.time_period_count)
         if self.time_period_count > 1:
             s += "s"
