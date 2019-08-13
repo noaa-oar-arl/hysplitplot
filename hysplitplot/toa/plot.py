@@ -542,14 +542,11 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         s = self.settings
         
         fig_title = self.labels.get("TITLE")
-        
+
         fig_title += "\n"
-        fig_title += "Time of arrival (h) averaged between {} and {}".format(lower_vert_level, upper_vert_level)
-        
         starting_dt = self.adjust_for_time_zone(toa.starting_datetime)
         ending_dt = self.adjust_for_time_zone(toa.ending_datetime)
-        fig_title += "\n"
-        fig_title += toa.get_map_id(starting_dt, ending_dt)
+        fig_title += toa.get_map_id_line(lower_vert_level, upper_vert_level, starting_dt, ending_dt)
         
         if not conc_grid.is_forward_calculation():
             fig_title += " [backward]"           
@@ -987,22 +984,22 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         
         self._initialize_map_projection(self.cdump)
 
-        toa_data = self.toa_generator.make_instantaneous_data(thelper.TimeOfArrival.DAY_0, color_table)
+        toa_data = self.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_0, color_table)
+        self.draw_toa_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
+         
+        toa_data = self.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_1, color_table)
+        self.draw_toa_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
+         
+        toa_data = self.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_2, color_table)
+        self.draw_toa_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
+ 
+        toa_data = self.toa_generator.make_deposition_data(thelper.TimeOfArrival.DAY_0, color_table)
+        self.draw_toa_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
+         
+        toa_data = self.toa_generator.make_deposition_data(thelper.TimeOfArrival.DAY_1, color_table)
         self.draw_toa_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
         
-        toa_data = self.toa_generator.make_instantaneous_data(thelper.TimeOfArrival.DAY_1, color_table)
-        self.draw_toa_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
-        
-        toa_data = self.toa_generator.make_instantaneous_data(thelper.TimeOfArrival.DAY_2, color_table)
-        self.draw_toa_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
-
-        toa_data = self.toa_generator.make_integrated_data(thelper.TimeOfArrival.DAY_0, color_table)
-        self.draw_toa_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
-        
-        toa_data = self.toa_generator.make_integrated_data(thelper.TimeOfArrival.DAY_1, color_table)
-        self.draw_toa_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
-        
-        toa_data = self.toa_generator.make_integrated_data(thelper.TimeOfArrival.DAY_2, color_table)
+        toa_data = self.toa_generator.make_deposition_data(thelper.TimeOfArrival.DAY_2, color_table)
         self.draw_toa_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
         
         gis_writer.finalize()
@@ -1018,17 +1015,3 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
             s += "s"
 
         return s
-
-
-class LabelledContourLevel:
-    
-    def __init__(self, level=0.0, label="NONAME", r=1.0, g=1.0, b=1.0):
-        self.level = level
-        self.label = label
-        self.r = r
-        self.g = g
-        self.b = b
-        
-    def __repr__(self):
-        return "LabelledContourLevel({0}, {1}, r{2}, g{3}, b{4})".format(self.label, self.level, self.r, self.g, self.b)
-
