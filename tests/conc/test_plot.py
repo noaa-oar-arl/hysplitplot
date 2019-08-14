@@ -577,20 +577,6 @@ def test_ConcentrationPlot_read_data_files():
     assert p.datem is not None
 
 
-def test_ConcentrationPlot_create_street_map():
-    p = plot.ConcentrationPlot()
-    p.merge_plot_settings(None, ["-jdata/arlmap_truncated", "-idata/cdump"])
-
-    # use a projection except for WEB_MERCATOR.
-    street_map = p.create_street_map(const.MapProjection.LAMBERT, False, const.StreetMap.STAMEN_TERRAIN)
-
-    assert street_map.background_maps is not None
-    assert len(street_map.background_maps) > 0
-    assert isinstance(street_map.background_maps[0], mapfile.DrawableBackgroundMap)
-    assert street_map.background_maps[0].map.crs == mapproj.AbstractMapProjection._WGS84
-    assert street_map.fix_map_color_fn is not None
-
-
 def test_ConcentrationPlot__post_file_processing(cdump2):
     p = plot.ConcentrationPlot()
     
@@ -803,6 +789,7 @@ def test_ConcentrationPlot__initialize_map_projection():
     assert isinstance(p.projection, mapproj.AbstractMapProjection)
     assert p.settings.center_loc == pytest.approx((-84.22, 39.90))
     assert isinstance(p.street_map, streetmap.AbstractMapBackground)
+    assert p.street_map.fix_map_color_fn is not None
     assert p.initial_corners_xy == pytest.approx((-189489.0, 414083.0, -154687.0, 448885.0))
     assert p.initial_corners_lonlat == pytest.approx((-86.41419, -79.06401, 38.46890, 43.84349))
     

@@ -7,7 +7,7 @@ import pytz
 from timezonefinder import TimezoneFinder
 
 from hysplitdata.const import HeightUnit
-from hysplitplot import cmdline, const, labels, logo, stnplot, util
+from hysplitplot import cmdline, const, labels, logo, stnplot, streetmap, util
 
 
 logger = logging.getLogger(__name__)
@@ -207,6 +207,17 @@ class AbstractPlot(ABC):
     @abstractmethod
     def get_street_map_target_axes(self):
         pass
+
+    def create_street_map(self, projection, use_street_map, street_map_type):
+        street_map = streetmap.MapBackgroundFactory.create_instance(projection,
+                                                                    use_street_map,
+                                                                    street_map_type)
+        street_map.read_background_map(self.settings.map_background)
+        street_map.set_color(self.settings.map_color)
+        street_map.set_color_mode(self.settings.color)
+        street_map.set_lat_lon_label_option(self.settings.lat_lon_label_interval_option,
+                                            self.settings.lat_lon_label_interval)
+        return street_map
     
     def update_plot_extents(self, ax):
         xmin, xmax, ymin, ymax = self.projection.corners_xy = ax.axis()
@@ -219,7 +230,7 @@ class AbstractPlot(ABC):
     def on_update_plot_extent(self):
         ax = self.get_street_map_target_axes()
         self.update_plot_extents(ax)
-        self.street_map.update_extent(ax, self.projection, self.data_crs)
+        self.street_map.update_extent(ax, self.data_crs)
         if self.settings.noaa_logo:
             self._draw_noaa_logo(ax)
             

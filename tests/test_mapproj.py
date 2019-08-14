@@ -129,7 +129,7 @@ def test_AbstractMapProjection___init__():
     assert m.deltas == [1.0, 1.0]
 
     assert m.crs == None
-    assert m.crs_plate_carree is not None
+    assert m.crs_geodetic is not None
     assert m.center_loc == [-125.0, 45.0]
     assert m.corners_xy == None
     assert m.corners_lonlat == None
@@ -510,7 +510,7 @@ def test_WebMercatorProjection___init__():
     m = mapproj.WebMercatorProjection(s.map_projection, s.zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0])
     assert m.zoom_factor == 0.5
     assert m.proj_type == const.MapProjection.WEB_MERCATOR
-    assert type(m.crs).__name__ == "_EPSGProjection"
+    assert type(m.crs).__name__ == "WebMercatorCRS"
 
 
 def test_WebMercatorProjection_get_tangent_lat():
@@ -523,5 +523,37 @@ def test_WebMercatorProjection_create_crs():
     s = plot.TrajectoryPlotSettings()
     m = mapproj.WebMercatorProjection(s.map_projection, s.zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0])
     o = m.create_crs()
-    assert type(m.crs).__name__ == "_EPSGProjection"
+    assert type(m.crs).__name__ == "WebMercatorCRS"
 
+
+def test_WebMercatorCRS___init__():
+    o = mapproj.WebMercatorCRS(0.0)
+    assert o.central_longitude == pytest.approx(0.0)
+    assert o.bounds == pytest.approx( (-20037508.3, 20037508.3, -20048966.1, 20048966.1) )
+
+    o = mapproj.WebMercatorCRS(170.0)
+    assert o.central_longitude == pytest.approx(170.0)
+    assert o.bounds == pytest.approx( (-20037508.3, 20037508.3, -20048966.1, 20048966.1) )
+
+
+def test_WebMercatorCRS___repr__():
+    o = mapproj.WebMercatorCRS(170.0)
+    assert str(o) == "WebMercatorCRS(central_longitude=170.0)"
+    
+
+def test_WebMercatorCRS_x_limits():
+    o = mapproj.WebMercatorCRS(170.0)
+    assert o.x_limits == pytest.approx( (-20037508.3, 20037508.3) )
+    
+
+def test_WebMercatorCRS_y_limits():
+    o = mapproj.WebMercatorCRS(170.0)
+    assert o.y_limits == pytest.approx( (-20048966.1, 20048966.1) )
+    
+
+def test_WebMercatorCRS_threshold():
+    o = mapproj.WebMercatorCRS(170.0)
+    assert o.threshold == pytest.approx( 2*200375.083 )
+
+
+    

@@ -3,6 +3,7 @@ import cartopy.crs
 import logging
 import math
 import numpy
+import shapely
 
 from hysplitplot import util, const
 
@@ -56,7 +57,7 @@ class AbstractMapProjection(ABC):
         self.deltas = grid_deltas       # (dlon, dlat)
         #
         self.crs = None # to be created by a child class
-        self.crs_plate_carree = cartopy.crs.PlateCarree()
+        self.crs_geodetic = cartopy.crs.Geodetic()
         self.center_loc = center_loc    # (lon, lat)
         self.corners_xy = None      # [x1, x2, y1, y2]
         self.corners_lonlat = None  # [lon_left, lon_right, lat_bottom, lat_top]
@@ -69,10 +70,10 @@ class AbstractMapProjection(ABC):
             plat = -90.0
         elif plat > 90.0:
             plat = 90.0
-        return self.crs.transform_point(plon, plat, self.crs_plate_carree)
+        return self.crs.transform_point(plon, plat, self.crs_geodetic)
 
     def calc_lonlat(self, x, y):
-        return self.crs_plate_carree.transform_point(x, y, self.crs)
+        return self.crs_geodetic.transform_point(x, y, self.crs)
 
     @abstractmethod
     def get_tangent_lat(self, center_loc):
@@ -406,6 +407,7 @@ class CylindricalEquidistantProjection(AbstractMapProjection):
 
 class WebMercatorProjection(PoleExcludingProjection):
 
+
     def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
         super(WebMercatorProjection, self).__init__(map_proj, zoom_factor, center_loc, scale, grid_deltas)
         self.proj_type = const.MapProjection.WEB_MERCATOR
@@ -415,4 +417,56 @@ class WebMercatorProjection(PoleExcludingProjection):
         return 0.0
     
     def create_crs(self):
-        return cartopy.crs.epsg(3857) # Internet connection is required.
+        return WebMercatorCRS(self.reflon)
+    
+    
+class WebMercatorCRS(cartopy.crs.Projection):
+    """Derived from cartopy.crs.epsg(3857). WebMercatorCRS does not require
+       Internet connection. It can set the central longitude to a non-zero
+       value, which is useful when an extent crosses the dateline."""
+    
+    def __init__(self, central_longitude):
+        self.central_longitude = central_longitude
+        
+        globe = cartopy.crs.Globe(semimajor_axis="6378137", semiminor_axis="6378137", nadgrids="@null")
+        other_terms = [['proj', 'merc'],
+                       ['lat_ts', '0.0'], ['lon_0', central_longitude],
+                       ['x_0', '0.0'], ['y_0', '0'],
+                       ['k', '1.0'],
+                       ['units', 'm'],
+                       ['wktext', None], ['no_defs', None]]
+        super(WebMercatorCRS, self).__init__(other_terms, globe)
+        
+        minlon, maxlon = self._determine_longitude_bounds(central_longitude)
+        x0, x1, y0, y1 = (minlon, maxlon, -85.06, 85.06)
+        geodetic = cartopy.crs.Geodetic()
+        lons = numpy.array([x0, x0, x1, x1])
+        lats = numpy.array([y0, y1, y1, y0])
+        points = self.transform_points(geodetic, lons, lats)
+        x = points[:, 0]
+        y = points[:, 1]
+        self.bounds = (x.min(), x.max(), y.min(), y.max())
+
+    def __repr__(self):
+        return 'WebMercatorCRS(central_longitude={})'.format(self.central_longitude)
+
+    @property
+    def boundary(self):
+        x0, x1, y0, y1 = self.bounds
+        return shapely.geometry.LineString([(x0, y0), (x0, y1), (x1, y1), (x1, y0), (x0, y0)])
+
+    @property
+    def x_limits(self):
+        x0, x1, y0, y1 = self.bounds
+        return (x0, x1)
+
+    @property
+    def y_limits(self):
+        x0, x1, y0, y1 = self.bounds
+        return (y0, y1)
+
+    @property
+    def threshold(self):
+        x0, x1, y0, y1 = self.bounds
+        return min(x1 - x0, y1 - y0) / 100.
+

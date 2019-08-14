@@ -300,6 +300,26 @@ def test_AbstractPlot__turn_off_ticks():
         raise pytest.fail("unexpeced exception: {0}".format(ex))
 
 
+def test_AbstractPlot_create_street_map():
+    p = AbstractPlotTest()
+    # Supplement setting parameters that are not declared by the AbstractPlotSettings class.
+    p.settings.color = const.Color.COLOR
+    p.settings.map_background = "data/arlmap_truncated"
+
+    projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    projection.corners_xy = [1.0, 500.0, 1.0, 500.0]
+    projection.corners_lonlat = [-95.0, -75.0, 25.0, 45.0]
+    street_map = p.create_street_map(projection, False, const.StreetMap.STAMEN_TERRAIN)
+
+    assert street_map.fix_map_color_fn is None
+    assert street_map.projection is projection
+    #
+    assert street_map.background_maps is not None
+    assert len(street_map.background_maps) > 0
+    assert isinstance(street_map.background_maps[0], mapfile.DrawableBackgroundMap)
+    assert street_map.background_maps[0].map.crs == mapproj.AbstractMapProjection._WGS84
+    
+
 def test_AbstractPlot_update_plot_extents():
     p = AbstractPlotTest()
     p.projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
@@ -321,7 +341,7 @@ def test_AbstractPlot_on_update_plot_extent():
     p.projection.corners_xy = [-645202.80, 248127.59, -499632.13, 248127.59]
     p.projection.corners_lonlat = [-132.6424, -121.7551, 40.2331, 47.1785]
     p.target_axes = plt.axes(projection=p.projection.crs)
-    p.street_map = streetmap.HYSPLITMapBackground()
+    p.street_map = streetmap.HYSPLITMapBackground(p.projection)
 
     # See if no exception is thrown.
     try:

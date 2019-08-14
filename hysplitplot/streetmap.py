@@ -4,6 +4,7 @@ import copy
 import geopandas
 import logging
 import matplotlib.pyplot as plt
+import mercantile
 import numpy
 import os
 import shapely.geometry
@@ -20,30 +21,31 @@ logger = logging.getLogger(__name__)
 class MapBackgroundFactory:
     
     @staticmethod
-    def create_instance(projection_type, use_street_map, street_map_selector):
-        if projection_type == const.MapProjection.WEB_MERCATOR and use_street_map:
+    def create_instance(projection, use_street_map, street_map_selector):
+        if projection.proj_type == const.MapProjection.WEB_MERCATOR and use_street_map:
             if street_map_selector == const.StreetMap.STAMEN_TERRAIN:
-                o = StamenStreetMap("TERRAIN")
+                o = StamenStreetMap(projection, "TERRAIN")
             elif street_map_selector == const.StreetMap.STAMEN_TONER:
-                o = StamenStreetMap("TONER")
+                o = StamenStreetMap(projection, "TONER")
             else:
                 logger.warning("Change unknown street map type {} to 0.".format(street_map_selector))
-                o = StamenStreetMap("TERRAIN")
+                o = StamenStreetMap(projection, "TERRAIN")
         else:
-            o = HYSPLITMapBackground()
+            o = HYSPLITMapBackground(projection)
             
         return o
 
 
 class AbstractMapBackground(ABC):
     
-    def __init__(self):
+    def __init__(self, projection):
         self.map_color = "#1f77b4"
         self.color_mode = const.Color.COLOR
         self.lat_lon_label_interval_option = const.LatLonLabel.AUTO
         self.lat_lon_label_interval = 1.0
         self.fix_map_color_fn = None
         self.text_objs = []
+        self.projection = projection
     
     def set_color(self, colr):
         self.map_color = colr
@@ -70,7 +72,7 @@ class AbstractMapBackground(ABC):
         pass
 
     @abstractmethod
-    def update_extent(self, ax, projection, data_crs):
+    def update_extent(self, ax, data_crs):
         pass
     
     @abstractmethod
@@ -82,8 +84,8 @@ class HYSPLITMapBackground(AbstractMapBackground):
         
     _GRIDLINE_DENSITY = 0.25        # 4 gridlines at minimum in each direction
 
-    def __init__(self):
-        super(HYSPLITMapBackground, self).__init__()
+    def __init__(self, projection):
+        super(HYSPLITMapBackground, self).__init__(projection)
         self.background_maps = []
         self.frozen_collection_count = None
 
@@ -180,10 +182,10 @@ class HYSPLITMapBackground(AbstractMapBackground):
             clr = self._fix_map_color(o.linecolor, self.color_mode)
             fixed.plot(ax=axes, linestyle=o.linestyle, linewidth=o.linewidth, facecolor="none", edgecolor=clr)        
     
-    def update_extent(self, ax, projection, data_crs):
+    def update_extent(self, ax, data_crs):
         clr = self._fix_map_color(self.map_color, self.color_mode)
         self._update_gridlines(ax,
-                               projection,
+                               self.projection,
                                data_crs,
                                clr,
                                self.lat_lon_label_interval_option,
@@ -359,8 +361,8 @@ class HYSPLITMapBackground(AbstractMapBackground):
 
 class AbstractStreetMap(AbstractMapBackground):
     
-    def __init__(self):
-        super(AbstractStreetMap, self).__init__()
+    def __init__(self, projection):
+        super(AbstractStreetMap, self).__init__(projection)
         self.tile_widths = self._compute_tile_widths()
         self.last_extent = None
     
@@ -391,9 +393,15 @@ class AbstractStreetMap(AbstractMapBackground):
             tile_widths[k] = w; w *= 0.5
         return tile_widths
 
+    def _is_crossing_dateline(self, lonl, lonr):
+        return True if lonl > 0 and lonr < 0 else False
+
     def _compute_initial_zoom(self, lonl, latb, lonr, latt):
         """Find a zoom level that yields about 1 tile horizontally."""
-        dlon = abs(lonr - lonl)
+        if self._is_crossing_dateline(lonl, lonr):
+            dlon = 180.0 - lonl + lonr + 180.0
+        else:
+            dlon = abs(lonr - lonl)
         for k in range(len(self.tile_widths)):
             tile_count = dlon / self.tile_widths[k]
             if int(tile_count) >= 1:
@@ -405,33 +413,76 @@ class AbstractStreetMap(AbstractMapBackground):
         pass
 
     def draw_underlay(self, ax, corners_xy, crs):
-        # Nothing to do
-        pass
+        # Reset the extent for a new plot.
+        self.last_extent = None
     
-    def update_extent(self, ax, projection, data_crs):
+    def update_extent(self, ax, data_crs):
         self.draw(ax,
-                  projection.corners_xy,
-                  projection.corners_lonlat)
+                  self.projection.corners_xy,
+                  self.projection.corners_lonlat)
 
+    def _compute_tile_count(self, lonl, lonr, latb, latt, zoom):
+        logger.debug("Counting tiles for %f %f %f %f", lonl, lonr, latb, latt)
+        # Recall a longitude is in the range [-180, 180] for the Web Mercator projection. 
+        if self._is_crossing_dateline(lonl, lonr):
+            eps = 1.0e-10
+            logger.debug("Counting tiles for %f %f %f %f", lonl, latb, 180.0-eps, latt)
+            ntiles1 = contextily.howmany(lonl, latb, 180.0, latt, zoom, ll=True)
+            logger.debug("Counting tiles for %f %f %f %f", -180.0, latb, lonr, latt)
+            ntiles2 = contextily.howmany(-180.0+eps, latb, lonr, latt, zoom, ll=True)
+            ntiles = max(ntiles1, ntiles2)
+        else:
+            ntiles = contextily.howmany(lonl, latb, lonr, latt, zoom, ll=True)
+        return ntiles
+    
+    def _reproject_extent(self, extent):
+        """Project the extent in the standard Web Mercator to our CRS."""
+        x0, x1, y0, y1 = extent
+        west, south = mercantile.lnglat(x0, y0)
+        east, north = mercantile.lnglat(x1, y1)
+        logger.debug("Reprojecting extent %s or %f %f %f %f", extent, west, east, south, north)
+             
+        x0, y0 = self.projection.calc_xy(west, south)
+        x1, y1 = self.projection.calc_xy(east, north)
+        extent = x0, x1, y0, y1
+        logger.debug(" to extent %s", extent)
+        return extent
+        
+    def _fetch_tiles(self, lonl, lonr, latb, latt, zoom):
+        tiles = []
+        if self._is_crossing_dateline(lonl, lonr):
+            # Send two tile requests by dividing the longitude range at the dateline crossing.
+            eps = 1.0e-10
+            basemap1, extent1 = contextily.bounds2img(lonl, latb, 180.0-eps, latt, zoom=zoom, ll=True, url=self.tile_url)
+            extent1 = self._reproject_extent( extent1 )
+            tiles.append( [basemap1, extent1] )
+            
+            basemap2, extent2 = contextily.bounds2img(-180.0+eps, latb, lonr, latt, zoom=zoom, ll=True, url=self.tile_url)
+            extent2 = self._reproject_extent( extent2 )
+            tiles.append( [basemap2, extent2] )
+        else:    
+            basemap, extent = contextily.bounds2img(lonl, latb, lonr, latt, zoom=zoom, ll=True, url=self.tile_url)
+            extent = self._reproject_extent( extent )
+            tiles.append( [basemap, extent] )
+        logger.debug("Fetched tiles for extent(s) %s", [elem[1] for elem in tiles])
+        return tiles
+        
     def draw(self, ax, corners_xy, corners_lonlat):
         # Do nothing if the spatial extent has not changed.
         if self.last_extent == ax.axis():
             return
         
+        # Find a zoom level that does not fail HTTP pulls.
         lonl, lonr, latb, latt = corners_lonlat
         zoom = self._compute_initial_zoom(lonl, latb, lonr, latt)
-            
-        # The return value of ax.axis() is assumed to be the same as corners_xy. 
-        xmin, xmax, ymin, ymax = corners_xy
         
-        # Find a zoom level that does not fail HTTP pulls.
         ntiles = 0
         continueQ = True
         while continueQ:
             try:
-                ntiles = contextily.howmany(xmin, ymin, xmax, ymax, zoom)
+                ntiles = self._compute_tile_count(lonl, lonr, latb, latt, zoom)
                 if ntiles > 0:
-                    basemap, extent = contextily.bounds2img(xmin, ymin, xmax, ymax, zoom=zoom, url=self.tile_url)
+                    tiles = self._fetch_tiles(lonl, lonr, latb, latt, zoom)
                 continueQ = False
             except urllib.error.HTTPError as ex:
                 logger.error("Could not pull street map images at zoom level {}: {}".format(zoom, ex))
@@ -442,17 +493,16 @@ class AbstractStreetMap(AbstractMapBackground):
 
         if ntiles > 0:
             # Ad hoc fix because ax.imshow() incorrectly shows the basemap.
-            if 0 == 1:
-                ax.imshow(basemap, extent=extent, interpolation="bilinear")
-            else:
-                saved = None if ax is plt.gca() else plt.gca()
-                if saved is not None:
-                    plt.sca(ax)
-                        
+            saved = None if ax is plt.gca() else plt.gca()
+            if saved is not None:
+                plt.sca(ax)
+
+            for tile in tiles:
+                basemap, extent = tile                        
                 plt.imshow(basemap, extent=extent, interpolation='bilinear')
                     
-                if saved is not None:
-                    plt.sca(saved)
+            if saved is not None:
+                plt.sca(saved)
         
             self.last_extent = corners_xy 
             
@@ -472,8 +522,8 @@ class StamenStreetMap(AbstractStreetMap):
     urls = {"TERRAIN": contextily.sources.ST_TERRAIN,
             "TONER": contextily.sources.ST_TONER_LITE}
     
-    def __init__(self, stamen_type):
-        super(StamenStreetMap, self).__init__()
+    def __init__(self, projection, stamen_type):
+        super(StamenStreetMap, self).__init__(projection)
         if stamen_type not in StamenStreetMap.urls:
             logger.warning("Change unknown type '%s' to 'TERRAIN'", stamen_type)
             stamen_type = "TERRAIN"

@@ -213,17 +213,6 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         elif self.labels.has("TZONE"):
             self.time_zone = pytz.timezone( self.labels.get("TZONE") )
             
-    def create_street_map(self, projection_type, use_street_map, street_map_type):
-        street_map = streetmap.MapBackgroundFactory.create_instance(projection_type,
-                                                                    use_street_map,
-                                                                    street_map_type)
-        street_map.read_background_map(self.settings.map_background)
-        street_map.set_color(self.settings.map_color)
-        street_map.set_color_mode(self.settings.color)
-        street_map.set_lat_lon_label_option(self.settings.lat_lon_label_interval_option,
-                                            self.settings.lat_lon_label_interval)
-        return street_map
-
     @staticmethod
     def has_terrain_profile(tdump_list):
         for tdump in tdump_list:
@@ -287,7 +276,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
 
         # The map projection might have changed to avoid singularities.
         if self.street_map is None or self.settings.map_projection != self.projection.proj_type:
-            self.street_map = self.create_street_map(self.projection.proj_type,
+            self.street_map = self.create_street_map(self.projection,
                                                      self.settings.use_street_map,
                                                      self.settings.street_map_type)
         

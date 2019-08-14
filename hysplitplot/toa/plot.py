@@ -431,18 +431,6 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         self.toa_generator = thelper.TimeOfArrivalGenerator(self.time_selector, self.conc_type)
         self.toa_generator.process_conc_data(cdump)
 
-    def create_street_map(self, projection_type, use_street_map, street_map_type):
-        street_map = streetmap.MapBackgroundFactory.create_instance(projection_type,
-                                                                    use_street_map,
-                                                                    street_map_type)
-        street_map.read_background_map(self.settings.map_background)
-        street_map.set_color(self.settings.map_color)
-        street_map.set_color_mode(self.settings.color)
-        street_map.set_lat_lon_label_option(self.settings.lat_lon_label_interval_option,
-                                            self.settings.lat_lon_label_interval)
-        street_map.override_fix_map_color_fn(TimeOfArrivalPlot._fix_map_color)
-        return street_map
-    
     def _post_file_processing(self, cdump):
         
         self.conc_type.initialize(cdump,
@@ -622,9 +610,10 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
 
         # The map projection might have changed to avoid singularities.
         if self.street_map is None or self.settings.map_projection != self.projection.proj_type:
-            self.street_map = self.create_street_map(self.projection.proj_type,
+            self.street_map = self.create_street_map(self.projection,
                                                      self.settings.use_street_map,
                                                      self.settings.street_map_type)
+            self.street_map.override_fix_map_color_fn(TimeOfArrivalPlot._fix_map_color)
             
         self.settings.map_projection = self.projection.proj_type
         self.initial_corners_xy = copy.deepcopy(self.projection.corners_xy)

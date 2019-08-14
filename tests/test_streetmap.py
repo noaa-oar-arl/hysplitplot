@@ -9,10 +9,26 @@ import shapely.geometry
 from hysplitplot import const, mapbox, mapfile, mapproj, streetmap
 
 
+@pytest.fixture
+def web_merc_proj():
+    projection = mapproj.WebMercatorProjection(const.MapProjection.WEB_MERCATOR, 0.5, [166.739998, -42.369147], 1.3, [1.0, 1.0])
+    projection.corners_xy = (-960687.0, 4469478.0, -7931520.0, -2501355.0)
+    projection.corners_lonlat = (142.35, -168.87, -57.8292, -21.9153)
+    return projection
+
+
+@pytest.fixture
+def lambert_proj():
+    projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    projection.corners_xy = [1.0, 500.0, 1.0, 500.0]
+    projection.corners_lonlat = [-95.0, -75.0, 25.0, 45.0]
+    return projection
+
+
 class AbstractMapBackgroundTest(streetmap.AbstractMapBackground):
     
-    def __init__(self):
-        super(AbstractMapBackgroundTest, self).__init__()
+    def __init__(self, projection):
+        super(AbstractMapBackgroundTest, self).__init__(projection)
     
     def draw_underlay(self, ax, corners_xy, crs):
         pass
@@ -26,8 +42,8 @@ class AbstractMapBackgroundTest(streetmap.AbstractMapBackground):
 
 class AbstractStreetMapTest(streetmap.AbstractStreetMap):
     
-    def __init__(self):
-        super(AbstractStreetMapTest, self).__init__()
+    def __init__(self, projection):
+        super(AbstractStreetMapTest, self).__init__(projection)
     
     @property
     def min_zoom(self):
@@ -47,31 +63,32 @@ class AbstractStreetMapTest(streetmap.AbstractStreetMap):
     
     
     
-def test_MapBackgroundFactory_create_instance():
+def test_MapBackgroundFactory_create_instance(web_merc_proj):
     # when use_street_map is false.
-    o = streetmap.MapBackgroundFactory.create_instance(const.MapProjection.WEB_MERCATOR, False, 0)
+    o = streetmap.MapBackgroundFactory.create_instance(web_merc_proj, False, 0)
     assert isinstance(o, streetmap.HYSPLITMapBackground)
     
-    o = streetmap.MapBackgroundFactory.create_instance(const.MapProjection.WEB_MERCATOR, True, const.StreetMap.STAMEN_TERRAIN)
+    o = streetmap.MapBackgroundFactory.create_instance(web_merc_proj, True, const.StreetMap.STAMEN_TERRAIN)
     assert isinstance(o, streetmap.StamenStreetMap)
     assert o.tile_url == contextily.sources.ST_TERRAIN
         
-    o = streetmap.MapBackgroundFactory.create_instance(const.MapProjection.WEB_MERCATOR, True, const.StreetMap.STAMEN_TONER)
+    o = streetmap.MapBackgroundFactory.create_instance(web_merc_proj, True, const.StreetMap.STAMEN_TONER)
     assert isinstance(o, streetmap.StamenStreetMap)
     assert o.tile_url == contextily.sources.ST_TONER_LITE
     
     # when an invalid street map type is used.
-    o = streetmap.MapBackgroundFactory.create_instance(const.MapProjection.WEB_MERCATOR, True, 999999)
+    o = streetmap.MapBackgroundFactory.create_instance(web_merc_proj, True, 999999)
     assert isinstance(o, streetmap.StamenStreetMap)
     assert o.tile_url == contextily.sources.ST_TERRAIN
 
     # when a non-WEB-MERCATOR projection is used.
-    o = streetmap.MapBackgroundFactory.create_instance(const.MapProjection.POLAR, True, const.StreetMap.STAMEN_TERRAIN)
+    m = mapproj.PolarProjection(const.MapProjection.POLAR, 0.5, [-125.0, 85.0], 1.3, [1.0, 1.0])
+    o = streetmap.MapBackgroundFactory.create_instance(m, True, const.StreetMap.STAMEN_TERRAIN)
     assert isinstance(o, streetmap.HYSPLITMapBackground)
     
 
-def test_AbstractMapBackground___init__():
-    o = AbstractMapBackgroundTest()
+def test_AbstractMapBackground___init__(web_merc_proj):
+    o = AbstractMapBackgroundTest(web_merc_proj)
     assert o.map_color == "#1f77b4"
     assert o.color_mode == const.Color.COLOR
     assert o.lat_lon_label_interval_option == const.LatLonLabel.AUTO
@@ -80,29 +97,29 @@ def test_AbstractMapBackground___init__():
     assert len(o.text_objs) == 0
     
 
-def test_AbstractMapBackground_set_color():
-    o = AbstractMapBackgroundTest()
+def test_AbstractMapBackground_set_color(web_merc_proj):
+    o = AbstractMapBackgroundTest(web_merc_proj)
     o.set_color("r")
     assert o.map_color == "r"
 
 
-def test_AbstractMapBackground_set_color_mode():
-    o = AbstractMapBackgroundTest()
+def test_AbstractMapBackground_set_color_mode(web_merc_proj):
+    o = AbstractMapBackgroundTest(web_merc_proj)
     assert o.color_mode == const.Color.COLOR
     o.set_color_mode( const.Color.BLACK_AND_WHITE )
     assert o.color_mode == const.Color.BLACK_AND_WHITE
 
 
-def test_AbstractMapBackground_override_fix_map_color_fn():
-    o = AbstractMapBackgroundTest()
+def test_AbstractMapBackground_override_fix_map_color_fn(web_merc_proj):
+    o = AbstractMapBackgroundTest(web_merc_proj)
     assert o.fix_map_color_fn is None
     o.override_fix_map_color_fn(lambda clr, mode: "b")
     assert o.fix_map_color_fn is not None
     assert o.fix_map_color_fn("r", 3) == "b"
 
 
-def test_AbstractMapBackground_set_lat_lon_label_option():
-    o = AbstractMapBackgroundTest()
+def test_AbstractMapBackground_set_lat_lon_label_option(web_merc_proj):
+    o = AbstractMapBackgroundTest(web_merc_proj)
     assert o.lat_lon_label_interval_option == const.LatLonLabel.AUTO
     assert o.lat_lon_label_interval == pytest.approx( 1.0 )
     o.set_lat_lon_label_option( const.LatLonLabel.SET, 0.25 )
@@ -110,8 +127,8 @@ def test_AbstractMapBackground_set_lat_lon_label_option():
     assert o.lat_lon_label_interval == pytest.approx( 0.25 )
 
 
-def test_AbstractMapBackground_clear_text_objs():
-    o = AbstractMapBackgroundTest()
+def test_AbstractMapBackground_clear_text_objs(web_merc_proj):
+    o = AbstractMapBackgroundTest(web_merc_proj)
     axes = plt.axes()
     t = axes.text(0, 0, "test")
     o.text_objs.append(t)
@@ -123,15 +140,15 @@ def test_AbstractMapBackground_clear_text_objs():
     plt.close(axes.figure)
 
     
-def test_HYSPLITMapBackground___init__():
-    o = streetmap.HYSPLITMapBackground()
+def test_HYSPLITMapBackground___init__(lambert_proj):
+    o = streetmap.HYSPLITMapBackground(lambert_proj)
     assert o._GRIDLINE_DENSITY == pytest.approx( 0.25 )
     assert len(o.background_maps) == 0
     assert hasattr(o, "frozen_collection_count") and o.frozen_collection_count is None
 
  
-def test_HYSPLITMapBackground_read_background_map():
-    o = streetmap.HYSPLITMapBackground()
+def test_HYSPLITMapBackground_read_background_map(lambert_proj):
+    o = streetmap.HYSPLITMapBackground(lambert_proj)
     o.read_background_map("data/arlmap_truncated")
     maps = o.background_maps
 
@@ -146,8 +163,8 @@ def test_HYSPLITMapBackground__fix_arlmap_filename():
     assert streetmap.HYSPLITMapBackground._fix_arlmap_filename("data/nonexistent") == None
 
 
-def test_HYSPLITMapBackground__fix_map_color():
-    o = streetmap.HYSPLITMapBackground()
+def test_HYSPLITMapBackground__fix_map_color(lambert_proj):
+    o = streetmap.HYSPLITMapBackground(lambert_proj)
 
     color_mode = const.Color.BLACK_AND_WHITE
     assert o._fix_map_color('#6699cc', color_mode) == 'k' # black
@@ -162,16 +179,16 @@ def test_HYSPLITMapBackground__fix_map_color():
     assert o._fix_map_color('#6699cc', color_mode) == 'r'
 
 
-def test_HYSPLITMapBackground__is_crossing_bounds():
-    o = streetmap.HYSPLITMapBackground()
+def test_HYSPLITMapBackground__is_crossing_bounds(lambert_proj):
+    o = streetmap.HYSPLITMapBackground(lambert_proj)
     outside = lambda x: x < -10 or x > 10
     assert o._is_crossing_bounds([6, 8, 10, -9], outside) == False
     assert o._is_crossing_bounds([-5, -2, 2, 5], outside) == False
     assert o._is_crossing_bounds([8, 10, 12, -10], outside) == True
 
 
-def test_HYSPLITMapBackground__remove_spurious_hlines():
-    o = streetmap.HYSPLITMapBackground()
+def test_HYSPLITMapBackground__remove_spurious_hlines(lambert_proj):
+    o = streetmap.HYSPLITMapBackground(lambert_proj)
     corners_xy = [-50, 50, -80, 80]
     data_crs = cartopy.crs.PlateCarree()
     
@@ -237,26 +254,21 @@ def test_HYSPLITMapBackground__remove_spurious_hlines():
         assert str(ex).startswith("Unexpected geometry type")
 
 
-def test_HYSPLITMapBackground_draw_underlay():
-    o = streetmap.HYSPLITMapBackground()
-        
-    projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
-    projection.corners_xy = [1.0, 500.0, 1.0, 500.0]
-    projection.corners_lonlat = [-95.0, -75.0, 25.0, 45.0]
+def test_HYSPLITMapBackground_draw_underlay(lambert_proj):
+    o = streetmap.HYSPLITMapBackground(lambert_proj)
     data_crs = cartopy.crs.PlateCarree()
-    
-    axes = plt.axes(projection=projection.crs)
+    axes = plt.axes(projection=lambert_proj.crs)
 
     # with no map
     try:
-        o.draw_underlay(axes, projection.corners_xy, data_crs)
+        o.draw_underlay(axes, lambert_proj.corners_xy, data_crs)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
 
     # with an arlmap
     o.read_background_map("data/arlmap_truncated")
     try:
-        o.draw_underlay(axes, projection.corners_xy, data_crs)
+        o.draw_underlay(axes, lambert_proj.corners_xy, data_crs)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
     
@@ -264,39 +276,29 @@ def test_HYSPLITMapBackground_draw_underlay():
     os.chdir("data")
     o.read_background_map("shapefiles_arl.txt")
     try:
-        o.draw_underlay(axes, projection.corners_xy, data_crs)
+        o.draw_underlay(axes, lambert_proj.corners_xy, data_crs)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
     os.chdir("..")
     plt.close(axes.figure)
 
 
-def test_HYSPLITMapBackground_update_extent():
-    o = streetmap.HYSPLITMapBackground()
-    
-    projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
-    projection.corners_xy = [1.0, 500.0, 1.0, 500.0]
-    projection.corners_lonlat = [-95.0, -75.0, 25.0, 45.0]
+def test_HYSPLITMapBackground_update_extent(lambert_proj):
+    o = streetmap.HYSPLITMapBackground(lambert_proj)
     data_crs = cartopy.crs.PlateCarree()
-    
-    axes = plt.axes(projection=projection.crs)
+    axes = plt.axes(projection=lambert_proj.crs)
 
     try:
-        o.update_extent(axes, projection, data_crs)
+        o.update_extent(axes, data_crs)
         plt.close(axes.figure)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
    
 
-def test_HYSPLITMapBackground__erase_gridlines():
-    o = streetmap.HYSPLITMapBackground()
-    
-    projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
-    projection.corners_xy = [1.0, 500.0, 1.0, 500.0]
-    projection.corners_lonlat = [-95.0, -75.0, 25.0, 45.0]
+def test_HYSPLITMapBackground__erase_gridlines(lambert_proj):
+    o = streetmap.HYSPLITMapBackground(lambert_proj)
     data_crs = cartopy.crs.PlateCarree()
-    
-    axes = plt.axes(projection=projection.crs)
+    axes = plt.axes(projection=lambert_proj.crs)
 
     axes.collections.append( 0 )
 
@@ -314,18 +316,13 @@ def test_HYSPLITMapBackground__erase_gridlines():
     plt.close(axes.figure)
         
 
-def test_HYSPLITMapBackground__update_gridlines():
-    o = streetmap.HYSPLITMapBackground()
-    
-    projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
-    projection.corners_xy = [1.0, 500.0, 1.0, 500.0]
-    projection.corners_lonlat = [-95.0, -75.0, 25.0, 45.0]
+def test_HYSPLITMapBackground__update_gridlines(lambert_proj):
+    o = streetmap.HYSPLITMapBackground(lambert_proj)
     data_crs = cartopy.crs.PlateCarree()
-    
-    axes = plt.axes(projection=projection.crs)
+    axes = plt.axes(projection=lambert_proj.crs)
 
     try:
-        o._update_gridlines(axes, projection, data_crs, 'k', const.LatLonLabel.AUTO, 1.0)
+        o._update_gridlines(axes, lambert_proj, data_crs, 'k', const.LatLonLabel.AUTO, 1.0)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
     
@@ -334,15 +331,15 @@ def test_HYSPLITMapBackground__update_gridlines():
     plt.close(axes.figure)
 
 
-def test_HYSPLITMapBackground__get_gridline_spacing():
-    o = streetmap.HYSPLITMapBackground()
+def test_HYSPLITMapBackground__get_gridline_spacing(lambert_proj):
+    o = streetmap.HYSPLITMapBackground(lambert_proj)
     assert o._get_gridline_spacing([-130.0, -110.0, 45.0, 55.0], const.LatLonLabel.NONE, 1.0) == 0.0
     assert o._get_gridline_spacing([-130.0, -110.0, 45.0, 55.0], const.LatLonLabel.SET, 3.14) == 3.14
     assert o._get_gridline_spacing([-130.0, -110.0, 45.0, 55.0], const.LatLonLabel.AUTO, 1.0) == 5.0
     
     
-def test_HYSPLITMapBackground__calc_gridline_spacing():
-    o = streetmap.HYSPLITMapBackground()
+def test_HYSPLITMapBackground__calc_gridline_spacing(lambert_proj):
+    o = streetmap.HYSPLITMapBackground(lambert_proj)
     assert o._calc_gridline_spacing([-130.0, -110.0, 45.0, 55.0]) == 5.0
     assert o._calc_gridline_spacing([-120.0, -110.0, 35.0, 55.0]) == 5.0
     # across the dateline
@@ -357,8 +354,6 @@ def test_HYSPLITMapBackground__collect_tick_values():
 
 
 def test_HYSPLITMapBackground__draw_latlon_labels():
-    o = streetmap.HYSPLITMapBackground()
-    
     projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
     map_box = mapbox.MapBox()
     map_box.allocate()
@@ -366,6 +361,8 @@ def test_HYSPLITMapBackground__draw_latlon_labels():
     map_box.determine_plume_extent()
     projection.do_initial_estimates(map_box, [-125.0, 45.0])
     
+    o = streetmap.HYSPLITMapBackground(projection)
+
     data_crs = cartopy.crs.PlateCarree()
     
     axes = plt.axes()
@@ -377,14 +374,14 @@ def test_HYSPLITMapBackground__draw_latlon_labels():
         raise pytest.fail("unexpeced exception: {0}".format(ex))
 
 
-def test_AbstractStreetMap___init__():
-    o = AbstractStreetMapTest()
+def test_AbstractStreetMap___init__(web_merc_proj):
+    o = AbstractStreetMapTest(web_merc_proj)
     assert len(o.tile_widths) > 0
     assert o.last_extent is None
 
 
-def test_AbstractStreetMap__compute_tile_widths():
-    o = AbstractStreetMapTest()
+def test_AbstractStreetMap__compute_tile_widths(web_merc_proj):
+    o = AbstractStreetMapTest(web_merc_proj)
     w = o._compute_tile_widths()
     assert o.min_zoom == 0
     assert o.max_zoom == 15
@@ -396,38 +393,75 @@ def test_AbstractStreetMap__compute_tile_widths():
     assert w[4] == pytest.approx(  22.5 )
     
 
-def test_AbstractStreetMap__compute_initial_zoom():
-    o = AbstractStreetMapTest()
+def test_AbstractStreetMap__is_crossing_dateline(web_merc_proj):
+    o = AbstractStreetMapTest(web_merc_proj)
+    assert o._is_crossing_dateline(150.0, -170.0) == True
+    assert o._is_crossing_dateline(-10.0, 10.0) == False
+
+
+def test_AbstractStreetMap__compute_initial_zoom(web_merc_proj):
+    o = AbstractStreetMapTest(web_merc_proj)
     latb = 30.0; latt = 35.0;
     assert o._compute_initial_zoom(0.0, latb, 360.0, latt) == 0
     assert o._compute_initial_zoom(0.0, latb, 185.0, latt) == 1
     assert o._compute_initial_zoom(0.0, latb, 180.0, latt) == 1
     assert o._compute_initial_zoom(0.0, latb,  95.0, latt) == 2
     assert o._compute_initial_zoom(0.0, latb,  90.0, latt) == 2
+    assert o._compute_initial_zoom(135.0, latb, -135.0, latt) == 2
 
 
-def test_AbstractStreetMap_update_extent():
-    o = AbstractStreetMapTest()
-    
-    projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
-    projection.corners_xy = [1.0, 500.0, 1.0, 500.0]
-    projection.corners_lonlat = [-95.0, -75.0, 25.0, 45.0]
+def test_AbstractStreetMap_draw_underlay(web_merc_proj):
+    o = AbstractStreetMapTest(web_merc_proj)
+    o.last_extent = (1.0, 2.0, 3.0, 4.0)
+    o.draw_underlay(None, (0.1, 0.2, 0.3, 0.4), None)
+    assert o.last_extent is None
+
+
+def test_AbstractStreetMap_update_extent(web_merc_proj):
+    o = AbstractStreetMapTest(web_merc_proj)
     data_crs = cartopy.crs.PlateCarree()
     
-    axes = plt.axes(projection=projection.crs)
+    axes = plt.axes(projection=web_merc_proj.crs)
 
     try:
-        o.update_extent(axes, projection, data_crs)
+        o.update_extent(axes, data_crs)
     except Exception as ex:
         raise pytest.fail("unexpeced exception: {0}".format(ex))
+    
+    assert o.projection is web_merc_proj
     
     plt.close(axes.figure)
 
 
-def test_AbstractStreetMap_draw():
-    ax = plt.axes()
+def test_AbstractStreetMap__compute_tile_count(web_merc_proj):
+    o = AbstractStreetMapTest(web_merc_proj)
+    assert o._compute_tile_count(-20.0, 20.0, 35.0, 65.0, 3) == 4
+    assert o._compute_tile_count(142.35, -168.87, -58.07, -21.50, 3) == 2
+
+
+def test_AbstractStreetMap__reproject_extent(web_merc_proj):
+    o = AbstractStreetMapTest(web_merc_proj)
+
+    ext = o._reproject_extent( (15028131.3, 20037508.3, -10018754.2, 0.0) )
+    assert ext == pytest.approx( (-3533280.4, 1476096.6, -10018754.2, 0.0) )
+
+
+def test_AbstractStreetMap__fetch_tiles(web_merc_proj):
+    o = AbstractStreetMapTest(web_merc_proj)
+    
+    t = o._fetch_tiles(142.35, -168.87, -57.8292, -21.9153, 2)
+    assert len(t) == 2
+    assert t[0][1] == pytest.approx( (-8542657.5,  1476096.7, -10018754.2, -1.4162309e-09) )
+    assert t[1][1] == pytest.approx( ( 1476096.7, 11494850.8, -10018754.2, -1.4162309e-09) )
+
+
+def test_AbstractStreetMap_draw(lambert_proj):
+    data_crs = cartopy.crs.PlateCarree()
+    
+    ax = plt.axes(projection=lambert_proj.crs)
     ax.axis( (-85.0, -80.0, 30.0, 40.0) )
-    o = AbstractStreetMapTest()
+    o = AbstractStreetMapTest(lambert_proj)
+    assert o.projection is lambert_proj
 
     try:
         corners_xy = (-85.0, -80.0, 30.0, 40.0)
@@ -440,20 +474,20 @@ def test_AbstractStreetMap_draw():
     assert o.last_extent is not None
 
 
-def test_StamenStreetMap___init__():
-    o = streetmap.StamenStreetMap("TERRAIN")
+def test_StamenStreetMap___init__(web_merc_proj):
+    o = streetmap.StamenStreetMap(web_merc_proj, "TERRAIN")
     assert o.min_zoom == 0
     assert o.max_zoom == 15
     assert o.tile_url == contextily.sources.ST_TERRAIN
     assert o.attribution.startswith("Map tiles by Stamen Design,")
 
-    o = streetmap.StamenStreetMap("TONER")
+    o = streetmap.StamenStreetMap(web_merc_proj, "TONER")
     assert o.min_zoom == 0
     assert o.max_zoom == 15
     assert o.tile_url == contextily.sources.ST_TONER_LITE
     assert o.attribution.startswith("Map tiles by Stamen Design,")
 
-    o = streetmap.StamenStreetMap("UNKNOWN")
+    o = streetmap.StamenStreetMap(web_merc_proj, "UNKNOWN")
     assert o.min_zoom == 0
     assert o.max_zoom == 15
     assert o.tile_url == contextily.sources.ST_TERRAIN

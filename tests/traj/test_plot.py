@@ -338,20 +338,6 @@ def test_TrajectoryPlot_read_data_files():
     assert p.time_zone is not None
     
 
-def test_TrajectoryPlot_create_street_map():
-    p = plot.TrajectoryPlot()
-    p.merge_plot_settings("data/default_tplot", ["-jdata/arlmap_truncated", "-idata/tdump"])
-
-    # use a projection except for WEB_MERCATOR.
-    street_map = p.create_street_map(const.MapProjection.LAMBERT, False, const.StreetMap.STAMEN_TERRAIN)
-
-    assert street_map.background_maps is not None
-    assert len(street_map.background_maps) > 0
-    assert isinstance(street_map.background_maps[0], mapfile.DrawableBackgroundMap)
-    assert street_map.background_maps[0].map.crs == mapproj.AbstractMapProjection._WGS84
-    assert street_map.fix_map_color_fn is None
-
-
 def test_TrajectoryPlot_has_terrain_profile(plotData):
     assert plot.TrajectoryPlot.has_terrain_profile([plotData]) == False
 
@@ -460,6 +446,7 @@ def test_TrajectoryPlot__initialize_map_projection():
 
     assert isinstance(p.projection, mapproj.AbstractMapProjection)
     assert isinstance(p.street_map, streetmap.AbstractMapBackground)
+    assert p.street_map.fix_map_color_fn is None
     assert p.initial_corners_xy == pytest.approx((-171532.0, 573785.0, -421432.0, 151889.0))
     assert p.initial_corners_lonlat == pytest.approx((-91.92366, -83.13186, 36.15948, 41.16591))
 
