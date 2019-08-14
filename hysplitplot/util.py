@@ -53,12 +53,16 @@ def sign(a, b):
 def nearest_int(a):
     return int(round(a))
 
-def make_color(r, g, b):
+def make_color(r, g, b, x = 1.0):
     ir = nearest_int(r*255)
     ig = nearest_int(g*255)
     ib = nearest_int(b*255)
-    return "#{:02x}{:02x}{:02x}".format(ir, ig, ib)
-
+    ix = nearest_int(x*255)
+    if ix == 255:
+        return "#{:02x}{:02x}{:02x}".format(ir, ig, ib)
+    else:
+        return "#{:02x}{:02x}{:02x}{:02x}".format(ir, ig, ib, ix)
+    
 def make_int_if_same(a):
     ia = int(a)
     return ia if float(ia) == a else a

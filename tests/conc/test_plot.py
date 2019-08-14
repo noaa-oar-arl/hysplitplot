@@ -1088,12 +1088,16 @@ def test_ConcentrationPlot_get_plot_count_str():
     
 
 def test_LabelledContourLevel___init__():
-    o = plot.LabelledContourLevel(10.0, "USER1", 0.5, 0.6, 0.7)
+    o = plot.LabelledContourLevel(10.0, "USER1", 0.5, 0.6, 0.7, 0.8)
     assert o.level == 10.0
     assert o.label == "USER1"
     assert o.r == 0.5
     assert o.g == 0.6
     assert o.b == 0.7
+    assert o.alpha == 0.8
+    
+    o = plot.LabelledContourLevel(10.0, "USER1", 0.5, 0.6, 0.7)
+    assert o.alpha == 1.0
 
 
 def test_LabelledContourLevel___repr__():
@@ -1473,7 +1477,13 @@ def test_ColorTable_create_plot_colors():
     assert len(clrs) == 2
     assert clrs[0] == "#808080"
     assert clrs[1] == "#ffffff"
-    
+
+    # include alpha
+    clrs = plot.ColorTable.create_plot_colors([(.5, .5, .5, 0.0), (1., 1., 1., 0.5)])
+    assert len(clrs) == 2
+    assert clrs[0] == "#80808000"
+    assert clrs[1] == "#ffffff80"
+
 
 def test_ColorTable_set_offset():
     o = plot.ColorTable(4)
@@ -1633,7 +1643,7 @@ def test_DefaultChemicalThresholdColorTable_colors():
 def test_UserColorTable___init__(contourLevels):
     o = plot.UserColorTable(contourLevels)
     assert len(o.rgbs) == 4
-    assert o.rgbs[0] == pytest.approx((0.4, 0.4, 0.4))
+    assert o.rgbs[0] == pytest.approx((0.4, 0.4, 0.4, 1.0))
 
 
 def test_UserColorTable_raw_colors(contourLevels):

@@ -1110,12 +1110,13 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
 class LabelledContourLevel:
     
-    def __init__(self, level=0.0, label="NONAME", r=1.0, g=1.0, b=1.0):
+    def __init__(self, level=0.0, label="NONAME", r=1.0, g=1.0, b=1.0, alpha=1.0):
         self.level = level
         self.label = label
         self.r = r
         self.g = g
         self.b = b
+        self.alpha = alpha
         
     def __repr__(self):
         return "LabelledContourLevel({0}, {1}, r{2}, g{3}, b{4})".format(self.label, self.level, self.r, self.g, self.b)
@@ -1380,7 +1381,10 @@ class ColorTable:
        
     @staticmethod
     def create_plot_colors(rgbs):
-        return [util.make_color(o[0], o[1], o[2]) for o in rgbs]
+        if len(rgbs[0]) == 4:
+            return [util.make_color(o[0], o[1], o[2], o[3]) for o in rgbs]
+        else:
+            return [util.make_color(o[0], o[1], o[2]) for o in rgbs]
 
     def set_offset(self, offset):
         self.offset = offset if self.use_offset else 0
@@ -1469,7 +1473,7 @@ class UserColorTable(ColorTable):
     
     def __init__(self, contour_levels):
         ColorTable.__init__(self, len(contour_levels))
-        self.rgbs = [(o.r, o.g, o.b) for o in contour_levels]
+        self.rgbs = [(o.r, o.g, o.b, o.alpha) for o in contour_levels]
         self.__colors = None
     
     @property

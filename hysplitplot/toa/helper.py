@@ -146,7 +146,7 @@ class TimeOfArrival(ABC):
 
     def create_contour(self, toa_bits, toa_bitmasks, toa_hours, prev_bitmask, fill_colors):
         self.grid.conc = numpy.zeros(toa_bits.shape, dtype=int)
-        self.fill_colors = copy.copy( fill_colors )
+        
         contour_bitmasks = copy.copy( toa_bitmasks )
         contour_bitmasks.reverse()
         
@@ -164,8 +164,15 @@ class TimeOfArrival(ABC):
             loc = numpy.where(c > 0)
             self.grid.conc[loc] = 120
             contour_values.append( 120 )
-            self.fill_colors.append( "#808080" ) # gray
-                
+
+        n = len(contour_values) - len(fill_colors)
+        if n <= 0:
+            self.fill_colors = fill_colors[0:len(contour_values)]
+        else:
+            self.fill_colors = copy.copy( fill_colors )
+            for k in range(n):
+                self.fill_colors.append( "#808080" ) # add gray
+
         self.contour_levels = [1.0e-7] + contour_values
         
         self.display_levels = []

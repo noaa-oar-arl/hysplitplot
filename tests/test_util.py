@@ -44,6 +44,7 @@ def test_nearest_int():
 
 def test_make_color():
     assert util.make_color(0.4, 0.6, 0.8) == "#6699cc"
+    assert util.make_color(0.4, 0.6, 0.8, 0.5) == "#6699cc80"
 
 
 def test_make_int_if_same():
