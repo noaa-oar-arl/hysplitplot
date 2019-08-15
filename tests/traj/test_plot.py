@@ -672,7 +672,7 @@ def test_TrajectoryPlot_draw_height_profile():
         p.draw_height_profile(p.data_list, True)
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
 
 
 def test_TrajectoryPlot_draw_trajectory_plot():
@@ -686,7 +686,7 @@ def test_TrajectoryPlot_draw_trajectory_plot():
         p.draw_trajectory_plot(p.data_list)
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
 
 
 def test_TrajectoryPlot_draw_bottom_plot():
@@ -700,7 +700,7 @@ def test_TrajectoryPlot_draw_bottom_plot():
         p.draw_bottom_plot(p.data_list)
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
 
 
 def test_TrajectoryPlot_draw_bottom_text():
@@ -714,7 +714,7 @@ def test_TrajectoryPlot_draw_bottom_text():
         p.draw_bottom_text()
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
 
 
 def test_TrajectoryPlot_draw():
@@ -726,7 +726,7 @@ def test_TrajectoryPlot_draw():
     try:
         p.draw(block=False)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
 
     # Save to a file
     p.settings.interactive_mode = False

@@ -634,6 +634,8 @@ def test_ConcentrationPlot__normalize_settings(cdump2):
     p._normalize_settings(cdump2)
     assert s.KMAP == const.ConcentrationMapType.MASS_LOADING #
 
+    # TODO: check height unit, contour labels, etc.
+
 
 def test_ConcentrationPlot_update_height_unit():
     p = plot.ConcentrationPlot()
@@ -880,7 +882,7 @@ def test_ConcentrationPlot_draw_concentration_plot():
                 
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
 
 
 def test_ConcentrationPlot_get_conc_unit():
@@ -934,7 +936,7 @@ def test_ConcentrationPlot_draw_contour_legends():
             1.0)
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
 
 
 def test_ConcentrationPlot_draw_bottom_text():
@@ -949,7 +951,7 @@ def test_ConcentrationPlot_draw_bottom_text():
         p.draw_bottom_text()
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
 
 
 def test_ConcentrationPlot__write_gisout():
@@ -998,7 +1000,7 @@ def test_ConcentrationPlot_draw_conc_above_ground():
                                  block=False)       
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
 
 
 def test_ConcentrationPlot_draw_conc_on_ground():
@@ -1042,7 +1044,7 @@ def test_ConcentrationPlot_draw_conc_on_ground():
                               block=False)
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
     
     
 def test_ConcentrationPlot_draw():
@@ -1057,7 +1059,7 @@ def test_ConcentrationPlot_draw():
         p.draw({"resize_event" : blank_event_handler}, block=False)
         assert p.time_period_count == 1
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
 
     # Save to a file
     p.settings.interactive_mode = False
@@ -1423,7 +1425,7 @@ def test_ColorTableFactory_create_instance():
     plot.ColorTableFactory.COLOR_TABLE_FILE_NAMES = saved
 
 
-def test_ConcentrationPlot__get_color_table_filename():
+def test_ColorTableFactory__get_color_table_filename():
     p = plot.ColorTableFactory()
     assert p._get_color_table_filename() == None
 

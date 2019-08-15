@@ -263,7 +263,7 @@ def test_AbstractPlot__connect_event_handlers():
         p._connect_event_handlers({"resize_event" : blank_event_handler})
         plt.close(axes.figure)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
 
 
 def test_AbstractPlot_compute_pixel_aspect_ratio():
@@ -285,7 +285,7 @@ def test_AbstractPlot__turn_off_spines():
         p._turn_off_spines(axes)
         plt.close(axes.figure)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
 
 
 def test_AbstractPlot__turn_off_ticks():
@@ -297,7 +297,7 @@ def test_AbstractPlot__turn_off_ticks():
         p._turn_off_ticks(axes)
         plt.close(axes.figure)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
 
 
 def test_AbstractPlot_create_street_map():
@@ -348,7 +348,7 @@ def test_AbstractPlot_on_update_plot_extent():
         p.on_update_plot_extent()
         plt.close(p.target_axes.get_figure())
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
     pass
 
     
@@ -391,7 +391,7 @@ def test_AbstractPlot__draw_stations_if_exists():
         p._draw_stations_if_exists(axes, s, "data/STATIONPLOT.CFG")
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
 
 
 def test_AbstractPlot__draw_datem():
@@ -413,7 +413,7 @@ def test_AbstractPlot__draw_datem():
         p._draw_datem(axes, s, d, dt1, dt2)
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
       
 
 def test_AbstractPlot_make_maptext_filename():
@@ -434,7 +434,7 @@ def test_AbstractPlot__draw_maptext_if_exists():
         p._draw_maptext_if_exists(p.text_axes, "data/MAPTEXT.CFG", lambda s: True)
         cleanup_plot(p)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
  
 
 def test_TrajectoryPlot__draw_alt_text_boxes():
@@ -448,7 +448,7 @@ def test_TrajectoryPlot__draw_alt_text_boxes():
         p._draw_alt_text_boxes(axes, ["line 1", "line 2"])
         plt.close(axes.figure)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
  
 
 def test_AbstractPlot__draw_concentric_circles():
@@ -461,7 +461,7 @@ def test_AbstractPlot__draw_concentric_circles():
         p._draw_concentric_circles(axes, [-84.0, 35.0], 4, 100.0)
         plt.close(axes.figure)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
 
     
 def test_AbstractPlot__draw_noaa_logo():

@@ -72,7 +72,7 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         self.station_marker = "o"
         self.station_marker_color= "k"     # black
         self.station_marker_size = 6*6
-        self.max_contour_legend_count = 25
+        self.max_contour_legend_count = 5
         
     def dump(self, stream):
         """Dumps the settings to an output stream.
@@ -304,8 +304,6 @@ class TimeOfArrivalPlotSettingsReader:
 
 class TimeOfArrivalPlot(plotbase.AbstractPlot):
 
-    MAX_CONTOUR_LEVELS = 32
-    
     def __init__(self):
         plotbase.AbstractPlot.__init__(self)
         self.settings = TimeOfArrivalPlotSettings()
@@ -926,23 +924,27 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         
         self._initialize_map_projection(self.cdump)
 
-        toa_data = self.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_0, color_table)
+        fill_colors = color_table.colors
+
+        toa_data = self.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_0, fill_colors)
         self.draw_toa_plot(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
          
-        toa_data = self.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_1, color_table)
+        toa_data = self.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_1, fill_colors)
         self.draw_toa_plot(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
          
-        toa_data = self.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_2, color_table)
+        toa_data = self.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_2, fill_colors)
         self.draw_toa_plot(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
  
-        toa_data = self.toa_generator.make_deposition_data(thelper.TimeOfArrival.DAY_0, color_table)
+        toa_data = self.toa_generator.make_deposition_data(thelper.TimeOfArrival.DAY_0, fill_colors)
         self.draw_toa_plot(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
          
-        toa_data = self.toa_generator.make_deposition_data(thelper.TimeOfArrival.DAY_1, color_table)
+        toa_data = self.toa_generator.make_deposition_data(thelper.TimeOfArrival.DAY_1, fill_colors)
         self.draw_toa_plot(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
         
-        toa_data = self.toa_generator.make_deposition_data(thelper.TimeOfArrival.DAY_2, color_table)
+        toa_data = self.toa_generator.make_deposition_data(thelper.TimeOfArrival.DAY_2, fill_colors)
         self.draw_toa_plot(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
+        
+        self.time_period_count = self.toa_generator.time_period_count
         
         gis_writer.finalize()
         self.plot_saver.close()

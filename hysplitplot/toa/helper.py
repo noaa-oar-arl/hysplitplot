@@ -23,8 +23,6 @@ class TimeOfArrivalGenerator:
         self.time_selector = time_selector
         self.conc_type = conc_type
         self.time_period_count = 0
-        self.starting_datetime = None
-        self.ending_datetime = None
         
     def _get_bitmasks(self, day):
         if day == TimeOfArrival.DAY_0:
@@ -94,22 +92,22 @@ class TimeOfArrivalGenerator:
                 
             self.time_period_count += 1
 
-    def make_deposition_data(self, day, color_table):
+    def make_deposition_data(self, day, fill_colors):
         toa = DepositionTimeOfArrival(self.grid)
         toa.create_contour(self.deposition_toa_bits,
                            self._get_bitmasks(day),
                            self._get_toa_hours_for(day),
                            self._get_lumped_bitmasks_before(day),
-                           color_table.colors)
+                           fill_colors)
         return toa
     
-    def make_plume_data(self, day, color_table):
+    def make_plume_data(self, day, fill_colors):
         toa = PlumeTimeOfArrival(self.grid)
         toa.create_contour(self.above_ground_toa_bits,
                            self._get_bitmasks(day),
                            self._get_toa_hours_for(day),
                            self._get_lumped_bitmasks_before(day),
-                           color_table.colors)
+                           fill_colors)
         return toa
 
 
@@ -124,7 +122,9 @@ class TimeOfArrival(ABC):
         self.contour_levels = None
         self.display_levels = None
         self.fill_colors = None
-    
+        self.starting_datetime = None
+        self.ending_datetime = None
+        
     def has_data(self):
         return self.grid.nonzero_conc_count > 0
     
@@ -147,11 +147,14 @@ class TimeOfArrival(ABC):
     def create_contour(self, toa_bits, toa_bitmasks, toa_hours, prev_bitmask, fill_colors):
         self.grid.conc = numpy.zeros(toa_bits.shape, dtype=int)
         
-        contour_bitmasks = copy.copy( toa_bitmasks )
-        contour_bitmasks.reverse()
+        # Assume toa_bitmasks has ascending order.
+        toa_bitmasks = copy.copy( toa_bitmasks )
+        toa_bitmasks.reverse()
         
+        # For contouring, the highest bit is assigned the lowest contour value.
         contour_values = [40, 60, 80, 100]
-        for k, mask in enumerate(contour_bitmasks):
+        
+        for k, mask in enumerate(toa_bitmasks):
             c = numpy.copy(toa_bits)
             c &= mask
             loc = numpy.where(c > 0)
@@ -169,10 +172,11 @@ class TimeOfArrival(ABC):
         if n <= 0:
             self.fill_colors = fill_colors[0:len(contour_values)]
         else:
-            self.fill_colors = copy.copy( fill_colors )
+            self.fill_colors = copy.copy( list(fill_colors) )
             for k in range(n):
                 self.fill_colors.append( "#808080" ) # add gray
 
+        # Append a small value for the matplotlib's contour function to work.
         self.contour_levels = [1.0e-7] + contour_values
         
         self.display_levels = []
@@ -186,7 +190,8 @@ class TimeOfArrival(ABC):
         
         self.starting_datetime = self.grid.parent.release_datetimes[0]
         self.ending_datetime = self.starting_datetime + datetime.timedelta(hours=hours[0])
-        
+
+
 class DepositionTimeOfArrival(TimeOfArrival):
     
     def __init__(self, parent):

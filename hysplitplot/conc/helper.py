@@ -244,7 +244,9 @@ class VerticalAverageCalculator:
         return True
             
     def average(self, grids):
-
+        if len(grids) == 0:
+            raise ValueError("vertical averaging requires one or more concentration grids")
+        
         # vertical average
         avg = numpy.zeros(grids[0].conc.shape)
         
@@ -360,6 +362,9 @@ class VerticalAverageConcentration(ConcentrationType):
         self.average_calc = VerticalAverageCalculator(cdump, level_selector)
 
     def prepare_grids_for_plotting(self, t_grids):
+        if self.level_selector is None or self.pollutant_selector is None:
+            raise ValueError("level_selector or pollutant_selector is not set: "
+                             "did you call initialize()?")
         
         v_grids = sum_over_pollutants_per_level(t_grids,
                                                 self.level_selector,
@@ -479,6 +484,9 @@ class LevelConcentration(ConcentrationType):
             self.ground_index = None
         
     def prepare_grids_for_plotting(self, t_grids):
+        if self.level_selector is None or self.pollutant_selector is None:
+            raise ValueError("level_selector or pollutant_selector is not set: "
+                             "did you call initialize()?")
         
         v_grids = sum_over_pollutants_per_level(t_grids,
                                                 self.level_selector,

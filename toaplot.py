@@ -41,7 +41,6 @@ def print_usage():
    -u[Units label for mass: (mass), see "labels.cfg" file]
    -v[Values[:labels:RRRGGGBBB color (optional,but must have 2 colons to specify color without label)
         for <= 25 fixed contours: val1:lab1:RGB1+val2:lab2:RGB2+val3:lab3:RGB3+val4:lab4:RGB4]
-   -w[Grid point scan for contour smoothing (0)-none 1,2,3, grid points]
    -z[Zoom factor: 0-least zoom, (50), 100-most zoom]
    -5[Use -o prefix name for output kml file when -a=3 or 4: (0)-no, 1-yes]
    -8[Create map(s) even if all values zero: (0)-no, 1-yes]

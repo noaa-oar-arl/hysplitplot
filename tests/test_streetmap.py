@@ -263,14 +263,14 @@ def test_HYSPLITMapBackground_draw_underlay(lambert_proj):
     try:
         o.draw_underlay(axes, lambert_proj.corners_xy, data_crs)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
 
     # with an arlmap
     o.read_background_map("data/arlmap_truncated")
     try:
         o.draw_underlay(axes, lambert_proj.corners_xy, data_crs)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
     
     # with a shapefile
     os.chdir("data")
@@ -278,7 +278,7 @@ def test_HYSPLITMapBackground_draw_underlay(lambert_proj):
     try:
         o.draw_underlay(axes, lambert_proj.corners_xy, data_crs)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
     os.chdir("..")
     plt.close(axes.figure)
 
@@ -292,7 +292,7 @@ def test_HYSPLITMapBackground_update_extent(lambert_proj):
         o.update_extent(axes, data_crs)
         plt.close(axes.figure)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
    
 
 def test_HYSPLITMapBackground__erase_gridlines(lambert_proj):
@@ -324,7 +324,7 @@ def test_HYSPLITMapBackground__update_gridlines(lambert_proj):
     try:
         o._update_gridlines(axes, lambert_proj, data_crs, 'k', const.LatLonLabel.AUTO, 1.0)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
     
     #assert len(o.text_objs) > 0
     assert o.frozen_collection_count is not None
@@ -371,7 +371,7 @@ def test_HYSPLITMapBackground__draw_latlon_labels():
         o._draw_latlon_labels(axes, projection, data_crs, 1.0, 1.0, 'k')
         plt.close(axes.figure)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
 
 
 def test_AbstractStreetMap___init__(web_merc_proj):
@@ -426,7 +426,7 @@ def test_AbstractStreetMap_update_extent(web_merc_proj):
     try:
         o.update_extent(axes, data_crs)
     except Exception as ex:
-        raise pytest.fail("unexpeced exception: {0}".format(ex))
+        raise pytest.fail("unexpected exception: {0}".format(ex))
     
     assert o.projection is web_merc_proj
     
