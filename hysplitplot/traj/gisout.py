@@ -9,12 +9,6 @@ from hysplitplot import const, util
 logger = logging.getLogger(__name__)
 
 
-# TODO: to be removed after a bug in the HYSPLIT FORTRAN code is fixed.
-# The bug ignores digits below the decimal point for all diagnostic outputs.
-def debug_trunc(f):
-    return int(f)
-
-
 class GISFileWriterFactory:
     
     @staticmethod
@@ -70,7 +64,7 @@ class GenerateAttributeFileWriter:
                         dt.day,
                         dt.hour,
                         dt.minute,
-                        debug_trunc(t.heights[j])))
+                        int(t.heights[j])))
 
 
 class PointsGenerateFileWriter(AbstractGISFileWriter):
@@ -87,7 +81,7 @@ class PointsGenerateFileWriter(AbstractGISFileWriter):
                         (k+1)*1000 + j,
                         t.longitudes[j],
                         t.latitudes[j],
-                        debug_trunc(t.heights[j])))
+                        int(t.heights[j])))
             f.write("END\n")
             
         gisatt = "GIS_traj_{0}_{1:02d}.att".format(self.output_suffix, file_no)
@@ -309,7 +303,7 @@ class KMLWriter(AbstractGISFileWriter):
         <LookAt>
           <longitude>{2:.4f}</longitude>
           <latitude>{3:.4f}</latitude>\n""".format(
-    		debug_trunc(t.starting_level),
+    		t.starting_level,
             self._get_level_type(t),
     		t.starting_loc[0],
     		t.starting_loc[1]))
@@ -335,7 +329,7 @@ class KMLWriter(AbstractGISFileWriter):
           <extrude>1</extrude>
           <altitudeMode>{3}</altitudeMode>
           <coordinates>\n""".format(
-            debug_trunc(t.starting_level),
+            t.starting_level,
             self._get_level_type(t),
 	        (t_index % 3) + 1,
             self._get_alt_mode(t)))
@@ -345,7 +339,7 @@ class KMLWriter(AbstractGISFileWriter):
             {0:.4f},{1:.4f},{2:.1f}\n""".format(
                 t.longitudes[k],
                 t.latitudes[k],
-                debug_trunc(vc.values[k])))
+                vc.values[k]))
         
         starttime_str = self._get_timestamp_str(t.starting_datetime, self.time_zone)
         
@@ -371,12 +365,12 @@ LAT: {1:.4f} LON: {2:.4f} Hght({3}): {4:.1f}
             t.starting_loc[1],
             t.starting_loc[0],
             self._get_level_type(t),
-            debug_trunc(t.starting_level),
+            t.starting_level,
             (t_index % 3) + 1,
             self._get_alt_mode(t),
             t.starting_loc[0],
             t.starting_loc[1],
-            debug_trunc(t.starting_level)))
+            t.starting_level))
 
         if self.kml_option != const.KMLOption.NO_ENDPOINTS and self.kml_option != const.KMLOption.BOTH_1_AND_2:
             self._write_endpts(f, t, t_index, vc)
@@ -444,12 +438,12 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
                 t.latitudes[k],
                 t.longitudes[k],
                 self._get_level_type(t),
-                debug_trunc(vc.values[k]),
+                vc.values[k],
                 (t_index % 3) + 1,
                 self._get_alt_mode(t),
                 t.longitudes[k],
                 t.latitudes[k],
-                debug_trunc(vc.values[k])))
+                vc.values[k]))
 
         f.write("""\
       </Folder>\n""")

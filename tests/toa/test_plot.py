@@ -5,6 +5,7 @@ import numpy
 import os
 import pytest
 import pytz
+import xml.etree.ElementTree as ElementTree
 
 from hysplitdata.const import HeightUnit
 from hysplitdata.conc import model
@@ -499,17 +500,35 @@ def test_TimeOfArrivalPlot__post_file_processing(cdump):
 def test_TimeOfArrivalPlot__normalize_settings(cdump):
     p = plot.TimeOfArrivalPlot()
     s = p.settings
-    
+     
     s.LEVEL1 = -10
     s.LEVEL2 = 1000000
+       
+    assert s.height_unit == HeightUnit.METERS
+    p.labels.cfg["ALTTD"] = "feet"
+
+    p.contour_labels = None
     
     p._normalize_settings(cdump)
 
     assert s.LEVEL1 == 100
     assert s.LEVEL2 == 100
     
-    # TODO: check other parts
+    assert s.height_unit == HeightUnit.FEET
     
+    assert p.contour_labels is not None
+    assert p.contour_labels == ["", "", "", ""]
+
+    # check again with proper settings.contour_levels.
+    p.contour_labels = None
+    s.setup_contour_styles()
+    assert s.contour_levels is not None
+    
+    p._normalize_settings(cdump)
+    
+    assert p.contour_labels is not None
+    assert p.contour_labels == ["NONE", "NONE", "NONE", "NONE", "NONE"]
+
 
 def test_TimeOfArrivalPlot_update_height_unit():
     p = plot.TimeOfArrivalPlot()
@@ -811,8 +830,57 @@ def test_TimeOfArrivalPlot_draw_bottom_text():
 
 
 def test_TimeOfArrivalPlot__write_gisout():
-    # TODO
-    pass
+    p = plot.TimeOfArrivalPlot()
+    p.merge_plot_settings(None, ["-idata/rsmc.cdump2", "-jdata/arlmap_truncated", "-a3", "+a0", "-A0"])
+    p.read_data_files()
+    
+    p._initialize_map_projection(p.cdump)
+    axes = plt.axes(projection=p.projection.crs)
+    axes.axis(p.initial_corners_xy)
+    
+    color_table = plot.ColorTableFactory.create_instance(p.settings)
+    gis_writer = gisout.GISFileWriterFactory.create_instance(p.settings.gis_output,
+                                                             p.settings.kml_option)
+    gis_writer.initialize(p.settings.gis_alt_mode,
+                          p.settings.KMLOUT,
+                          p.settings.output_suffix,
+                          p.settings.KMAP,
+                          p.settings.NSSLBL,
+                          p.settings.show_max_conc)
+ 
+    toa_data = p.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_0, color_table.colors)
+    lower_vert_level = util.LengthInMeters(0)
+    upper_vert_level = util.LengthInMeters(500)
+    scaling_factor = 1.0
+    quad_contour_set = axes.contourf(toa_data.longitudes, toa_data.latitudes, toa_data.data,
+                                     toa_data.contour_levels,
+                                     colors=toa_data.fill_colors, extend="max",
+                                     transform=p.data_crs)
+    
+    if os.path.exists("HYSPLIT_ps.kml"):
+        os.remove("HYSPLIT_ps.kml")
+    if os.path.exists("GELABEL_ps.txt"):
+        os.remove("GELABEL_ps.txt")
+    
+    p._write_gisout(gis_writer, toa_data.grid, lower_vert_level, upper_vert_level,
+                    quad_contour_set, toa_data.contour_levels, color_table,
+                    scaling_factor)
+    
+    gis_writer.finalize()
+    plt.close(axes.figure)
+    
+    assert os.path.exists("HYSPLIT_ps.kml")
+    assert os.path.exists("GELABEL_ps.txt")
+    
+    # parse the XML document and check some elements.
+    tree = ElementTree.parse("HYSPLIT_ps.kml")
+    root = tree.getroot()
+    name = root.find("./{http://www.opengis.net/kml/2.2}Document/{http://www.opengis.net/kml/2.2}name")
+    assert name.text == "NOAA HYSPLIT RESULTS"
+    
+    os.remove("HYSPLIT_ps.kml")
+    os.remove("GELABEL_ps.txt")
+
 
 
 def test_TimeOfArrivalPlot_draw_toa_plot():

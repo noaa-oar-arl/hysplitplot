@@ -5,6 +5,7 @@ import numpy
 import os
 import pytest
 import pytz
+import xml.etree.ElementTree as ElementTree
 
 from hysplitdata.const import HeightUnit
 from hysplitdata.conc import model
@@ -611,6 +612,8 @@ def test_ConcentrationPlot__normalize_settings(cdump2):
     
     s.exposure_unit = 10
     
+    p.contour_labels = None
+    
     p._normalize_settings(cdump2)
 
     assert s.LEVEL1 == 100
@@ -620,6 +623,9 @@ def test_ConcentrationPlot__normalize_settings(cdump2):
     assert s.UDMIN == 0.0
     
     assert s.KMAP == 11
+    
+    assert p.contour_labels is not None
+    assert p.contour_labels == ["", "", "", ""]
     
     # check with other exposure_unit values
     s.exposure_unit = const.ExposureUnit.CHEMICAL_THRESHOLDS
@@ -633,8 +639,6 @@ def test_ConcentrationPlot__normalize_settings(cdump2):
     s.exposure_unit = const.ExposureUnit.MASS_LOADING
     p._normalize_settings(cdump2)
     assert s.KMAP == const.ConcentrationMapType.MASS_LOADING #
-
-    # TODO: check height unit, contour labels, etc.
 
 
 def test_ConcentrationPlot_update_height_unit():
@@ -955,8 +959,54 @@ def test_ConcentrationPlot_draw_bottom_text():
 
 
 def test_ConcentrationPlot__write_gisout():
-    # TODO
-    pass
+    p = plot.ConcentrationPlot()
+    p.merge_plot_settings("data/default_cplot", ["-idata/cdump", "-jdata/arlmap_truncated", "-a3", "+a0", "-A0"])
+    p.read_data_files()
+    p._initialize_map_projection(p.cdump)
+    axes = plt.axes(projection=p.projection.crs)
+    axes.axis(p.initial_corners_xy)
+    
+    color_table = plot.ColorTableFactory.create_instance(p.settings)
+    gis_writer = gisout.GISFileWriterFactory.create_instance(p.settings.gis_output,
+                                                             p.settings.kml_option)
+    gis_writer.initialize(p.settings.gis_alt_mode,
+                          p.settings.KMLOUT,
+                          p.settings.output_suffix,
+                          p.settings.KMAP,
+                          p.settings.NSSLBL,
+                          p.settings.show_max_conc)
+    g = p.cdump.grids[0]
+    lower_vert_level = util.LengthInMeters(0)
+    upper_vert_level = util.LengthInMeters(100)
+    contour_levels = [1.0e-15, 1.0e-14, 1.0e-13, 1.0e-12]
+    fill_colors = ["b", "g", "y", "r"]
+    scaling_factor = 1.0
+    quad_contour_set = axes.contourf(g.longitudes, g.latitudes, g.conc,
+                                     contour_levels,
+                                     colors=fill_colors, extend="max",
+                                     transform=p.data_crs)
+    
+    if os.path.exists("HYSPLIT_ps.kml"):
+        os.remove("HYSPLIT_ps.kml")
+    if os.path.exists("GELABEL_ps.txt"):
+        os.remove("GELABEL_ps.txt")
+    
+    p._write_gisout(gis_writer, g, lower_vert_level, upper_vert_level, quad_contour_set, contour_levels, color_table, scaling_factor)
+    
+    gis_writer.finalize()
+    plt.close(axes.figure)
+    
+    assert os.path.exists("HYSPLIT_ps.kml")
+    assert os.path.exists("GELABEL_ps.txt")
+    
+    # parse the XML document and check some elements.
+    tree = ElementTree.parse("HYSPLIT_ps.kml")
+    root = tree.getroot()
+    name = root.find("./{http://www.opengis.net/kml/2.2}Document/{http://www.opengis.net/kml/2.2}name")
+    assert name.text == "NOAA HYSPLIT RESULTS"
+    
+    os.remove("HYSPLIT_ps.kml")
+    os.remove("GELABEL_ps.txt")
 
 
 def test_ConcentrationPlot_draw_conc_above_ground():

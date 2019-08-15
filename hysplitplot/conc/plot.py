@@ -977,7 +977,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.draw_bottom_text()
         
         if gis_writer is not None:
-            self._write_gisout(gis_writer, g, LEVEL0, LEVEL2, quad_contour_set, contour_levels, color_table, conc_scaling_factor)
+            self._write_gisout(gis_writer, g, level1, level2, quad_contour_set, contour_levels, color_table, conc_scaling_factor)
             
         self.conc_map.undo_scale_exposure(self.conc_type)
         
@@ -1026,7 +1026,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.draw_bottom_text()
          
         if gis_writer is not None:
-            self._write_gisout(gis_writer, g, 0, 0, contour_set, contour_levels, color_table, conc_scaling_factor)
+            self._write_gisout(gis_writer, g, level1, level2, contour_set, contour_levels, color_table, conc_scaling_factor)
        
         if self.settings.interactive_mode:
             plt.show(*args, **kwargs)

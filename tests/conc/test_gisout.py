@@ -6,7 +6,7 @@ import pytest
 import pytz
 
 from hysplitdata.conc import model
-from hysplitplot import const
+from hysplitplot import const, util
 from hysplitplot.conc import gisout, plot, helper, cntr
 
 
@@ -913,9 +913,11 @@ def test_KMLConcentrationWriter__get_description_cdata():
     o = gisout.KMLConcentrationWriter("relativeToGround")
     utc = pytz.utc
     
-    dt = datetime.datetime(2019, 7, 5, 7, 42, 0, 0, utc)    
-    assert o._get_description_cdata(100, 500, dt) == """<pre>
-Averaged from 100 to 500 m
+    dt = datetime.datetime(2019, 7, 5, 7, 42, 0, 0, utc)
+    lower_level = util.LengthInMeters(100)
+    upper_level = util.LengthInMeters(500)    
+    assert o._get_description_cdata(lower_level, upper_level, dt) == """<pre>
+Averaged from 100 m to 500 m
 Valid:20190705 0742 UTC</pre>"""
 
 
@@ -1027,8 +1029,10 @@ def test_KMLMassLoadingWriter__get_description_cdata():
     utc = pytz.utc
     
     dt = datetime.datetime(2019, 7, 5, 7, 42, 0, 0, utc)
-    assert o._get_description_cdata(100, 500, dt) == """<pre>
-From 100 to 500 m
+    lower_level = util.LengthInMeters(100)
+    upper_level = util.LengthInMeters(500)
+    assert o._get_description_cdata(lower_level, upper_level, dt) == """<pre>
+From 100 m to 500 m
 Valid:20190705 0742 UTC</pre>"""
 
     

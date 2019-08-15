@@ -5,6 +5,7 @@ import matplotlib.dates
 import os
 import pytest
 import pytz
+import xml.etree.ElementTree as ElementTree
 
 from hysplitdata.const import HeightUnit, VerticalCoordinate
 from hysplitdata.traj import model
@@ -742,8 +743,24 @@ def test_TrajectoryPlot_draw():
     
 
 def test_TrajectoryPlot_write_gis_files():
-    # TODO:
-    return
+    p = plot.TrajectoryPlot()
+    p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated", "-a3", "+a0", "-A0"])
+    p.read_data_files()
+    
+    if os.path.exists("HYSPLITtraj_ps_01.kml"):
+        os.remove("HYSPLITtraj_ps_01.kml")
+        
+    p.write_gis_files()
+    
+    assert os.path.exists("HYSPLITtraj_ps_01.kml")
+    
+    # parse the XML document and check some elements.
+    tree = ElementTree.parse("HYSPLITtraj_ps_01.kml")
+    root = tree.getroot()
+    name = root.find("./{http://www.opengis.net/kml/2.2}Document/{http://www.opengis.net/kml/2.2}name")
+    assert name.text == "NOAA HYSPLIT Trajectory ps"
+    
+    os.remove("HYSPLITtraj_ps_01.kml")
 
 
 def test_ColorCycle___init__():

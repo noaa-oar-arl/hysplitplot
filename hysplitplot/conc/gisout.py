@@ -314,7 +314,7 @@ class KMLWriter(AbstractWriter):
       <Placemark>
         <description><![CDATA[<pre>
 LAT: {:.6f} LON: {:.6f}
-Released between {} and {} m AGL
+Released between {} and {} AGL
 </pre>]]></description>\n""".format(loc[1], loc[0], level1, level2))
 
             # white line to source height
@@ -595,7 +595,7 @@ class AbstractKMLContourWriter(ABC):
                 <coordinates>\n""")           
         
         for k in range(len(lons)):
-            f.write("{:.5f},{:.5f},{:05d}\n".format(lons[k], lats[k], vert_level))
+            f.write("{:.5f},{:.5f},{:05d}\n".format(lons[k], lats[k], int(vert_level)))
             
         if boundary.hole:
             f.write("""\
@@ -697,9 +697,9 @@ class KMLConcentrationWriter(AbstractKMLContourWriter):
     
     def _get_description_cdata(self, lower_vert_level, upper_vert_level, dt):
         return """<pre>
-Averaged from {} to {} m
-Valid:{}</pre>""".format(int(lower_vert_level),
-                         int(upper_vert_level),
+Averaged from {} to {}
+Valid:{}</pre>""".format(lower_vert_level,
+                         upper_vert_level,
                          self._get_timestamp_str(dt))
 
     def _get_max_location_text(self):
@@ -757,9 +757,9 @@ class KMLMassLoadingWriter(AbstractKMLContourWriter):
     
     def _get_description_cdata(self, lower_vert_level, upper_vert_level, dt):
         return """<pre>
-From {} to {} m
-Valid:{}</pre>""".format(int(lower_vert_level),
-                         int(upper_vert_level),
+From {} to {}
+Valid:{}</pre>""".format(lower_vert_level,
+                         upper_vert_level,
                          self._get_timestamp_str(dt))
 
     def _get_max_location_text(self):

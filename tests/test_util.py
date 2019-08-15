@@ -199,9 +199,19 @@ def test_LengthInMeters___init__():
     assert str(o) == "1.0 m"
 
 
+def test_LengthInMeters___int__():
+    o = util.LengthInMeters(1.2)
+    assert int(o) == 1
+
+    
 def test_LengthInFeet___init__():
     o = util.LengthInFeet(1.0)
     assert str(o) == "1 ft"
     
     o = util.LengthInFeet(1.0, False)
     assert str(o) == "1.0 ft"
+
+
+def test_LengthInFeet___int__():
+    o = util.LengthInFeet(1.2)
+    assert int(o) == 1

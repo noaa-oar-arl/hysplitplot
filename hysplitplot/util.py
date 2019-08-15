@@ -209,6 +209,9 @@ class LengthInMeters():
     def __repr__(self):
         return "{0} m".format(nearest_int(self.v)) if self.truncated else "{0:.1f} m".format(self.v)
     
+    def __int__(self):
+        return nearest_int(self.v)
+
 
 class LengthInFeet():
     
@@ -218,3 +221,6 @@ class LengthInFeet():
         
     def __repr__(self):
         return "{0} ft".format(nearest_int(self.v)) if self.truncated else "{0:.1f} ft".format(self.v)
+    
+    def __int__(self):
+        return nearest_int(self.v)
