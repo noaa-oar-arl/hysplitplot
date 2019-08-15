@@ -655,27 +655,32 @@ Value: {}
           <end>{}</end>
         </TimeSpan>
         <styleUrl>#maxv</styleUrl>
-        <Polygon>
-          <extrude>1</extrude>
-          <altitudeMode>{}</altitudeMode>
-          <outerBoundaryIs>
-            <LinearRing>
-              <coordinates>\n""".format(begin_ts,
-                                        end_ts,
-                                        self.alt_mode_str))
+        <MultiGeometry>\n""".format(begin_ts,
+                                    end_ts))
 
         for loc in g.extension.max_locs:
+            f.write("""\
+          <Polygon>
+            <extrude>1</extrude>
+            <altitudeMode>{}</altitudeMode>
+            <outerBoundaryIs>
+              <LinearRing>
+                <coordinates>\n""".format(self.alt_mode_str))
+
             f.write("{:.5f},{:.5f},{:05d}\n".format(loc[0]-hx, loc[1]-hy, vert_level))
             f.write("{:.5f},{:.5f},{:05d}\n".format(loc[0]+hx, loc[1]-hy, vert_level))
             f.write("{:.5f},{:.5f},{:05d}\n".format(loc[0]+hx, loc[1]+hy, vert_level))
             f.write("{:.5f},{:.5f},{:05d}\n".format(loc[0]-hx, loc[1]+hy, vert_level))
             f.write("{:.5f},{:.5f},{:05d}\n".format(loc[0]-hx, loc[1]-hy, vert_level))
         
+            f.write("""\
+                </coordinates>
+              </LinearRing>
+            </outerBoundaryIs>
+          </Polygon>\n""")
+        
         f.write("""\
-              </coordinates>
-            </LinearRing>
-          </outerBoundaryIs>
-        </Polygon>
+        </MultiGeometry>
       </Placemark>\n""")
             
     def _get_timestamp_str(self, dt):
