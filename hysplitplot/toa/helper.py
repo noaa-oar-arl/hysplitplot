@@ -168,6 +168,8 @@ class TimeOfArrival(ABC):
             self.grid.conc[loc] = 120
             contour_values.append( 120 )
 
+        #self.save_data("toa_data.txt")
+        
         n = len(contour_values) - len(fill_colors)
         if n <= 0:
             self.fill_colors = fill_colors[0:len(contour_values)]
@@ -176,8 +178,7 @@ class TimeOfArrival(ABC):
             for k in range(n):
                 self.fill_colors.append( "#808080" ) # add gray
 
-        # Append a small value for the matplotlib's contour function to work.
-        self.contour_levels = [1.0e-7] + contour_values
+        self.contour_levels = contour_values
         
         self.display_levels = []
         hours = numpy.flip( toa_hours )
@@ -190,6 +191,15 @@ class TimeOfArrival(ABC):
         
         self.starting_datetime = self.grid.parent.release_datetimes[0]
         self.ending_datetime = self.starting_datetime + datetime.timedelta(hours=hours[0])
+
+    def save_data(self, filename):
+        g = self.grid.conc
+        with open(filename, "wt") as f:
+            h, w = g.shape
+            for j in range(h):
+                for i in range(w):
+                    f.write("{} {} {}\n".format(i, j, g[j, i]))
+                f.write("\n")
 
 
 class DepositionTimeOfArrival(TimeOfArrival):

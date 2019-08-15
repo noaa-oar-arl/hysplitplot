@@ -95,7 +95,7 @@ def test_TimeOfArrivalGenerator_make_deposition_data(toa_gen):
     t = o.make_deposition_data(helper.TimeOfArrival.DAY_0, colors)
     assert isinstance(t, helper.DepositionTimeOfArrival)
     assert t.grid is not None
-    assert t.contour_levels == pytest.approx((1.0e-7, 40, 60, 80, 100))
+    assert t.contour_levels == pytest.approx((40, 60, 80, 100))
     assert t.fill_colors == ("#111111", "#222222", "#333333", "#444444")
     assert t.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
     assert t.ending_datetime   == datetime.datetime(2019, 7, 17, 11, 0, 0, 0, pytz.utc)
@@ -103,7 +103,7 @@ def test_TimeOfArrivalGenerator_make_deposition_data(toa_gen):
     t = o.make_deposition_data(helper.TimeOfArrival.DAY_1, colors)
     assert isinstance(t, helper.DepositionTimeOfArrival)
     assert t.grid is not None
-    assert t.contour_levels == pytest.approx((1.0e-7, 40, 60, 80, 100, 120))
+    assert t.contour_levels == pytest.approx((40, 60, 80, 100, 120))
     assert t.fill_colors == ("#111111", "#222222", "#333333", "#444444", "#808080")
     assert t.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
     assert t.ending_datetime   == datetime.datetime(2019, 7, 18, 11, 0, 0, 0, pytz.utc)
@@ -111,7 +111,7 @@ def test_TimeOfArrivalGenerator_make_deposition_data(toa_gen):
     t = o.make_deposition_data(helper.TimeOfArrival.DAY_2, colors)
     assert isinstance(t, helper.DepositionTimeOfArrival)
     assert t.grid is not None
-    assert t.contour_levels == pytest.approx((1.0e-7, 40, 60, 80, 100, 120))
+    assert t.contour_levels == pytest.approx((40, 60, 80, 100, 120))
     assert t.fill_colors == ("#111111", "#222222", "#333333", "#444444", "#808080")
     assert t.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
     assert t.ending_datetime   == datetime.datetime(2019, 7, 19, 11, 0, 0, 0, pytz.utc)
@@ -126,7 +126,7 @@ def test_TimeOfArrivalGenerator_make_plume_data(toa_gen):
     t = o.make_plume_data(helper.TimeOfArrival.DAY_0, colors)
     assert isinstance(t, helper.PlumeTimeOfArrival)
     assert t.grid is not None
-    assert t.contour_levels == pytest.approx((1.0e-7, 40, 60, 80, 100))
+    assert t.contour_levels == pytest.approx((40, 60, 80, 100))
     assert t.fill_colors == ("#111111", "#222222", "#333333", "#444444")
     assert t.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
     assert t.ending_datetime   == datetime.datetime(2019, 7, 17, 11, 0, 0, 0, pytz.utc)
@@ -134,7 +134,7 @@ def test_TimeOfArrivalGenerator_make_plume_data(toa_gen):
     t = o.make_plume_data(helper.TimeOfArrival.DAY_1, colors)
     assert isinstance(t, helper.PlumeTimeOfArrival)
     assert t.grid is not None
-    assert t.contour_levels == pytest.approx((1.0e-7, 40, 60, 80, 100, 120))
+    assert t.contour_levels == pytest.approx((40, 60, 80, 100, 120))
     assert t.fill_colors == ("#111111", "#222222", "#333333", "#444444", "#808080")
     assert t.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
     assert t.ending_datetime   == datetime.datetime(2019, 7, 18, 11, 0, 0, 0, pytz.utc)
@@ -142,7 +142,7 @@ def test_TimeOfArrivalGenerator_make_plume_data(toa_gen):
     t = o.make_plume_data(helper.TimeOfArrival.DAY_2, colors)
     assert isinstance(t, helper.PlumeTimeOfArrival)
     assert t.grid is not None
-    assert t.contour_levels == pytest.approx((1.0e-7, 40, 60, 80, 100, 120))
+    assert t.contour_levels == pytest.approx((40, 60, 80, 100, 120))
     assert t.fill_colors == ("#111111", "#222222", "#333333", "#444444", "#808080")
     assert t.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
     assert t.ending_datetime   == datetime.datetime(2019, 7, 19, 11, 0, 0, 0, pytz.utc)
@@ -212,7 +212,7 @@ def test_TimeOfArrival_create_contour():
     
     o.create_contour(toa_bits, toa_bitmasks, toa_hours, prev_bitmask, fill_colors)
     
-    assert o.contour_levels == [1.0e-7, 40, 60, 80, 100]
+    assert o.contour_levels == [40, 60, 80, 100]
     assert o.display_levels == ["18-24 hours", "12-18 hours", "6-12 hours", "0-6 hours"]
     assert o.grid.conc[0] == pytest.approx( [100, 100,  60] )
     assert o.grid.conc[1] == pytest.approx( [100,  60,  40] )
@@ -230,7 +230,7 @@ def test_TimeOfArrival_create_contour():
     
     o.create_contour(toa_bits, toa_bitmasks, toa_hours, prev_bitmask, fill_colors)
     
-    assert o.contour_levels == [1.0e-7, 40, 60, 80, 100, 120]
+    assert o.contour_levels == [40, 60, 80, 100, 120]
     assert o.display_levels == ["42-48 hours", "36-42 hours", "30-36 hours", "24-30 hours", "0-24 hours"]
     assert o.grid.conc[0] == pytest.approx( [120, 100,  60] )
     assert o.grid.conc[1] == pytest.approx( [100,  60,  40] )

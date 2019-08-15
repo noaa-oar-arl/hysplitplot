@@ -529,7 +529,7 @@ class AbstractKMLContourWriter(ABC):
             return
  
         begin_ts, end_ts = self._get_begin_end_timestamps(g)
-            
+        
         for k, contour in enumerate(contour_set.contours):
             # arbitrary height above ground in order of increasing concentration
             vert_level = self._get_contour_height_at(k, vert_level)

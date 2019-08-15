@@ -705,9 +705,14 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
                          toa_data.contour_levels,
                          toa_data.fill_colors)
             
+            # Insert a small value for the matplotlib's contour function to work.
+            contour_levels = copy.copy(toa_data.contour_levels)
+            contour_levels.insert(0, 1.0e-07)
+            contour_levels.pop()
+        
             # draw filled contours
             contour_set = axes.contourf(toa_data.longitudes, toa_data.latitudes, toa_data.data,
-                                        toa_data.contour_levels,
+                                        contour_levels,
                                         colors=toa_data.fill_colors, extend="max",
                                         transform=self.data_crs)
             if self.settings.color != const.ConcentrationPlotColor.COLOR_NO_LINES and \
@@ -715,7 +720,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
                 # draw contour lines
                 line_colors = ["k"] * len(toa_data.fill_colors)
                 axes.contour(toa_data.longitudes, toa_data.latitudes, toa_data.data,
-                             toa_data.contour_levels,
+                             contour_levels,
                              colors=line_colors, linewidths=0.25,
                              transform=self.data_crs)
 
@@ -849,8 +854,8 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
         contour_set.raw_colors = color_table.raw_colors
         contour_set.colors = color_table.colors
-        contour_set.levels = contour_levels
-        contour_set.levels_str = [level for level in contour_levels]
+        contour_set.levels = copy.copy(contour_levels)
+        contour_set.levels_str = copy.copy(contour_set.levels)
         contour_set.labels = self.contour_labels
         contour_set.concentration_unit = self.get_conc_unit(self.conc_map, self.settings)
         contour_set.min_concentration = min_conc
