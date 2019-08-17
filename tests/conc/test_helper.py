@@ -1029,7 +1029,11 @@ def test_ConcentrationMapFactory_create_instance():
     p = helper.ConcentrationMapFactory.create_instance(const.ConcentrationMapType.MASS_LOADING, 1)
     assert isinstance(p, helper.MassLoadingMap)
     assert p.KHEMIN == 1
-       
+        
+    p = helper.ConcentrationMapFactory.create_instance(const.ConcentrationMapType.TIME_OF_ARRIVAL, 1)
+    assert isinstance(p, helper.TimeOfArrivalMap)
+    assert p.KHEMIN == 1
+    
     p = helper.ConcentrationMapFactory.create_instance(99999, 1)
     assert isinstance(p, helper.AbstractConcentrationMap)
     assert p.KHEMIN == 1
@@ -1038,6 +1042,10 @@ def test_ConcentrationMapFactory_create_instance():
 def test_DepositionMapFactory_create_instance():
     p = helper.DepositionMapFactory.create_instance(const.ConcentrationMapType.VOLCANIC_ERUPTION, 1)
     assert isinstance(p, helper.Deposition6Map)
+    assert p.KHEMIN == 1
+    
+    p = helper.DepositionMapFactory.create_instance(const.ConcentrationMapType.TIME_OF_ARRIVAL, 1)
+    assert isinstance(p, helper.TimeOfArrivalMap)
     assert p.KHEMIN == 1
     
     p = helper.DepositionMapFactory.create_instance(99999, 1)
@@ -1406,6 +1414,58 @@ def test_MassLoadingMap_undo_scale_exposure(cdump2):
     p.undo_scale_exposure(conc_type)
     assert conc_type.min_concs[0] * 1.0e+15 == pytest.approx(1.871257)
     assert conc_type.max_concs[0] * 1.0e+13 == pytest.approx(8.047535)
+
+
+   
+def test_TimeOfArrivalMap___init__():
+    p = helper.TimeOfArrivalMap(4)
+    assert p.KMAP == 8
+    assert p.KHEMIN == 4
+    assert p.map_id == "Time-Of-Arrival (h)"
+  
+   
+def test_TimeOfArrivalMap_guess_volume_unit():
+    p = helper.TimeOfArrivalMap(4)
+    assert p.guess_volume_unit("mass") == ""
+    
+        
+def test_TimeOfArrivalMap_get_map_id_line():
+    p = helper.TimeOfArrivalMap(4)
+    conc_type = helper.VerticalAverageConcentration()
+    conc_unit = "mass/m^2"
+    level1 = util.LengthInMeters(1.0)
+    level2 = util.LengthInMeters(2.0)
+    
+    assert p.get_map_id_line(conc_type, conc_unit, level1, level2) == "Time-Of-Arrival (h) averaged between 1 m and 2 m"
+
+
+def test_TimeOfArrivalMap_scale_exposure(cdump2):
+    p = helper.TimeOfArrivalMap(4)
+    conc_type = helper.LevelConcentration()
+    ls = helper.VerticalLevelSelector()
+    ps = helper.PollutantSelector(0)
+    conc_type.initialize(cdump2, ls, ps)
+    t_grids = list(filter(lambda g: g.time_index == 0 and g.vert_level in ls and g.pollutant_index in ps, cdump2.grids))
+    conc_type.update_min_max(t_grids)
+    TFACT = 2.5;
+
+    # exposure scaling is not used. just check if calls are ok.   
+    assert p.scale_exposure(TFACT, conc_type, 2.0) == pytest.approx(2.0 * 2.5)
+    
+
+def test_TimeOfArrivalMap_undo_scale_exposure(cdump2):
+    p = helper.TimeOfArrivalMap(4)
+    conc_type = helper.LevelConcentration()
+    ls = helper.VerticalLevelSelector()
+    ps = helper.PollutantSelector(0)
+    conc_type.initialize(cdump2, ls, ps)
+    t_grids = list(filter(lambda g: g.time_index == 0 and g.vert_level in ls and g.pollutant_index in ps, cdump2.grids))
+    conc_type.update_min_max(t_grids)
+    TFACT = 2.5;
+
+    # exposure scaling is not used. just check if calls are ok.    
+    p.scale_exposure(TFACT, conc_type, 2.0)
+    p.undo_scale_exposure(conc_type)
 
 
 def test_DepositSumFactory_create_instance():

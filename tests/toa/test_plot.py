@@ -52,7 +52,7 @@ def test_TimeOfArrivalPlotSettings___init__():
     assert s.this_is_test == 0
     assert s.LEVEL1 == 0
     assert s.LEVEL2 == 99999
-    assert s.KMAP == const.ConcentrationMapType.CONCENTRATION
+    assert s.KMAP == const.ConcentrationMapType.TIME_OF_ARRIVAL
     assert s.KAVG == const.ConcentrationType.VERTICAL_AVERAGE
     assert s.NDEP == const.DepositionType.TIME
     assert s.show_max_conc == 0
@@ -856,6 +856,7 @@ def test_TimeOfArrivalPlot__write_gisout():
                                      toa_data.contour_levels,
                                      colors=toa_data.fill_colors, extend="max",
                                      transform=p.data_crs)
+    time_of_arrivals = [(18, 24), (12, 18), (6, 12), (0, 6)]
     
     if os.path.exists("HYSPLIT_ps.kml"):
         os.remove("HYSPLIT_ps.kml")
@@ -864,7 +865,7 @@ def test_TimeOfArrivalPlot__write_gisout():
     
     p._write_gisout(gis_writer, toa_data.grid, lower_vert_level, upper_vert_level,
                     quad_contour_set, toa_data.contour_levels, color_table,
-                    scaling_factor)
+                    scaling_factor, time_of_arrivals)
     
     gis_writer.finalize()
     plt.close(axes.figure)
@@ -882,8 +883,7 @@ def test_TimeOfArrivalPlot__write_gisout():
     os.remove("GELABEL_ps.txt")
 
 
-
-def test_TimeOfArrivalPlot_draw_toa_plot():
+def test_TimeOfArrivalPlot_draw_toa_plot_above_ground():
     p = plot.TimeOfArrivalPlot()
     p.merge_plot_settings(None, ["-idata/rsmc.cdump2", "-jdata/arlmap_truncated", "-d1"])
     p.read_data_files()
@@ -908,13 +908,54 @@ def test_TimeOfArrivalPlot_draw_toa_plot():
         p._initialize_map_projection(p.cdump)
         p.depo_sum.initialize(p.cdump.grids, p.time_selector, p.pollutant_selector)
         p.contour_labels = [""] * p.settings.contour_level_count
-        p.draw_toa_plot(toa_data,
+        p.draw_toa_plot_above_ground(toa_data,
                         {"resize_event" : blank_event_handler},
                         ctbl,
                         block=False)
         
         # with a gis writer
-        p.draw_toa_plot(toa_data,
+        p.draw_toa_plot_above_ground(toa_data,
+                        {"resize_event" : blank_event_handler},
+                        ctbl,
+                        gis_writer,
+                        block=False)       
+        cleanup_plot(p)
+    except Exception as ex:
+        raise pytest.fail("unexpected exception: {0}".format(ex))
+
+
+def test_TimeOfArrivalPlot_draw_toa_plot_on_ground():
+    p = plot.TimeOfArrivalPlot()
+    p.merge_plot_settings(None, ["-idata/rsmc.cdump2", "-jdata/arlmap_truncated", "-d1"])
+    p.read_data_files()
+    
+    ctbl = cplot.ColorTableFactory.create_instance(p.settings)
+    
+    gis_writer = gisout.GISFileWriterFactory.create_instance(p.settings.gis_output,
+                                                             p.settings.kml_option)
+                                                             
+    gis_writer.initialize(p.settings.gis_alt_mode,
+                          p.settings.KMLOUT,
+                          p.settings.output_suffix,
+                          p.settings.KMAP,
+                          p.settings.NSSLBL,
+                          p.settings.show_max_conc)
+    
+    toa_data = p.toa_generator.make_deposition_data(thelper.TimeOfArrival.DAY_0,
+                                               ctbl.colors)
+        
+    # See if no exception is thrown.
+    try:
+        p._initialize_map_projection(p.cdump)
+        p.depo_sum.initialize(p.cdump.grids, p.time_selector, p.pollutant_selector)
+        p.contour_labels = [""] * p.settings.contour_level_count
+        p.draw_toa_plot_on_ground(toa_data,
+                        {"resize_event" : blank_event_handler},
+                        ctbl,
+                        block=False)
+        
+        # with a gis writer
+        p.draw_toa_plot_on_ground(toa_data,
                         {"resize_event" : blank_event_handler},
                         ctbl,
                         gis_writer,

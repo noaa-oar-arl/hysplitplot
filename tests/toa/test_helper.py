@@ -95,26 +95,40 @@ def test_TimeOfArrivalGenerator_make_deposition_data(toa_gen):
     t = o.make_deposition_data(helper.TimeOfArrival.DAY_0, colors)
     assert isinstance(t, helper.DepositionTimeOfArrival)
     assert t.grid is not None
-    assert t.contour_levels == pytest.approx((40, 60, 80, 100))
+    assert t.contour_levels == pytest.approx((1, 2, 3, 4))
     assert t.fill_colors == ("#111111", "#222222", "#333333", "#444444")
-    assert t.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
-    assert t.ending_datetime   == datetime.datetime(2019, 7, 17, 11, 0, 0, 0, pytz.utc)
+    assert t.grid.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
+    assert t.grid.ending_datetime   == datetime.datetime(2019, 7, 17, 11, 0, 0, 0, pytz.utc)
+    assert t.time_intervals[0] == pytest.approx((18, 24))
+    assert t.time_intervals[1] == pytest.approx((12, 18))
+    assert t.time_intervals[2] == pytest.approx(( 6, 12))
+    assert t.time_intervals[3] == pytest.approx(( 0,  6))
     
     t = o.make_deposition_data(helper.TimeOfArrival.DAY_1, colors)
     assert isinstance(t, helper.DepositionTimeOfArrival)
     assert t.grid is not None
-    assert t.contour_levels == pytest.approx((40, 60, 80, 100, 120))
+    assert t.contour_levels == pytest.approx((1, 2, 3, 4, 5))
     assert t.fill_colors == ("#111111", "#222222", "#333333", "#444444", "#808080")
-    assert t.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
-    assert t.ending_datetime   == datetime.datetime(2019, 7, 18, 11, 0, 0, 0, pytz.utc)
+    assert t.grid.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
+    assert t.grid.ending_datetime   == datetime.datetime(2019, 7, 18, 11, 0, 0, 0, pytz.utc)
+    assert t.time_intervals[0] == pytest.approx((42, 48))
+    assert t.time_intervals[1] == pytest.approx((36, 42))
+    assert t.time_intervals[2] == pytest.approx((30, 36))
+    assert t.time_intervals[3] == pytest.approx((24, 30))
+    assert t.time_intervals[4] == pytest.approx(( 0, 24))
     
     t = o.make_deposition_data(helper.TimeOfArrival.DAY_2, colors)
     assert isinstance(t, helper.DepositionTimeOfArrival)
     assert t.grid is not None
-    assert t.contour_levels == pytest.approx((40, 60, 80, 100, 120))
+    assert t.contour_levels == pytest.approx((1, 2, 3, 4, 5))
     assert t.fill_colors == ("#111111", "#222222", "#333333", "#444444", "#808080")
-    assert t.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
-    assert t.ending_datetime   == datetime.datetime(2019, 7, 19, 11, 0, 0, 0, pytz.utc)
+    assert t.grid.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
+    assert t.grid.ending_datetime   == datetime.datetime(2019, 7, 19, 11, 0, 0, 0, pytz.utc)
+    assert t.time_intervals[0] == pytest.approx((66, 72))
+    assert t.time_intervals[1] == pytest.approx((60, 66))
+    assert t.time_intervals[2] == pytest.approx((54, 60))
+    assert t.time_intervals[3] == pytest.approx((48, 54))
+    assert t.time_intervals[4] == pytest.approx(( 0, 48))
 
    
 def test_TimeOfArrivalGenerator_make_plume_data(toa_gen):
@@ -126,26 +140,40 @@ def test_TimeOfArrivalGenerator_make_plume_data(toa_gen):
     t = o.make_plume_data(helper.TimeOfArrival.DAY_0, colors)
     assert isinstance(t, helper.PlumeTimeOfArrival)
     assert t.grid is not None
-    assert t.contour_levels == pytest.approx((40, 60, 80, 100))
+    assert t.contour_levels == pytest.approx((1, 2, 3, 4))
     assert t.fill_colors == ("#111111", "#222222", "#333333", "#444444")
-    assert t.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
-    assert t.ending_datetime   == datetime.datetime(2019, 7, 17, 11, 0, 0, 0, pytz.utc)
+    assert t.grid.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
+    assert t.grid.ending_datetime   == datetime.datetime(2019, 7, 17, 11, 0, 0, 0, pytz.utc)
+    assert t.time_intervals[0] == pytest.approx((18, 24))
+    assert t.time_intervals[1] == pytest.approx((12, 18))
+    assert t.time_intervals[2] == pytest.approx(( 6, 12))
+    assert t.time_intervals[3] == pytest.approx(( 0,  6))
     
     t = o.make_plume_data(helper.TimeOfArrival.DAY_1, colors)
     assert isinstance(t, helper.PlumeTimeOfArrival)
     assert t.grid is not None
-    assert t.contour_levels == pytest.approx((40, 60, 80, 100, 120))
+    assert t.contour_levels == pytest.approx((1, 2, 3, 4, 5))
     assert t.fill_colors == ("#111111", "#222222", "#333333", "#444444", "#808080")
-    assert t.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
-    assert t.ending_datetime   == datetime.datetime(2019, 7, 18, 11, 0, 0, 0, pytz.utc)
-    
+    assert t.grid.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
+    assert t.grid.ending_datetime   == datetime.datetime(2019, 7, 18, 11, 0, 0, 0, pytz.utc)
+    assert t.time_intervals[0] == pytest.approx((42, 48))
+    assert t.time_intervals[1] == pytest.approx((36, 42))
+    assert t.time_intervals[2] == pytest.approx((30, 36))
+    assert t.time_intervals[3] == pytest.approx((24, 30))
+    assert t.time_intervals[4] == pytest.approx(( 0, 24))
+   
     t = o.make_plume_data(helper.TimeOfArrival.DAY_2, colors)
     assert isinstance(t, helper.PlumeTimeOfArrival)
     assert t.grid is not None
-    assert t.contour_levels == pytest.approx((40, 60, 80, 100, 120))
+    assert t.contour_levels == pytest.approx((1, 2, 3, 4, 5))
     assert t.fill_colors == ("#111111", "#222222", "#333333", "#444444", "#808080")
-    assert t.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
-    assert t.ending_datetime   == datetime.datetime(2019, 7, 19, 11, 0, 0, 0, pytz.utc)
+    assert t.grid.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
+    assert t.grid.ending_datetime   == datetime.datetime(2019, 7, 19, 11, 0, 0, 0, pytz.utc)
+    assert t.time_intervals[0] == pytest.approx((66, 72))
+    assert t.time_intervals[1] == pytest.approx((60, 66))
+    assert t.time_intervals[2] == pytest.approx((54, 60))
+    assert t.time_intervals[3] == pytest.approx((48, 54))
+    assert t.time_intervals[4] == pytest.approx(( 0, 48))
 
 
 def test_TimeOfArrival___init__():
@@ -156,8 +184,6 @@ def test_TimeOfArrival___init__():
     assert hasattr(o, "contour_levels")
     assert hasattr(o, "display_levels")
     assert hasattr(o, "fill_colors")
-    assert hasattr(o, "starting_datetime")
-    assert hasattr(o, "ending_datetime")
 
 
 def test_TimeOfArrival_has_data():
@@ -212,12 +238,16 @@ def test_TimeOfArrival_create_contour():
     
     o.create_contour(toa_bits, toa_bitmasks, toa_hours, prev_bitmask, fill_colors)
     
-    assert o.contour_levels == [40, 60, 80, 100]
+    assert o.contour_levels == [1, 2, 3, 4]
     assert o.display_levels == ["18-24 hours", "12-18 hours", "6-12 hours", "0-6 hours"]
-    assert o.grid.conc[0] == pytest.approx( [100, 100,  60] )
-    assert o.grid.conc[1] == pytest.approx( [100,  60,  40] )
-    assert o.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
-    assert o.ending_datetime   == datetime.datetime(2019, 7, 17, 11, 0, 0, 0, pytz.utc)
+    assert o.grid.conc[0] == pytest.approx( [4, 4, 2] )
+    assert o.grid.conc[1] == pytest.approx( [4, 2, 1] )
+    assert o.grid.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
+    assert o.grid.ending_datetime   == datetime.datetime(2019, 7, 17, 11, 0, 0, 0, pytz.utc)
+    assert o.time_intervals[0] == pytest.approx((18, 24))
+    assert o.time_intervals[1] == pytest.approx((12, 18))
+    assert o.time_intervals[2] == pytest.approx(( 6, 12))
+    assert o.time_intervals[3] == pytest.approx(( 0,  6))
       
     # Case for day 1.
     
@@ -230,13 +260,18 @@ def test_TimeOfArrival_create_contour():
     
     o.create_contour(toa_bits, toa_bitmasks, toa_hours, prev_bitmask, fill_colors)
     
-    assert o.contour_levels == [40, 60, 80, 100, 120]
+    assert o.contour_levels == [1, 2, 3, 4, 5]
     assert o.display_levels == ["42-48 hours", "36-42 hours", "30-36 hours", "24-30 hours", "0-24 hours"]
-    assert o.grid.conc[0] == pytest.approx( [120, 100,  60] )
-    assert o.grid.conc[1] == pytest.approx( [100,  60,  40] )
-    assert o.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
-    assert o.ending_datetime   == datetime.datetime(2019, 7, 18, 11, 0, 0, 0, pytz.utc)
+    assert o.grid.conc[0] == pytest.approx( [5, 4, 2] )
+    assert o.grid.conc[1] == pytest.approx( [4, 2, 1] )
+    assert o.grid.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
+    assert o.grid.ending_datetime   == datetime.datetime(2019, 7, 18, 11, 0, 0, 0, pytz.utc)
     assert o.fill_colors == ["#111", "#222", "#333", "#444", "#808080"]
+    assert o.time_intervals[0] == pytest.approx((42, 48))
+    assert o.time_intervals[1] == pytest.approx((36, 42))
+    assert o.time_intervals[2] == pytest.approx((30, 36))
+    assert o.time_intervals[3] == pytest.approx((24, 30))
+    assert o.time_intervals[4] == pytest.approx(( 0, 24))
     
     
 def test_DepositionTimeOfArrival___init__():

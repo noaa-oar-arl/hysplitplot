@@ -122,8 +122,6 @@ class TimeOfArrival(ABC):
         self.contour_levels = None
         self.display_levels = None
         self.fill_colors = None
-        self.starting_datetime = None
-        self.ending_datetime = None
         
     def has_data(self):
         return self.grid.nonzero_conc_count > 0
@@ -152,7 +150,7 @@ class TimeOfArrival(ABC):
         toa_bitmasks.reverse()
         
         # For contouring, the highest bit is assigned the lowest contour value.
-        contour_values = [40, 60, 80, 100]
+        contour_values = [1, 2, 3, 4]
         
         for k, mask in enumerate(toa_bitmasks):
             c = numpy.copy(toa_bits)
@@ -165,8 +163,8 @@ class TimeOfArrival(ABC):
             c = numpy.copy(toa_bits)
             c &= prev_bitmask
             loc = numpy.where(c > 0)
-            self.grid.conc[loc] = 120
-            contour_values.append( 120 )
+            self.grid.conc[loc] = 5
+            contour_values.append( 5 )
 
         #self.save_data("toa_data.txt")
         
@@ -180,18 +178,22 @@ class TimeOfArrival(ABC):
 
         self.contour_levels = contour_values
         
+        self.time_intervals = []
         self.display_levels = []
         hours = numpy.flip( toa_hours )
         for hr in hours:
             hr = int(hr)
             self.display_levels.append( "{}-{} hours".format(hr - 6, hr) )
+            self.time_intervals.append( (hr - 6, hr) )
+            
         if prev_bitmask is not None:
             hr = int(hours[-1]) - 6
             self.display_levels.append( "{}-{} hours".format(0, hr) )
+            self.time_intervals.append( (0, hr) )
         
-        self.starting_datetime = self.grid.parent.release_datetimes[0]
-        self.ending_datetime = self.starting_datetime + datetime.timedelta(hours=hours[0])
-
+        self.grid.starting_datetime = self.grid.parent.release_datetimes[0]
+        self.grid.ending_datetime = self.grid.starting_datetime + datetime.timedelta(hours=hours[0])
+        
     def save_data(self, filename):
         g = self.grid.conc
         with open(filename, "wt") as f:

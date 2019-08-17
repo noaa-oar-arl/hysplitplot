@@ -86,6 +86,7 @@ class ConcentrationMapType: # KMAP
     VOLCANIC_ERUPTION   = 5
     DEPOSITION_6        = 6        # TODO: spell it out
     MASS_LOADING        = 7
+    TIME_OF_ARRIVAL     = 8
 
 class SmoothingKernel:
     SIMPLE  = 0

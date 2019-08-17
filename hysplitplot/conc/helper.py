@@ -633,6 +633,8 @@ class ConcentrationMapFactory:
             return Deposition6Map(KHEMIN)
         elif KMAP == const.ConcentrationMapType.MASS_LOADING:
             return MassLoadingMap(KHEMIN)
+        elif KMAP == const.ConcentrationMapType.TIME_OF_ARRIVAL:
+            return TimeOfArrivalMap(KHEMIN)
         else:
             return AbstractConcentrationMap(KMAP, KHEMIN)
 
@@ -643,6 +645,8 @@ class DepositionMapFactory:
     def create_instance(KMAP, KHEMIN):
         if KMAP == const.ConcentrationMapType.VOLCANIC_ERUPTION:
             return Deposition6Map(KHEMIN)
+        elif KMAP == const.ConcentrationMapType.TIME_OF_ARRIVAL:
+            return TimeOfArrivalMap(KHEMIN)
 
         return DepositionMap(KHEMIN)
      
@@ -967,7 +971,28 @@ class MassLoadingMap(AbstractConcentrationMap):
     
     def undo_scale_exposure(self, conc_type):
         conc_type.undo_scale_exposure()
-
+        
+        
+class TimeOfArrivalMap(AbstractConcentrationMap):
+    
+    def __init__(self, KHEMIN):
+        AbstractConcentrationMap.__init__(self,
+                                          const.ConcentrationMapType.TIME_OF_ARRIVAL,
+                                          KHEMIN,
+                                          "Time-Of-Arrival (h)")
+        
+    def guess_volume_unit(self, mass_unit):
+        return ""
+        
+    def get_map_id_line(self, conc_type, conc_unit, level1, level2):
+        return "{0} {1}".format(self.map_id,
+                                conc_type.get_level_range_str(level1, level2))
+        
+    def scale_exposure(self, TFACT, conc_type, scaling_factor):
+        return TFACT * scaling_factor
+    
+    def undo_scale_exposure(self, conc_type):
+        pass
 
 class DepositSumFactory:
     

@@ -377,6 +377,7 @@ def test_KMLWriter_initialize(cdump_two_pollutants):
     s = plot.ConcentrationPlotSettings()
     o = gisout.KMLWriter(s.kml_option)
 
+    assert s.show_max_conc != 0
     o.initialize(s.gis_alt_mode,
                  s.KMLOUT,
                  s.output_suffix,
@@ -385,6 +386,21 @@ def test_KMLWriter_initialize(cdump_two_pollutants):
                  s.show_max_conc)
     
     assert isinstance(o.contour_writer, gisout.AbstractKMLContourWriter)
+    assert o.contour_writer.show_max_conc == True
+
+    # test initialize() again with s.show_max_conc = 0.
+
+    s.show_max_conc = 0
+    
+    o.initialize(s.gis_alt_mode,
+                 s.KMLOUT,
+                 s.output_suffix,
+                 s.KMAP,
+                 s.NSSLBL,
+                 s.show_max_conc)
+    
+    assert isinstance(o.contour_writer, gisout.AbstractKMLContourWriter)
+    assert o.contour_writer.show_max_conc == False
 
 
 def test_KMLWriter_write(cdump_two_pollutants):
@@ -638,6 +654,10 @@ def test_KMLContourWriterFactory_create_instance():
     assert isinstance(w, gisout.KMLMassLoadingWriter)
     assert w.time_zone is tz
     
+    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.TIME_OF_ARRIVAL, gis_alt_mode, tz)
+    assert isinstance(w, gisout.KMLTimeOfArrivalWriter)
+    assert w.time_zone is tz
+        
    
 def test_KMLContourWriterFactory_create_instance__without_time_zone():
     gis_alt_mode = 0
@@ -663,16 +683,30 @@ def test_KMLContourWriterFactory_create_instance__without_time_zone():
     w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.MASS_LOADING, gis_alt_mode)
     assert isinstance(w, gisout.KMLMassLoadingWriter)
     
+    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.TIME_OF_ARRIVAL, gis_alt_mode)
+    assert isinstance(w, gisout.KMLTimeOfArrivalWriter)
+        
     
 def test_AbstractKMLContourWriter___init__():
     o = AbstractKMLContourWriterTest("relativeToGround")
     assert o.frame_count == 0
     assert o.alt_mode_str == "relativeToGround"
     assert o.time_zone is None
+    assert o.show_max_conc == True
 
     tz = pytz.timezone("America/New_York")
     o = AbstractKMLContourWriterTest("relativeToGround", tz)
     assert o.time_zone is tz
+
+
+def test_AbstractKMLContourWriter_set_show_max_conc():
+    o = AbstractKMLContourWriterTest("relativeToGround")
+    
+    o.set_show_max_conc( 0 )
+    assert o.show_max_conc == False
+    
+    o.set_show_max_conc( 1 )
+    assert o.show_max_conc == True
 
 
 def test_AbstractKMLContourWriter__get_begin_end_timestamps(cdump_two_pollutants):
@@ -687,7 +721,27 @@ def test_AbstractKMLContourWriter__get_begin_end_timestamps(cdump_two_pollutants
     a = o._get_begin_end_timestamps(g)
     assert a[0] == "1983-09-25T12:00:00-0500"
     assert a[1] == "1983-09-26T00:00:00-0500"
+
+
+def test_AbstractKMLContourWriter__get_contour_begin_end_timestamps(cdump_two_pollutants):
+    o = AbstractKMLContourWriterTest("relativeToGround")
+    g = cdump_two_pollutants.grids[0]
+    time_of_arrival_range = (0, 6)
     
+    a = o._get_contour_begin_end_timestamps(g, time_of_arrival_range)
+    assert a[0] == "1983-09-25T17:00:00Z"
+    assert a[1] == "1983-09-26T05:00:00Z"
+    
+    o.time_zone = pytz.timezone("EST")
+    a = o._get_contour_begin_end_timestamps(g, time_of_arrival_range)
+    assert a[0] == "1983-09-25T12:00:00-0500"
+    assert a[1] == "1983-09-26T00:00:00-0500"
+
+
+def test_AbstractKMLContourWriter__get_contour_name(cdump_two_pollutants):
+    o = AbstractKMLContourWriterTest("relativeToGround")
+    assert o._get_contour_name("300", "ppm") == "Contour Level: 300 ppm"
+
     
 def test_AbstractKMLContourWriter_write(cdump_two_pollutants):
     o = AbstractKMLContourWriterTest("relativeToGround")
@@ -1057,3 +1111,64 @@ def test_KMLMassLoadingWriter__write_placemark_visibility():
     assert lines[0].strip() == "<visibility>0</visibility>"
 
     os.remove("__KMLMassLoadingWriter.txt")
+
+
+def test_KMLTimeOfArrivalWriter___init__():
+    o = gisout.KMLTimeOfArrivalWriter("relativeToGround")
+
+    assert o.alt_mode_str == "relativeToGround"
+    assert o.time_zone is None
+    
+    tz = pytz.timezone("America/New_York")
+    o = gisout.KMLTimeOfArrivalWriter("relativeToGround", tz)
+
+    assert o.alt_mode_str == "relativeToGround"
+    assert o.time_zone is tz
+    
+
+def test_KMLTimeOfArrivalWriter__get_name_cdata():
+    o = gisout.KMLTimeOfArrivalWriter("relativeToGround")
+    utc = pytz.utc
+    
+    dt = datetime.datetime(2019, 7, 5, 7, 42, 0, 0, utc)
+    assert o._get_name_cdata(dt) == """<pre>Time of arrival (h)
+(Valid:20190705 0742 UTC)</pre>"""
+
+
+def test_KMLTimeOfArrivalWriter__get_description_cdata():
+    o = gisout.KMLTimeOfArrivalWriter("relativeToGround")
+    utc = pytz.utc
+    
+    dt = datetime.datetime(2019, 7, 5, 7, 42, 0, 0, utc)
+    lower_level = util.LengthInMeters(100)
+    upper_level = util.LengthInMeters(500)
+    assert o._get_description_cdata(lower_level, upper_level, dt) == """<pre>
+Averaged from 100 m to 500 m
+Valid:20190705 0742 UTC</pre>"""
+
+    lower_level = util.LengthInMeters(0)
+    upper_level = util.LengthInMeters(0)
+    assert o._get_description_cdata(lower_level, upper_level, dt) == """<pre>
+At ground-level
+Valid:20190705 0742 UTC</pre>"""
+
+
+def test_KMLTimeOfArrivalWriter__get_contour_name():
+    o = gisout.KMLTimeOfArrivalWriter("relativeToGround")
+    assert o._get_contour_name("0-6 hours", "Bq") == "Time of arrival: 0-6 hours"
+
+
+def test_KMLTimeOfArrivalWriter__get_contour_begin_end_timestamps(cdump_two_pollutants):
+    o = gisout.KMLTimeOfArrivalWriter("relativeToGround")
+    g = cdump_two_pollutants.grids[0]
+    time_of_arrival_range = (0, 6)
+    
+    a = o._get_contour_begin_end_timestamps(g, time_of_arrival_range)
+    assert a[0] == "1983-09-25T17:00:00Z"
+    assert a[1] == "1983-09-25T23:00:00Z"   # 6 hours after the start time.
+    
+    o.time_zone = pytz.timezone("EST")
+    a = o._get_contour_begin_end_timestamps(g, time_of_arrival_range)
+    assert a[0] == "1983-09-25T12:00:00-0500"
+    assert a[1] == "1983-09-25T18:00:00-0500"   # 6 hours after the start time
+    

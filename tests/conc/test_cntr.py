@@ -29,6 +29,7 @@ def test_ContourSet___init__():
     assert hasattr(o, "max_concentration")
     assert hasattr(o, "min_concentration_str")
     assert hasattr(o, "max_concentration_str")
+    assert hasattr(o, "time_of_arrivals") and o.time_of_arrivals is None
 
 
 def test_Contour___init__():

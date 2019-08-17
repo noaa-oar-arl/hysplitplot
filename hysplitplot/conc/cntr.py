@@ -20,6 +20,7 @@ class ContourSet:
         self.max_concentration = 0
         self.min_concentration_str = "0"
         self.max_concentration_str = "0"
+        self.time_of_arrivals = None
 
 
 class Contour:

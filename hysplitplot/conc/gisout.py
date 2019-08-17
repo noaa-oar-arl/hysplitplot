@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import copy
+import datetime
 import logging
 import math
 from matplotlib.path import Path
@@ -175,6 +176,7 @@ class KMLWriter(AbstractWriter):
     def initialize(self, gis_alt_mode, KMLOUT, output_suffix, KMAP, NSSLBL, show_max_conc):
         AbstractWriter.initialize(self, gis_alt_mode, KMLOUT, output_suffix, KMAP, NSSLBL, show_max_conc)
         self.contour_writer = KMLContourWriterFactory.create_instance(self.KMAP, self.alt_mode_str)
+        self.contour_writer.set_show_max_conc(show_max_conc)
 
     def write(self, basename, g, contour_set, lower_vert_level, upper_vert_level):
         if self.kml_file is None:
@@ -314,7 +316,7 @@ class KMLWriter(AbstractWriter):
       <Placemark>
         <description><![CDATA[<pre>
 LAT: {:.6f} LON: {:.6f}
-Released between {} and {} AGL
+Released between {} and {} m AGL
 </pre>]]></description>\n""".format(loc[1], loc[0], level1, level2))
 
             # white line to source height
@@ -443,6 +445,8 @@ class KMLContourWriterFactory:
             return KMLDepositionWriter(alt_mode_str, time_zone)
         elif KMAP == const.ConcentrationMapType.MASS_LOADING:
             return KMLMassLoadingWriter(alt_mode_str, time_zone)
+        elif KMAP == const.ConcentrationMapType.TIME_OF_ARRIVAL:
+            return KMLTimeOfArrivalWriter(alt_mode_str, time_zone)
 
 
 class AbstractKMLContourWriter(ABC):
@@ -451,7 +455,11 @@ class AbstractKMLContourWriter(ABC):
         self.frame_count    = 0
         self.alt_mode_str   = alt_mode_str
         self.time_zone      = time_zone
+        self.show_max_conc  = True
     
+    def set_show_max_conc(self, show_max_conc):
+        self.show_max_conc = True if show_max_conc != 0 else False
+        
     def _get_begin_end_timestamps(self, g):
         if g.ending_datetime < g.starting_datetime:
             begin_ts = util.get_iso_8601_str(g.ending_datetime, self.time_zone)
@@ -460,6 +468,9 @@ class AbstractKMLContourWriter(ABC):
             begin_ts = util.get_iso_8601_str(g.starting_datetime, self.time_zone)
             end_ts = util.get_iso_8601_str(g.ending_datetime, self.time_zone)
         return (begin_ts, end_ts)
+            
+    def _get_contour_begin_end_timestamps(self, g, time_of_arrival_range):
+        return self._get_begin_end_timestamps(g)
     
     @abstractmethod
     def _get_name_cdata(self, dt):
@@ -469,6 +480,9 @@ class AbstractKMLContourWriter(ABC):
     def _get_description_cdata(self, lower_vert_level, upper_vert_level, dt):
         pass
     
+    def _get_contour_name(self, level_str, conc_unit):
+        return "Contour Level: {} {}".format(level_str, conc_unit)
+                                                     
     def write(self, f, g, contour_set, lower_vert_level, upper_vert_level, suffix):
         self.frame_count += 1
  
@@ -516,7 +530,8 @@ class AbstractKMLContourWriter(ABC):
         
         self._write_contour(f, g, contour_set, upper_vert_level)
 
-        self._write_max_location(f, g, contour_set.max_concentration_str, upper_vert_level, contour_set.labels[-1])
+        if self.show_max_conc:
+            self._write_max_location(f, g, contour_set.max_concentration_str, upper_vert_level, contour_set.labels[-1])
         
         f.write("""\
     </Folder>\n""")        
@@ -527,8 +542,6 @@ class AbstractKMLContourWriter(ABC):
     def _write_contour(self, f, g, contour_set, vert_level):
         if contour_set is None:
             return
- 
-        begin_ts, end_ts = self._get_begin_end_timestamps(g)
         
         for k, contour in enumerate(contour_set.contours):
             # arbitrary height above ground in order of increasing concentration
@@ -537,18 +550,21 @@ class AbstractKMLContourWriter(ABC):
             f.write("""\
       <Placemark>\n""")
             
+            contour_name = self._get_contour_name(contour_set.levels_str[k],
+                                                  contour_set.concentration_unit)
+            
             if len(contour_set.labels[k]) > 0:
                 f.write("""\
-        <name LOC="{}">Contour Level: {} {}</name>\n""".format(contour_set.labels[k],
-                                                               contour_set.levels_str[k],
-                                                               contour_set.concentration_unit))
+        <name LOC="{}">{}</name>\n""".format(contour_set.labels[k], contour_name))
             else:
                 f.write("""\
-        <name>Contour Level: {} {}</name>\n""".format(contour_set.levels_str[k],
-                                                      contour_set.concentration_unit))
+        <name>{}</name>\n""".format(contour_name))
                      
             self._write_placemark_visibility(f)
    
+            toa_range = None if contour_set.time_of_arrivals is None else contour_set.time_of_arrivals[k]
+            begin_ts, end_ts = self._get_contour_begin_end_timestamps(g, toa_range)
+                
             f.write("""\
         <Snippet maxLines="0"></Snippet>
         <TimeSpan>
@@ -706,7 +722,7 @@ Averaged from {} to {}
 Valid:{}</pre>""".format(lower_vert_level,
                          upper_vert_level,
                          self._get_timestamp_str(dt))
-
+ 
     def _get_max_location_text(self):
         return """\
       The square represents the location
@@ -736,7 +752,7 @@ class KMLDepositionWriter(AbstractKMLContourWriter):
     def _get_description_cdata(self, lower_vert_level, upper_vert_level, dt):
         return """<pre>
 Valid:{}</pre>""".format(self._get_timestamp_str(dt))
-
+    
     def _get_max_location_text(self):
         return """\
       The square represents the location
@@ -766,7 +782,7 @@ From {} to {}
 Valid:{}</pre>""".format(lower_vert_level,
                          upper_vert_level,
                          self._get_timestamp_str(dt))
-
+    
     def _get_max_location_text(self):
         return """\
       The square represents the location
@@ -779,3 +795,45 @@ Valid:{}</pre>""".format(lower_vert_level,
             f.write("""\
         <visibility>0</visibility>
         \n""");
+   
+    
+class KMLTimeOfArrivalWriter(AbstractKMLContourWriter):
+    
+    def __init__(self, alt_mode_str, time_zone=None):
+        AbstractKMLContourWriter.__init__(self, alt_mode_str, time_zone)
+    
+    def _get_name_cdata(self, dt):
+        return """<pre>Time of arrival (h)
+(Valid:{})</pre>""".format(self._get_timestamp_str(dt))
+    
+    def _get_description_cdata(self, lower_vert_level, upper_vert_level, dt):
+        if int(lower_vert_level) == 0 and int(upper_vert_level) == 0:
+            return """<pre>
+At ground-level
+Valid:{}</pre>""".format(self._get_timestamp_str(dt))
+        else:
+            return """<pre>
+Averaged from {} to {}
+Valid:{}</pre>""".format(lower_vert_level,
+                         upper_vert_level,
+                         self._get_timestamp_str(dt))
+
+    def _get_contour_name(self, level_str, conc_unit):
+        return "Time of arrival: {}".format(level_str)
+        
+    def _get_contour_begin_end_timestamps(self, g, time_of_arrival_range):
+        begin_hr, end_hr = time_of_arrival_range
+        if g.ending_datetime < g.starting_datetime:
+            dt = g.ending_datetime + datetime.timedelta(hours=begin_hr)
+            begin_ts = util.get_iso_8601_str(dt, self.time_zone)
+            dt = g.ending_datetime + datetime.timedelta(hours=end_hr)
+            end_ts = util.get_iso_8601_str(dt, self.time_zone)
+        else:
+            dt = g.starting_datetime + datetime.timedelta(hours=begin_hr)
+            begin_ts = util.get_iso_8601_str(dt, self.time_zone)
+            dt = g.starting_datetime + datetime.timedelta(hours=end_hr)
+            end_ts = util.get_iso_8601_str(dt, self.time_zone)
+        return (begin_ts, end_ts)
+    
+    def _get_max_location_text(self):
+        pass

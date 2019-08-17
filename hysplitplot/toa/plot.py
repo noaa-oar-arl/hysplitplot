@@ -43,7 +43,7 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         self.this_is_test = 0
         self.LEVEL1 = 0     # bottom display level defaults to deposition surface
         self.LEVEL2 = 99999 # top level defaults to whole model atmosphere
-        self.KMAP = const.ConcentrationMapType.CONCENTRATION
+        self.KMAP = const.ConcentrationMapType.TIME_OF_ARRIVAL
         self.KAVG = const.ConcentrationType.VERTICAL_AVERAGE
         self.NDEP = const.DepositionType.TIME
         self.show_max_conc = 0
@@ -505,8 +505,8 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         fig_title = self.labels.get("TITLE")
 
         fig_title += "\n"
-        starting_dt = self.adjust_for_time_zone(toa.starting_datetime)
-        ending_dt = self.adjust_for_time_zone(toa.ending_datetime)
+        starting_dt = self.adjust_for_time_zone(toa.grid.starting_datetime)
+        ending_dt = self.adjust_for_time_zone(toa.grid.ending_datetime)
         fig_title += toa.get_map_id_line(lower_vert_level, upper_vert_level, starting_dt, ending_dt)
         
         if not conc_grid.is_forward_calculation():
@@ -705,15 +705,16 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
                          toa_data.contour_levels,
                          toa_data.fill_colors)
             
-            # Insert a small value for the matplotlib's contour function to work.
-            contour_levels = copy.copy(toa_data.contour_levels)
-            contour_levels.insert(0, 1.0e-07)
-            contour_levels.pop()
+            # Adjust contour levels and prepend 0.5 to the array so that half-way values
+            # match the TOA values exactly. This is important to correctly get the KML
+            # polygon geometry.
+            contour_levels = [x + 0.5 for x in toa_data.contour_levels]
+            contour_levels.insert(0, 0.5)
         
             # draw filled contours
             contour_set = axes.contourf(toa_data.longitudes, toa_data.latitudes, toa_data.data,
                                         contour_levels,
-                                        colors=toa_data.fill_colors, extend="max",
+                                        colors=toa_data.fill_colors,
                                         transform=self.data_crs)
             if self.settings.color != const.ConcentrationPlotColor.COLOR_NO_LINES and \
                self.settings.color != const.ConcentrationPlotColor.BW_NO_LINES:
@@ -845,7 +846,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         else:
             self._turn_off_spines(self.text_axes)
     
-    def _write_gisout(self, gis_writer, g, lower_vert_level, upper_vert_level, quad_contour_set, contour_levels, color_table, scaling_factor):
+    def _write_gisout(self, gis_writer, g, lower_vert_level, upper_vert_level, quad_contour_set, contour_levels, color_table, scaling_factor, time_intervals):
         if g.extension.max_locs is None:
                 g.extension.max_locs = helper.find_max_locs(g)
                 
@@ -862,6 +863,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         contour_set.max_concentration = max_conc
         contour_set.min_concentration_str = self.conc_map.format_conc(min_conc)
         contour_set.max_concentration_str = self.conc_map.format_conc(max_conc)
+        contour_set.time_of_arrivals = time_intervals
 
         basename = gis_writer.make_output_basename(g,
                                                    self.conc_type,
@@ -873,7 +875,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
 
         gis_writer.write(basename, g, contour_set, lower_vert_level, upper_vert_level)
    
-    def draw_toa_plot(self, toa_data, event_handlers, color_table, gis_writer=None, *args, **kwargs):
+    def draw_toa_plot_above_ground(self, toa_data, event_handlers, color_table, gis_writer=None, *args, **kwargs):
         g = toa_data.grid
         
         self.layout(g, event_handlers)
@@ -899,7 +901,44 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         self.draw_bottom_text()
         
         if gis_writer is not None:
-            self._write_gisout(gis_writer, g, LEVEL0, LEVEL2, quad_contour_set, toa_data.display_levels, color_table, conc_scaling_factor)
+            self._write_gisout(gis_writer, g, level1, level2, quad_contour_set, toa_data.display_levels,
+                               color_table, conc_scaling_factor, toa_data.time_intervals)
+            
+        if self.settings.interactive_mode:
+            plt.show(*args, **kwargs)
+        else:
+            self.fig.canvas.draw()  # to get the plot spines right.
+            self.on_update_plot_extent()
+            self.plot_saver.save(self.fig, self.current_frame)
+        
+        plt.close(self.fig)
+        self.current_frame += 1
+           
+    def draw_toa_plot_on_ground(self, toa_data, event_handlers, color_table, gis_writer=None, *args, **kwargs):
+        g = toa_data.grid
+        
+        self.layout(g, event_handlers)
+        
+        self._turn_off_spines(self.conc_outer)
+        self._turn_off_ticks(self.conc_outer)
+         
+        level1 = self.length_factory.create_instance(0)
+        level2 = self.length_factory.create_instance(0)
+        
+        conc_scaling_factor = 1.0
+        
+        # plot title
+        title = self.make_plot_title(toa_data, g, level1, level2)
+        self.conc_outer.set_title(title)
+        self.conc_outer.set_xlabel(self.make_xlabel(g))
+        
+        quad_contour_set = self.draw_toa_contour_plot(toa_data)
+        self.draw_contour_legends(g, self.conc_map, self.contour_labels, toa_data.display_levels, toa_data.fill_colors)
+        self.draw_bottom_text()
+        
+        if gis_writer is not None:
+            self._write_gisout(gis_writer, g, level1, level2, quad_contour_set, toa_data.display_levels,
+                               color_table, conc_scaling_factor, toa_data.time_intervals)
             
         if self.settings.interactive_mode:
             plt.show(*args, **kwargs)
@@ -932,22 +971,22 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         fill_colors = color_table.colors
 
         toa_data = self.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_0, fill_colors)
-        self.draw_toa_plot(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
+        self.draw_toa_plot_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
          
         toa_data = self.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_1, fill_colors)
-        self.draw_toa_plot(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
+        self.draw_toa_plot_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
          
         toa_data = self.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_2, fill_colors)
-        self.draw_toa_plot(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
+        self.draw_toa_plot_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
  
         toa_data = self.toa_generator.make_deposition_data(thelper.TimeOfArrival.DAY_0, fill_colors)
-        self.draw_toa_plot(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
+        self.draw_toa_plot_on_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
          
         toa_data = self.toa_generator.make_deposition_data(thelper.TimeOfArrival.DAY_1, fill_colors)
-        self.draw_toa_plot(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
+        self.draw_toa_plot_on_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
         
         toa_data = self.toa_generator.make_deposition_data(thelper.TimeOfArrival.DAY_2, fill_colors)
-        self.draw_toa_plot(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
+        self.draw_toa_plot_on_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
         
         self.time_period_count = self.toa_generator.time_period_count
         
