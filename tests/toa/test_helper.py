@@ -72,12 +72,105 @@ def test_TimeOfArrivalGenerator__get_toa_hours_for(toa_gen):
     assert o._get_toa_hours_for(helper.TimeOfArrival.DAY_2) == pytest.approx([54, 60, 66, 72])
 
 
+def test_TimeOfArrivalGenerator__check_cdump_consistency():
+    time_selector = chelper.TimeIndexSelector()
+    conc_type = chelper.VerticalAverageConcentration()
+    o = helper.TimeOfArrivalGenerator(time_selector, conc_type)
+    
+    cdump = model.ConcentrationDump()
+    
+    # when no grid is available
+    cdump.grids = None
+    assert o._check_cdump_consistency(cdump) == False
+    
+    cdump.grids = []
+    assert o._check_cdump_consistency(cdump) == False
+    
+    # backward run
+    g = model.ConcentrationGrid(cdump)
+    g.starting_datetime = datetime.datetime(2019, 8, 17,  8, 0, 0, 0, pytz.utc)
+    g.ending_datetime   = datetime.datetime(2019, 8, 17,  7, 0, 0, 0, pytz.utc)
+    cdump.grids = [g]
+    assert o._check_cdump_consistency(cdump) == False
+
+    # insufficient sampling time resolution (7 hours)
+    g.starting_datetime = datetime.datetime(2019, 8, 17,  8, 0, 0, 0, pytz.utc)
+    g.ending_datetime   = datetime.datetime(2019, 8, 17, 15, 0, 0, 0, pytz.utc)
+    cdump.grids = [g]
+    assert o._check_cdump_consistency(cdump) == False
+
+    # sampling time resolution (5 hours) does not add up to 6 hours.
+    g.starting_datetime = datetime.datetime(2019, 8, 17,  8, 0, 0, 0, pytz.utc)
+    g.ending_datetime   = datetime.datetime(2019, 8, 17, 13, 0, 0, 0, pytz.utc)
+    cdump.grids = [g]
+    assert o._check_cdump_consistency(cdump) == False
+    
+    # sampling time resolution: 15 mins
+    g.starting_datetime = datetime.datetime(2019, 8, 17,  8,  0, 0, 0, pytz.utc)
+    g.ending_datetime   = datetime.datetime(2019, 8, 17,  8, 15, 0, 0, pytz.utc)
+    cdump.grids = [g]
+    assert o._check_cdump_consistency(cdump) == True
+    
+    # 1 hour
+    g.starting_datetime = datetime.datetime(2019, 8, 17,  8, 0, 0, 0, pytz.utc)
+    g.ending_datetime   = datetime.datetime(2019, 8, 17,  9, 0, 0, 0, pytz.utc)
+    cdump.grids = [g]
+    assert o._check_cdump_consistency(cdump) == True
+        
+    # 2 hours
+    g.starting_datetime = datetime.datetime(2019, 8, 17,  8, 0, 0, 0, pytz.utc)
+    g.ending_datetime   = datetime.datetime(2019, 8, 17, 10, 0, 0, 0, pytz.utc)
+    cdump.grids = [g]
+    assert o._check_cdump_consistency(cdump) == True
+        
+    # 3 hours
+    g.starting_datetime = datetime.datetime(2019, 8, 17,  8, 0, 0, 0, pytz.utc)
+    g.ending_datetime   = datetime.datetime(2019, 8, 17, 11, 0, 0, 0, pytz.utc)
+    cdump.grids = [g]
+    assert o._check_cdump_consistency(cdump) == True
+    
+    # 6 hours
+    g.starting_datetime = datetime.datetime(2019, 8, 17,  8, 0, 0, 0, pytz.utc)
+    g.ending_datetime   = datetime.datetime(2019, 8, 17, 14, 0, 0, 0, pytz.utc)
+    cdump.grids = [g]
+    assert o._check_cdump_consistency(cdump) == True
+    
+    
 def test_TimeOfArrivalGenerator_process_conc_data(toa_gen):
     o, cdump = toa_gen
 
     o.process_conc_data(cdump)
     
     assert o.grid is not None
+    assert o.grid.nonzero_conc_count == 122853
+    assert o.above_ground_toa_bits is not None
+    assert o.above_ground_toa_bits.shape == (701, 1201)
+    assert o.deposition_toa_bits is not None
+    assert o.deposition_toa_bits.shape == (701, 1201)
+    assert o.time_period_count == 24
+
+    # invalid grid
+    cdump.grids = []
+    try:
+        o.process_conc_data(cdump)
+        pytest.fail("expected exception")
+    except Exception as ex:
+        assert str(ex).startswith("The concentration dump file is not suitable for time-of-arrival")
+    
+    
+def test_TimeOfArrivalGenerator_process_conc_data__72_hr_limit(toa_gen):
+    o, cdump = toa_gen
+
+    # add more grids beyond 72 hours.
+    ref = cdump.grids[-1]
+    for hr in range(0, 24, 6):
+        g = ref.clone()
+        g.starting_time = ref.ending_datetime + datetime.timedelta(hours=hr)
+        g.ending_time = g.starting_time + datetime.timedelta(hours=6)
+        cdump.grids.append( g )
+        
+    o.process_conc_data(cdump)
+    
     assert o.grid.nonzero_conc_count == 122853
     assert o.above_ground_toa_bits is not None
     assert o.above_ground_toa_bits.shape == (701, 1201)

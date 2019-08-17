@@ -48,7 +48,32 @@ class TimeOfArrivalGenerator:
         else: 
             return self.hours[8:]
 
+    def _check_cdump_consistency(self, cdump):
+        if cdump.grids is None or len(cdump.grids) < 1:
+            logger.error("No concentration grid is available to check sampling interval")
+            return False
+
+        for g in cdump.grids:
+            dt = g.ending_datetime - g.starting_datetime
+            ts = dt.total_seconds();
+            
+            if ts <= 0:
+                logger.error("Time-of-arrival analysis is not supported for a backward run")
+                return False
+            elif ts > 6*3600:
+                logger.error("Sampling interval (%f hrs) exceeds 6 hours", ts/3600.0)
+                return False
+            
+            if ((6*3600) % ts) != 0:
+                logger.error("Sampling interval (%f min) does not add up to 6 hours", ts/60.0)
+                return False
+        
+        return True
+    
     def process_conc_data(self, cdump):
+        if not self._check_cdump_consistency(cdump):
+            raise Exception("The concentration dump file is not suitable for time-of-arrival analysis: see the error message above")
+        
         self.above_ground_toa_bits = numpy.zeros(cdump.grids[0].conc.shape, dtype=int)
         self.deposition_toa_bits = numpy.zeros(cdump.grids[0].conc.shape, dtype=int)
 
@@ -62,17 +87,19 @@ class TimeOfArrivalGenerator:
         for t_index in self.time_selector:
             t_grids = helper.TimeIndexGridFilter(cdump.grids,
                                                  helper.TimeIndexSelector(t_index, t_index))
-            initial_timeQ = (t_index == self.time_selector.first)
-            
-            grids_above_ground, grids_on_ground = self.conc_type.prepare_grids_for_plotting(t_grids)
-            logger.debug("grid counts: above the ground %d, on the ground %d",
-                         len(grids_above_ground), len(grids_on_ground))
 
             if t_grids[0].ending_datetime > dt_range_upper:
                 if hour_index + 1 < len(self.hours):
                     hour_index += 1
                     dt_range_lower = dt_range_upper
                     dt_range_upper = release_date_time + datetime.timedelta(hours=self.hours[hour_index])
+                else:
+                    logger.debug("passed 72-hours: skip processing the remaining grids.")
+                    break
+
+            grids_above_ground, grids_on_ground = self.conc_type.prepare_grids_for_plotting(t_grids)
+            logger.debug("grid counts: above the ground %d, on the ground %d",
+                         len(grids_above_ground), len(grids_on_ground))
         
             if t_grids[0].starting_datetime >= dt_range_lower and t_grids[0].ending_datetime <= dt_range_upper:
                 logger.debug("time-of-arrival: start time {}, hour {}".format(t_grids[0].starting_datetime, self.hours[hour_index]))
