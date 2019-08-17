@@ -1432,6 +1432,11 @@ def test_TimeOfArrivalMap___init__():
     assert p.map_id == "Time-Of-Arrival (h)"
   
    
+def test_TimeOfArrivalMap_guess_mass_unit():
+    p = helper.TimeOfArrivalMap(4)
+    assert p.guess_mass_unit("mass") == "hours"
+   
+   
 def test_TimeOfArrivalMap_guess_volume_unit():
     p = helper.TimeOfArrivalMap(4)
     assert p.guess_volume_unit("mass") == ""

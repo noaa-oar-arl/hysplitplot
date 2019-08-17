@@ -980,7 +980,10 @@ class TimeOfArrivalMap(AbstractConcentrationMap):
         super(TimeOfArrivalMap, self).__init__(const.ConcentrationMapType.TIME_OF_ARRIVAL,
                                                KHEMIN,
                                                "Time-Of-Arrival (h)")
-        
+
+    def guess_mass_unit(self, mass_unit):
+        return "hours"
+            
     def guess_volume_unit(self, mass_unit):
         return ""
         

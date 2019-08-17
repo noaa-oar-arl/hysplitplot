@@ -244,7 +244,7 @@ class KMLWriter(AbstractWriter):
             f.write("NOMAXNM NOMAXNM {}\n".format(len(contour_set.levels)))
         
         for level in contour_set.levels_str:
-            f.write("{} ".format(level))
+            f.write("{} ".format(self._quote_if_space_present(level)))
         f.write("\n")
         
         for c in contour_set.raw_colors:
@@ -260,10 +260,15 @@ class KMLWriter(AbstractWriter):
         f.write("\n")
         
         for label in contour_set.labels:
-            f.write("{} ".format(label))
+            f.write("{} ".format(self._quote_if_space_present(label)))
         
         f.write("\n")
-        
+    
+    def _quote_if_space_present(self, o):
+        if isinstance(o, str) and o.count(" ") > 0:
+            return "\"{}\"".format(o)
+        return o
+    
     def _write_preamble(self, f, g):
         first_release_loc = g.parent.release_locs[0]
         

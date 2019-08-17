@@ -485,6 +485,16 @@ def test_KMLWriter__get_att_datetime_str():
     assert o._get_att_datetime_str(dt) == "1450 UTC Jul 02 2019&"
 
 
+def test_KMLWriter__quote_if_space_present():
+    s = plot.ConcentrationPlotSettings()
+    o = gisout.KMLWriter(s.kml_option)
+    
+    assert o._quote_if_space_present("1.0e-12") == "1.0e-12"
+    assert o._quote_if_space_present("0-6 hours") == "\"0-6 hours\""
+    assert o._quote_if_space_present(12) == 12
+    assert o._quote_if_space_present(3.14) == 3.14
+    
+    
 def test_KMLWriter__write_attributes(cdump_two_pollutants):
     s = plot.ConcentrationPlotSettings()
     o = gisout.KMLWriter(s.kml_option)
