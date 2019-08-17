@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_plotbase.py
+#
+# Performs unit tests on functions and class methods declared in plotbase.py.
+# ---------------------------------------------------------------------------
+
 import datetime
 import matplotlib.pyplot as plt
 import pytest

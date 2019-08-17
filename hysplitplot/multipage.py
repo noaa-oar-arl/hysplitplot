@@ -1,3 +1,13 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# multipage.py
+#
+# For writing one or more plots to a file. If a file format does not support
+# multiple pages (for example, the PNG image format), each plot is saved
+# to a different file using a numeric sequence.
+# ---------------------------------------------------------------------------
+
 from abc import ABC, abstractmethod
 import logging
 from matplotlib.backends.backend_pdf import PdfPages

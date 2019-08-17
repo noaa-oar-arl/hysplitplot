@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# plot.py
+#
+# For producing concentration plots.
+# ---------------------------------------------------------------------------
+
 from abc import ABC, abstractmethod
 import copy
 import datetime

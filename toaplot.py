@@ -1,4 +1,12 @@
-# toaplot.py - for time-of-arrival plots
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# toaplot.py
+#
+# Produces time-of-arrival plots up to 72 hours from a cdump file.
+#
+# usage: python toaplot.py [OPTIONS] -iCDUMP
+# ---------------------------------------------------------------------------
 
 import logging
 import os

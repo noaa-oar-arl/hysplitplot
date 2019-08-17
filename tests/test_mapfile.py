@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_mapfile.py
+#
+# Performs unit tests on functions and class methods declared in mapfile.py.
+# ---------------------------------------------------------------------------
+
 import geopandas
 import os
 import pytest

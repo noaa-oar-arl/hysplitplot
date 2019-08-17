@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# logo.py
+#
+# Draws the NOAA logo to a plot.
+# ---------------------------------------------------------------------------
+
 import logging
 import math
 import matplotlib.patches

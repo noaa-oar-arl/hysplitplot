@@ -1,3 +1,12 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# gisout.py
+#
+# To produce GIS outputs for concentration data. Also used for time-of-arrival
+# plots.
+# ---------------------------------------------------------------------------
+
 from abc import ABC, abstractmethod
 import copy
 import datetime

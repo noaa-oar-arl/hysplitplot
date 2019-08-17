@@ -1,4 +1,12 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
 # trajplot.py
+#
+# Produces trajectory plots from one or more tdump files.
+#
+# usage: python trajplot.py [OPTIONS] -iTDUMP
+# ---------------------------------------------------------------------------
 
 import logging
 import os

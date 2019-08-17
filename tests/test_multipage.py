@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_multipage.py
+#
+# Performs unit tests on functions and class methods declared in multipage.py.
+# ---------------------------------------------------------------------------
+
 import matplotlib.pyplot as plt
 import os
 import pytest

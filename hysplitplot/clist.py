@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# clist.py
+#
+# Provides utilities for reading a cluster list file.
+# ---------------------------------------------------------------------------
+
 import logging
 
 from hysplitplot import util

@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# mapbox.py
+#
+# For finding the spatial extent of data points.
+# ---------------------------------------------------------------------------
+
 import logging
 import numpy
 

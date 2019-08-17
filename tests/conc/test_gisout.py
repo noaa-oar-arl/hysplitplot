@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_gisout.py
+#
+# Performs unit tests on functions and class methods declared in conc/gisout.py.
+# ---------------------------------------------------------------------------
+
 import datetime
 import logging
 import matplotlib.pyplot as plt

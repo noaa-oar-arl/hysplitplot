@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_plot.py
+#
+# Performs unit tests on functions and class methods declared in traj/plot.py.
+# ---------------------------------------------------------------------------
+
 import cartopy.crs
 import datetime
 import matplotlib.pyplot as plt

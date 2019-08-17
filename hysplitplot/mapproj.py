@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# mapproj.py
+#
+# Provides map projections.
+# ---------------------------------------------------------------------------
+
 from abc import ABC, abstractmethod
 import cartopy.crs
 import logging

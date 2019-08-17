@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# helper.py
+#
+# Helper functions and classes for producing time-of-arrival plots.
+# ---------------------------------------------------------------------------
+
 from abc import ABC, abstractmethod
 import copy
 import datetime

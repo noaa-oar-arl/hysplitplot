@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# datem.py
+#
+# Provides a DATEM file reader.
+# ---------------------------------------------------------------------------
+
 import datetime
 import logging
 import pytz

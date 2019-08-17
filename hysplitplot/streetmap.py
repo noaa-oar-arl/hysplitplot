@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# streetmap.py
+#
+# Provides classes for drawing map background.
+# ---------------------------------------------------------------------------
+
 from abc import ABC, abstractmethod
 import contextily
 import copy

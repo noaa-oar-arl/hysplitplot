@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_stnplot.py
+#
+# Performs unit tests on functions and class methods declared in stnplot.py.
+# ---------------------------------------------------------------------------
+
 import os
 import pytest
 

@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# labels.py
+#
+# For reading a LABELS.CFG file.
+# ---------------------------------------------------------------------------
+
 import logging
 
 from hysplitdata.const import HeightUnit

@@ -1,3 +1,13 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# setup.py
+#
+# For installation of this package.
+#
+# usage: python setup.py install
+# ---------------------------------------------------------------------------
+
 from setuptools import setup
 
 setup(
@@ -6,7 +16,8 @@ setup(
     description="HYSPLIT Graphics",
     author="Sonny Zinn",
     author_email="sonny.zinn@noaa.gov",
-    packages=["hysplitplot", "hysplitplot.traj", "hysplitplot.conc"],
+    packages=["hysplitplot", "hysplitplot.traj", "hysplitplot.conc",
+              "hysplitplot.toa"],
     python_requires="==3.7",
     install_requires=["hysplitdata==0.0", "geopandas==0.4", "cartopy==0.17",
                       "numpy==1.16", "pytz==2019.1", "timezonefinder==4.1",

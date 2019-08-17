@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_smooth.py
+#
+# Performs unit tests on functions and class methods declared in smooth.py.
+# ---------------------------------------------------------------------------
+
 import numpy
 import pytest
 

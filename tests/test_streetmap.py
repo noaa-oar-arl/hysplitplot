@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_streetmap.py
+#
+# Performs unit tests on functions and class methods declared in streetmap.py.
+# ---------------------------------------------------------------------------
+
 import cartopy
 import contextily
 import geopandas

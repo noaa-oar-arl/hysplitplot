@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# gisout.py
+#
+# To produce GIS outputs for trajectory data.
+# ---------------------------------------------------------------------------
+
 from abc import ABC, abstractmethod
 import logging
 

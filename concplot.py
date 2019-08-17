@@ -1,4 +1,12 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
 # concplot.py
+#
+# Produces concentration plots from a cdump file.
+#
+# usage: python concplot.py [OPTIONS] -iCDUMP
+# ---------------------------------------------------------------------------
 
 import logging
 import os

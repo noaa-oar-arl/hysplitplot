@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_mapbox.py
+#
+# Performs unit tests on functions and class methods declared in mapbox.py.
+# ---------------------------------------------------------------------------
+
 import pytest
 
 from hysplitplot import mapbox, const

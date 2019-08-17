@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_version.py
+#
+# Performs unit tests on functions and class methods declared in version.py.
+# ---------------------------------------------------------------------------
+
 import pytest
 
 import hysplitplot.version

@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_util.py
+#
+# Performs unit tests on functions and class methods declared in util.py.
+# ---------------------------------------------------------------------------
+
 import datetime
 import numpy
 import pytest

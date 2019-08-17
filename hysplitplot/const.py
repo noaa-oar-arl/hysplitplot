@@ -1,4 +1,10 @@
-# declares constants
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# const.py
+#
+# Declares constants used by this package.
+# ---------------------------------------------------------------------------
 
 class GISOutput:
     NONE                = 0

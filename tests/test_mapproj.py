@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_mapproj.py
+#
+# Performs unit tests on functions and class methods declared in mapproj.py.
+# ---------------------------------------------------------------------------
+
 import cartopy.crs
 import math
 import numpy

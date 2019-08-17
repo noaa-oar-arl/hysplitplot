@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_labels.py
+#
+# Performs unit tests on functions and class methods declared in labels.py.
+# ---------------------------------------------------------------------------
+
 import os
 import pytest
 

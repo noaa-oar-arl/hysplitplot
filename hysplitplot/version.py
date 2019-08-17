@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# version.py
+#
+# Provides source code version information.
+# ---------------------------------------------------------------------------
+
 import logging
 
 

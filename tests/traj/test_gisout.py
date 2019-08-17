@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_gisout.py
+#
+# Performs unit tests on functions and class methods declared in traj/gisout.py.
+# ---------------------------------------------------------------------------
+
 import datetime
 import numpy
 import os

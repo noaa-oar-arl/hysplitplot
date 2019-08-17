@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# plot.py
+#
+# For producing trajectory plots.
+# ---------------------------------------------------------------------------
+
 from abc import ABC, abstractmethod
 import cartopy
 import copy

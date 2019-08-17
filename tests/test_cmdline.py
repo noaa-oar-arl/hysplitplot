@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_cmdline.py
+#
+# Performs unit tests on functions and class methods declared in cmdline.py.
+# ---------------------------------------------------------------------------
+
 import pytest
 
 from hysplitplot.cmdline import CommandLineArguments

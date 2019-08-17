@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_plot.py
+#
+# Performs unit tests on functions and class methods declared in toa/plot.py.
+# ---------------------------------------------------------------------------
+
 import datetime
 import matplotlib.pyplot as plt
 from matplotlib.contour import QuadContourSet

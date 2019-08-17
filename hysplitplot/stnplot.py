@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# stnplot.py
+#
+# For reading a station plot file.
+# ---------------------------------------------------------------------------
+
 import logging
 
 from hysplitdata import io

@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# util.py
+#
+# Provides utility functions.
+# ---------------------------------------------------------------------------
+
 import abc
 import logging
 import math

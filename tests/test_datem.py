@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_datem.py
+#
+# Performs unit tests on functions and class methods declared in datem.py.
+# ---------------------------------------------------------------------------
+
 import datetime
 import pytest
 import pytz

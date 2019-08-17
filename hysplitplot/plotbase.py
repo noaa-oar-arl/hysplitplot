@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# plotbase.py
+#
+# Declares a base class for plots.
+# ---------------------------------------------------------------------------
+
 from abc import ABC, abstractmethod
 import cartopy.crs
 import logging

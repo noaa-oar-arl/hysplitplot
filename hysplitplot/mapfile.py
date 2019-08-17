@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# mapfile.py
+#
+# For reading an ARL map file or a shape file.
+# ---------------------------------------------------------------------------
+
 import geopandas
 import logging
 import os

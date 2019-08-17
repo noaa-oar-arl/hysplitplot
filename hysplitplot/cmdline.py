@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# cmdline.py
+#
+# Holder for command-line arguments.
+# ---------------------------------------------------------------------------
+
 import logging
 
 from hysplitplot import util

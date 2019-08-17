@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# cntr.py
+#
+# For converting matplotlib's contour data to an internal format.
+# ---------------------------------------------------------------------------
+
 import copy
 import logging
 import numpy

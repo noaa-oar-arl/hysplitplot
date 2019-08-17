@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_cntr.py
+#
+# Performs unit tests on functions and class methods declared in conc/cntr.py.
+# ---------------------------------------------------------------------------
+
 import datetime
 import logging
 import matplotlib.pyplot as plt

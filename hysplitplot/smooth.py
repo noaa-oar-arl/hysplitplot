@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# smooth.py
+#
+# For smoothing data points in a two-dimensional array.
+# ---------------------------------------------------------------------------
+
 from abc import ABC
 import logging
 import numpy

@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_clist.py
+#
+# Performs unit tests on functions and class methods declared in clist.py.
+# ---------------------------------------------------------------------------
+
 import os
 import pytest
 

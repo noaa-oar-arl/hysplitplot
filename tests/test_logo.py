@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------------
+# NOAA Air Resources Laboratory
+#
+# test_logo.py
+#
+# Performs unit tests on functions and class methods declared in logo.py.
+# ---------------------------------------------------------------------------
+
 import matplotlib.pyplot as plt
 import pytest
 
