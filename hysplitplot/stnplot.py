@@ -26,7 +26,7 @@ class StationPlotConfig:
 class StationPlotConfigReader(io.FormattedTextFileReader):
 
     def __init__(self, cfg):
-        io.FormattedTextFileReader.__init__(self)
+        super(StationPlotConfigReader, self).__init__()
         self.cfg = cfg
 
     def read(self, filename):

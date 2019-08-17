@@ -29,7 +29,7 @@ class GISFileWriterFactory:
             return PartialKMLWriter(kml_option, time_zone)
         elif selector != const.GISOutput.NONE:
             logger.warning("Unknown GIS file writer type %d", selector)
-        return IdleWriter(time_zone)
+        return NullWriter(time_zone)
     
 
 class AbstractWriter(ABC):
@@ -50,6 +50,7 @@ class AbstractWriter(ABC):
         self.NSSLBL             = NSSLBL
         self.show_max_conc      = show_max_conc
     
+    @abstractmethod
     def write(self, basename, g, contour_set, lower_vert_level, upper_vert_level):
         pass
     
@@ -66,11 +67,14 @@ class AbstractWriter(ABC):
         return "C8{}{}{}".format(b, g, r).upper()
      
     
-class IdleWriter(AbstractWriter):
+class NullWriter(AbstractWriter):
     
     def __init__(self, time_zone=None):
-        AbstractWriter.__init__(self, time_zone)
+        super(NullWriter, self).__init__(time_zone)
 
+    def write(self, basename, g, contour_set, lower_vert_level, upper_vert_level):
+        pass
+    
     def make_output_basename(self, g, conc_type, depo_sum, output_basename, output_suffix, KMLOUT, upper_vert_level):
         pass   
 
@@ -78,7 +82,7 @@ class IdleWriter(AbstractWriter):
 class PointsGenerateFileWriter(AbstractWriter):
     
     def __init__(self, formatter, time_zone=None):
-        AbstractWriter.__init__(self, time_zone)
+        super(PointsGenerateFileWriter, self).__init__(time_zone)
         self.formatter = formatter
         
     def make_output_basename(self, g, conc_type, depo_sum, output_basename, output_suffix, KMLOUT, upper_vert_level):
@@ -164,7 +168,7 @@ class PointsGenerateFileWriter(AbstractWriter):
 class KMLWriter(AbstractWriter):
     
     def __init__(self, kml_option, time_zone=None):
-        AbstractWriter.__init__(self, time_zone)
+        super(KMLWriter, self).__init__(time_zone)
         self.kml_option     = kml_option    # IKML
         self.kml_file       = None
         self.att_file       = None
@@ -174,7 +178,7 @@ class KMLWriter(AbstractWriter):
         return "{}_{}".format("HYSPLIT" if KMLOUT == 0 else output_basename, output_suffix)
     
     def initialize(self, gis_alt_mode, KMLOUT, output_suffix, KMAP, NSSLBL, show_max_conc):
-        AbstractWriter.initialize(self, gis_alt_mode, KMLOUT, output_suffix, KMAP, NSSLBL, show_max_conc)
+        super(KMLWriter, self).initialize(gis_alt_mode, KMLOUT, output_suffix, KMAP, NSSLBL, show_max_conc)
         self.contour_writer = KMLContourWriterFactory.create_instance(self.KMAP, self.alt_mode_str)
         self.contour_writer.set_show_max_conc(show_max_conc)
 
@@ -202,7 +206,7 @@ class KMLWriter(AbstractWriter):
         self._write_attributes(self.att_file, g, contour_set)
 
     def finalize(self):
-        AbstractWriter.finalize(self)
+        super(KMLWriter, self).finalize()
         
         if self.kml_file is not None:
             self._write_postamble(self.kml_file)
@@ -407,7 +411,7 @@ Released between {} and {} m AGL
 class PartialKMLWriter(KMLWriter):
     
     def __init__(self, kml_option, time_zone=None):
-        KMLWriter.__init__(self, kml_option, time_zone)
+        super(PartialKMLWriter, self).__init__(kml_option, time_zone)
 
     def write(self, basename, g, contour_set, lower_vert_level, upper_vert_level):
         if self.kml_file is None:
@@ -582,7 +586,6 @@ class AbstractKMLContourWriter(ABC):
       </Placemark>\n""")
     
     def _write_polygon(self, f, polygon, vert_level):
-        
         if len(polygon.boundaries) > 0:
             f.write("""\
           <Polygon>
@@ -710,7 +713,7 @@ Value: {}
 class KMLConcentrationWriter(AbstractKMLContourWriter):
     
     def __init__(self, alt_mode_str, time_zone=None):
-        AbstractKMLContourWriter.__init__(self, alt_mode_str, time_zone)
+        super(KMLConcentrationWriter, self).__init__(alt_mode_str, time_zone)
     
     def _get_name_cdata(self, dt):
         return """<pre>Concentration
@@ -734,7 +737,7 @@ Valid:{}</pre>""".format(lower_vert_level,
 class KMLChemicalThresholdWriter(KMLConcentrationWriter):
     
     def __init__(self, alt_mode_str, time_zone=None):
-        KMLConcentrationWriter.__init__(self, alt_mode_str, time_zone)
+        super(KMLChemicalThresholdWriter, self).__init__(alt_mode_str, time_zone)
 
     def _get_contour_height_at(self, k, vert_level):
         return int(vert_level) if k == 1 else int(vert_level) + (200 * k)
@@ -743,7 +746,7 @@ class KMLChemicalThresholdWriter(KMLConcentrationWriter):
 class KMLDepositionWriter(AbstractKMLContourWriter):
     
     def __init__(self, alt_mode_str, time_zone=None):
-        AbstractKMLContourWriter.__init__(self, alt_mode_str, time_zone)
+        super(KMLDepositionWriter, self).__init__(alt_mode_str, time_zone)
     
     def _get_name_cdata(self, dt):
         return """<pre>Deposition
@@ -770,7 +773,7 @@ Valid:{}</pre>""".format(self._get_timestamp_str(dt))
 class KMLMassLoadingWriter(AbstractKMLContourWriter):
     
     def __init__(self, alt_mode_str, time_zone=None):
-        AbstractKMLContourWriter.__init__(self, alt_mode_str, time_zone)
+        super(KMLMassLoadingWriter, self).__init__(alt_mode_str, time_zone)
     
     def _get_name_cdata(self, dt):
         return """<pre>Mass_loading
@@ -800,7 +803,7 @@ Valid:{}</pre>""".format(lower_vert_level,
 class KMLTimeOfArrivalWriter(AbstractKMLContourWriter):
     
     def __init__(self, alt_mode_str, time_zone=None):
-        AbstractKMLContourWriter.__init__(self, alt_mode_str, time_zone)
+        super(KMLTimeOfArrivalWriter, self).__init__(alt_mode_str, time_zone)
     
     def _get_name_cdata(self, dt):
         return """<pre>Time of arrival (h)

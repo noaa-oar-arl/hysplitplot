@@ -867,11 +867,11 @@ def test_IntervalSymbolDrawer___init__():
     plt.close(axes.get_figure())
 
 
-def test_IdleIntervalSymbolDrawer___init__():
+def test_NullIntervalSymbolDrawer___init__():
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
 
-    d = plot.IdleIntervalSymbolDrawer(axes, s, 12)
+    d = plot.NullIntervalSymbolDrawer(axes, s, 12)
     assert d.axes == axes
     assert d.settings == s
     assert d.interval == 12
@@ -879,11 +879,11 @@ def test_IdleIntervalSymbolDrawer___init__():
     plt.close(axes.get_figure())
 
 
-def test_IdleIntervalSymbolDrawer_draw():
+def test_NullIntervalSymbolDrawer_draw():
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
 
-    d = plot.IdleIntervalSymbolDrawer(axes, s, 12)
+    d = plot.NullIntervalSymbolDrawer(axes, s, 12)
 
     try:
         d.draw(None, None, None)
@@ -1009,7 +1009,7 @@ def test_IntervalSymbolDrawerFactory_create_instance():
 
     s.time_label_interval = 0
     d = plot.IntervalSymbolDrawerFactory.create_instance(axes, s)
-    assert isinstance(d, plot.IdleIntervalSymbolDrawer)
+    assert isinstance(d, plot.NullIntervalSymbolDrawer)
 
     plt.close(axes.get_figure())
  

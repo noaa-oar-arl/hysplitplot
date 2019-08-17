@@ -1,3 +1,4 @@
+from abc import ABC
 import logging
 import numpy
 
@@ -14,7 +15,7 @@ class SmoothingKernelFactory:
         return SimpleSmoothingKernel(half_sz)
 
 
-class SmoothingKernel:
+class SmoothingKernel(ABC):
     
     def __init__(self, half_sz):
         self.half_sz = half_sz
@@ -59,7 +60,7 @@ class SmoothingKernel:
 class SimpleSmoothingKernel(SmoothingKernel):
     
     def __init__(self, half_sz):
-        SmoothingKernel.__init__(self, half_sz)
+        super(SimpleSmoothingKernel, self).__init__(half_sz)
         self.fill()
         self.normalize()
         

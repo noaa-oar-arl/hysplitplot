@@ -168,7 +168,7 @@ class AbstractGridFilter:
 class TimeIndexGridFilter(AbstractGridFilter):
     
     def __init__(self, grids, time_index_selector):
-        AbstractGridFilter.__init__(self)
+        super(TimeIndexGridFilter, self).__init__()
         self.grids = self._filter(grids, time_index_selector)
     
     @staticmethod
@@ -180,7 +180,7 @@ class TimeIndexGridFilter(AbstractGridFilter):
 class VerticalLevelGridFilter(AbstractGridFilter):
     
     def __init__(self, grids, level_selector):
-        AbstractGridFilter.__init__(self)
+        super(VerticalLevelGridFilter, self).__init__()
         self.grids = self._filter(grids, level_selector)
         
     @staticmethod
@@ -217,7 +217,6 @@ class VerticalAverageCalculator:
         self._prepare_weighted_averaging(cdump, level_selector)
     
     def _prepare_weighted_averaging(self, cdump, level_selector):
-
         self.selected_level_indices.clear()
         
         for k, level in enumerate(cdump.vert_levels):
@@ -349,7 +348,7 @@ class ConcentrationType(ABC):
 class VerticalAverageConcentration(ConcentrationType):
     
     def __init__(self):
-        ConcentrationType.__init__(self)
+        super(VerticalAverageConcentration, self).__init__()
         self.average_calc = None
         self.min_average = 1.0e+25
         self.max_average = 0.0
@@ -358,7 +357,7 @@ class VerticalAverageConcentration(ConcentrationType):
         return 
     
     def initialize(self, cdump, level_selector, pollutant_selector):
-        ConcentrationType.initialize(self, cdump, level_selector, pollutant_selector)
+        super(VerticalAverageConcentration, self).initialize(cdump, level_selector, pollutant_selector)
         self.average_calc = VerticalAverageCalculator(cdump, level_selector)
 
     def prepare_grids_for_plotting(self, t_grids):
@@ -462,7 +461,7 @@ class VerticalAverageConcentration(ConcentrationType):
 class LevelConcentration(ConcentrationType):
     
     def __init__(self):
-        ConcentrationType.__init__(self)
+        super(LevelConcentration, self).__init__()
         self.min_concs = None  # per vertical level, across all grids of interest
         self.max_concs = None  # per vertical level, across all grids of interest
         self.__min_concs_stashed = None
@@ -475,7 +474,7 @@ class LevelConcentration(ConcentrationType):
         self.alt_KAVG = KAVG
  
     def initialize(self, cdump, level_selector, pollutant_selector):
-        ConcentrationType.initialize(self, cdump, level_selector, pollutant_selector)
+        super(LevelConcentration, self).initialize(cdump, level_selector, pollutant_selector)
         self.min_concs = [1.0e+25] * len(cdump.vert_levels)  # at each vertical level
         self.max_concs = [0.0] * len(cdump.vert_levels)   # at each vertical level
         try:
@@ -704,7 +703,7 @@ class AbstractConcentrationMap:
         return TFACT
     
     def undo_scale_exposure(self, conc_type):
-        return
+        pass
     
     def need_time_scaling(self):
         return False
@@ -720,10 +719,9 @@ class AbstractConcentrationMap:
 class ConcentrationMap(AbstractConcentrationMap):
     
     def __init__(self, KHEMIN):
-        AbstractConcentrationMap.__init__(self,
-                                          const.ConcentrationMapType.CONCENTRATION,
-                                          KHEMIN,
-                                          "Concentration")
+        super(ConcentrationMap, self).__init__(const.ConcentrationMapType.CONCENTRATION,
+                                               KHEMIN,
+                                               "Concentration")
 
     def guess_volume_unit(self, mass_unit):
         if mass_unit.startswith("ppm"):
@@ -740,8 +738,7 @@ class ConcentrationMap(AbstractConcentrationMap):
 class ExposureMap(AbstractConcentrationMap):
     
     def __init__(self, KHEMIN):
-        AbstractConcentrationMap.__init__(self,
-                                          const.ConcentrationMapType.EXPOSURE,
+        super(ExposureMap, self).__init__(const.ConcentrationMapType.EXPOSURE,
                                           KHEMIN,
                                           "Exposure")
     
@@ -771,10 +768,9 @@ class ExposureMap(AbstractConcentrationMap):
 class DepositionMap(AbstractConcentrationMap):
     
     def __init__(self, KHEMIN):
-        AbstractConcentrationMap.__init__(self,
-                                          const.ConcentrationMapType.DEPOSITION,
-                                          KHEMIN,
-                                          "Deposition")
+        super(DepositionMap, self).__init__(const.ConcentrationMapType.DEPOSITION,
+                                            KHEMIN,
+                                            "Deposition")
         
     def guess_volume_unit(self, mass_unit):
         return "/m^2"
@@ -787,10 +783,9 @@ class DepositionMap(AbstractConcentrationMap):
 class ThresholdLevelsMap(AbstractConcentrationMap):
     
     def __init__(self, KHEMIN):
-        AbstractConcentrationMap.__init__(self,
-                                          const.ConcentrationMapType.THRESHOLD_LEVELS,
-                                          KHEMIN,
-                                          "Concentration")
+        super(ThresholdLevelsMap, self).__init__(const.ConcentrationMapType.THRESHOLD_LEVELS,
+                                                 KHEMIN,
+                                                 "Concentration")
     
     def has_banner(self):
         return True
@@ -891,10 +886,9 @@ class ThresholdLevelsMap(AbstractConcentrationMap):
 class VolcanicEruptionMap(AbstractConcentrationMap):
     
     def __init__(self, KHEMIN):
-        AbstractConcentrationMap.__init__(self,
-                                          const.ConcentrationMapType.VOLCANIC_ERUPTION,
-                                          KHEMIN,
-                                          "Concentration")
+        super(VolcanicEruptionMap, self).__init__(const.ConcentrationMapType.VOLCANIC_ERUPTION,
+                                                  KHEMIN,
+                                                  "Concentration")
         
     def has_banner(self):
         return True
@@ -936,10 +930,9 @@ class VolcanicEruptionMap(AbstractConcentrationMap):
 class Deposition6Map(AbstractConcentrationMap):
     
     def __init__(self, KHEMIN):
-        AbstractConcentrationMap.__init__(self,
-                                          const.ConcentrationMapType.DEPOSITION_6,
-                                          KHEMIN,
-                                          "Deposition")
+        super(Deposition6Map, self).__init__(const.ConcentrationMapType.DEPOSITION_6,
+                                             KHEMIN,
+                                             "Deposition")
         
     def guess_volume_unit(self, mass_unit):
         return "/m^2"
@@ -952,10 +945,9 @@ class Deposition6Map(AbstractConcentrationMap):
 class MassLoadingMap(AbstractConcentrationMap):
     
     def __init__(self, KHEMIN):
-        AbstractConcentrationMap.__init__(self,
-                                          const.ConcentrationMapType.MASS_LOADING,
-                                          KHEMIN,
-                                          "Mass loading")
+        super(MassLoadingMap, self).__init__(const.ConcentrationMapType.MASS_LOADING,
+                                             KHEMIN,
+                                             "Mass loading")
     
     def guess_volume_unit(self, mass_unit):
         return "/m^2"
@@ -976,10 +968,9 @@ class MassLoadingMap(AbstractConcentrationMap):
 class TimeOfArrivalMap(AbstractConcentrationMap):
     
     def __init__(self, KHEMIN):
-        AbstractConcentrationMap.__init__(self,
-                                          const.ConcentrationMapType.TIME_OF_ARRIVAL,
-                                          KHEMIN,
-                                          "Time-Of-Arrival (h)")
+        super(TimeOfArrivalMap, self).__init__(const.ConcentrationMapType.TIME_OF_ARRIVAL,
+                                               KHEMIN,
+                                               "Time-Of-Arrival (h)")
         
     def guess_volume_unit(self, mass_unit):
         return ""
@@ -993,6 +984,7 @@ class TimeOfArrivalMap(AbstractConcentrationMap):
     
     def undo_scale_exposure(self, conc_type):
         pass
+
 
 class DepositSumFactory:
     

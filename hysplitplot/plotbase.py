@@ -13,7 +13,7 @@ from hysplitplot import cmdline, const, labels, logo, stnplot, streetmap, util
 logger = logging.getLogger(__name__)
 
 
-class AbstractPlotSettings:
+class AbstractPlotSettings(ABC):
     
     def __init__(self):
         self.map_background = "../graphics/arlmap"

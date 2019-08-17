@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
     
     def __init__(self):
-        plotbase.AbstractPlotSettings.__init__(self)
+        super(TimeOfArrivalPlotSettings, self).__init__()
 
         self.input_file = "cdump"
         self.output_filename = "toaplot.ps"
@@ -305,7 +305,7 @@ class TimeOfArrivalPlotSettingsReader:
 class TimeOfArrivalPlot(plotbase.AbstractPlot):
 
     def __init__(self):
-        plotbase.AbstractPlot.__init__(self)
+        super(TimeOfArrivalPlot, self).__init__()
         self.settings = TimeOfArrivalPlotSettings()
         self.cdump = None
         self.time_selector = None

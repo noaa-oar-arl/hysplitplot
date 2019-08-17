@@ -359,6 +359,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
                           color=map_color, clip_on=True)
             self.text_objs.append(t)
 
+
 class AbstractStreetMap(AbstractMapBackground):
     
     def __init__(self, projection):

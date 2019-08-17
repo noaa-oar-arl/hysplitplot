@@ -70,7 +70,7 @@ class GenerateAttributeFileWriter:
 class PointsGenerateFileWriter(AbstractGISFileWriter):
     
     def __init__(self, time_zone=None):
-        AbstractGISFileWriter.__init__(self, time_zone)
+        super(PointsGenerateFileWriter, self).__init__(time_zone)
     
     def write(self, file_no, plot_data):
         gisout = "GIS_traj_{0}_{1:02d}.txt".format(self.output_suffix, file_no)
@@ -91,7 +91,7 @@ class PointsGenerateFileWriter(AbstractGISFileWriter):
 class LinesGenerateFileWriter(AbstractGISFileWriter):
     
     def __init__(self, time_zone=None):
-        AbstractGISFileWriter.__init__(self, time_zone)
+        super(LinesGenerateFileWriter, self).__init__(time_zone)
     
     def write(self, file_no, plot_data):
         gisout = "GIS_traj_{0}_{1:02d}.txt".format(self.output_suffix, file_no)
@@ -115,7 +115,7 @@ class LinesGenerateFileWriter(AbstractGISFileWriter):
 class KMLWriter(AbstractGISFileWriter):
     
     def __init__(self, height_unit=HeightUnit.METERS, time_zone=None):
-        AbstractGISFileWriter.__init__(self, time_zone)
+        super(KMLWriter, self).__init__(time_zone)
         self.height_unit = height_unit
     
     @staticmethod
@@ -452,7 +452,7 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
 class PartialKMLWriter(KMLWriter):
     
     def __init__(self, height_unit=HeightUnit.METERS, time_zone=None):
-        KMLWriter.__init__(self, height_unit, time_zone)
+        super(PartialKMLWriter, self).__init__(height_unit, time_zone)
     
     @staticmethod
     def make_filename(output_name, output_suffix, file_no):

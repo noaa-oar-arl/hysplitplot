@@ -28,7 +28,7 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
 
         Initializes member variables to their default values.
         """
-        plotbase.AbstractPlotSettings.__init__(self)
+        super(TrajectoryPlotSettings, self).__init__()
         
         # defined in default_tplot
         self.view = 1
@@ -168,7 +168,7 @@ class TrajectoryPlotSettingsReader:
 class TrajectoryPlot(plotbase.AbstractPlot):
 
     def __init__(self):
-        plotbase.AbstractPlot.__init__(self)
+        super(TrajectoryPlot, self).__init__()
         self.settings = TrajectoryPlotSettings()
         self.data_list = None
         self.traj_axes = None
@@ -660,7 +660,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                 w.write(k + 1, plot_data)
 
 
-class ColorCycle:
+class ColorCycle(ABC):
 
     _colors = ["r", "b", "#00ff00", "c", "m", "y", "#3399cc"]
 
@@ -679,7 +679,7 @@ class ColorCycle:
 class ItemizedColorCycle(ColorCycle):
 
     def __init__(self):
-        ColorCycle.__init__(self)
+        super(ItemizedColorCycle, self).__init__()
 
     def next_color(self, height_index, color_code):
         k = (int(color_code) - 1) % self.max_colors
@@ -689,7 +689,7 @@ class ItemizedColorCycle(ColorCycle):
 class MonoColorCycle(ColorCycle):
 
     def __init__(self):
-        ColorCycle.__init__(self)
+        super(MonoColorCycle, self).__init__()
 
     def next_color(self, height_index, color_code):
         return "k"
@@ -698,7 +698,7 @@ class MonoColorCycle(ColorCycle):
 class HeightColorCycle(ColorCycle):
 
     def __init__(self):
-        ColorCycle.__init__(self)
+        super(HeightColorCycle, self).__init__()
 
     def next_color(self, height_index, color_code):
         return self._colors[height_index % self.max_colors]
@@ -719,7 +719,7 @@ class ColorCycleFactory:
             return MonoColorCycle()
 
 
-class IntervalSymbolDrawer:
+class IntervalSymbolDrawer(ABC):
 
     def __init__(self, axes, settings, interval):
         self.axes = axes
@@ -727,10 +727,10 @@ class IntervalSymbolDrawer:
         self.interval = interval
 
 
-class IdleIntervalSymbolDrawer(IntervalSymbolDrawer):
+class NullIntervalSymbolDrawer(IntervalSymbolDrawer):
 
     def __init__(self, axes, settings, interval):
-        IntervalSymbolDrawer.__init__(self, axes, settings, interval)
+        super(NullIntervalSymbolDrawer, self).__init__(axes, settings, interval)
 
     def draw(self, trajectory, x, y, **kwargs):
         return
@@ -739,7 +739,7 @@ class IdleIntervalSymbolDrawer(IntervalSymbolDrawer):
 class TimeIntervalSymbolDrawer(IntervalSymbolDrawer):
 
     def __init__(self, axes, settings, interval):
-        IntervalSymbolDrawer.__init__(self, axes, settings, abs(interval))
+        super(TimeIntervalSymbolDrawer, self).__init__(axes, settings, abs(interval))
 
     def draw(self, trajectory, x, y, **kwargs):
         dts = trajectory.datetimes
@@ -772,7 +772,7 @@ class TimeIntervalSymbolDrawer(IntervalSymbolDrawer):
 class AgeIntervalSymbolDrawer(IntervalSymbolDrawer):
 
     def __init__(self, axes, settings, interval):
-        IntervalSymbolDrawer.__init__(self, axes, settings, abs(interval))
+        super(AgeIntervalSymbolDrawer, self).__init__(axes, settings, abs(interval))
 
     def draw(self, trajectory, x, y, **kwargs):
         ages = trajectory.ages
@@ -812,7 +812,7 @@ class IntervalSymbolDrawerFactory:
         elif time_interval < 0:
             return AgeIntervalSymbolDrawer(axes, settings, -time_interval)
         else:
-            return IdleIntervalSymbolDrawer(axes, settings, time_interval)
+            return NullIntervalSymbolDrawer(axes, settings, time_interval)
 
         
 class AbstractVerticalProjection(ABC):
@@ -841,7 +841,7 @@ class AbstractVerticalProjection(ABC):
 class TimeVerticalProjection(AbstractVerticalProjection):
     
     def __init__(self, axes, settings, time_interval):
-        AbstractVerticalProjection.__init__(self, axes, settings, time_interval)
+        super(TimeVerticalProjection, self).__init__(axes, settings, time_interval)
         
     def calc_xrange(self, plot_data, time_zone=None):
         r = plot_data.get_datetime_range()
@@ -879,7 +879,7 @@ class TimeVerticalProjection(AbstractVerticalProjection):
 class AgeVerticalProjection(AbstractVerticalProjection):
     
     def __init__(self, axes, settings, time_interval):
-        AbstractVerticalProjection.__init__(self, axes, settings, time_interval)
+        super(AgeVerticalProjection, self).__init__(axes, settings, time_interval)
         
     def calc_xrange(self, plot_data, time_zone=None):
         return plot_data.get_age_range()

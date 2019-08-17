@@ -61,6 +61,20 @@ class AbstractContourLevelGeneratorTest(plot.AbstractContourLevelGenerator):
         return 0
     
 
+class AbstractColorTableTest(plot.AbstractColorTable):
+    
+    def __init__(self, ncolors):
+        super(AbstractColorTableTest, self).__init__(ncolors)
+        
+    @property
+    def raw_colors(self):
+        pass
+    
+    @property
+    def colors(self):
+        pass
+    
+    
 def test_ConcentrationPlotSettings___init__():
     s = plot.ConcentrationPlotSettings()
 
@@ -1485,8 +1499,8 @@ def test_ColorTableFactory__get_color_table_filename():
     plot.ColorTableFactory.COLOR_TABLE_FILE_NAMES = saved
 
     
-def test_ColorTable___init__():
-    o = plot.ColorTable(4)
+def test_AbstractColorTable___init__():
+    o = AbstractColorTableTest(4)
     assert hasattr(o, "ncolors")
     assert hasattr(o, "rgbs")
     assert hasattr(o, "offset")
@@ -1495,23 +1509,23 @@ def test_ColorTable___init__():
     assert o.use_offset == False
 
 
-def test_ColorTable_get_reader():
-    o = plot.ColorTable(4)
+def test_AbstractColorTable_get_reader():
+    o = AbstractColorTableTest(4)
     r = o.get_reader()
     assert isinstance(r, plot.ColorTableReader)
     assert r.color_table is o
 
 
-def test_ColorTable_set_rgb():
-    o = plot.ColorTable(2)
+def test_AbstractColorTable_set_rgb():
+    o = AbstractColorTableTest(2)
     o.rgbs = [(0,0,0), (.5, .5, .5)]
     
     o.set_rgb(0, (.2, .2, .2))
     assert o.rgbs[0] == pytest.approx((0.2, 0.2, 0.2))
     
 
-def test_ColorTable_change_to_grayscale():
-    o = plot.ColorTable(2)
+def test_AbstractColorTable_change_to_grayscale():
+    o = AbstractColorTableTest(2)
     o.rgbs = [(0,0,0), (.5, .6, .7)]
     
     o.change_to_grayscale()
@@ -1520,25 +1534,25 @@ def test_ColorTable_change_to_grayscale():
     assert o.rgbs[1] == pytest.approx((0.5815, 0.5815, 0.5815))
     
 
-def test_ColorTable_get_luminance():
-    assert plot.ColorTable.get_luminance((0.5, 0.6, 0.7)) == pytest.approx(0.5815)
+def test_AbstractColorTable_get_luminance():
+    assert AbstractColorTableTest.get_luminance((0.5, 0.6, 0.7)) == pytest.approx(0.5815)
 
 
-def test_ColorTable_create_plot_colors():
-    clrs = plot.ColorTable.create_plot_colors([(.5, .5, .5), (1., 1., 1.)])
+def test_AbstractColorTable_create_plot_colors():
+    clrs = AbstractColorTableTest.create_plot_colors([(.5, .5, .5), (1., 1., 1.)])
     assert len(clrs) == 2
     assert clrs[0] == "#808080"
     assert clrs[1] == "#ffffff"
 
     # include alpha
-    clrs = plot.ColorTable.create_plot_colors([(.5, .5, .5, 0.0), (1., 1., 1., 0.5)])
+    clrs = AbstractColorTableTest.create_plot_colors([(.5, .5, .5, 0.0), (1., 1., 1., 0.5)])
     assert len(clrs) == 2
     assert clrs[0] == "#80808000"
     assert clrs[1] == "#ffffff80"
 
 
-def test_ColorTable_set_offset():
-    o = plot.ColorTable(4)
+def test_AbstractColorTable_set_offset():
+    o = AbstractColorTableTest(4)
     
     o.enable_offset( True )
     
@@ -1557,8 +1571,8 @@ def test_ColorTable_set_offset():
     assert o.offset == 0
     
     
-def test_ColorTable_enable_offset():
-    o = plot.ColorTable(4)
+def test_AbstractColorTable_enable_offset():
+    o = AbstractColorTableTest(4)
     
     o.enable_offset()
     assert o.use_offset == True

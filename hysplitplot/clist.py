@@ -12,7 +12,6 @@ class ClusterList:
         self.percent = dict()
         self.start_index = start_index  # 0 or 1
         self.total_traj = 0
-        return 
 
     def get_label(self, k):
         return "{0} ({1}%)".format(k + self.start_index, self.percent[k]) if (k in self.percent) else ""

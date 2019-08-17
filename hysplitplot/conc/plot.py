@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
     
     def __init__(self):
-        plotbase.AbstractPlotSettings.__init__(self)
+        super(ConcentrationPlotSettings, self).__init__()
 
         self.input_file = "cdump"
         self.output_filename = "concplot.ps"
@@ -312,7 +312,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
     MAX_CONTOUR_LEVELS = 32
     
     def __init__(self):
-        plotbase.AbstractPlot.__init__(self)
+        super(ConcentrationPlot, self).__init__()
         self.settings = ConcentrationPlotSettings()
         self.cdump = None
         self.time_selector = None
@@ -1167,7 +1167,7 @@ class AbstractContourLevelGenerator(ABC):
 class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
     
     def __init__(self, cutoff, **kwargs):
-        AbstractContourLevelGenerator.__init__(self, **kwargs)
+        super(ExponentialDynamicLevelGenerator, self).__init__(**kwargs)
         self.cutoff = cutoff
         self.force_base_10 = kwargs.get("force_base_10", False)
 
@@ -1228,7 +1228,7 @@ class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
 class ExponentialFixedLevelGenerator(ExponentialDynamicLevelGenerator):
     
     def __init__(self, cutoff, **kwargs):
-        ExponentialDynamicLevelGenerator.__init__(self, cutoff, **kwargs)
+        super(ExponentialFixedLevelGenerator, self).__init__(cutoff, **kwargs)
         
     def make_levels(self, min_conc, max_conc, max_levels):
         return super(ExponentialFixedLevelGenerator, self).make_levels(self.global_min,
@@ -1237,11 +1237,12 @@ class ExponentialFixedLevelGenerator(ExponentialDynamicLevelGenerator):
     
     def compute_color_table_offset(self, levels):
         return 0    
-    
+
+
 class LinearDynamicLevelGenerator(AbstractContourLevelGenerator):
     
     def __init__(self):
-        AbstractContourLevelGenerator.__init__(self)
+        super(LinearDynamicLevelGenerator, self).__init__()
         
     def _compute_interval(self, min_conc, max_conc):
         nexp = util.nearest_int(math.log10(max_conc * 0.25)) if max_conc > 0 else 0
@@ -1283,7 +1284,7 @@ class LinearDynamicLevelGenerator(AbstractContourLevelGenerator):
 class LinearFixedLevelGenerator(LinearDynamicLevelGenerator):
     
     def __init__(self):
-        LinearDynamicLevelGenerator.__init__(self)
+        super(LinearFixedLevelGenerator, self).__init__()
     
     def make_levels(self, min_conc, max_conc, max_levels):
         return LinearDynamicLevelGenerator.make_levels(self,
@@ -1298,7 +1299,7 @@ class LinearFixedLevelGenerator(LinearDynamicLevelGenerator):
 class UserSpecifiedLevelGenerator(AbstractContourLevelGenerator):
     
     def __init__(self, user_specified_levels):
-        AbstractContourLevelGenerator.__init__(self)
+        super(UserSpecifiedLevelGenerator, self).__init__()
         self.contour_levels = [] if user_specified_levels is None else [o.level for o in user_specified_levels]
     
     def make_levels(self, min_conc, max_conc, max_levels):
@@ -1354,7 +1355,7 @@ class ColorTableFactory:
         return None
     
     
-class ColorTable:
+class AbstractColorTable(ABC):
     
     def __init__(self, ncolors):
         self.rgbs = []
@@ -1386,6 +1387,16 @@ class ColorTable:
         else:
             return [util.make_color(o[0], o[1], o[2]) for o in rgbs]
 
+    @property
+    @abstractmethod
+    def raw_colors(self):
+        pass
+    
+    @property
+    @abstractmethod
+    def colors(self):
+        pass
+    
     def set_offset(self, offset):
         self.offset = offset if self.use_offset else 0
         
@@ -1393,10 +1404,10 @@ class ColorTable:
         self.use_offset = flag
     
         
-class DefaultColorTable(ColorTable):
+class DefaultColorTable(AbstractColorTable):
     
     def __init__(self, ncolors, skip_std_colors):
-        ColorTable.__init__(self, ncolors)
+        super(DefaultColorTable, self).__init__(ncolors)
         self.skip_std_colors = skip_std_colors
         self.__colors = None
         self.__raw_colors = None
@@ -1431,10 +1442,10 @@ class DefaultColorTable(ColorTable):
         return self.__colors
 
 
-class DefaultChemicalThresholdColorTable(ColorTable):
+class DefaultChemicalThresholdColorTable(AbstractColorTable):
     
     def __init__(self, ncolors, skip_std_colors):
-        ColorTable.__init__(self, ncolors)
+        super(DefaultChemicalThresholdColorTable, self).__init__(ncolors)
         self.skip_std_colors = skip_std_colors
         self.__colors = None
         self.__raw_colors = None
@@ -1469,10 +1480,10 @@ class DefaultChemicalThresholdColorTable(ColorTable):
         return self.__colors
 
 
-class UserColorTable(ColorTable):
+class UserColorTable(AbstractColorTable):
     
     def __init__(self, contour_levels):
-        ColorTable.__init__(self, len(contour_levels))
+        super(UserColorTable, self).__init__(len(contour_levels))
         self.rgbs = [(o.r, o.g, o.b, o.alpha) for o in contour_levels]
         self.__colors = None
     
@@ -1491,7 +1502,7 @@ class UserColorTable(ColorTable):
 class ColorTableReader(io.FormattedTextFileReader):
     
     def __init__(self, color_table):
-        io.FormattedTextFileReader.__init__(self)
+        super(ColorTableReader, self).__init__()
         self.color_table = color_table
         
     def read(self, filename):

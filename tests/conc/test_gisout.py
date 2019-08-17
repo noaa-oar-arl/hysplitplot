@@ -23,7 +23,10 @@ class AbstractWriterTest(gisout.AbstractWriter):
     
     def __init__(self, time_zone=None):
         super(AbstractWriterTest, self).__init__(time_zone)
-        
+    
+    def write(self, basename, g, contour_set, lower_vert_level, upper_vert_level):
+        pass
+    
     def make_output_basename(self, g, conc_type, depo_sum, output_basename, output_suffix, KMLOUT, upper_vert_level):
         pass
    
@@ -67,7 +70,7 @@ def test_GISFileWriterFactory_create_instance():
     assert w.time_zone is tz
          
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.NONE, kml_option, tz)
-    assert isinstance(w, gisout.IdleWriter)
+    assert isinstance(w, gisout.NullWriter)
     assert w.time_zone is tz
 
     
@@ -98,7 +101,7 @@ def test_GISFileWriterFactory_create_instance__without_time_zone():
     assert w.time_zone is None
          
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.NONE, kml_option)
-    assert isinstance(w, gisout.IdleWriter)
+    assert isinstance(w, gisout.NullWriter)
     assert w.time_zone is None
     
 
@@ -157,15 +160,15 @@ def test_AbstractWriter__reformat_color():
     assert gisout.AbstractWriter._reformat_color("#face01") == "C801CEFA"
 
 
-def test_IdleWriter___init__():
+def test_NullWriter___init__():
     try:
-        o = gisout.IdleWriter()
+        o = gisout.NullWriter()
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
 
 
-def test_IdleWriter_make_output_basename():
-    o = gisout.IdleWriter()
+def test_NullWriter_make_output_basename():
+    o = gisout.NullWriter()
     try:
         # a silly test
         o.make_output_basename(1, 2, 3, 4, 5, 6, 7)
