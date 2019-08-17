@@ -216,8 +216,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
         logger.debug("determining gridlines for extent %s using deltas %f, %f", lonlat_ext, deltax, deltay)
 
         alonl, alonr, alatb, alatt = lonlat_ext
-        # check for crossing dateline
-        if util.sign(1.0, alonl) != util.sign(1.0, alonr) and alonr < 0.0:
+        if util.is_crossing_date_line(alonl, alonr):
             alonr += 360.0
             
         xticks = self._collect_tick_values(-1800, 1800, ideltax, 0.1, lonlat_ext[0:2])
@@ -265,9 +264,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
         spacings = [45.0, 30.0, 20.0, 15.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2]
 
         alonl, alonr, alatb, alatt = corners_lonlat
-
-        # check for crossing dateline
-        if util.sign(1.0, alonl) != util.sign(1.0, alonr) and alonr < 0.0:
+        if util.is_crossing_date_line(alonl, alonr):
             alonr += 360.0
 
         logger.debug("calculating gridline spacing for lons %f, %f and lats %f, %f", alonl, alonr, alatb, alatt)
@@ -394,12 +391,9 @@ class AbstractStreetMap(AbstractMapBackground):
             tile_widths[k] = w; w *= 0.5
         return tile_widths
 
-    def _is_crossing_dateline(self, lonl, lonr):
-        return True if lonl > 0 and lonr < 0 else False
-
     def _compute_initial_zoom(self, lonl, latb, lonr, latt):
         """Find a zoom level that yields about 1 tile horizontally."""
-        if self._is_crossing_dateline(lonl, lonr):
+        if util.is_crossing_date_line(lonl, lonr):
             dlon = 180.0 - lonl + lonr + 180.0
         else:
             dlon = abs(lonr - lonl)
@@ -425,7 +419,7 @@ class AbstractStreetMap(AbstractMapBackground):
     def _compute_tile_count(self, lonl, lonr, latb, latt, zoom):
         logger.debug("Counting tiles for %f %f %f %f", lonl, lonr, latb, latt)
         # Recall a longitude is in the range [-180, 180] for the Web Mercator projection. 
-        if self._is_crossing_dateline(lonl, lonr):
+        if util.is_crossing_date_line(lonl, lonr):
             eps = 1.0e-10
             logger.debug("Counting tiles for %f %f %f %f", lonl, latb, 180.0-eps, latt)
             ntiles1 = contextily.howmany(lonl, latb, 180.0, latt, zoom, ll=True)
@@ -451,7 +445,7 @@ class AbstractStreetMap(AbstractMapBackground):
         
     def _fetch_tiles(self, lonl, lonr, latb, latt, zoom):
         tiles = []
-        if self._is_crossing_dateline(lonl, lonr):
+        if util.is_crossing_date_line(lonl, lonr):
             # Send two tile requests by dividing the longitude range at the dateline crossing.
             eps = 1.0e-10
             basemap1, extent1 = contextily.bounds2img(lonl, latb, 180.0-eps, latt, zoom=zoom, ll=True, url=self.tile_url)

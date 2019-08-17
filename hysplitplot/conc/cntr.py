@@ -3,6 +3,8 @@ import logging
 import numpy
 from matplotlib.path import Path
 
+from hysplitplot import util
+
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +59,8 @@ class Boundary:
     @staticmethod
     def _crossing_date_line(lons):
         for k in range(1, len(lons)):
-            if lons[k] < -180.0 and lons[k-1] > 0:
+            #if lons[k] < -180.0 and lons[k-1] > 0:
+            if util.is_crossing_date_line(lons[k-1], lons[k]):
                 return True
             
         return False

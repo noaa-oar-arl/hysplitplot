@@ -391,12 +391,6 @@ def test_AbstractStreetMap__compute_tile_widths(web_merc_proj):
     assert w[2] == pytest.approx(  90.0 )
     assert w[3] == pytest.approx(  45.0 )
     assert w[4] == pytest.approx(  22.5 )
-    
-
-def test_AbstractStreetMap__is_crossing_dateline(web_merc_proj):
-    o = AbstractStreetMapTest(web_merc_proj)
-    assert o._is_crossing_dateline(150.0, -170.0) == True
-    assert o._is_crossing_dateline(-10.0, 10.0) == False
 
 
 def test_AbstractStreetMap__compute_initial_zoom(web_merc_proj):

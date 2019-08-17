@@ -153,6 +153,11 @@ def test_nonzero_min():
     assert util.nonzero_min(a) == 1.0
 
 
+def test_is_crossing_date_line():
+    assert util.is_crossing_date_line(150.0, -170.0) == True
+    assert util.is_crossing_date_line(-10.0,   10.0) == False
+
+
 def test_AbstractLengthFactory_create_factory():
     f = util.AbstractLengthFactory.create_factory(HeightUnit.METERS)
     assert isinstance(f, util.LengthInMetersFactory)

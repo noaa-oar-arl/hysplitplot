@@ -165,6 +165,9 @@ def nonzero_min(a):
     
     return numpy.min(numpy.ma.masked_where(a==0, a))
 
+def is_crossing_date_line(west, east):
+    return True if (west > 0 and east < 0) else False
+
 
 class AbstractLengthFactory():
     
