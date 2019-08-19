@@ -744,21 +744,6 @@ def test_AbstractKMLContourWriter__get_begin_end_timestamps(cdump_two_pollutants
     assert a[1] == "1983-09-26T00:00:00-0500"
 
 
-def test_AbstractKMLContourWriter__get_contour_begin_end_timestamps(cdump_two_pollutants):
-    o = AbstractKMLContourWriterTest("relativeToGround")
-    g = cdump_two_pollutants.grids[0]
-    time_of_arrival_range = (0, 6)
-    
-    a = o._get_contour_begin_end_timestamps(g, time_of_arrival_range)
-    assert a[0] == "1983-09-25T17:00:00Z"
-    assert a[1] == "1983-09-26T05:00:00Z"
-    
-    o.time_zone = pytz.timezone("EST")
-    a = o._get_contour_begin_end_timestamps(g, time_of_arrival_range)
-    assert a[0] == "1983-09-25T12:00:00-0500"
-    assert a[1] == "1983-09-26T00:00:00-0500"
-
-
 def test_AbstractKMLContourWriter__get_contour_name(cdump_two_pollutants):
     o = AbstractKMLContourWriterTest("relativeToGround")
     assert o._get_contour_name("300", "ppm") == "Contour Level: 300 ppm"
@@ -1178,18 +1163,3 @@ def test_KMLTimeOfArrivalWriter__get_contour_name():
     o = gisout.KMLTimeOfArrivalWriter("relativeToGround")
     assert o._get_contour_name("0-6 hours", "Bq") == "Time of arrival: 0-6 hours"
 
-
-def test_KMLTimeOfArrivalWriter__get_contour_begin_end_timestamps(cdump_two_pollutants):
-    o = gisout.KMLTimeOfArrivalWriter("relativeToGround")
-    g = cdump_two_pollutants.grids[0]
-    time_of_arrival_range = (0, 6)
-    
-    a = o._get_contour_begin_end_timestamps(g, time_of_arrival_range)
-    assert a[0] == "1983-09-25T17:00:00Z"
-    assert a[1] == "1983-09-25T23:00:00Z"   # 6 hours after the start time.
-    
-    o.time_zone = pytz.timezone("EST")
-    a = o._get_contour_begin_end_timestamps(g, time_of_arrival_range)
-    assert a[0] == "1983-09-25T12:00:00-0500"
-    assert a[1] == "1983-09-25T18:00:00-0500"   # 6 hours after the start time
-    

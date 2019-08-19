@@ -23,8 +23,10 @@ class ContourSet:
         self.raw_colors = []
         self.colors = []
         self.levels = []
+        self.levels_str = []
         self.labels = []
         self.contours = []
+        self.contour_orders = []
         self.concentration_unit = ""
         self.min_concentration = 0
         self.max_concentration = 0
@@ -32,7 +34,7 @@ class ContourSet:
         self.max_concentration_str = "0"
         self.time_of_arrivals = None
 
-
+        
 class Contour:
     
     def __init__(self, contour_set):
@@ -120,6 +122,7 @@ def convert_matplotlib_quadcontourset(quadContourSet):
         for k, segs in enumerate(quadContourSet.allsegs):
             contour = Contour(contour_set)
             contour_set.contours.append(contour)
+            contour_set.contour_orders.append(k)
             for j, seg in enumerate(segs):
                 polygon = Polygon(contour)
                 contour.polygons.append(polygon)
@@ -132,5 +135,5 @@ def convert_matplotlib_quadcontourset(quadContourSet):
                     lonlats = _reduce_points(path)
                     boundary.copy_with_dateline_crossing_fix(lonlats)
                     boundary.hole = True if boundary.compute_area() < 0 else False
-                    
+        
     return contour_set

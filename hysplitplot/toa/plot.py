@@ -872,7 +872,10 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         contour_set.min_concentration_str = self.conc_map.format_conc(min_conc)
         contour_set.max_concentration_str = self.conc_map.format_conc(max_conc)
         contour_set.time_of_arrivals = time_intervals
-
+                    
+        # change the order of appearance for the contours.
+        contour_set.contour_orders.reverse()
+        
         basename = gis_writer.make_output_basename(g,
                                                    self.conc_type,
                                                    self.depo_sum,
@@ -882,7 +885,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
                                                    upper_vert_level)
 
         gis_writer.write(basename, g, contour_set, lower_vert_level, upper_vert_level)
-   
+
     def draw_toa_plot_above_ground(self, toa_data, event_handlers, color_table, gis_writer=None, *args, **kwargs):
         g = toa_data.grid
         

@@ -487,9 +487,6 @@ class AbstractKMLContourWriter(ABC):
             end_ts = util.get_iso_8601_str(g.ending_datetime, self.time_zone)
         return (begin_ts, end_ts)
             
-    def _get_contour_begin_end_timestamps(self, g, time_of_arrival_range):
-        return self._get_begin_end_timestamps(g)
-    
     @abstractmethod
     def _get_name_cdata(self, dt):
         pass
@@ -561,9 +558,15 @@ class AbstractKMLContourWriter(ABC):
         if contour_set is None:
             return
         
-        for k, contour in enumerate(contour_set.contours):
+        vert_level_ref = vert_level
+        begin_ts, end_ts = self._get_begin_end_timestamps(g)
+        
+        for i in range(len(contour_set.contours)):
+            k = contour_set.contour_orders.index(i)
+            contour = contour_set.contours[k]
+            
             # arbitrary height above ground in order of increasing concentration
-            vert_level = self._get_contour_height_at(k, vert_level)
+            vert_level = self._get_contour_height_at(k, vert_level_ref)
                         
             f.write("""\
       <Placemark>\n""")
@@ -579,10 +582,7 @@ class AbstractKMLContourWriter(ABC):
         <name>{}</name>\n""".format(contour_name))
                      
             self._write_placemark_visibility(f)
-   
-            toa_range = None if contour_set.time_of_arrivals is None else contour_set.time_of_arrivals[k]
-            begin_ts, end_ts = self._get_contour_begin_end_timestamps(g, toa_range)
-                
+            
             f.write("""\
         <Snippet maxLines="0"></Snippet>
         <TimeSpan>
@@ -838,19 +838,5 @@ Valid:{}</pre>""".format(lower_vert_level,
     def _get_contour_name(self, level_str, conc_unit):
         return "Time of arrival: {}".format(level_str)
         
-    def _get_contour_begin_end_timestamps(self, g, time_of_arrival_range):
-        begin_hr, end_hr = time_of_arrival_range
-        if g.ending_datetime < g.starting_datetime:
-            dt = g.ending_datetime + datetime.timedelta(hours=begin_hr)
-            begin_ts = util.get_iso_8601_str(dt, self.time_zone)
-            dt = g.ending_datetime + datetime.timedelta(hours=end_hr)
-            end_ts = util.get_iso_8601_str(dt, self.time_zone)
-        else:
-            dt = g.starting_datetime + datetime.timedelta(hours=begin_hr)
-            begin_ts = util.get_iso_8601_str(dt, self.time_zone)
-            dt = g.starting_datetime + datetime.timedelta(hours=end_hr)
-            end_ts = util.get_iso_8601_str(dt, self.time_zone)
-        return (begin_ts, end_ts)
-    
     def _get_max_location_text(self):
         pass

@@ -30,8 +30,10 @@ def test_ContourSet___init__():
     assert hasattr(o, "raw_colors")
     assert hasattr(o, "colors")
     assert hasattr(o, "levels")
+    assert hasattr(o, "levels_str")
     assert hasattr(o, "labels")
     assert hasattr(o, "contours")
+    assert hasattr(o, "contour_orders")
     assert hasattr(o, "concentration_unit")
     assert hasattr(o, "min_concentration")
     assert hasattr(o, "max_concentration")
@@ -164,6 +166,8 @@ def test_convert_matplotlib_quadcontourset(cdump_two_pollutants):
     contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
     
     assert len(contour_set.contours) == 2
+    assert len(contour_set.contour_orders) == 2
+    assert contour_set.contour_orders == pytest.approx( [0, 1] )
     assert len(contour_set.contours[0].polygons) == 11
     assert len(contour_set.contours[0].polygons[0].boundaries) == 29
     
