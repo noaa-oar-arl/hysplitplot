@@ -125,26 +125,34 @@ class PointsGenerateFileWriter(AbstractWriter):
             self.time_zone = time_zone
             
         def write_boundary(self, f, boundary, contour_level):
-            f.write("{0:10.5f}, {1:10.5f}, {2:10.5f}\n".format(math.log10(contour_level),
-                                                               boundary.longitudes[0],
-                                                               boundary.latitudes[0]))
+            if isinstance(contour_level, str):
+                contour_level_str = contour_level
+            else:
+                contour_level_str = "{:10.5f}".format(math.log10(contour_level))
+            f.write("{}, {:10.5f}, {:10.5f}\n".format(contour_level_str,
+                                                      boundary.longitudes[0],
+                                                      boundary.latitudes[0]))
             for k in range(1, len(boundary.longitudes)):
-                f.write("{0:10.5f}, {1:10.5f}\n".format(boundary.longitudes[k],
-                                                        boundary.latitudes[k]))
+                f.write("{:10.5f}, {:10.5f}\n".format(boundary.longitudes[k],
+                                                      boundary.latitudes[k]))
             f.write("END\n")
         
         def write_attributes(self, f, g, lower_vert_level, upper_vert_level, contour_level, color):
+            if isinstance(contour_level, str):
+                contour_level_str = contour_level
+            else:
+                contour_level_str = "{:7.3f}".format(math.log10(contour_level))
             dt = g.ending_datetime if self.time_zone is None else g.ending_datetime.astimezone(self.time_zone)
-            f.write("{:7.3f},{:4s},{:4d}{:02d}{:02d},{:02d}{:02d},{:05d},{:05d},{:8s}\n".format(math.log10(contour_level),
-                                                                                                g.pollutant,
-                                                                                                dt.year,
-                                                                                                dt.month,
-                                                                                                dt.day,
-                                                                                                dt.hour,
-                                                                                                dt.minute,
-                                                                                                int(lower_vert_level),
-                                                                                                int(upper_vert_level),
-                                                                                                color));
+            f.write("{},{:4s},{:4d}{:02d}{:02d},{:02d}{:02d},{:05d},{:05d},{:8s}\n".format(contour_level_str,
+                                                                                           g.pollutant,
+                                                                                           dt.year,
+                                                                                           dt.month,
+                                                                                           dt.day,
+                                                                                           dt.hour,
+                                                                                           dt.minute,
+                                                                                           int(lower_vert_level),
+                                                                                           int(upper_vert_level),
+                                                                                           color));
             
     class ExponentFormWriter:
         
@@ -152,26 +160,34 @@ class PointsGenerateFileWriter(AbstractWriter):
             self.time_zone = time_zone
             
         def write_boundary(self, f, boundary, contour_level):
-            f.write("{0:10.3e}, {1:10.5f}, {2:10.5f}\n".format(contour_level,
-                                                               boundary.longitudes[0],
-                                                               boundary.latitudes[0]))
+            if isinstance(contour_level, str):
+                contour_level_str = contour_level
+            else:
+                contour_level_str = "{:10.3e}".format(contour_level)
+            f.write("{}, {:10.5f}, {:10.5f}\n".format(contour_level_str,
+                                                      boundary.longitudes[0],
+                                                      boundary.latitudes[0]))
             for k in range(1, len(boundary.longitudes)):
-                f.write("{0:10.5f}, {1:10.5f}\n".format(boundary.longitudes[k],
-                                                        boundary.latitudes[k]))
+                f.write("{:10.5f}, {:10.5f}\n".format(boundary.longitudes[k],
+                                                      boundary.latitudes[k]))
             f.write("END\n")
         
         def write_attributes(self, f, g, lower_vert_level, upper_vert_level, contour_level, color):
             dt = g.ending_datetime if self.time_zone is None else g.ending_datetime.astimezone(self.time_zone)
-            f.write("{:10.3e},{:4s},{:4d}{:02d}{:02d},{:02d}{:02d},{:05d},{:05d},{:8s}\n".format(contour_level,
-                                                                                                 g.pollutant,
-                                                                                                 dt.year,
-                                                                                                 dt.month,
-                                                                                                 dt.day,
-                                                                                                 dt.hour,
-                                                                                                 dt.minute,
-                                                                                                 int(lower_vert_level),
-                                                                                                 int(upper_vert_level),
-                                                                                                 color));
+            if isinstance(contour_level, str):
+                contour_level_str = contour_level
+            else:
+                contour_level_str = "{0:10.3e}".format(contour_level)
+            f.write("{},{:4s},{:4d}{:02d}{:02d},{:02d}{:02d},{:05d},{:05d},{:8s}\n".format(contour_level_str,
+                                                                                           g.pollutant,
+                                                                                           dt.year,
+                                                                                           dt.month,
+                                                                                           dt.day,
+                                                                                           dt.hour,
+                                                                                           dt.minute,
+                                                                                           int(lower_vert_level),
+                                                                                           int(upper_vert_level),
+                                                                                           color));
                 
                 
 class KMLWriter(AbstractWriter):
@@ -215,8 +231,6 @@ class KMLWriter(AbstractWriter):
         self._write_attributes(self.att_file, g, contour_set)
 
     def finalize(self):
-        super(KMLWriter, self).finalize()
-        
         if self.kml_file is not None:
             self._write_postamble(self.kml_file)
             self.kml_file.close()
@@ -443,6 +457,13 @@ class PartialKMLWriter(KMLWriter):
     def _write_attributes(self, f, g, contour_set):
         # do nothing
         pass
+
+    def finalize(self):
+        if self.kml_file is not None:
+            self.kml_file.close()
+        
+        if self.att_file is not None:
+            self.att_file.close()
 
 
 class KMLContourWriterFactory:

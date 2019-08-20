@@ -62,7 +62,7 @@ def test_TimeOfArrivalPlotSettings___init__():
     assert s.LEVEL2 == 99999
     assert s.KMAP == const.ConcentrationMapType.TIME_OF_ARRIVAL
     assert s.KAVG == const.ConcentrationType.VERTICAL_AVERAGE
-    assert s.NDEP == const.DepositionType.TIME
+    assert s.NDEP == const.DepositionType.NONE
     assert s.show_max_conc == 0
     assert s.mass_unit == "mass"
     assert s.mass_unit_by_user == False
@@ -177,17 +177,17 @@ def test_TimeOfArrivalPlotSettings_process_command_line_arguments():
     assert s.LEVEL2 == 2   
     
     # test -u or -U
-    s.mass_unit = None
-    s.mass_unit_by_user = False
-    s.process_command_line_arguments(["-ukg"])
-    assert s.mass_unit == "kg"
-    assert s.mass_unit_by_user == True
-    
-    s.mass_unit = None
-    s.mass_unit_by_user = False
-    s.process_command_line_arguments(["-Umg"])
-    assert s.mass_unit == "mg"
-    assert s.mass_unit_by_user == True
+#     s.mass_unit = None
+#     s.mass_unit_by_user = False
+#     s.process_command_line_arguments(["-ukg"])
+#     assert s.mass_unit == "kg"
+#     assert s.mass_unit_by_user == True
+#     
+#     s.mass_unit = None
+#     s.mass_unit_by_user = False
+#     s.process_command_line_arguments(["-Umg"])
+#     assert s.mass_unit == "mg"
+#     assert s.mass_unit_by_user == True
     
     # test -8
     s.process_command_line_arguments(["-87"])

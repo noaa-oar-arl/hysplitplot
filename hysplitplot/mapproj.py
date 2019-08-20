@@ -187,8 +187,11 @@ class AbstractMapProjection(ABC):
         alonr, alatt = self.calc_lonlat(x2, y2)
         x1, y1 = self.calc_xy(alonl, alatb)
         x2, y2 = self.calc_xy(alonr, alatt)
-
+        
         if max(abs(x1-x1s), abs(x2-x2s), abs(y1-y1s), abs(y2-y2s)) >= self.TOLERANCE:
+            return corners_prev
+
+        if math.isnan(x1) or math.isnan(y1) or math.isnan(x2) or math.isnan(y2):
             return corners_prev
 
         return (x1, x2, y1, y2)

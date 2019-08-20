@@ -157,9 +157,10 @@ class TimeOfArrival(ABC):
         self.contour_levels = None
         self.display_levels = None
         self.fill_colors = None
+        self.data_count = 0
         
     def has_data(self):
-        return self.grid.nonzero_conc_count > 0
+        return self.data_count > 0
     
     @property
     def longitudes(self):
@@ -187,11 +188,13 @@ class TimeOfArrival(ABC):
         # For contouring, the highest bit is assigned the lowest contour value.
         contour_values = [1, 2, 3, 4]
         
+        self.data_count = 0
         for k, mask in enumerate(toa_bitmasks):
             c = numpy.copy(toa_bits)
             c &= mask
             loc = numpy.where(c > 0)
             self.grid.conc[loc] = contour_values[k]
+            self.data_count += len(loc[0])
             logger.debug("Time-of-arrival: bitmask {}, value {}, count {}".format(mask, contour_values[k], len(loc[0])))
         
         if prev_bitmask is not None:
@@ -199,6 +202,7 @@ class TimeOfArrival(ABC):
             c &= prev_bitmask
             loc = numpy.where(c > 0)
             self.grid.conc[loc] = 5
+            self.data_count += len(loc[0])
             contour_values.append( 5 )
 
         #self.save_data("toa_data.txt")

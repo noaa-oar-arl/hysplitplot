@@ -13,6 +13,7 @@ import geopandas
 import logging
 import matplotlib.pyplot as plt
 import mercantile
+import math
 import numpy
 import os
 import shapely.geometry
@@ -181,6 +182,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
         return gs
     
     def draw_underlay(self, axes, corners_xy, crs):
+        self.frozen_collection_count = None
         for o in self.background_maps:
             if isinstance(o.map, geopandas.geoseries.GeoSeries):
                 fixed = self._remove_spurious_hlines( o.map.to_crs(crs.proj4_init), corners_xy, crs )
@@ -203,7 +205,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
         # From reading cartopy source code, gridliners are added to the collecitons.
         axes._gridliners.clear()
 
-        # this works because gridlines are the last arrivals to the collections.               
+        # this works because gridlines are the last additions to the collections.               
         if self.frozen_collection_count is None:
             self.frozen_collection_count = len(axes.collections)
         else:
@@ -274,6 +276,10 @@ class HYSPLITMapBackground(AbstractMapBackground):
         alonl, alonr, alatb, alatt = corners_lonlat
         if util.is_crossing_date_line(alonl, alonr):
             alonr += 360.0
+        if math.isnan(alatb):
+            alatb = self.projection.crs.y_limits[0]
+        if math.isnan(alatt):
+            alatt = self.projection.crs.y_limits[1]
 
         logger.debug("calculating gridline spacing for lons %f, %f and lats %f, %f", alonl, alonr, alatb, alatt)
 

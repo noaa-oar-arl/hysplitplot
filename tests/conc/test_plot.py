@@ -1544,6 +1544,7 @@ def test_AbstractColorTable_change_to_grayscale():
 
 def test_AbstractColorTable_get_luminance():
     assert AbstractColorTableTest.get_luminance((0.5, 0.6, 0.7)) == pytest.approx(0.5815)
+    assert AbstractColorTableTest.get_luminance((0.5, 0.6, 0.7, 0.8)) == pytest.approx(0.5815)
 
 
 def test_AbstractColorTable_create_plot_colors():

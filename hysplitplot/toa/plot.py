@@ -53,7 +53,7 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         self.LEVEL2 = 99999 # top level defaults to whole model atmosphere
         self.KMAP = const.ConcentrationMapType.TIME_OF_ARRIVAL
         self.KAVG = const.ConcentrationType.VERTICAL_AVERAGE
-        self.NDEP = const.DepositionType.TIME
+        self.NDEP = const.DepositionType.NONE
         self.show_max_conc = 0
         self.mass_unit = "mass"
         self.mass_unit_by_user = False
@@ -138,9 +138,9 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         if self.LEVEL1 > self.LEVEL2:
             self.LEVEL1, self.LEVEL2 = self.LEVEL2, self.LEVEL1
 
-        if args.has_arg(["-u", "-U"]):
-            self.mass_unit = args.get_value(["-u", "-U"])
-            self.mass_unit_by_user = True
+        #if args.has_arg(["-u", "-U"]):
+        #    self.mass_unit = args.get_value(["-u", "-U"])
+        #    self.mass_unit_by_user = True
         
         self.IZRO = args.get_integer_value("-8", self.IZRO)
         
@@ -436,7 +436,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
             t_grids = helper.TimeIndexGridFilter(cdump.grids,
                                                  helper.TimeIndexSelector(t_index, t_index))
             self.conc_type.update_min_max(t_grids)
-
+ 
         self.conc_type.normalize_min_max()
         
         self.conc_type.scale_conc(self.settings.CONADJ,
@@ -982,21 +982,27 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         fill_colors = color_table.colors
 
         toa_data = self.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_0, fill_colors)
+        toa_data.grid.time_index = 0    # for GIS output file name.
         self.draw_toa_plot_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
          
         toa_data = self.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_1, fill_colors)
+        toa_data.grid.time_index = 1    # for GIS output file name.
         self.draw_toa_plot_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
          
         toa_data = self.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_2, fill_colors)
+        toa_data.grid.time_index = 2    # for GIS output file name.
         self.draw_toa_plot_above_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
  
         toa_data = self.toa_generator.make_deposition_data(thelper.TimeOfArrival.DAY_0, fill_colors)
+        toa_data.grid.time_index = 0    # for GIS output file name.
         self.draw_toa_plot_on_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
          
         toa_data = self.toa_generator.make_deposition_data(thelper.TimeOfArrival.DAY_1, fill_colors)
+        toa_data.grid.time_index = 1    # for GIS output file name.
         self.draw_toa_plot_on_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
         
         toa_data = self.toa_generator.make_deposition_data(thelper.TimeOfArrival.DAY_2, fill_colors)
+        toa_data.grid.time_index = 2    # for GIS output file name.
         self.draw_toa_plot_on_ground(toa_data, ev_handlers, color_table, gis_writer, *args, **kwargs)
         
         self.time_period_count = self.toa_generator.time_period_count

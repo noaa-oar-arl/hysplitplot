@@ -372,7 +372,8 @@ class AbstractPlot(ABC):
             time_zone_name = self.time_zone_finder.timezone_at(lng=lon, lat=lat)
             if time_zone_name is None:
                 time_zone_name = self.time_zone_finder.closest_timezone_at(lng=lon, lat=lat)
-            logger.warning("cannot find time zone for lon %f, lat %f: using UTC", lon, lat)
+            if time_zone_name is None:
+                logger.warning("cannot find time zone for lon %f, lat %f: using UTC", lon, lat)
             
             time_zone = self.lookup_time_zone(time_zone_name)
         except ValueError as ex:

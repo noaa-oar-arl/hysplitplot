@@ -39,7 +39,7 @@ def print_usage():
    -l[Label interval: ... -12, -6, 0, (6), 12, ... hrs '
       <0=with respect to traj start, >0=synoptic times)]'
    -L[LatLonLabels: none=0 auto=(1) set=2:value(tenths)]'
-   -m[Map proj: (0)-Auto 1-Polar 2-Lambert 3-Merc 4-CylEqu]'
+   -m[Map proj: (0)-Auto 1-Polar 2-Lambert 3-Merc 4-CylEqu 5-WebMerc]'
    -o[Output file name: (trajplot.ps)]'
    -p[Process file name suffix: (ps) or process ID]'
    -s[Symbol at trajectory origin: 0-no (1)-yes]'

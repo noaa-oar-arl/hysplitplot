@@ -43,7 +43,7 @@ def print_usage():
    -l[Label options: ascii code, (73)-open star]
    +l[Use THIS IS A TEST label: (0)-no, 1-yes]
    -L[LatLonLabels: none=0 auto=(1) set=2:value(tenths)]
-   -m[Map projection: (0)-Auto 1-Polar 2-Lamb 3-Merc 4-CylEqu]
+   -m[Map projection: (0)-Auto 1-Polar 2-Lamb 3-Merc 4-CylEqu 5-WebMerc]
    +m[Maximum square value: 0=none, (1)=both, 2=value, 3=square]
    -n[Number of time periods: (0)-all, numb, min:max, -incr]
    -o[Output file name: (concplot.ps)]

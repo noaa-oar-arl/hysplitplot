@@ -291,6 +291,28 @@ def test_DecimalFormWriter_write_boundary():
     assert lines[3] == "END"
     
     os.remove("__decimalFormWriter.txt")
+    
+    
+def test_DecimalFormWriter_write_boundary_case2():
+    o = gisout.PointsGenerateFileWriter.DecimalFormWriter()
+
+    seg = cntr.Boundary(None)
+    seg.latitudes = [1.2, 2.2, 3.2]
+    seg.longitudes = [1.0, 2.0, 3.0]
+    
+    f = open("__decimalFormWriter.txt", "wt")
+    o.write_boundary(f, seg, "0-6 hours")
+    f.close()
+    
+    f = open("__decimalFormWriter.txt", "rt")
+    lines = f.read().splitlines()
+    f.close()
+    
+    assert lines[0] ==  "0-6 hours,    1.00000,    1.20000"
+    assert lines[1] == "   2.00000,    2.20000"
+    assert lines[3] == "END"
+    
+    os.remove("__decimalFormWriter.txt")
 
 
 def test_DecimalFormWriter_write_attributes(cdump_two_pollutants):
@@ -306,6 +328,23 @@ def test_DecimalFormWriter_write_attributes(cdump_two_pollutants):
     f.close()
     
     assert lines[0] == " -5.000,TEST,19830926,0500,00100,00300,#ff0000 "
+    
+    os.remove("__decimalFormWriter.txt")
+
+
+def test_DecimalFormWriter_write_attributes_case2(cdump_two_pollutants):
+    o = gisout.PointsGenerateFileWriter.DecimalFormWriter()
+    g = cdump_two_pollutants.grids[0]
+    
+    f = open("__decimalFormWriter.txt", "wt")
+    o.write_attributes(f, g, 100, 300, "0-6 hours", "#ff0000")
+    f.close()
+    
+    f = open("__decimalFormWriter.txt", "rt")
+    lines = f.read().splitlines()
+    f.close()
+    
+    assert lines[0] == "0-6 hours,TEST,19830926,0500,00100,00300,#ff0000 "
     
     os.remove("__decimalFormWriter.txt")
 
@@ -341,6 +380,28 @@ def test_ExponentFormWriter_write_boundary():
     os.remove("__exponentFormWriter.txt")
 
 
+def test_ExponentFormWriter_write_boundary_case2():
+    o = gisout.PointsGenerateFileWriter.ExponentFormWriter()
+    
+    seg = cntr.Boundary(None)
+    seg.latitudes = [1.2, 2.2, 3.2]
+    seg.longitudes = [1.0, 2.0, 3.0]
+    
+    f = open("__exponentFormWriter.txt", "wt")
+    o.write_boundary(f, seg, "0-6 hours")
+    f.close()
+    
+    f = open("__exponentFormWriter.txt", "rt")
+    lines = f.read().splitlines()
+    f.close()
+    
+    assert lines[0] ==  "0-6 hours,    1.00000,    1.20000"
+    assert lines[1] == "   2.00000,    2.20000"
+    assert lines[3] == "END"
+    
+    os.remove("__exponentFormWriter.txt")
+
+
 def test_ExponentFormWriter_write_attributes(cdump_two_pollutants):
     o = gisout.PointsGenerateFileWriter.ExponentFormWriter()
     g = cdump_two_pollutants.grids[0]
@@ -354,6 +415,23 @@ def test_ExponentFormWriter_write_attributes(cdump_two_pollutants):
     f.close()
     
     assert lines[0] == " 1.000e-05,TEST,19830926,0500,00100,00300,#ff0000 "
+    
+    os.remove("__exponentFormWriter.txt")
+
+
+def test_ExponentFormWriter_write_attributes_case2(cdump_two_pollutants):
+    o = gisout.PointsGenerateFileWriter.ExponentFormWriter()
+    g = cdump_two_pollutants.grids[0]
+    
+    f = open("__exponentFormWriter.txt", "wt")
+    o.write_attributes(f, g, 100, 300, "0-6 hours", "#ff0000")
+    f.close()
+    
+    f = open("__exponentFormWriter.txt", "rt")
+    lines = f.read().splitlines()
+    f.close()
+    
+    assert lines[0] == "0-6 hours,TEST,19830926,0500,00100,00300,#ff0000 "
     
     os.remove("__exponentFormWriter.txt")
 
@@ -619,6 +697,16 @@ def test_PartialKMLWriter_write(cdump_two_pollutants):
         
     os.remove("HYSPLIT_ps.txt")
     os.remove("GELABEL_ps.txt")
+
+
+def test_PartialKMLWriter_finalize():
+    s = plot.ConcentrationPlotSettings()
+    o = gisout.PartialKMLWriter(s.kml_option)
+    
+    try:
+        o.finalize()
+    except Exception as ex:
+        pytest.fail("unexpected exception: {}".format(ex))
 
 
 def test_PartialKMLWriter__write_attributes(cdump_two_pollutants):

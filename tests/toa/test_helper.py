@@ -285,6 +285,7 @@ def test_TimeOfArrival___init__():
     assert hasattr(o, "contour_levels")
     assert hasattr(o, "display_levels")
     assert hasattr(o, "fill_colors")
+    assert hasattr(o, "data_count")
 
 
 def test_TimeOfArrival_has_data():
@@ -292,10 +293,10 @@ def test_TimeOfArrival_has_data():
     g = cdump.grids[0]
     o = TimeOfArrivalTest(g)
     
-    o.grid.nonzero_conc_count = 1
+    o.data_count = 1
     assert o.has_data() == True
 
-    o.grid.nonzero_conc_count = 0
+    o.data_count = 0
     assert o.has_data() == False
 
 
@@ -349,6 +350,7 @@ def test_TimeOfArrival_create_contour():
     assert o.time_intervals[1] == pytest.approx((12, 18))
     assert o.time_intervals[2] == pytest.approx(( 6, 12))
     assert o.time_intervals[3] == pytest.approx(( 0,  6))
+    assert o.data_count == 8
       
     # Case for day 1.
     
@@ -373,6 +375,7 @@ def test_TimeOfArrival_create_contour():
     assert o.time_intervals[2] == pytest.approx((30, 36))
     assert o.time_intervals[3] == pytest.approx((24, 30))
     assert o.time_intervals[4] == pytest.approx(( 0, 24))
+    assert o.data_count == 9
     
     
 def test_DepositionTimeOfArrival___init__():

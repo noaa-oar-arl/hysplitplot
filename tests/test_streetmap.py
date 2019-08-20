@@ -268,25 +268,31 @@ def test_HYSPLITMapBackground_draw_underlay(lambert_proj):
     axes = plt.axes(projection=lambert_proj.crs)
 
     # with no map
+    o.frozen_collection_count = 1
     try:
         o.draw_underlay(axes, lambert_proj.corners_xy, data_crs)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
+    assert o.frozen_collection_count is None
 
     # with an arlmap
+    o.frozen_collection_count = 1
     o.read_background_map("data/arlmap_truncated")
     try:
         o.draw_underlay(axes, lambert_proj.corners_xy, data_crs)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
+    assert o.frozen_collection_count is None
     
     # with a shapefile
     os.chdir("data")
+    o.frozen_collection_count = 1
     o.read_background_map("shapefiles_arl.txt")
     try:
         o.draw_underlay(axes, lambert_proj.corners_xy, data_crs)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
+    assert o.frozen_collection_count is None
     os.chdir("..")
     plt.close(axes.figure)
 

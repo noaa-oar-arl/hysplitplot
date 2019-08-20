@@ -1385,7 +1385,10 @@ class AbstractColorTable(ABC):
             
     @staticmethod
     def get_luminance(rgb):
-        r, g, b = rgb
+        if len(rgb) == 4:
+            r, g, b, _ = rgb
+        else:
+            r, g, b = rgb
         return 0.299*r + 0.587*g + 0.114*b
        
     @staticmethod
