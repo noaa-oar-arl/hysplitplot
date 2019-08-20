@@ -1219,9 +1219,9 @@ class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
         if len(levels) > 1:
             cint = levels[1] / levels[0]
         else:
-            cint = self._compute_interval(self.global_min, self.global_max)
+            cint, _ = self._compute_interval(self.global_min, self.global_max)
 
-        # Limit looping to 32 is the number of colors in CLRTBL.CFG
+        # Limit looping to 32 which is the number of colors in CLRTBL.CFG
         current = levels[-1]
         for k in range(0, 32):
             offset = k
@@ -1259,10 +1259,10 @@ class LinearDynamicLevelGenerator(AbstractContourLevelGenerator):
         cint = math.pow(10.0, nexp)
         if max_conc > 6 * cint:
             cint *= 2.0
-        return cint
+        return cint, 1.0 / cint
         
     def make_levels(self, min_conc, max_conc, max_levels):
-        cint = self._compute_interval(min_conc, max_conc)
+        cint, _ = self._compute_interval(min_conc, max_conc)
             
         levels = numpy.empty(max_levels, dtype=float)
         for k in range(len(levels)):
@@ -1275,9 +1275,9 @@ class LinearDynamicLevelGenerator(AbstractContourLevelGenerator):
         if len(levels) > 1:
             cint = levels[1] - levels[0]
         else:
-            cint = self._compute_interval(self.global_min, self.global_max)
+            cint, _ = self._compute_interval(self.global_min, self.global_max)
 
-        # Limit looping to 32 is the number of colors in CLRTBL.CFG
+        # Limit looping to 32 which is the number of colors in CLRTBL.CFG
         current = levels[-1]
         for k in range(0, 32):
             offset = k

@@ -1316,6 +1316,8 @@ def test_ExponentialDynamicLevelGenerator_compute_color_table_offset():
     
     assert o.compute_color_table_offset( levels ) == 1
     
+    assert o.compute_color_table_offset( [1.0e-13] ) == 1
+    
     
 def test_ExponentialFixedLevelGenerator___init__():
     cutoff = 3.14e-15
@@ -1368,8 +1370,8 @@ def test_LinearDynamicLevelGenerator___init__():
 
 def test_LinearDynamicLevelGenerator__compute_interval():
     o = plot.LinearDynamicLevelGenerator()
-    assert o._compute_interval(1.0, 10.0) == pytest.approx( 2.0 )
-    assert o._compute_interval(0.0,  0.0) == pytest.approx( 1.0 )
+    assert o._compute_interval(1.0, 10.0) == pytest.approx( (2.0, 0.5) )
+    assert o._compute_interval(0.0,  0.0) == pytest.approx( (1.0, 1.0) )
 
 
 def test_LinearDynamicLevelGenerator_make_levels():
@@ -1395,6 +1397,8 @@ def test_LinearDynamicLevelGenerator_compute_color_table_offset():
     o.set_global_min_max(0, 9.0)
     
     assert o.compute_color_table_offset( levels ) == 0
+    
+    assert o.compute_color_table_offset( [4.0] ) == 2
     
 
 def test_LinearFixedLevelGenerator___init__():
