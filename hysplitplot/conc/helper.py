@@ -381,6 +381,7 @@ class VerticalAverageConcentration(ConcentrationType):
                 
         g = v_grids[0].clone_except_conc()
         g.conc = v_avg
+        g.nonzero_conc_count = numpy.count_nonzero(g.conc)
         g.vert_level_index = -1
         
         # grids on the ground

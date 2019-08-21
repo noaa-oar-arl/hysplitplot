@@ -967,7 +967,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         
         color_offset = level_generator.compute_color_table_offset( contour_levels )
         color_table.set_offset( color_offset )
-               
+
         scaled_conc = numpy.copy(g.conc)
         if conc_scaling_factor != 1.0:
             scaled_conc *= conc_scaling_factor

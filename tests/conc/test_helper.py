@@ -567,6 +567,7 @@ def test_VerticalAverageConcentration_prepare_grids_for_plotting(cdump2):
     assert g.conc[300, 300] * 1.0e+13 == pytest.approx( \
                                                         8.047535/3.0 + 7.963810*2.0/3.0 + \
                                                         8.173024/3.0 + 7.608168*2.0/3.0 )
+    assert g.nonzero_conc_count == 1351
 
 
 def test_VerticalAverageConcentration_prepare_grids_for_plotting_case2(cdump3):
@@ -581,6 +582,8 @@ def test_VerticalAverageConcentration_prepare_grids_for_plotting_case2(cdump3):
     grids, grids_gnd = p.prepare_grids_for_plotting(t_grids)
     assert len(grids) == 1
     assert len(grids_gnd) == 1
+    assert grids[0].nonzero_conc_count == 15
+    assert grids_gnd[0].nonzero_conc_count == 14
     
     
 def test_VerticalAverageConcentration_update_min_max(cdump2):
