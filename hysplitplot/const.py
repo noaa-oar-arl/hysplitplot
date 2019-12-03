@@ -13,6 +13,7 @@ class GISOutput:
     KML                 = 3
     PARTIAL_KML         = 4
     GENERATE_LINES      = 5
+    GENERATE_POINTS_STR = 10    # internal use for time-of-arrival plots.
 
 class GISOutputAltitude:
     CLAMPED_TO_GROUND   = 0

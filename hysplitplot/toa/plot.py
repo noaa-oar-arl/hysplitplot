@@ -153,6 +153,9 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         self.gis_alt_mode = args.get_integer_value(["+a", "+A"], self.gis_alt_mode)
         self.KMLOUT = args.get_integer_value(["-5"], self.KMLOUT)
   
+        if self.gis_output == const.GISOutput.GENERATE_POINTS or self.gis_output == const.GISOutput.GENERATE_POINTS_2:
+            self.gis_output = const.GISOutput.GENERATE_POINTS_STR
+        
     @staticmethod
     def parse_source_label(str):
         c = int(str)
@@ -968,7 +971,8 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         color_table = ColorTableFactory.create_instance(self.settings)
         
         gis_writer = gisout.GISFileWriterFactory.create_instance(self.settings.gis_output,
-                                                                 self.settings.kml_option)
+                                                                 self.settings.kml_option,
+                                                                 self.time_zone)
                                                                  
         gis_writer.initialize(self.settings.gis_alt_mode,
                               self.settings.KMLOUT,

@@ -26,7 +26,7 @@ def print_usage():
 
     print("""\
  USAGE: toaplot -[options (default)]
-   -a[Arcview GIS: 0-none 1-log10 2-value 3-KML 4-partial KML]
+   -a[Arcview GIS: 0-none 1-toa 2-toa 3-KML 4-partial KML]
    +a[KML altitude mode: (0)-clampedToGround, 1-relativeToGround]
    -A[KML options: 0-none 1-KML with no extra overlays]
    -b[Bottom display level: (0) m]

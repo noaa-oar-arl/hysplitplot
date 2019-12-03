@@ -590,6 +590,9 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                 clr = self.settings.color_cycle.next_color(t.starting_level_index, t.color)
                 ms = self.settings.next_marker()
                 axes.plot(lons, lats, clr, transform=self.data_crs)
+                # draw circles for uncertainty
+                if t.has_trajectory_stddevs():
+                    self.draw_trajectory_uncertainty(lons, lats, t.trajectory_stddevs, clr)
                 # draw interval markers
                 interval_symbol_drawer.draw(t, lons, lats, c=clr, marker=ms, clip_on=True,
                                             transform=self.data_crs)
@@ -599,7 +602,19 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                     axes.text(lons[-1], lats[-1], cluster_label,
                               horizontalalignment="right", verticalalignment="bottom",  clip_on=True,
                               transform=self.data_crs)
-            
+    
+    def draw_trajectory_uncertainty(self, lons, lats, sigmas, clr):
+        axes = self.traj_axes
+        for k, slonlat in enumerate(sigmas):
+            xy = (lons[k], lats[k])
+            slon, slat = slonlat
+            # The multiplier 2 below is for one sigma radius.
+            ellipse = matplotlib.patches.Ellipse(xy, 2*slon, 2*slat,
+                                                 color=clr, fill=False, clip_on=True,
+                                                 linewidth=0.33,
+                                                 transform=self.data_crs)
+            axes.add_artist(ellipse)
+    
     def draw_bottom_plot(self, data_list):
         if self.settings.vertical_coordinate == VerticalCoordinate.NONE:
             self._turn_off_spines(self.height_axes_outer, top=True)
@@ -658,7 +673,9 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         self.plot_saver.close()
 
     def write_gis_files(self):
-        w = gisout.GISFileWriterFactory.create_instance(self.settings.gis_output, self.settings.height_unit)
+        w = gisout.GISFileWriterFactory.create_instance(self.settings.gis_output,
+                                                        self.settings.height_unit,
+                                                        self.time_zone)
         if w is not None:
             w.output_suffix = self.settings.output_suffix
             w.output_name = self.settings.output_filename  

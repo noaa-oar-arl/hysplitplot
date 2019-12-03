@@ -1061,7 +1061,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         color_table = ColorTableFactory.create_instance(self.settings)
         
         gis_writer = gisout.GISFileWriterFactory.create_instance(self.settings.gis_output,
-                                                                 self.settings.kml_option)
+                                                                 self.settings.kml_option,
+                                                                 self.time_zone)
                                                                  
         gis_writer.initialize(self.settings.gis_alt_mode,
                               self.settings.KMLOUT,

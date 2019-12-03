@@ -215,6 +215,19 @@ def test_TimeOfArrivalPlotSettings_process_command_line_arguments():
     # input file override.
     s.process_command_line_arguments(["-icdump", "cdump_two", "cdump_three"])
     assert s.input_file == "cdump_three"
+    
+    # test internal change for the -a1 or -a2 options
+    s.gis_output = 0
+    s.process_command_line_arguments(["-a1"])
+    assert s.gis_output == 10
+
+    s.gis_output = 0
+    s.process_command_line_arguments(["-a2"])
+    assert s.gis_output == 10
+    
+    s.gis_output = 0
+    s.process_command_line_arguments(["-a3"])
+    assert s.gis_output == 3
 
 
 def test_TimeOfArrivalPlotSettings_parse_source_label():

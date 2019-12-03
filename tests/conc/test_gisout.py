@@ -66,7 +66,13 @@ def test_GISFileWriterFactory_create_instance():
     assert isinstance(w.formatter, gisout.PointsGenerateFileWriter.ExponentFormWriter)
     assert w.time_zone is tz
     assert w.formatter.time_zone is tz
-       
+     
+    w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.GENERATE_POINTS_STR, kml_option, tz)
+    assert isinstance(w, gisout.PointsGenerateFileWriter)
+    assert isinstance(w.formatter, gisout.PointsGenerateFileWriter.StringFormWriter)
+    assert w.time_zone is tz
+    assert w.formatter.time_zone is tz
+          
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.KML, 1, tz)
     assert isinstance(w, gisout.KMLWriter)
     assert w.kml_option == 1
@@ -293,28 +299,6 @@ def test_DecimalFormWriter_write_boundary():
     os.remove("__decimalFormWriter.txt")
     
     
-def test_DecimalFormWriter_write_boundary_case2():
-    o = gisout.PointsGenerateFileWriter.DecimalFormWriter()
-
-    seg = cntr.Boundary(None)
-    seg.latitudes = [1.2, 2.2, 3.2]
-    seg.longitudes = [1.0, 2.0, 3.0]
-    
-    f = open("__decimalFormWriter.txt", "wt")
-    o.write_boundary(f, seg, "0-6 hours")
-    f.close()
-    
-    f = open("__decimalFormWriter.txt", "rt")
-    lines = f.read().splitlines()
-    f.close()
-    
-    assert lines[0] ==  "0-6 hours,    1.00000,    1.20000"
-    assert lines[1] == "   2.00000,    2.20000"
-    assert lines[3] == "END"
-    
-    os.remove("__decimalFormWriter.txt")
-
-
 def test_DecimalFormWriter_write_attributes(cdump_two_pollutants):
     o = gisout.PointsGenerateFileWriter.DecimalFormWriter()
     g = cdump_two_pollutants.grids[0]
@@ -328,23 +312,6 @@ def test_DecimalFormWriter_write_attributes(cdump_two_pollutants):
     f.close()
     
     assert lines[0] == " -5.000,TEST,19830926,0500,00100,00300,#ff0000 "
-    
-    os.remove("__decimalFormWriter.txt")
-
-
-def test_DecimalFormWriter_write_attributes_case2(cdump_two_pollutants):
-    o = gisout.PointsGenerateFileWriter.DecimalFormWriter()
-    g = cdump_two_pollutants.grids[0]
-    
-    f = open("__decimalFormWriter.txt", "wt")
-    o.write_attributes(f, g, 100, 300, "0-6 hours", "#ff0000")
-    f.close()
-    
-    f = open("__decimalFormWriter.txt", "rt")
-    lines = f.read().splitlines()
-    f.close()
-    
-    assert lines[0] == "0-6 hours,TEST,19830926,0500,00100,00300,#ff0000 "
     
     os.remove("__decimalFormWriter.txt")
 
@@ -380,28 +347,6 @@ def test_ExponentFormWriter_write_boundary():
     os.remove("__exponentFormWriter.txt")
 
 
-def test_ExponentFormWriter_write_boundary_case2():
-    o = gisout.PointsGenerateFileWriter.ExponentFormWriter()
-    
-    seg = cntr.Boundary(None)
-    seg.latitudes = [1.2, 2.2, 3.2]
-    seg.longitudes = [1.0, 2.0, 3.0]
-    
-    f = open("__exponentFormWriter.txt", "wt")
-    o.write_boundary(f, seg, "0-6 hours")
-    f.close()
-    
-    f = open("__exponentFormWriter.txt", "rt")
-    lines = f.read().splitlines()
-    f.close()
-    
-    assert lines[0] ==  "0-6 hours,    1.00000,    1.20000"
-    assert lines[1] == "   2.00000,    2.20000"
-    assert lines[3] == "END"
-    
-    os.remove("__exponentFormWriter.txt")
-
-
 def test_ExponentFormWriter_write_attributes(cdump_two_pollutants):
     o = gisout.PointsGenerateFileWriter.ExponentFormWriter()
     g = cdump_two_pollutants.grids[0]
@@ -419,21 +364,52 @@ def test_ExponentFormWriter_write_attributes(cdump_two_pollutants):
     os.remove("__exponentFormWriter.txt")
 
 
-def test_ExponentFormWriter_write_attributes_case2(cdump_two_pollutants):
-    o = gisout.PointsGenerateFileWriter.ExponentFormWriter()
+def test_StringFormWriter___init__():
+    o = gisout.PointsGenerateFileWriter.StringFormWriter()
+    assert o.time_zone is None
+    
+    tz = pytz.timezone("America/New_York")
+    o = gisout.PointsGenerateFileWriter.StringFormWriter( tz )
+    assert o.time_zone is tz
+
+    
+def test_StringFormWriter_write_boundary():
+    o = gisout.PointsGenerateFileWriter.StringFormWriter()
+
+    seg = cntr.Boundary(None)
+    seg.latitudes = [1.2, 2.2, 3.2]
+    seg.longitudes = [1.0, 2.0, 3.0]
+    
+    f = open("__stringFormWriter.txt", "wt")
+    o.write_boundary(f, seg, "0-6 hours")
+    f.close()
+    
+    f = open("__stringFormWriter.txt", "rt")
+    lines = f.read().splitlines()
+    f.close()
+    
+    assert lines[0] ==  "0-6 hours,    1.00000,    1.20000"
+    assert lines[1] == "   2.00000,    2.20000"
+    assert lines[3] == "END"
+    
+    os.remove("__stringFormWriter.txt")
+
+
+def test_StringFormWriter_write_attributes(cdump_two_pollutants):
+    o = gisout.PointsGenerateFileWriter.StringFormWriter()
     g = cdump_two_pollutants.grids[0]
     
-    f = open("__exponentFormWriter.txt", "wt")
+    f = open("__stringFormWriter.txt", "wt")
     o.write_attributes(f, g, 100, 300, "0-6 hours", "#ff0000")
     f.close()
     
-    f = open("__exponentFormWriter.txt", "rt")
+    f = open("__stringFormWriter.txt", "rt")
     lines = f.read().splitlines()
     f.close()
     
     assert lines[0] == "0-6 hours,TEST,19830926,0500,00100,00300,#ff0000 "
     
-    os.remove("__exponentFormWriter.txt")
+    os.remove("__stringFormWriter.txt")
 
 
 def test_KMLWriter___init__():
@@ -460,7 +436,7 @@ def test_KMLWriter_make_output_basename(cdump_two_pollutants):
     g = cdump_two_pollutants.grids[0]
     basename = o.make_output_basename(g, conc_type, depo_sum, "output", "ps", s.KMLOUT, 500)
     assert basename == "HYSPLIT_ps" and s.KMLOUT == 0
-        
+
 
 def test_KMLWriter_initialize(cdump_two_pollutants):
     s = plot.ConcentrationPlotSettings()

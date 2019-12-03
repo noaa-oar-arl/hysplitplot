@@ -698,6 +698,24 @@ def test_TrajectoryPlot_draw_trajectory_plot():
         raise pytest.fail("unexpected exception: {0}".format(ex))
 
 
+def test_TrajectoryPlot_draw_trajectory_uncertainty():
+    p = plot.TrajectoryPlot()
+    ax = plt.axes()
+    p.traj_axes = ax
+
+    # See if no exception is thrown.
+    try:
+        lons = (-84.815, -84.395)
+        lats = ( 39.908,  39.690)
+        sigmas = ((0.1, 0.1), (0.1, 0.2))
+        p.draw_trajectory_uncertainty(lons, lats, sigmas, "r")
+        cleanup_plot(p)
+    except Exception as ex:
+        raise pytest.fail("unexpected exception: {0}".format(ex))
+    
+    plt.close(ax.get_figure())
+
+
 def test_TrajectoryPlot_draw_bottom_plot():
     p = plot.TrajectoryPlot()
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
