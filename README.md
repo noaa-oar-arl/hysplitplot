@@ -27,7 +27,8 @@ Run the timezone file converter:
     $ python -m timezonefinder.file_converter
 
 Copy all *.bin files and timezone_names.json to where the timezonefinder
-module is installed.
+module is installed. (On the author's Linux computer, the destination was
+~/anaconda3/envs/hysplit/lib/python3.7/site-packages/timezonefinder-4.1.0-py3.7.egg/timezonefinder.)
 
 To generate a trajectory plot using a trajectory dump file, say, tdump found
 in HYSPLIT's working directory, run

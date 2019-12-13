@@ -19,7 +19,7 @@ setup(
     packages=["hysplitplot", "hysplitplot.traj", "hysplitplot.conc",
               "hysplitplot.toa"],
     python_requires="==3.7",
-    install_requires=["hysplitdata==0.0.1", "geopandas==0.4", "cartopy==0.17",
-                      "numpy==1.16", "pytz==2019.1", "timezonefinder==4.1",
-                      "contextily==0.99", "mercantile==1.1"]
+    install_requires=["hysplitdata==0.0.1", "geopandas==0.4.1", "cartopy==0.17.0",
+                      "numpy==1.16.3", "pytz==2019.1", "timezonefinder==4.1.0",
+                      "contextily==0.99.0", "mercantile==1.1.1"]
 )
