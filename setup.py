@@ -12,7 +12,7 @@ from setuptools import setup
 
 setup(
     name="hysplitplot",
-    version="0.1.1",
+    version="0.1.2",
     description="HYSPLIT Graphics",
     author="Sonny Zinn",
     author_email="sonny.zinn@noaa.gov",

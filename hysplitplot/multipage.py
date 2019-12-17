@@ -10,9 +10,10 @@
 
 from abc import ABC, abstractmethod
 import logging
+import os
 from matplotlib.backends.backend_pdf import PdfPages
 
-from hysplitplot import const
+from hysplitplot import const, util
 
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,8 @@ class PlotFileWriterFactory:
         if frames_per_file == const.Frames.ALL_FILES_ON_ONE:
             if output_format.lower() == "pdf":
                 return MultiplePlotPDFWriter(output_basename, output_suffix)
+            elif output_format.lower() == "ps":
+                return MultiplePlotPostscriptWriter(output_basename, output_suffix)
             else:
                 logger.warning("Saving all plots in one %s file is not supported: each plot will be saved individually", output_suffix)
 
@@ -81,3 +84,28 @@ class MultiplePlotPDFWriter(AbstractMultiplePlotFileWriter):
         
     def close(self):
         self.pdf.close()
+
+
+class MultiplePlotPostscriptWriter(AbstractMultiplePlotFileWriter):
+    
+    def __init__(self, output_basename, output_suffix):
+        super(MultiplePlotPostscriptWriter, self).__init__()
+        self.filename = "{}.{}".format(output_basename, output_suffix)
+        logger.debug("Saving a plot to file %s", self.filename)
+        self.page_count = 0
+    
+    def save(self, figure, frame_no):
+        if self.page_count == 0:
+            figure.savefig(self.filename, papertype="letter", format="ps")
+        else:
+            tempfile = "{}.{}".format(self.filename, self.page_count)
+            figure.savefig(tempfile, papertype="letter", format="ps")
+            util.join_file(tempfile, self.filename)
+            os.remove(tempfile)
+        self.page_count += 1
+        
+        if self.file_count == 0:
+            self.file_count += 1
+        
+    def close(self):
+        pass

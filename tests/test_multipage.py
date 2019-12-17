@@ -32,7 +32,10 @@ def test_PlotFileWriterFactory_create_instance():
     assert isinstance(o, multipage.MultiplePlotPDFWriter)
     if os.path.exists("test.PDF"):
         os.remove("test.PDF")
-            
+    
+    o = multipage.PlotFileWriterFactory.create_instance(const.Frames.ALL_FILES_ON_ONE, "test", "ps", "ps")
+    assert isinstance(o, multipage.MultiplePlotPostscriptWriter)
+        
     # A PNG image file cannot have more than one page.
     o = multipage.PlotFileWriterFactory.create_instance(const.Frames.ALL_FILES_ON_ONE, "test", "PNG", "png")
     assert isinstance(o, multipage.SinglePlotFileWriter)
@@ -126,5 +129,36 @@ def test_MultiplePlotPDFWriter_close():
         os.remove("__multipagetest.pdf")
 
 
+def test_MultiplePlotPostscriptWriter___init__():
+    o = multipage.MultiplePlotPostscriptWriter("__multipagetest", "ps")
+    assert o.file_count == 0
+    assert o.filename == "__multipagetest.ps"
+    assert o.page_count == 0
 
 
+def test_MultiplePlotPostscriptWriter_save():
+    ax = plt.axes()
+    
+    o = multipage.MultiplePlotPostscriptWriter("__multipagetest", "ps")
+    o.save(ax.figure, 1)
+    o.save(ax.figure, 2)
+    o.close()
+    
+    assert os.path.exists( "__multipagetest.ps" )
+    assert o.file_count == 1
+    assert o.page_count == 2
+    
+    os.remove( "__multipagetest.ps" )
+    plt.close(ax.figure)
+    
+    
+def test_MultiplePlotPostscriptWriter_close():
+    o = multipage.MultiplePlotPostscriptWriter("__multipagetest", "ps")
+    
+    try:
+        o.close()
+    except Exception as ex:
+        pytest.fail("unexpected exception: {}".format(ex))
+        
+    if os.path.exists("__multipagetest.ps"):
+        os.remove("__multipagetest.ps")

@@ -138,7 +138,17 @@ def normalize_output_filename(pathname, ext="ps"):
             ext = x[1:]  # skip the dot
 
     return n + "." + ext, n, ext
-    
+
+def join_file(src, dst, chunksize=8192):
+    with open(src, "rb") as f:
+        with open(dst, "ab") as o:
+            while True:
+                content = f.read(chunksize)
+                if content:
+                    o.write(content)
+                else:
+                    break
+
 def get_iso_8601_str(dt, time_zone=None):
     t = dt if time_zone is None else dt.astimezone(time_zone)
     if t.tzinfo is None or t.tzinfo.utcoffset(t).total_seconds() == 0:

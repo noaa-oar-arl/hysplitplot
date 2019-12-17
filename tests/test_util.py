@@ -8,6 +8,7 @@
 
 import datetime
 import numpy
+import os
 import pytest
 import pytz
 
@@ -131,6 +132,22 @@ def test_normalize_output_filename():
 
     n, b, x = util.normalize_output_filename("output", "ps")
     assert (n, b, x) == ("output.ps", "output", "ps")
+
+
+def test_join_file():
+    with open("join.1", "wt") as f1:
+        f1.write("123")
+    with open("join.2", "wt") as f2:
+        f2.write("456")
+    
+    util.join_file("join.1", "join.2")
+    
+    with open("join.2", "rt") as o:
+        str = o.read()
+        
+    assert str == "456123"
+    os.remove("join.1")
+    os.remove("join.2")
 
 
 def test_get_iso_8601_str():
