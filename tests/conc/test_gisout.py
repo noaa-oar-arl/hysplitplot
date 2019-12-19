@@ -510,6 +510,7 @@ def test_KMLWriter_write(cdump_two_pollutants):
     
     try:
         o.write("HYSPLIT_ps", g, contour_set, 100, 500)
+        o.finalize()
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
         
@@ -665,6 +666,7 @@ def test_PartialKMLWriter_write(cdump_two_pollutants):
     
     try:
         o.write("HYSPLIT_ps", g, contour_set, 100, 500)
+        o.finalize()
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
         

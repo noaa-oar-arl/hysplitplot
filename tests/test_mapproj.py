@@ -122,7 +122,7 @@ def test_MapProjectionFactory_create_instance():
     map_box.add((-120.5, -89.0))
     map_box.add((-120.5, -90.0))
     map_box.determine_plume_extent()
-
+    
     map_proj = const.MapProjection.LAMBERT
     m = mapproj.MapProjectionFactory.create_instance(map_proj, zoom_factor, [-125.0, -89.0], 1.3, [1.0, 1.0], map_box)
     assert isinstance(m, mapproj.PolarProjection)
@@ -401,9 +401,9 @@ def test_PoleExcludingProjection__init__():
 def test_PoleExcludingProjection_sanity_check(lambert_proj):
     assert lambert_proj.sanity_check() == True
 
-    # (xc, yc) = (253264.7, 6336724.2)
-    delta = 10.0
-    lambert_proj.corners_xy = (253264.7 - delta, 253264.7 + delta, 6336724.2 - delta, 6336724.2 + delta)
+    # lonlat_corners (-125.4793, -124.4770, 41.9989, 47.9989)
+    llon, rlon, blat, tlat = lambert_proj.corners_lonlat
+    lambert_proj.corners_lonlat = (llon, rlon, blat, 85.00)
     assert lambert_proj.sanity_check() == False
 
 

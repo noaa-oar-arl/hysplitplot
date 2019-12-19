@@ -330,10 +330,7 @@ class PoleExcludingProjection(AbstractMapProjection):
         super(PoleExcludingProjection, self).__init__(map_proj, zoom_factor, center_loc, scale, grid_deltas)
         
     def sanity_check(self):
-        x1, x2, y1, y2 = self.corners_xy
-        xc, yc = self.calc_xy(0.0, util.sign(89.5, self.center_loc[1]))
-        logger.debug("Pole xy: %f %f", xc, yc)
-        if (xc >= x1 and xc <= x2 and yc >= y1 and yc <= y2) or (math.isnan(xc) or math.isnan(yc)):
+        if self.need_pole_exclusion(self.corners_lonlat):
             logger.debug("Force polar stereographic!")
             return False
         return True
@@ -358,9 +355,15 @@ class LambertProjection(PoleExcludingProjection):
         return center_loc[1]
 
     def create_crs(self):
+        if self.tnglat >= 84.0:
+            pars=(self.tnglat-6.0, 89.99)
+        elif self.tnglat <= -84.0:
+            pars=(-89.99, self.tnglat+6.0)
+        else:
+            pars=(self.tnglat-6.0, self.tnglat+6.0)
         return cartopy.crs.LambertConformal(central_longitude=self.reflon,
                                             central_latitude=self.tnglat,
-                                            standard_parallels=(self.tnglat-6.0, self.tnglat+6.0),
+                                            standard_parallels=pars,
                                             false_easting=1.0*1000.0,
                                             false_northing=1.0*1000.0,
                                             cutoff=-60.0 if self.tnglat > 0 else 60.0)

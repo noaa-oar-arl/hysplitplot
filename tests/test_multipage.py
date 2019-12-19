@@ -26,11 +26,13 @@ def test_PlotFileWriterFactory_create_instance():
     o = multipage.PlotFileWriterFactory.create_instance(const.Frames.ALL_FILES_ON_ONE, "test", "pdf", "pdf")
     assert isinstance(o, multipage.MultiplePlotPDFWriter)
     if os.path.exists("test.pdf"):
+        o.close()
         os.remove("test.pdf")
         
     o = multipage.PlotFileWriterFactory.create_instance(const.Frames.ALL_FILES_ON_ONE, "test", "PDF", "pdf")
     assert isinstance(o, multipage.MultiplePlotPDFWriter)
     if os.path.exists("test.PDF"):
+        o.close()
         os.remove("test.PDF")
     
     o = multipage.PlotFileWriterFactory.create_instance(const.Frames.ALL_FILES_ON_ONE, "test", "ps", "ps")

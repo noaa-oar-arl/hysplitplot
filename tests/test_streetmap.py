@@ -459,8 +459,8 @@ def test_AbstractStreetMap__fetch_tiles(web_merc_proj):
     
     t = o._fetch_tiles(142.35, -168.87, -57.8292, -21.9153, 2)
     assert len(t) == 2
-    assert t[0][1] == pytest.approx( (-8542657.5,  1476096.7, -10018754.2, -1.4162309e-09) )
-    assert t[1][1] == pytest.approx( ( 1476096.7, 11494850.8, -10018754.2, -1.4162309e-09) )
+    assert t[0][1] == pytest.approx( (-8542657.5,  1476096.7, -10018754.2, -1.4162309e-09), abs=1.0)
+    assert t[1][1] == pytest.approx( ( 1476096.7, 11494850.8, -10018754.2, -1.4162309e-09), abs=1.0)
 
 
 def test_AbstractStreetMap_draw(lambert_proj):
