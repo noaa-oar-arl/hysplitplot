@@ -7,6 +7,7 @@
 # ---------------------------------------------------------------------------
 
 from abc import ABC, abstractmethod
+import cartopy.crs
 import contextily
 import copy
 import geopandas
@@ -182,13 +183,18 @@ class HYSPLITMapBackground(AbstractMapBackground):
         return gs
     
     def draw_underlay(self, axes, corners_xy, crs):
+        # ad hoc fix for pyproj 2.4.2 and cartopy 0.17.0. 
+        proj4_pars = crs.proj4_init
+        if isinstance(crs, cartopy.crs.PlateCarree):
+            if "+ellps=" not in proj4_pars:
+                proj4_pars += " +ellps=WGS84"
         self.frozen_collection_count = None
         for o in self.background_maps:
             if isinstance(o.map, geopandas.geoseries.GeoSeries):
-                fixed = self._remove_spurious_hlines( o.map.to_crs(crs.proj4_init), corners_xy, crs )
+                fixed = self._remove_spurious_hlines( o.map.to_crs(proj4_pars), corners_xy, crs )
             else:
                 fixed = o.map.copy()
-                fixed['geometry'] = self._remove_spurious_hlines( fixed['geometry'].to_crs(crs.proj4_init), corners_xy, crs )
+                fixed['geometry'] = self._remove_spurious_hlines( fixed['geometry'].to_crs(proj4_pars), corners_xy, crs )
             clr = self._fix_map_color(o.linecolor, self.color_mode)
             fixed.plot(ax=axes, linestyle=o.linestyle, linewidth=o.linewidth, facecolor="none", edgecolor=clr)        
     
