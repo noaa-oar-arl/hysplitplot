@@ -342,6 +342,8 @@ def test_AbstractPlot_update_plot_extents():
     assert p.projection.corners_xy == pytest.approx((-642202.80, 245127.59, -496632.13, 246127.59))
     assert p.projection.corners_lonlat == pytest.approx((-132.5834, -121.7633, 40.22826, 47.17279))
 
+    plt.close(p.target_axes.get_figure())
+    
 
 def test_AbstractPlot_on_update_plot_extent():
     p = AbstractPlotTest()
@@ -401,6 +403,8 @@ def test_AbstractPlot__draw_stations_if_exists():
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
 
+    plt.close(axes.get_figure())
+    
 
 def test_AbstractPlot__draw_datem():
     p = AbstractPlotTest()
@@ -423,6 +427,8 @@ def test_AbstractPlot__draw_datem():
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
       
+    plt.close(axes.get_figure())
+
 
 def test_AbstractPlot_make_maptext_filename():
     assert plotbase.AbstractPlot._make_maptext_filename("ps") == "MAPTEXT.CFG"

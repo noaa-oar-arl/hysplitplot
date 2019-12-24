@@ -18,8 +18,8 @@ def debug_axes(axes):
     Print properties of a plot, or Axes in PyPlot term.
     """
     logger.debug("******************** BEGIN AXES PROPERTIES ********************")
-    logger.debug("axes.get_extent (deg) %s", axes.get_extent(cartopy.crs.Geodetic()))
-    logger.debug("axes.get_extent %s", axes.get_extent())
+    logger.debug("axes.get_extent (deg) %s", axes.get_extent(cartopy.crs.PlateCarree()))
+    #logger.debug("axes.get_extent %s", axes.get_extent())
     logger.debug("axes.get_xlim %s", axes.get_xlim())
     logger.debug("axes.get_ylim %s", axes.get_ylim())
     logger.debug("axes.viewLim %s", axes.viewLim)

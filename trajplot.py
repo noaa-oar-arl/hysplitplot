@@ -15,6 +15,10 @@ import os
 import sys
 import threading
 
+# Register a converter to avoid a warning message.
+from pandas.plotting import register_matplotlib_converters
+register_matplotlib_converters()
+
 import hysplitplot
 
 

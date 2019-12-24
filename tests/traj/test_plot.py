@@ -15,6 +15,10 @@ import pytest
 import pytz
 import xml.etree.ElementTree as ElementTree
 
+# Register a converter to avoid a warning message.
+from pandas.plotting import register_matplotlib_converters
+register_matplotlib_converters()
+
 from hysplitdata.const import HeightUnit, VerticalCoordinate
 from hysplitdata.traj import model
 from hysplitplot import clist, const, labels, mapfile, mapproj, multipage, streetmap
@@ -969,6 +973,8 @@ def test_TimeIntervalSymbolDrawer__filter_datadraw(plotData):
     assert len(y12) == 1
     assert y12[0] == 38.586
 
+    plt.close(axes.get_figure())
+    
 
 def test_AgeIntervalSymbolDrawer___init__():
     s = plot.TrajectoryPlotSettings()
@@ -1020,7 +1026,9 @@ def test_AgeIntervalSymbolDrawer__filter_data(plotData):
     assert len(y12) == 1
     assert y12[0] == 38.586
 
-
+    plt.close(axes.get_figure())
+    
+    
 def test_IntervalSymbolDrawerFactory_create_instance():
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
@@ -1215,6 +1223,8 @@ def test_VerticalProjectionFactory_create_instance():
     s.time_label_interval = 0
     o = plot.VerticalProjectionFactory.create_instance(axes, s)
     assert isinstance(o, plot.TimeVerticalProjection)
+    
+    plt.close(axes.get_figure())
     
     
 def test_FrameDataIteratorFactory_create_instance(plotData):
