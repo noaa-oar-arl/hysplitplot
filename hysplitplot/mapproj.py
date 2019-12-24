@@ -53,7 +53,7 @@ class MapProjectionFactory:
 
 class AbstractMapProjection(ABC):
     
-    _WGS84 = {"init": "epsg:4326"}  # A coordinate reference system.
+    _WGS84 = {"datum": "WGS84", "ellps": "WGS84", "proj": "longlat", "no_defs": True} # epsg4326
     
     TOLERANCE = 0.5 #xy2ll->ll2xy allows difference <= TOLERANCE*grid
     CONTRACTION = 0.2 #contraction factor when corners are outside map

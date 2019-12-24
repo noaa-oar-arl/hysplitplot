@@ -176,7 +176,7 @@ class TrajectoryPlotSettingsReader:
 class TrajectoryPlot(plotbase.AbstractPlot):
 
     def __init__(self):
-        super(TrajectoryPlot, self).__init__()
+        super(TrajectoryPlot, self).__init__(cartopy.crs.Geodetic())
         self.settings = TrajectoryPlotSettings()
         self.data_list = None
         self.traj_axes = None

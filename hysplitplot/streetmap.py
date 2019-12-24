@@ -183,11 +183,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
         return gs
     
     def draw_underlay(self, axes, corners_xy, crs):
-        # ad hoc fix for pyproj 2.4.2 and cartopy 0.17.0. 
         proj4_pars = crs.proj4_init
-        if isinstance(crs, cartopy.crs.PlateCarree):
-            if "+ellps=" not in proj4_pars:
-                proj4_pars += " +ellps=WGS84"
         self.frozen_collection_count = None
         for o in self.background_maps:
             if isinstance(o.map, geopandas.geoseries.GeoSeries):

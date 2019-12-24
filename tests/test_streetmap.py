@@ -198,7 +198,7 @@ def test_HYSPLITMapBackground__is_crossing_bounds(lambert_proj):
 def test_HYSPLITMapBackground__remove_spurious_hlines(lambert_proj):
     o = streetmap.HYSPLITMapBackground(lambert_proj)
     corners_xy = [-50, 50, -80, 80]
-    data_crs = cartopy.crs.PlateCarree()
+    data_crs = cartopy.crs.Geodetic()
     
     try:
         o._remove_spurious_hlines(data_crs, corners_xy, data_crs)
@@ -264,7 +264,7 @@ def test_HYSPLITMapBackground__remove_spurious_hlines(lambert_proj):
 
 def test_HYSPLITMapBackground_draw_underlay(lambert_proj):
     o = streetmap.HYSPLITMapBackground(lambert_proj)
-    data_crs = cartopy.crs.PlateCarree()
+    data_crs = cartopy.crs.Geodetic()
     axes = plt.axes(projection=lambert_proj.crs)
 
     # with no map
@@ -299,7 +299,7 @@ def test_HYSPLITMapBackground_draw_underlay(lambert_proj):
 
 def test_HYSPLITMapBackground_update_extent(lambert_proj):
     o = streetmap.HYSPLITMapBackground(lambert_proj)
-    data_crs = cartopy.crs.PlateCarree()
+    data_crs = cartopy.crs.Geodetic()
     axes = plt.axes(projection=lambert_proj.crs)
 
     try:
@@ -311,7 +311,7 @@ def test_HYSPLITMapBackground_update_extent(lambert_proj):
 
 def test_HYSPLITMapBackground__erase_gridlines(lambert_proj):
     o = streetmap.HYSPLITMapBackground(lambert_proj)
-    data_crs = cartopy.crs.PlateCarree()
+    data_crs = cartopy.crs.Geodetic()
     axes = plt.axes(projection=lambert_proj.crs)
 
     axes.collections.append( 0 )
@@ -332,7 +332,7 @@ def test_HYSPLITMapBackground__erase_gridlines(lambert_proj):
 
 def test_HYSPLITMapBackground__update_gridlines(lambert_proj):
     o = streetmap.HYSPLITMapBackground(lambert_proj)
-    data_crs = cartopy.crs.PlateCarree()
+    data_crs = cartopy.crs.Geodetic()
     axes = plt.axes(projection=lambert_proj.crs)
 
     try:
@@ -377,7 +377,7 @@ def test_HYSPLITMapBackground__draw_latlon_labels():
     
     o = streetmap.HYSPLITMapBackground(projection)
 
-    data_crs = cartopy.crs.PlateCarree()
+    data_crs = cartopy.crs.Geodetic()
     
     axes = plt.axes()
     
@@ -427,7 +427,7 @@ def test_AbstractStreetMap_draw_underlay(web_merc_proj):
 
 def test_AbstractStreetMap_update_extent(web_merc_proj):
     o = AbstractStreetMapTest(web_merc_proj)
-    data_crs = cartopy.crs.PlateCarree()
+    data_crs = cartopy.crs.Geodetic()
     
     axes = plt.axes(projection=web_merc_proj.crs)
 
@@ -464,7 +464,7 @@ def test_AbstractStreetMap__fetch_tiles(web_merc_proj):
 
 
 def test_AbstractStreetMap_draw(lambert_proj):
-    data_crs = cartopy.crs.PlateCarree()
+    data_crs = cartopy.crs.Geodetic()
     
     ax = plt.axes(projection=lambert_proj.crs)
     ax.axis( (-85.0, -80.0, 30.0, 40.0) )

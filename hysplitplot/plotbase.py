@@ -164,10 +164,10 @@ class AbstractPlotSettings(ABC):
             
 class AbstractPlot(ABC):
     
-    def __init__(self):
+    def __init__(self, crs=None):
         self.fig = None
         self.projection = None
-        self.data_crs = cartopy.crs.PlateCarree()
+        self.data_crs = crs if crs != None else cartopy.crs.PlateCarree()
         self.background_maps = []
         self.labels = labels.LabelsConfig()
         self.time_zone = None
