@@ -499,7 +499,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                         axes.text(ages[0], vc[0], "{0}  ".format(int(vc[0])),
                                   horizontalalignment="right", verticalalignment="center", clip_on=True)
                 else:
-                    logger.error("skipping a trajectory with no vertical coordinate")
+                    logger.info("skip drawing a trajectory with no vertical coordinate")
 
         # draw the terrain profile if it is necessary
         if terrain_profileQ and self.settings.vertical_coordinate == VerticalCoordinate.ABOVE_GROUND_LEVEL:
