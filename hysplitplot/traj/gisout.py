@@ -302,6 +302,9 @@ class KMLWriter(AbstractGISFileWriter):
     def _write_trajectory(self, f, t, t_index):
         vc = model.VerticalCoordinateFactory.create_instance(VerticalCoordinate.ABOVE_GROUND_LEVEL, self.height_unit, t)
         vc.make_vertical_coordinates()
+        if (t.starting_loc is None) or (len(vc.values) == 0):
+            logger.info("skip writing an empty trajectory")
+            return
         
         f.write("""\
     <Folder>
