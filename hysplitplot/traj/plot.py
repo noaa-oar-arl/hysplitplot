@@ -668,9 +668,9 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                 
             plt.close(self.fig)
             self.current_frame += 1
-            
+
+        self.plot_saver.close()            
         self.write_gis_files()
-        self.plot_saver.close()
 
     def write_gis_files(self):
         w = gisout.GISFileWriterFactory.create_instance(self.settings.gis_output,
