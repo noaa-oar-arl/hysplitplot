@@ -504,7 +504,7 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
                 (t_index % 3) + 1,
                 self._get_alt_mode(t)))
 
-            slat, slon = t.trajectory_stddevs[k]
+            slon, slat = t.trajectory_stddevs[k]
             for j in range(npts_circle + 1):
                 theta = j * delta_theta if j < npts_circle else 0
                 y = t.latitudes[k] + slat * math.sin(theta)
