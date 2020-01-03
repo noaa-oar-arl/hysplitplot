@@ -8,6 +8,7 @@
 
 from abc import ABC, abstractmethod
 import logging
+import math
 
 from hysplitdata.const import HeightUnit, VerticalCoordinate
 from hysplitdata.traj import model
@@ -207,6 +208,21 @@ class KMLWriter(AbstractGISFileWriter):
         </Icon>
       </IconStyle>
     </Style>
+    <Style id="traj1a">
+      <LineStyle>
+        <color>ff0000ff</color>
+        <width>1.25</width>
+      </LineStyle>
+      <PolyStyle>
+        <color>7f0000ff</color>
+      </PolyStyle>
+      <IconStyle>
+        <scale>0.6</scale>
+        <Icon>
+          <href>redball.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
     <Style id="traj2">
       <LineStyle>
         <color>ffff0000</color>
@@ -222,10 +238,40 @@ class KMLWriter(AbstractGISFileWriter):
         </Icon>
       </IconStyle>
     </Style>
+    <Style id="traj2a">
+      <LineStyle>
+        <color>ffff0000</color>
+        <width>1.25</width>
+      </LineStyle>
+      <PolyStyle>
+        <color>7fff0000</color>
+      </PolyStyle>
+      <IconStyle>
+        <scale>0.6</scale>
+        <Icon>
+          <href>blueball.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
     <Style id="traj3">
       <LineStyle>
         <color>ff00ff00</color>
         <width>4</width>
+      </LineStyle>
+      <PolyStyle>
+        <color>7f00ff00</color>
+      </PolyStyle>
+      <IconStyle>
+        <scale>0.6</scale>
+        <Icon>
+          <href>greenball.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
+    <Style id="traj3a">
+      <LineStyle>
+        <color>ff00ff00</color>
+        <width>1.25</width>
       </LineStyle>
       <PolyStyle>
         <color>7f00ff00</color>
@@ -383,11 +429,99 @@ LAT: {1:.4f} LON: {2:.4f} Hght({3}): {4:.1f}
             t.starting_loc[1],
             t.starting_level))
 
+        if t.has_trajectory_stddevs():
+            self._write_circles_of_uncertainty(f, t, t_index, vc)
+            
         if self.kml_option != const.KMLOption.NO_ENDPOINTS and self.kml_option != const.KMLOption.BOTH_1_AND_2:
             self._write_endpts(f, t, t_index, vc)
 
         f.write("""\
     </Folder>\n""")
+        
+    def _write_circles_of_uncertainty(self, f, t, t_index, vc):
+        is_backward = False if t.parent.is_forward_calculation() else True
+        npts_circle = 64
+        delta_theta = 2*math.pi / npts_circle
+        
+        f.write("""\
+      <Folder>
+        <name>Circles of uncertainty for center-of-mass trajectory</name>
+        <visibility>0</visibility>\n""")
+
+        for k in range(len(t.longitudes)):
+            if k == 0:
+                continue
+            
+            f.write("""\
+        <Placemark>
+          <name>{0}</name>
+          <visibility>1</visibility>
+          <LookAt>
+            <longitude>{1:.4f}</longitude>
+            <latitude>{2:.4f}</latitude>
+            <range>20000.0</range>
+            <tilt>60.0</tilt>
+            <heading>0.0</heading>
+          </LookAt>
+          <Snippet maxLines="0"/>
+          <TimeSpan>\n""".format(
+                self._get_timestamp_str(t.datetimes[k], self.time_zone),
+                t.longitudes[k],
+                t.latitudes[k]))
+
+            # Use the entire time period so that the circle would be initially visible with Google Earth.
+            if is_backward:
+                f.write("""\
+            <end>{0}</end>
+            <begin>{1}</begin>\n""".format(
+                    util.get_iso_8601_str(t.datetimes[-1], self.time_zone),
+                    util.get_iso_8601_str(t.datetimes[ 0], self.time_zone)))
+            else:
+                f.write("""\
+            <begin>{0}</begin>
+            <end>{1}</end>\n""".format(
+                    util.get_iso_8601_str(t.datetimes[ 0], self.time_zone),
+                    util.get_iso_8601_str(t.datetimes[-1], self.time_zone)))
+            
+            f.write("""\
+          </TimeSpan>
+          <description><![CDATA[<pre>HYSPLIT {0:4.0f}. hour circle of uncertainty
+
+{1}
+LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
+</pre>]]></description>
+          <styleUrl>#traj{6:1d}a</styleUrl> 
+          <LineString>
+            <extrude>1</extrude>
+            <altitudeMode>{7}</altitudeMode>
+            <coordinates>\n""".format(
+                t.ages[k],
+                self._get_timestamp_str(t.datetimes[k], self.time_zone),
+                t.latitudes[k],
+                t.longitudes[k],
+                self._get_level_type(t),
+                vc.values[k],
+                (t_index % 3) + 1,
+                self._get_alt_mode(t)))
+
+            slat, slon = t.trajectory_stddevs[k]
+            for j in range(npts_circle + 1):
+                theta = j * delta_theta if j < npts_circle else 0
+                y = t.latitudes[k] + slat * math.sin(theta)
+                x = t.longitudes[k] + slon * math.cos(theta)
+                f.write("""\
+              {0:.4f},{1:.4f},{2:.1f}\n""".format(
+                    x,
+                    y,
+                    vc.values[k]))
+                       
+            f.write("""\
+            </coordinates>
+          </LineString>
+        </Placemark>\n""")
+            
+        f.write("""\
+      </Folder>\n""")
         
     def _write_endpts(self, f, t, t_index, vc):
         is_backward = False if t.parent.is_forward_calculation() else True
