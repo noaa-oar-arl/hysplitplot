@@ -440,12 +440,12 @@ LAT: {1:.4f} LON: {2:.4f} Hght({3}): {4:.1f}
         
     def _write_ellipses_of_uncertainty(self, f, t, t_index, vc):
         is_backward = False if t.parent.is_forward_calculation() else True
-        npts_circle = 64
-        delta_theta = 2*math.pi / npts_circle
+        npts_ellipse = 64
+        delta_theta = 2*math.pi / npts_ellipse
         
         f.write("""\
       <Folder>
-        <name>Circles of uncertainty for center-of-mass trajectory</name>
+        <name>Ellipses of uncertainty for center-of-mass trajectory</name>
         <visibility>0</visibility>\n""")
 
         for k in range(len(t.longitudes)):
@@ -469,7 +469,7 @@ LAT: {1:.4f} LON: {2:.4f} Hght({3}): {4:.1f}
                 t.longitudes[k],
                 t.latitudes[k]))
 
-            # Use the entire time period so that the circle would be initially visible with Google Earth.
+            # Use the entire time period so that the ellipse would be initially visible with Google Earth.
             if is_backward:
                 f.write("""\
             <end>{0}</end>
@@ -485,7 +485,7 @@ LAT: {1:.4f} LON: {2:.4f} Hght({3}): {4:.1f}
             
             f.write("""\
           </TimeSpan>
-          <description><![CDATA[<pre>HYSPLIT {0:4.0f}. hour circle of uncertainty
+          <description><![CDATA[<pre>HYSPLIT {0:4.0f}. hour ellipse of uncertainty
 
 {1}
 LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
@@ -505,8 +505,8 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
                 self._get_alt_mode(t)))
 
             slon, slat = t.trajectory_stddevs[k]
-            for j in range(npts_circle + 1):
-                theta = j * delta_theta if j < npts_circle else 0
+            for j in range(npts_ellipse + 1):
+                theta = j * delta_theta if j < npts_ellipse else 0
                 y = t.latitudes[k] + slat * math.sin(theta)
                 x = t.longitudes[k] + slon * math.cos(theta)
                 f.write("""\
