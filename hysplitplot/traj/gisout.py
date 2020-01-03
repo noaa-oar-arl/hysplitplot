@@ -430,7 +430,7 @@ LAT: {1:.4f} LON: {2:.4f} Hght({3}): {4:.1f}
             t.starting_level))
 
         if t.has_trajectory_stddevs():
-            self._write_circles_of_uncertainty(f, t, t_index, vc)
+            self._write_ellipses_of_uncertainty(f, t, t_index, vc)
             
         if self.kml_option != const.KMLOption.NO_ENDPOINTS and self.kml_option != const.KMLOption.BOTH_1_AND_2:
             self._write_endpts(f, t, t_index, vc)
@@ -438,7 +438,7 @@ LAT: {1:.4f} LON: {2:.4f} Hght({3}): {4:.1f}
         f.write("""\
     </Folder>\n""")
         
-    def _write_circles_of_uncertainty(self, f, t, t_index, vc):
+    def _write_ellipses_of_uncertainty(self, f, t, t_index, vc):
         is_backward = False if t.parent.is_forward_calculation() else True
         npts_circle = 64
         delta_theta = 2*math.pi / npts_circle
