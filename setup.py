@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # ---------------------------------------------------------------------------
 # NOAA Air Resources Laboratory
 #
@@ -10,16 +12,20 @@
 
 from setuptools import setup
 
+meta = {}
+with open("hysplitplot/meta.py") as f:
+    exec(f.read(), meta)
+    
 setup(
     name="hysplitplot",
-    version="0.1.9",
+    version=meta["__version__"],
     description="HYSPLIT Graphics",
-    author="Sonny Zinn",
-    author_email="sonny.zinn@noaa.gov",
+    author=meta["__author__"],
+    author_email=meta["__email__"],
     packages=["hysplitplot", "hysplitplot.traj", "hysplitplot.conc",
               "hysplitplot.toa"],
     python_requires="==3.7",
-    install_requires=["hysplitdata==0.0.2", "geopandas==0.4.1", "cartopy==0.17.0",
+    install_requires=["hysplitdata==0.0.3", "geopandas==0.4.1", "cartopy==0.17.0",
                       "numpy==1.16.3", "pytz==2019.1", "timezonefinder==4.1.0",
                       "contextily==0.99.0", "mercantile==1.1.1"]
 )

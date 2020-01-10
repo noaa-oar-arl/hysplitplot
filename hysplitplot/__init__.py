@@ -1,3 +1,4 @@
+from .meta import __version__, __author__, __email__
 from .conc.plot import ConcentrationPlot
 from .toa.plot import TimeOfArrivalPlot
 from .traj.plot import TrajectoryPlot

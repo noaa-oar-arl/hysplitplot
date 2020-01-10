@@ -7,6 +7,7 @@
 # ---------------------------------------------------------------------------
 
 import abc
+import datetime
 import logging
 import math
 import numpy
@@ -17,9 +18,18 @@ from hysplitdata.const import HeightUnit
 from hysplitplot import const
 
 
+MESSAGE_FORMAT_INFO = "%(asctime)s.%(msecs)03d %(levelname)s - %(message)s"
+MESSAGE_FORMAT_DEBUG = "%(asctime)s.%(msecs)03d %(levelname)s %(name)s - %(message)s"
+
+logging.basicConfig(
+        stream=sys.stdout,
+        level=logging.INFO,
+        format=MESSAGE_FORMAT_INFO,
+        datefmt="%H:%M:%S") 
+
 logger = logging.getLogger(__name__)
 
-
+    
 def run(mainFunction, programName, **kwargs):
     """Provides a common main entry point.
 
@@ -30,11 +40,20 @@ def run(mainFunction, programName, **kwargs):
     :param programName: program name.
     """
     log_level = kwargs.get("log_level", logging.INFO)
-    logging.basicConfig(
-        stream=sys.stdout,
-        level=log_level,
-        format="%(asctime)s %(levelname)s %(name)s - %(message)s"
-    )
+    logger.setLevel(log_level)
+
+    log_format = MESSAGE_FORMAT_DEBUG if log_level == logging.DEBUG else MESSAGE_FORMAT_INFO
+    log_formatter = logging.Formatter(log_format, datefmt="%H:%M:%S")
+    
+    c = logger
+    while c:
+        for h in c.handlers:
+            if log_level >= h.level:
+                h.setFormatter(log_formatter)
+        if not c.propagate:
+            c = None
+        else:
+            c = c.parent
 
     logging.info("This is %s.", programName)
 
