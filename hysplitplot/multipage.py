@@ -29,7 +29,7 @@ class PlotFileWriterFactory:
             elif output_format.lower() == "ps":
                 return MultiplePlotPostscriptWriter(output_basename, output_suffix)
             else:
-                logger.warning("Saving all plots in one %s file is not supported: each plot will be saved individually", output_suffix)
+                logger.warning("%s format supports one plot per file: will insert a frame number to file name", output_suffix)
 
         return SinglePlotFileWriter(output_basename, output_suffix, output_format)
     

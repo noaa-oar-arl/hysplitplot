@@ -104,15 +104,19 @@ class PointsGenerateFileWriter(AbstractWriter):
         return basename
 
     def write(self, basename, g, contour_set, lower_vert_level, upper_vert_level):
-        with open(basename + ".txt", "wt") as f:
+        filename = basename + ".txt"
+        logger.info("Creating file %s", filename)
+        with open(filename, "wt") as f:
             for k, contour in enumerate(contour_set.contours):
                 level = contour_set.levels[k]
                 for polygon in contour.polygons:
                     for boundary in polygon.boundaries:
                         self.formatter.write_boundary(f, boundary, level)
             f.write("END\n")
-            
-        with open(basename + ".att", "wt") as f:
+        
+        filename = basename + ".att"
+        logger.info("Creating file %s", filename)
+        with open(filename, "wt") as f:
             f.write("#CONC,NAME,DATE,TIME,LLEVEL,HLEVEL,COLOR\n")
             for k, contour in enumerate(contour_set.contours):
                 level = contour_set.levels[k]
@@ -224,6 +228,7 @@ class KMLWriter(AbstractWriter):
     def write(self, basename, g, contour_set, lower_vert_level, upper_vert_level):
         if self.kml_file is None:
             filename = "{}.kml".format(basename)
+            logger.info("Creating file %s", filename)
             self.kml_file = open(filename, "wt")
             
             self._write_preamble(self.kml_file, g)
@@ -240,6 +245,7 @@ class KMLWriter(AbstractWriter):
 
         if self.att_file is None:
             filename = "GELABEL_{}.txt".format(self.output_suffix)
+            logger.info("Creating file %s", filename)
             self.att_file = open(filename, "wt")
         
         self._write_attributes(self.att_file, g, contour_set)
@@ -458,12 +464,14 @@ class PartialKMLWriter(KMLWriter):
     def write(self, basename, g, contour_set, lower_vert_level, upper_vert_level):
         if self.kml_file is None:
             filename = "{}.txt".format(basename)
+            logger.info("Creating file %s", filename)
             self.kml_file = open(filename, "wt")
             
         self.contour_writer.write(self.kml_file, g, contour_set, lower_vert_level, upper_vert_level, self.output_suffix)
 
         if self.att_file is None:
             filename = "GELABEL_{}.txt".format(self.output_suffix)
+            logger.info("Creating file %s", filename)
             self.att_file = open(filename, "wt")
 
         self._write_attributes(self.att_file, g, contour_set)

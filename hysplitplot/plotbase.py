@@ -15,7 +15,7 @@ import pytz
 from timezonefinder import TimezoneFinder
 
 from hysplitdata.const import HeightUnit
-from hysplitplot import cmdline, const, labels, logo, stnplot, streetmap, util
+from hysplitplot import cmdline, const, labels, logo, multipage, stnplot, streetmap, util
 
 
 logger = logging.getLogger(__name__)
@@ -39,6 +39,7 @@ class AbstractPlotSettings(ABC):
         self.output_basename = "output"
         self.output_suffix = "ps"
         self.output_format = "ps"
+        self.additional_output_formats = []
         self.noaa_logo = False
         self.lat_lon_label_interval_option = const.LatLonLabel.AUTO
         self.lat_lon_label_interval = 1.0
@@ -58,6 +59,7 @@ class AbstractPlotSettings(ABC):
         self.height_unit = HeightUnit.METERS
         self.street_map_update_delay = 0.3  # in seconds
         self.street_map_type = 0
+        self.process_id_set = False
         
     
     def _process_cmdline_args(self, args0):
@@ -102,13 +104,15 @@ class AbstractPlotSettings(ABC):
 
         self.output_filename        = args.get_string_value(["-o", "-O"], self.output_filename)
 
-        self.output_suffix          = args.get_string_value(["-p", "-P"], self.output_suffix)    
-        
+        output_suffix               = args.get_string_value(["-p", "-P"], self.output_suffix)
+        if output_suffix != self.output_suffix:
+            self.process_id_set = True
+            
         # The output_format is to be normalized with unmodified output_filename.
         self.output_format = \
-            util.normalize_output_format(self.output_filename, self.output_suffix, self.output_format)
+            util.normalize_output_format(self.output_filename, output_suffix, self.output_format)
         self.output_filename, self.output_basename, self.output_suffix = \
-            util.normalize_output_filename(self.output_filename, self.output_suffix)
+            util.normalize_output_filename(self.output_filename, output_suffix)
 
         if args.has_arg(["-z", "-Z"]):
             self.zoom_factor        = self.parse_zoom_factor(args.get_value(["-z", "-Z"]))
@@ -118,7 +122,13 @@ class AbstractPlotSettings(ABC):
 
         if args.has_arg(["--interactive"]):
             self.interactive_mode = True
-                
+        
+        if args.has_arg(["--more-formats"]):
+            val = args.get_value("--more-formats")
+            self.additional_output_formats = self.parse_output_formats(val)
+        if self.output_format in self.additional_output_formats:
+            self.additional_output_formats.remove(self.output_format)
+            
         if args.has_arg(["--source-time-zone"]):
             self.use_source_time_zone = True
         
@@ -134,7 +144,7 @@ class AbstractPlotSettings(ABC):
             if self.map_projection != const.MapProjection.WEB_MERCATOR:
                 logger.warning("The --street-map option changes the map projection to WEB_MERCATOR")
                 self.map_projection = const.MapProjection.WEB_MERCATOR
-            
+
     @staticmethod
     def parse_lat_lon_label_interval(str):
         divider = str.index(":")
@@ -162,7 +172,27 @@ class AbstractPlotSettings(ABC):
         kMax = const.ZoomFactor.MOST_ZOOM
         return max(kMin, min(kMax, kMax - int(str))) * 0.01
 
-            
+    @staticmethod
+    def parse_output_formats(s):
+        r = []
+        if isinstance(s, str):
+            for fmt in s.split(","):
+                if len(fmt) > 0: 
+                    if fmt in util.PLOT_FORMATS:
+                        if fmt not in r:
+                            r.append(fmt)
+                    else:
+                        logger.warning("Unknown output format %s; ignored", fmt)
+        return r
+
+    def normalize_output_suffix(self, output_format):
+        if self.process_id_set:
+            suffix = self.output_suffix + "." + output_format
+        else:
+            suffix = output_format
+        return suffix
+
+
 class AbstractPlot(ABC):
     
     def __init__(self, crs=None):
@@ -385,3 +415,22 @@ class AbstractPlot(ABC):
     
     def adjust_for_time_zone(self, dt):
         return dt if self.time_zone is None else dt.astimezone(self.time_zone)
+
+    def _create_plot_saver_list(self, settings):
+        plot_saver_list = []
+        
+        plot_saver = multipage.PlotFileWriterFactory.create_instance(settings.frames_per_file,
+                                                                     settings.output_basename,
+                                                                     settings.output_suffix,
+                                                                     settings.output_format)
+        plot_saver_list.append(plot_saver)
+
+        for output_format in settings.additional_output_formats:
+            output_suffix = settings.normalize_output_suffix(output_format)
+            plot_saver = multipage.PlotFileWriterFactory.create_instance(settings.frames_per_file,
+                                                                         settings.output_basename,
+                                                                         output_suffix,
+                                                                         output_format)
+            plot_saver_list.append(plot_saver)
+        
+        return plot_saver_list

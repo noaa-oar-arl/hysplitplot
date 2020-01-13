@@ -51,6 +51,7 @@ def test_AbstractPlotSettings___init__():
     assert s.output_basename == "output"
     assert s.output_suffix == "ps"
     assert s.output_format == "ps"
+    assert len(s.additional_output_formats) == 0
     assert s.noaa_logo == False
     assert s.lat_lon_label_interval_option == 1
     assert s.lat_lon_label_interval == 1.0
@@ -69,6 +70,7 @@ def test_AbstractPlotSettings___init__():
     assert s.height_unit == HeightUnit.METERS
     assert s.street_map_update_delay > 0
     assert s.street_map_type == 0
+    assert s.process_id_set == False
     
 
 def test_AbstractPlotSettings__process_cmdline_args():
@@ -157,6 +159,7 @@ def test_AbstractPlotSettings__process_cmdline_args():
     s._process_cmdline_args(["-otest"])
     assert s.output_filename == "test.ps"
     assert s.interactive_mode == True
+    assert s.process_id_set == False
     
     s.output_filename = None
     s.interactive_mode = True
@@ -172,6 +175,7 @@ def test_AbstractPlotSettings__process_cmdline_args():
     s._process_cmdline_args(["-ppdf"])
     assert s.output_suffix == "pdf"
     assert s.output_format == "pdf"
+    assert s.process_id_set == True
 
     s.output_filename = "result"
     s.output_suffix = "ps"
@@ -203,6 +207,13 @@ def test_AbstractPlotSettings__process_cmdline_args():
     s.interactive_mode = False
     s._process_cmdline_args(["--interactive"])
     assert s.interactive_mode == True
+    
+    # test --more-formats
+    s.output_format = "ps"
+    s.output_filename = "test.ps"
+    s.additional_output_formats = []
+    s._process_cmdline_args(["--more-formats=png,tif,pdf,jpg"])
+    assert len(s.additional_output_formats) == 4
     
     # test --sourec-time-zone
     s.use_source_time_zone = False
@@ -249,6 +260,43 @@ def test_AbstractPlotSettings_parse_zoom_factor():
     assert plotbase.AbstractPlotSettings.parse_zoom_factor("90") == .10
     assert plotbase.AbstractPlotSettings.parse_zoom_factor("120") == 0.0
 
+
+def test_AbstractPlotSettings_parse_output_formats():
+    a = plotbase.AbstractPlotSettings.parse_output_formats("png")
+    assert len(a) == 1
+    assert a[0] == "png"
+    
+    a = plotbase.AbstractPlotSettings.parse_output_formats("png,jpg")
+    assert len(a) == 2
+    assert a[0] == "png"
+    assert a[1] == "jpg"
+    
+    a = plotbase.AbstractPlotSettings.parse_output_formats(None)
+    assert len(a) == 0
+    
+    a = plotbase.AbstractPlotSettings.parse_output_formats("png,jpg,,jpg,,,unknown,")
+    assert len(a) == 2
+    assert a[0] == "png"
+    assert a[1] == "jpg"
+        
+    a = plotbase.AbstractPlotSettings.parse_output_formats("png,jpg,pdf,tif")
+    assert len(a) == 4
+    assert a[0] == "png"
+    assert a[1] == "jpg"
+    assert a[2] == "pdf"
+    assert a[3] == "tif"
+    
+
+def test_AbstractPlotSettings_normalzie_output_suffix():
+    s = plotbase.AbstractPlotSettings()
+    
+    s.process_id_set = True
+    s.output_suffix = "12345"
+    assert s.normalize_output_suffix("pdf") == "12345.pdf"
+    
+    s.process_id_set = False
+    assert s.normalize_output_suffix("pdf") == "pdf"
+        
 
 def test_AbstractPlot___init__():
     p = AbstractPlotTest()
@@ -544,3 +592,13 @@ def test_AbstractPlot_adjust_for_time_zone():
     assert t.minute      == 3
     assert t.second      == 0
     assert t.tzinfo.zone == "America/New_York"
+
+
+def test_AbstractPlot__create_plot_saver_list():
+    p = AbstractPlotTest()
+    
+    p.settings.additional_output_formats = ["png", "tif"]
+    
+    plot_saver_list = p._create_plot_saver_list( p.settings )
+
+    assert len(plot_saver_list) == 3

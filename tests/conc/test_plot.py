@@ -544,7 +544,7 @@ def test_ConcentrationPlot___init__():
     assert hasattr(p, "conc_axes")
     assert hasattr(p, "legends_axes")
     assert hasattr(p, "text_axes")
-    assert hasattr(p, "plot_saver")
+    assert hasattr(p, "plot_saver_list")
 
     assert hasattr(p, "TFACT")
     assert hasattr(p, "initial_time")
@@ -591,7 +591,7 @@ def test_ConcentrationPlot_read_data_files():
     assert p.level_selector.min == 0
     assert p.level_selector.max == 99999
     assert p.conc_type is not None
-    assert p.plot_saver is not None
+    assert p.plot_saver_list is not None
     assert p.conc_map is not None
     assert p.depo_map is not None
     assert p.depo_sum is not None
@@ -1135,10 +1135,12 @@ def test_ConcentrationPlot_draw():
 
     # Save to a file
     p.settings.interactive_mode = False
-    p.plot_saver = multipage.PlotFileWriterFactory.create_instance(p.settings.frames_per_file,
-                                                                   "__conc",
-                                                                   "png",
-                                                                   "png")
+    plot_saver = multipage.PlotFileWriterFactory.create_instance(p.settings.frames_per_file,
+                                                                 "__conc",
+                                                                 "png",
+                                                                 "png")
+    p.plot_saver_list = [ plot_saver ]
+    
     p.draw()
     assert os.path.exists("__conc0002.png")
     os.remove("__conc0002.png")
@@ -1149,11 +1151,13 @@ def test_ConcentrationPlot_draw():
 def test_ConcentrationPlot_get_plot_count_str():
     p = plot.ConcentrationPlot()
     
-    p.plot_saver = multipage.SinglePlotFileWriter("test", "png", "png")
-    p.plot_saver.file_count = 7
+    plot_saver = multipage.SinglePlotFileWriter("test", "png", "png")
+    p.plot_saver_list = [ plot_saver ]
+    
+    plot_saver.file_count = 7
     assert p.get_plot_count_str() == "7 output files"
     
-    p.plot_saver.file_count = 1
+    plot_saver.file_count = 1
     p.time_period_count = 1
     assert p.get_plot_count_str() == "1 time period"
     

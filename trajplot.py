@@ -52,11 +52,12 @@ def print_usage():
    -v[Vertical: 0-pressure (1)-agl, 2-theta 3-meteo 4-none]'
    -z[Zoom factor:  0-least zoom, (50), 100-most zoom]'
    
-   --debug                print debug messages
-   --interactive          show an interactive plot
-   --source-time-zone     show local time at the source location
-   --street-map[=n]       show street map in the background; n = 0 or 1.
-   --time-zone=tz         show local time at a time zone; tz = US/Eastern, US/Central, etc. 
+   --debug                      print debug messages
+   --interactive                show an interactive plot
+   --more-formats=f1[,f2,...]   specify one or more additional output format(s); f1 = jpg, pdf, png, tif, etc.
+   --source-time-zone           show local time at the source location
+   --street-map[=n]             show street map in the background; n = 0 or 1.
+   --time-zone=tz               show local time at a time zone; tz = US/Eastern, US/Central, etc. 
    
  NOTE: leave no space between option and value""")
 

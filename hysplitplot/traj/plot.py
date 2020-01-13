@@ -19,7 +19,7 @@ import sys
 
 from hysplitdata.const import VerticalCoordinate
 from hysplitdata.traj import model
-from hysplitplot import clist, cmdline, const, mapbox, mapproj, multipage, plotbase, stnplot, streetmap, util
+from hysplitplot import clist, cmdline, const, mapbox, mapproj, plotbase, stnplot, streetmap, util
 from hysplitplot.traj import gisout
 
 
@@ -183,7 +183,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         self.height_axes = None
         self.height_axes_outer = None
         self.cluster_list = None
-        self.plot_saver = None
+        self.plot_saver_list = None
         self.current_frame = 1
 
     def merge_plot_settings(self, filename, args):
@@ -209,10 +209,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         self.settings.color_cycle = ColorCycleFactory.create_instance(self.settings,
                                                                       len(self.data_list[0].uniq_start_levels))
         
-        self.plot_saver = multipage.PlotFileWriterFactory.create_instance(self.settings.frames_per_file,
-                                                                          self.settings.output_basename,
-                                                                          self.settings.output_suffix,
-                                                                          self.settings.output_format)
+        self.plot_saver_list = self._create_plot_saver_list(self.settings)
         
         if self.settings.time_zone_str is not None:
             self.time_zone = self.lookup_time_zone(self.settings.time_zone_str)
@@ -661,7 +658,8 @@ class TrajectoryPlot(plotbase.AbstractPlot):
             
             self.fig.canvas.draw()  # to get the plot spines right.
             self.on_update_plot_extent()
-            self.plot_saver.save(self.fig, self.current_frame)
+            for plot_saver in self.plot_saver_list:
+                plot_saver.save(self.fig, self.current_frame)
                 
             if self.settings.interactive_mode:
                 plt.show(*args, **kw)
@@ -669,7 +667,8 @@ class TrajectoryPlot(plotbase.AbstractPlot):
             plt.close(self.fig)
             self.current_frame += 1
 
-        self.plot_saver.close()            
+        for plot_saver in self.plot_saver_list:
+            plot_saver.close()            
         self.write_gis_files()
 
     def write_gis_files(self):

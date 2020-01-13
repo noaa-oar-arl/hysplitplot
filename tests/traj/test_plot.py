@@ -326,7 +326,7 @@ def test_TrapjectoyPlot___init__():
     assert hasattr(p, "height_axes")
     assert hasattr(p, "height_axes_outer")
     assert hasattr(p, "cluster_list")
-    assert hasattr(p, "plot_saver")
+    assert hasattr(p, "plot_saver_list")
     assert hasattr(p, "current_frame")
 
 
@@ -347,7 +347,7 @@ def test_TrajectoryPlot_read_data_files():
     assert len(p.data_list) == 1
     assert len(p.data_list[0].trajectories) == 3
     assert p.settings.color_cycle is not None
-    assert p.plot_saver is not None
+    assert p.plot_saver_list is not None
     assert p.time_zone is not None
     
 
@@ -761,10 +761,11 @@ def test_TrajectoryPlot_draw():
 
     # Save to a file
     p.settings.interactive_mode = False
-    p.plot_saver = multipage.PlotFileWriterFactory.create_instance(p.settings.frames_per_file,
+    plot_saver = multipage.PlotFileWriterFactory.create_instance(p.settings.frames_per_file,
                                                                    "__traj",
                                                                    "png",
                                                                    "png")
+    p.plot_saver_list = [ plot_saver ]
     p.draw()
     assert os.path.exists("__traj0002.png")
     os.remove("__traj0002.png")

@@ -61,6 +61,7 @@ class GenerateAttributeFileWriter:
     
     @staticmethod
     def write(filename, plot_data, time_zone=None):
+        logger.info("Creating file %s", filename)
         with open(filename, "wt") as f:
             f.write("#TRAJNUM,YYYYMMDD,TIME,LEVEL\n")
             for k, t in enumerate(plot_data.trajectories):
@@ -83,6 +84,7 @@ class PointsGenerateFileWriter(AbstractGISFileWriter):
     
     def write(self, file_no, plot_data):
         gisout = "GIS_traj_{0}_{1:02d}.txt".format(self.output_suffix, file_no)
+        logger.info("Creating file %s", gisout)
         with open(gisout, "wt") as f:
             for k, t in enumerate(plot_data.trajectories):
                 for j in range(len(t.longitudes)):
@@ -104,6 +106,7 @@ class LinesGenerateFileWriter(AbstractGISFileWriter):
     
     def write(self, file_no, plot_data):
         gisout = "GIS_traj_{0}_{1:02d}.txt".format(self.output_suffix, file_no)
+        logger.info("Creating file %s", gisout)
         with open(gisout, "wt") as f:
             for k, t in enumerate(plot_data.trajectories):
                 f.write("{0:3d},{1:9.4f},{2:9.4f}\n".format(
@@ -159,6 +162,7 @@ class KMLWriter(AbstractGISFileWriter):
     def write(self, file_no, plot_data):
         file_name = self.make_filename(self.output_name, self.output_suffix, file_no)
         
+        logger.info("Creating file %s", file_name)
         with open(file_name, "wt") as f:
             self._write_preamble(f, plot_data)
             
@@ -614,6 +618,7 @@ class PartialKMLWriter(KMLWriter):
     def write(self, file_no, plot_data):
         file_name = self.make_filename(self.output_name, self.output_suffix, file_no)
 
+        logger.info("Creating file %s", file_name)
         with open(file_name, "wt") as f:
             for t_idx, t in enumerate(plot_data.trajectories):
                 self._write_trajectory(f, t, t_idx)

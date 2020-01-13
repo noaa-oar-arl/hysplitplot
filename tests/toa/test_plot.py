@@ -443,7 +443,7 @@ def test_TimeOfArrivalPlot___init__():
     assert hasattr(p, "conc_axes")
     assert hasattr(p, "legends_axes")
     assert hasattr(p, "text_axes")
-    assert hasattr(p, "plot_saver")
+    assert hasattr(p, "plot_saver_list")
 
     assert hasattr(p, "TFACT")
     assert hasattr(p, "initial_time")
@@ -488,7 +488,7 @@ def test_TimeOfArrivalPlot_read_data_files():
     assert p.level_selector.min == 0
     assert p.level_selector.max == 99999
     assert p.conc_type is not None
-    assert p.plot_saver is not None
+    assert p.plot_saver_list is not None
     assert p.conc_map is not None
     assert p.depo_map is not None
     assert p.depo_sum is not None
@@ -1002,10 +1002,11 @@ def test_TimeOfArrivalPlot_draw():
 
     # Save to a file
     p.settings.interactive_mode = False
-    p.plot_saver = multipage.PlotFileWriterFactory.create_instance(p.settings.frames_per_file,
-                                                                   "__conc",
-                                                                   "png",
-                                                                   "png")
+    plot_saver = multipage.PlotFileWriterFactory.create_instance(p.settings.frames_per_file,
+                                                                 "__conc",
+                                                                 "png",
+                                                                 "png")
+    p.plot_saver_list = [ plot_saver ]
     p.draw()
     # A previous call to draw() increased the current_frame value to 7.
     assert os.path.exists("__conc0007.png")
@@ -1028,11 +1029,13 @@ def test_TimeOfArrivalPlot_get_plot_count_str():
     p = plot.TimeOfArrivalPlot()
     p.toa_generator = thelper.TimeOfArrivalGenerator(None, None)
     
-    p.plot_saver = multipage.SinglePlotFileWriter("test", "png", "png")
-    p.plot_saver.file_count = 7
+    plot_saver = multipage.SinglePlotFileWriter("test", "png", "png")
+    p.plot_saver_list = [ plot_saver ]
+    
+    plot_saver.file_count = 7
     assert p.get_plot_count_str() == "7 output files"
     
-    p.plot_saver.file_count = 1
+    plot_saver.file_count = 1
     
     p.toa_generator.time_period_count = 1
     assert p.get_plot_count_str() == "1 time period"

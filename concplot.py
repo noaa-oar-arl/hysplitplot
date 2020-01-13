@@ -73,11 +73,12 @@ def print_usage():
    -8[Create map(s) even if all values zero: (0)-no, 1-yes]
    -9[Force sample start time label to start of release: (0)-no, 1-yes]
    
-   --debug                print debug messages
-   --interactive          show an interactive plot
-   --source-time-zone     show local time at the source location
-   --street-map[=n]       show street map in the background; n = 0 or 1.
-   --time-zone=tz         show local time at a time zone; tz = US/Eastern, US/Central, etc. 
+   --debug                      print debug messages
+   --interactive                show an interactive plot
+   --more-formats=f1[,f2,...]   specify one or more additional output format(s); f1 = jpg, pdf, png, tif, etc.
+   --source-time-zone           show local time at the source location
+   --street-map[=n]             show street map in the background; n = 0 or 1.
+   --time-zone=tz               show local time at a time zone; tz = US/Eastern, US/Central, etc. 
    
  NOTE: leave no space between option and value""")
 

@@ -20,7 +20,7 @@ import sys
 from hysplitdata import io
 from hysplitdata.conc import model
 from hysplitdata.const import HeightUnit
-from hysplitplot import cmdline, util, const, datem, plotbase, mapbox, mapproj, smooth, streetmap, multipage
+from hysplitplot import cmdline, util, const, datem, plotbase, mapbox, mapproj, smooth, streetmap
 from hysplitplot.conc import helper, gisout, cntr
 from hysplitplot.conc.plot import ColorTableFactory, LabelledContourLevel
 from hysplitplot.toa import helper as thelper
@@ -334,7 +334,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         self.conc_axes = None
         self.legends_axes = None
         self.text_axes = None
-        self.plot_saver = None
+        self.plot_saver_list = None
         
         self.TFACT = 1.0
         self.initial_time = None
@@ -399,11 +399,8 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         if self.labels.has("LAYER"):
             self.conc_type.set_custom_layer_str( self.labels.get("LAYER") )
         
-        self.plot_saver = multipage.PlotFileWriterFactory.create_instance(self.settings.frames_per_file,
-                                                                          self.settings.output_basename,
-                                                                          self.settings.output_suffix,
-                                                                          self.settings.output_format)
-
+        self.plot_saver_list = self._create_plot_saver_list(self.settings)
+            
         self._post_file_processing(self.cdump)
                 
         self.conc_map = helper.ConcentrationMapFactory.create_instance(self.settings.KMAP, self.settings.KHEMIN)
@@ -920,7 +917,8 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
             
         self.fig.canvas.draw()  # to get the plot spines right.
         self.on_update_plot_extent()
-        self.plot_saver.save(self.fig, self.current_frame)
+        for plot_saver in self.plot_saver_list:
+            plot_saver.save(self.fig, self.current_frame)
             
         if self.settings.interactive_mode:
             plt.show(*args, **kwargs)
@@ -956,7 +954,8 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
 
         self.fig.canvas.draw()  # to get the plot spines right.
         self.on_update_plot_extent()
-        self.plot_saver.save(self.fig, self.current_frame)
+        for plot_saver in self.plot_saver_list:
+            plot_saver.save(self.fig, self.current_frame)
                         
         if self.settings.interactive_mode:
             plt.show(*args, **kwargs)
@@ -1011,12 +1010,14 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         
         self.time_period_count = self.toa_generator.time_period_count
         
+        for plot_saver in self.plot_saver_list:
+            plot_saver.close()
         gis_writer.finalize()
-        self.plot_saver.close()
 
     def get_plot_count_str(self):
-        if self.plot_saver.file_count > 1:
-            return "{} output files".format(self.plot_saver.file_count)
+        plot_saver = self.plot_saver_list[0]
+        if plot_saver.file_count > 1:
+            return "{} output files".format(plot_saver.file_count)
         
         self.time_period_count = self.toa_generator.time_period_count
         s = "{} time period".format(self.time_period_count)

@@ -18,6 +18,8 @@ from hysplitdata.const import HeightUnit
 from hysplitplot import const
 
 
+PLOT_FORMATS = ["eps", "jpeg", "jpg", "pdf", "pgf", "png", "ps", "raw", "rgba", "svg", "svgz", "tif", "tiff"]
+
 MESSAGE_FORMAT_INFO = "%(asctime)s.%(msecs)03d %(levelname)s - %(message)s"
 MESSAGE_FORMAT_DEBUG = "%(asctime)s.%(msecs)03d %(levelname)s %(name)s - %(message)s"
 
@@ -131,7 +133,7 @@ def make_file_list(input_endpoints):
     return files
 
 def normalize_output_format(pathname, suffix, format="ps"):
-    acceptable = ["eps", "jpeg", "jpg", "pdf", "pgf", "png", "ps", "raw", "rgba", "svg", "svgz", "tif", "tiff"]
+    acceptable = PLOT_FORMATS
 
     r = format
 
