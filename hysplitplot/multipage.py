@@ -58,7 +58,7 @@ class SinglePlotFileWriter(AbstractMultiplePlotFileWriter):
     
     def save(self, figure, frame_no):
         filename = self._make_filename(frame_no)
-        logger.debug("Saving a plot to file %s", filename)
+        logger.info("Saving plot %d to file %s", frame_no, filename)
         figure.savefig(filename, papertype="letter", format=self.output_format)
         self.file_count += 1
     
@@ -74,10 +74,11 @@ class MultiplePlotPDFWriter(AbstractMultiplePlotFileWriter):
     def __init__(self, output_basename, output_suffix):
         super(MultiplePlotPDFWriter, self).__init__()
         self.filename = "{}.{}".format(output_basename, output_suffix)
-        logger.debug("Saving a plot to file %s", self.filename)
+        logger.debug("Opening file %s", self.filename)
         self.pdf = PdfPages(self.filename)
     
     def save(self, figure, frame_no):
+        logger.info("Saving plot %d to file %s", frame_no, self.filename)
         self.pdf.savefig(figure)
         if self.file_count == 0:
             self.file_count += 1
@@ -91,10 +92,11 @@ class MultiplePlotPostscriptWriter(AbstractMultiplePlotFileWriter):
     def __init__(self, output_basename, output_suffix):
         super(MultiplePlotPostscriptWriter, self).__init__()
         self.filename = "{}.{}".format(output_basename, output_suffix)
-        logger.debug("Saving a plot to file %s", self.filename)
+        logger.debug("Opening file %s", self.filename)
         self.page_count = 0
     
     def save(self, figure, frame_no):
+        logger.info("Saving plot %d to file %s", frame_no, self.filename)
         if self.page_count == 0:
             figure.savefig(self.filename, papertype="letter", format="ps")
         else:

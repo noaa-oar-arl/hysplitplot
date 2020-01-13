@@ -918,12 +918,12 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
             self._write_gisout(gis_writer, g, level1, level2, quad_contour_set, toa_data.display_levels,
                                color_table, conc_scaling_factor, toa_data.time_intervals)
             
+        self.fig.canvas.draw()  # to get the plot spines right.
+        self.on_update_plot_extent()
+        self.plot_saver.save(self.fig, self.current_frame)
+            
         if self.settings.interactive_mode:
             plt.show(*args, **kwargs)
-        else:
-            self.fig.canvas.draw()  # to get the plot spines right.
-            self.on_update_plot_extent()
-            self.plot_saver.save(self.fig, self.current_frame)
         
         plt.close(self.fig)
         self.current_frame += 1
@@ -953,13 +953,13 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         if gis_writer is not None:
             self._write_gisout(gis_writer, g, level1, level2, quad_contour_set, toa_data.display_levels,
                                color_table, conc_scaling_factor, toa_data.time_intervals)
-            
+
+        self.fig.canvas.draw()  # to get the plot spines right.
+        self.on_update_plot_extent()
+        self.plot_saver.save(self.fig, self.current_frame)
+                        
         if self.settings.interactive_mode:
             plt.show(*args, **kwargs)
-        else:
-            self.fig.canvas.draw()  # to get the plot spines right.
-            self.on_update_plot_extent()
-            self.plot_saver.save(self.fig, self.current_frame)
         
         plt.close(self.fig)
         self.current_frame += 1

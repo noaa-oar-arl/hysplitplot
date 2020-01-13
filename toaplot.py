@@ -57,7 +57,9 @@ def print_usage():
    -z[Zoom factor: 0-least zoom, (50), 100-most zoom]
    -5[Use -o prefix name for output kml file when -a=3 or 4: (0)-no, 1-yes]
    -8[Create map(s) even if all values zero: (0)-no, 1-yes]
-   
+
+   --debug                print debug messages
+   --interactive          show an interactive plot
    --source-time-zone     show local time at the source location
    --street-map[=n]       show street map in the background; n = 0 or 1.
    --time-zone=tz         show local time at a time zone; tz = US/Eastern, US/Central, etc. 

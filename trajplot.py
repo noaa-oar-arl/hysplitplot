@@ -53,6 +53,7 @@ def print_usage():
    -z[Zoom factor:  0-least zoom, (50), 100-most zoom]'
    
    --debug                print debug messages
+   --interactive          show an interactive plot
    --source-time-zone     show local time at the source location
    --street-map[=n]       show street map in the background; n = 0 or 1.
    --time-zone=tz         show local time at a time zone; tz = US/Eastern, US/Central, etc. 

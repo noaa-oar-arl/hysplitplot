@@ -139,11 +139,13 @@ def test_AbstractMapBackground_clear_text_objs(web_merc_proj):
     o = AbstractMapBackgroundTest(web_merc_proj)
     axes = plt.axes()
     t = axes.text(0, 0, "test")
+    assert len(axes.texts) == 1
     o.text_objs.append(t)
     
-    o.clear_text_objs()
+    o.clear_text_objs(axes)
     
     assert len(o.text_objs) == 0
+    assert len(axes.texts) == 0
     
     plt.close(axes.figure)
 

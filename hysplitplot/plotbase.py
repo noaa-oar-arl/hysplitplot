@@ -50,7 +50,7 @@ class AbstractPlotSettings(ABC):
         self.use_street_map = False # for the --street-map option
         
         # internally defined
-        self.interactive_mode = True    # becomes False if the -o or -O option is specified.
+        self.interactive_mode = False    # becomes True if the --interactive option is specified.
         self.map_color = "#1f77b4"
         self.station_marker = "o"
         self.station_marker_color= "k"     # black
@@ -101,8 +101,6 @@ class AbstractPlotSettings(ABC):
         self.map_projection         = args.get_integer_value(["-m", "-M"], self.map_projection)
 
         self.output_filename        = args.get_string_value(["-o", "-O"], self.output_filename)
-        if args.has_arg(["-o", "-O"]):
-            self.interactive_mode = False
 
         self.output_suffix          = args.get_string_value(["-p", "-P"], self.output_suffix)    
         
@@ -117,7 +115,10 @@ class AbstractPlotSettings(ABC):
         
         self.gis_output             = args.get_integer_value("-a", self.gis_output)
         self.kml_option             = args.get_integer_value("-A", self.kml_option)
-        
+
+        if args.has_arg(["--interactive"]):
+            self.interactive_mode = True
+                
         if args.has_arg(["--source-time-zone"]):
             self.use_source_time_zone = True
         

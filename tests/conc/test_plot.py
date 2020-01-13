@@ -101,7 +101,7 @@ def test_ConcentrationPlotSettings___init__():
     assert s.lat_lon_label_interval_option == 1
     assert s.lat_lon_label_interval == 1.0
     assert s.frames_per_file == 0
-    assert s.interactive_mode == True
+    assert s.interactive_mode == False
     assert s.map_color == "#1f77b4"
     assert s.station_marker != None
     assert s.station_marker_color != None

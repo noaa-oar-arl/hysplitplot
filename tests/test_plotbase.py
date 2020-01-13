@@ -61,7 +61,7 @@ def test_AbstractPlotSettings___init__():
     assert s.time_zone_str is None
     assert s.use_street_map == False
     
-    assert s.interactive_mode == True
+    assert s.interactive_mode == False
     assert s.map_color == "#1f77b4"
     assert s.station_marker != None
     assert s.station_marker_color != None
@@ -156,14 +156,14 @@ def test_AbstractPlotSettings__process_cmdline_args():
 
     s._process_cmdline_args(["-otest"])
     assert s.output_filename == "test.ps"
-    assert s.interactive_mode == False
+    assert s.interactive_mode == True
     
     s.output_filename = None
     s.interactive_mode = True
     
     s._process_cmdline_args(["-Oresult"])
     assert s.output_filename == "result.ps"
-    assert s.interactive_mode == False
+    assert s.interactive_mode == True
     
     # test -p or -P
     s.output_filename = "result"
@@ -198,6 +198,11 @@ def test_AbstractPlotSettings__process_cmdline_args():
     s.kml_option = 0
     s._process_cmdline_args(["-A3"])
     assert s.kml_option == 3
+    
+    # test --interactive
+    s.interactive_mode = False
+    s._process_cmdline_args(["--interactive"])
+    assert s.interactive_mode == True
     
     # test --sourec-time-zone
     s.use_source_time_zone = False

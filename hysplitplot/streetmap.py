@@ -19,6 +19,7 @@ import numpy
 import os
 import shapely.geometry
 import urllib
+import warnings
 
 from hysplitplot import const, mapfile, util
 from matplotlib.lines import segment_hits
@@ -71,10 +72,11 @@ class AbstractMapBackground(ABC):
         self.lat_lon_label_interval_option = label_opt
         self.lat_lon_label_interval = label_interval
 
-    def clear_text_objs(self):
+    def clear_text_objs(self, ax):
         # clear labels from a previous call
         for t in self.text_objs:
-            t.remove()
+            if t in ax.texts:
+                ax.texts.remove(t)
         self.text_objs.clear()
 
     @abstractmethod
@@ -224,7 +226,10 @@ class HYSPLITMapBackground(AbstractMapBackground):
             logger.debug("not updating gridlines because deltas are %f, %f", deltax, deltay)
             return
 
-        lonlat_ext = axes.get_extent(data_crs)
+        # Filter out a cartopy warning to avoid user confusion.
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', message='Approximating coordinate system*', category=UserWarning)
+            lonlat_ext = axes.get_extent(data_crs)
         logger.debug("determining gridlines for extent %s using deltas %f, %f", lonlat_ext, deltax, deltay)
 
         alonl, alonr, alatb, alatt = lonlat_ext
@@ -330,7 +335,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
             logger.debug("not drawing latlon labels because deltas are %f, %f", deltax, deltay)
             return
         
-        self.clear_text_objs()
+        self.clear_text_objs(axes)
         
         x1, x2, y1, y2 = projection.corners_xy
         clon, clat = projection.calc_lonlat(0.5*(x1+x2), 0.5*(y1+y2))
@@ -519,7 +524,7 @@ class AbstractStreetMap(AbstractMapBackground):
             
         ax.axis( corners_xy )
         
-        self.clear_text_objs()
+        self.clear_text_objs( ax )
         
         str = " {}".format(self.attribution)
         t = ax.text(0, 0, str, fontsize=8,

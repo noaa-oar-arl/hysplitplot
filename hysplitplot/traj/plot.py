@@ -659,12 +659,12 @@ class TrajectoryPlot(plotbase.AbstractPlot):
             self.draw_bottom_plot(data_list)
             self.draw_bottom_text()
             
+            self.fig.canvas.draw()  # to get the plot spines right.
+            self.on_update_plot_extent()
+            self.plot_saver.save(self.fig, self.current_frame)
+                
             if self.settings.interactive_mode:
                 plt.show(*args, **kw)
-            else:
-                self.fig.canvas.draw()  # to get the plot spines right.
-                self.on_update_plot_extent()
-                self.plot_saver.save(self.fig, self.current_frame)
                 
             plt.close(self.fig)
             self.current_frame += 1
