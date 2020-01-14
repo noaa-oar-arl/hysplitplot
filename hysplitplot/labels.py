@@ -24,7 +24,7 @@ class LabelsConfig():
 
     def has(self, name):
         return name in self.cfg
-    
+
     def get(self, name, default_value=""):
         return self.cfg[name] if name in self.cfg else default_value
 
@@ -42,8 +42,9 @@ class LabelsConfigReader():
         self.obj = cfg
 
     def read(self, filename):
-        if self.check_consistency(filename) == False:
-            raise Exception("Consistency check failed. Please fix {0}".format(filename))
+        if not self.check_consistency(filename):
+            raise Exception("Consistency check failed. Please fix "
+                            "{0}".format(filename))
 
         with open(filename, "rt") as f:
             for ln in f:
@@ -71,7 +72,8 @@ class LabelsConfigReader():
                         tbox_count = 0
                         state = 1
                     elif k == "TXBOXL":
-                        logger.error("NTXBOXL line must proceed TXBOXL line(s)");
+                        logger.error("NTXBOXL line must proceed TXBOXL "
+                                     "line(s)")
                         return False
                 elif state == 1:
                     # already found the NTXBOXL line
@@ -79,12 +81,15 @@ class LabelsConfigReader():
                         tbox_count += 1
                     elif k == "NTXBOXL":
                         if tbox_count != expected_count:
-                            logger.error("%d text box lines must follow NTXBOXL in %s", expected_count, filename)
+                            logger.error("%d text box lines must follow "
+                                         "NTXBOXL in %s", expected_count,
+                                         filename)
                             return False
                         expected_count = int(v)
                         tbox_count = 0
             if expected_count > 0 and tbox_count != expected_count:
-                logger.error("%d text box lines must follow NTXBOXL in %s", expected_count, filename)
+                logger.error("%d text box lines must follow NTXBOXL in %s",
+                             expected_count, filename)
                 return False
 
         return True
@@ -95,7 +100,7 @@ class LabelsConfigReader():
         start = 0
         field = ""
         for k, c in enumerate(ln):
-            if state == 0: # looking for opening quote
+            if state == 0:  # looking for opening quote
                 if c == "'":
                     state = 1
             elif state == 1:
@@ -104,11 +109,12 @@ class LabelsConfigReader():
                 else:
                     field += c
             elif state == 2:
-                if c == "'": # escaped single quote
+                if c == "'":  # escaped single quote
                     field += c
                     state = 1
                 elif c == ",":
-                    list.append(field); field = ""
+                    list.append(field)
+                    field = ""
                     state = 0
         if state != 0:
             list.append(field)

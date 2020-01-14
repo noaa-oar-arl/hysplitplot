@@ -42,8 +42,9 @@ class ARLMap:
             self.thickness = thk
 
         def dump(self, stream):
-            stream.write("seg {0}, lat {1}, lon {2}, clr {3}, thk {4}\n".format(
-                self.number, self.latitudes, self.longitudes, self.color, self.thickness))
+            stream.write("seg {0}, lat {1}, lon {2}, clr {3}, thk {4}\n"
+                         .format(self.number, self.latitudes, self.longitudes,
+                                 self.color, self.thickness))
 
 
 class ARLMapReader(io.FormattedTextFileReader):
@@ -51,11 +52,11 @@ class ARLMapReader(io.FormattedTextFileReader):
     def __init__(self, map):
         io.FormattedTextFileReader.__init__(self)
         self.map = map
-        self.colors = {"BOUNDARY": util.make_color(.0,.0,.0),
-                       "COUNTIES": util.make_color(.8,.8,.8),
-                       "ROADS": util.make_color(.8,.0,.0),
-                       "RIVERS": util.make_color(.0,.0,.8),
-                       "default": util.make_color(.4,.6,.8)}
+        self.colors = {"BOUNDARY": util.make_color(.0, .0, .0),
+                       "COUNTIES": util.make_color(.8, .8, .8),
+                       "ROADS": util.make_color(.8, .0, .0),
+                       "RIVERS": util.make_color(.0, .0, .8),
+                       "default": util.make_color(.4, .6, .8)}
         self.thickness = {"BOUNDARY": 0.01,
                           "COUNTIES": 0.008,
                           "ROADS": 0.008,
@@ -69,7 +70,8 @@ class ARLMapReader(io.FormattedTextFileReader):
 
         while self.has_next():
             v = self.parse_line("2I5")
-            segno = v[0]; npts = v[1]
+            segno = v[0]
+            npts = v[1]
             line_type = self.get_current_line()[10:].strip()
 
             lats = []
@@ -92,9 +94,16 @@ class ARLMapReader(io.FormattedTextFileReader):
                     lons.extend(self.parse_line("{0}F7.2".format(left)))
                     left = 0
 
-            clr = self.colors[line_type] if line_type in self.colors else self.colors["default"]
-            thk = self.thickness[line_type] if line_type in self.thickness else self.thickness["default"]
-            self.map.segments.append(ARLMap.Segment(segno, lats, lons, clr, thk))
+            if line_type in self.colors:
+                clr = self.colors[line_type]
+            else:
+                clr = self.colors["default"]
+            if line_type in self.thickness:
+                thk = self.thickness[line_type]
+            else:
+                thk = self.thickness["default"]
+            self.map.segments.append(ARLMap.Segment(segno, lats, lons, clr,
+                                                    thk))
 
         self.close()
 
@@ -124,7 +133,8 @@ class ARLMapConverter:
         for k, v in segments.items():
             gs = geopandas.GeoSeries(v)
             gs.crs = mapproj.AbstractMapProjection._WGS84
-            drawables.append( DrawableBackgroundMap(gs, colors[k], thicknesses[k]) )
+            drawables.append(DrawableBackgroundMap(gs, colors[k],
+                                                   thicknesses[k]))
 
         return drawables
 
@@ -163,7 +173,7 @@ class ShapeFilesReader:
     def read(self, filename):
         self.shapefiles.clear()
 
-        if os.path.exists(filename) == False:
+        if not os.path.exists(filename):
             self.warn_and_create_sample(filename)
         else:
             with open(filename, "rt") as f:
@@ -184,29 +194,36 @@ class ShapeFilesReader:
         tokens = []
         state = 0
         for c in ln:
-            if state == 0: # looking for opening quote
+            if state == 0:  # looking for opening quote
                 if c == "'":
-                    t = ""; state = 1
+                    t = ""
+                    state = 1
             elif state == 1:
                 if c == "'":
                     state = 2
                 else:
                     t += c
             elif state == 2:
-                if c == "'": # escaped single quote
-                    t += c; state = 1
+                if c == "'":  # escaped single quote
+                    t += c
+                    state = 1
                 else:
                     tokens.append(t)
                     if c == " ":
-                        t = ""; state = 3
+                        t = ""
+                        state = 3
                     else:
-                        t = c; state = 4
+                        t = c
+                        state = 4
             elif state == 3:
                 if c != " ":
-                    t += c; state = 4
+                    t += c
+                    state = 4
             elif state == 4:
                 if c == " ":
-                    tokens.append(t); t = ""; state = 3
+                    tokens.append(t)
+                    t = ""
+                    state = 3
                 else:
                     t += c
 
@@ -227,7 +244,8 @@ class ShapeFilesReader:
         with open(filename, "wt") as f:
             f.write("'arlmap.shp' 0 0.01 0.4 0.6 0.8\n")
 
-        raise Exception("file not found {0}: please see the error messages above".format(filename))
+        raise Exception("file not found {0}: please see the error messages "
+                        "above".format(filename))
 
 
 class ShapeFileConverter:
@@ -238,7 +256,9 @@ class ShapeFileConverter:
         if len(map.crs) == 0:
             map.crs = mapproj.AbstractMapProjection._WGS84
         o = DrawableBackgroundMap(map,
-                                  util.make_color(shapefile.red, shapefile.green, shapefile.blue),
+                                  util.make_color(shapefile.red,
+                                                  shapefile.green,
+                                                  shapefile.blue),
                                   shapefile.thickness)
         o.linestyle = ShapeFileConverter.make_linestyle(shapefile.dash)
         return o
@@ -249,5 +269,3 @@ class ShapeFileConverter:
             return '-'
         d = abs(72.0/(2*dash))
         return (0, (d, d))
-
-

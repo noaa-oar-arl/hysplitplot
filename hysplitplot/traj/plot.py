@@ -19,7 +19,8 @@ import sys
 
 from hysplitdata.const import VerticalCoordinate
 from hysplitdata.traj import model
-from hysplitplot import clist, cmdline, const, mapbox, mapproj, plotbase, stnplot, streetmap, util
+from hysplitplot import clist, cmdline, const, mapbox, mapproj, plotbase, \
+                        stnplot, streetmap, util
 from hysplitplot.traj import gisout
 
 
@@ -37,7 +38,7 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
         Initializes member variables to their default values.
         """
         super(TrajectoryPlotSettings, self).__init__()
-        
+
         # defined in default_tplot
         self.view = 1
         self.output_filename = "trajplot.ps"
@@ -48,7 +49,7 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
         self.map_center = 0
         self.color = const.Color.COLOR
         self.color_codes = None
-        
+
         # command-line option only
         self.end_hour_duration = 0
         self.input_files = "tdump"
@@ -56,19 +57,18 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
         # internally defined
         self.marker_cycle = ["^", "s", "o"]   # triangle, square, circle
         self.marker_cycle_index = -1
-        self.source_label = "\u2605" # filled star
+        self.source_label = "\u2605"  # filled star
         self.source_marker = "*"
-        self.source_marker_color= "k"     # black
+        self.source_marker_color = "k"    # black
         self.source_marker_size = 8*8
         self.major_hour_marker_size = 6*6
         self.minor_hour_marker_size = 4*4
         self.terrain_line_color = "k"     # black
         self.terrain_marker = "^"         # triangle
         self.station_marker = "o"
-        self.station_marker_color= "k"     # black
+        self.station_marker_color = "k"   # black
         self.station_marker_size = 6*6
         self.color_cycle = None
-        
 
     def dump(self, stream):
         """Dumps the settings to an output stream.
@@ -85,48 +85,55 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
         :param args: arguments excluding the program name.
         """
         args = cmdline.CommandLineArguments(args0)
-        
+
         # process options common to trajplot, concplot, etc.
         self._process_cmdline_args(args0)
 
-        self.end_hour_duration      = args.get_integer_value(["-e", "-E"], self.end_hour_duration)
-        self.input_files            = args.get_string_value(["-i", "-I"], self.input_files)
-        self.time_label_interval    = args.get_integer_value("-l", self.time_label_interval)
-        self.label_source           = args.get_boolean_value(["-s", "-S"], self.label_source)
-        
+        self.end_hour_duration = args.get_integer_value(
+            ["-e", "-E"], self.end_hour_duration)
+        self.input_files = args.get_string_value(
+            ["-i", "-I"], self.input_files)
+        self.time_label_interval = args.get_integer_value(
+            "-l", self.time_label_interval)
+        self.label_source = args.get_boolean_value(
+            ["-s", "-S"], self.label_source)
+
         if args.has_arg(["-k", "-K"]):
             str = args.get_value(["-k", "-K"])
             if str.count(":") > 0:
-                self.color_codes    = self.parse_color_codes(str)
-                self.color          = const.Color.ITEMIZED
+                self.color_codes = self.parse_color_codes(str)
+                self.color = const.Color.ITEMIZED
             else:
-                self.color          = args.get_integer_value(["-k", "-K"], self.color)
-                self.color          = max(0, min(1, self.color))
-                
+                self.color = args.get_integer_value(["-k", "-K"], self.color)
+                self.color = max(0, min(1, self.color))
+
         if args.has_arg(["-v", "-V"]):
-            self.vertical_coordinate= args.get_integer_value(["-v", "-V"], self.vertical_coordinate)
-            self.vertical_coordinate= max(0, min(4, self.vertical_coordinate))
+            self.vertical_coordinate = args.get_integer_value(
+                ["-v", "-V"], self.vertical_coordinate)
+            self.vertical_coordinate = max(0, min(4, self.vertical_coordinate))
 
     @staticmethod
     def parse_color_codes(str):
         color_codes = []
-    
+
         divider = str.index(":")
         ntraj = int(str[:divider])
         ncolors = len(str) - divider - 1
         if ntraj != ncolors:
-            raise Exception("FATAL ERROR: Mismatch in option (-kn:m) n={0} m={1}".format(ntraj, ncolors))
+            raise Exception("FATAL ERROR: Mismatch in option (-kn:m) "
+                            "n={0} m={1}".format(ntraj, ncolors))
         for c in str[divider+1:]:
             color_codes.append(c)
-    
+
         return color_codes
-    
+
     def get_reader(self):
         return TrajectoryPlotSettingsReader(self)
 
     def next_marker(self):
         self.marker_cycle_index += 1
-        return self.marker_cycle[self.marker_cycle_index % len(self.marker_cycle)]
+        return self.marker_cycle[
+            self.marker_cycle_index % len(self.marker_cycle)]
 
     def reset_marker_cycle(self):
         self.marker_cycle_index = -1
@@ -154,17 +161,17 @@ class TrajectoryPlotSettingsReader:
         s = self.settings
 
         s.gis_output = int(lines[0])
-        s.view = int(lines[1]) # 1 or 0
+        s.view = int(lines[1])  # 1 or 0
         s.output_filename = lines[2]
         s.map_background = lines[3]
         s.map_projection = int(lines[4])
         s.time_label_interval = int(lines[5])
         s.zoom_factor = s.parse_zoom_factor(lines[6])
-        s.color = int(lines[7]) # 1 or 0
+        s.color = int(lines[7])  # 1 or 0
         s.vertical_coordinate = int(lines[8])
-        s.label_source = util.convert_int_to_bool(int(lines[9])) # 1 or 0
-        s.ring = util.convert_int_to_bool(int(lines[10])) # 1 or 0
-        s.map_center = int(lines[11]) # 1 or 0
+        s.label_source = util.convert_int_to_bool(int(lines[9]))  # 1 or 0
+        s.ring = util.convert_int_to_bool(int(lines[10]))  # 1 or 0
+        s.map_center = int(lines[11])  # 1 or 0
         s.ring_number = int(lines[12])
         s.ring_distance = float(lines[13])
         s.center_loc[1] = float(lines[14])
@@ -199,37 +206,41 @@ class TrajectoryPlot(plotbase.AbstractPlot):
             pd = model.TrajectoryDump()
             r = pd.get_reader()
             r.set_end_hour_duration(self.settings.end_hour_duration)
-            r.set_vertical_coordinate(self.settings.vertical_coordinate, self.settings.height_unit)
+            r.set_vertical_coordinate(self.settings.vertical_coordinate,
+                                      self.settings.height_unit)
             r.read(inp)
             self.settings.vertical_coordinate = r.vertical_coordinate
             self.set_trajectory_color(pd, self.settings)
             self.data_list.append(pd)
-        
+
         # create an color cycle instance
-        self.settings.color_cycle = ColorCycleFactory.create_instance(self.settings,
-                                                                      len(self.data_list[0].uniq_start_levels))
-        
+        self.settings.color_cycle = ColorCycleFactory.create_instance(
+            self.settings,
+            len(self.data_list[0].uniq_start_levels))
+
         self.plot_saver_list = self._create_plot_saver_list(self.settings)
-        
+
         if self.settings.time_zone_str is not None:
             self.time_zone = self.lookup_time_zone(self.settings.time_zone_str)
         elif self.settings.use_source_time_zone:
-            self.time_zone = self.get_time_zone_at(self.data_list[0].trajectories[0].starting_loc)
+            self.time_zone = self.get_time_zone_at(
+                self.data_list[0].trajectories[0].starting_loc)
         elif self.labels.has("TZONE"):
-            self.time_zone = pytz.timezone( self.labels.get("TZONE") )
-            
+            self.time_zone = pytz.timezone(self.labels.get("TZONE"))
+
     @staticmethod
     def has_terrain_profile(tdump_list):
         for tdump in tdump_list:
             if tdump.has_terrain_profile():
                 return True
         return False
-    
+
     def set_trajectory_color(self, plot_data, settings):
         if settings.color == const.Color.ITEMIZED:
             for k, t in enumerate(plot_data.trajectories):
                 if k >= len(settings.color_codes):
-                    logger.warning("KLR Traj #%d not defined, default to color 1", k)
+                    logger.warning("KLR Traj #%d not defined, default "
+                                   "to color 1", k)
                     t.color = '1'
                 else:
                     t.color = settings.color_codes[k]
@@ -237,23 +248,27 @@ class TrajectoryPlot(plotbase.AbstractPlot):
     def _make_clusterlist_filename(self, traj_count):
         f1 = "CLUSLIST_{0}".format(traj_count)
         if os.path.exists(f1):
-            return f1, 1, f1 # 1-based cluster index
-        
+            return f1, 1, f1  # 1-based cluster index
+
         f2 = "CLUSLIST_{0}".format(traj_count - 1)
         if os.path.exists(f2):
-            return f2, 0, f2 # 0-based cluster index
-        
+            return f2, 0, f2  # 0-based cluster index
+
         return None, 1, (f1, f2)
-                       
+
     def _read_cluster_info_if_exists(self, data_list):
         for data in data_list:
             if data.IDLBL == "MERGMEAN":
                 ntraj = len(data.trajectories)
-                fn, start_index, candidates = self._make_clusterlist_filename(ntraj)
+                fn, start_index, candidates = \
+                    self._make_clusterlist_filename(ntraj)
                 if fn is None:
-                    logger.error("file not found %s or %s", candidates[0], candidates[1])
-                    raise Exception("file not found {0} or {1}".format(candidates[0], candidates[1]))
-                self.cluster_list = clist.ClusterList(start_index).get_reader().read(fn)
+                    logger.error("file not found %s or %s",
+                                 candidates[0], candidates[1])
+                    raise Exception("file not found {0} or {1}"
+                                    .format(candidates[0], candidates[1]))
+                self.cluster_list = clist.ClusterList(start_index) \
+                    .get_reader().read(fn)
                 break
 
     def _initialize_map_projection(self, data_list):
@@ -261,34 +276,40 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         map_box = self._determine_map_limits(data_list[0], map_opt_passes)
 
         # TODO: check if we are using pbot and ptop.
-        pbot, ptop = self._determine_vertical_limit(data_list[0], self.settings.vertical_coordinate)
+        pbot, ptop = self._determine_vertical_limit(
+            data_list[0], self.settings.vertical_coordinate)
 
         if self.settings.center_loc == [0.0, 0.0]:
-            self.settings.center_loc = data_list[0].trajectories[0].starting_loc
+            self.settings.center_loc = \
+                data_list[0].trajectories[0].starting_loc
 
         if self.settings.ring and self.settings.ring_number >= 0:
             map_box.determine_plume_extent()
             map_box.clear_hit_map()
             map_box.set_ring_extent(self.settings)
 
-        self.projection = mapproj.MapProjectionFactory.create_instance(self.settings.map_projection,
-                                                                       self.settings.zoom_factor,
-                                                                       self.settings.center_loc,
-                                                                       1.3,
-                                                                       (map_box.grid_delta, map_box.grid_delta),
-                                                                       map_box)
+        self.projection = mapproj.MapProjectionFactory.create_instance(
+            self.settings.map_projection,
+            self.settings.zoom_factor,
+            self.settings.center_loc,
+            1.3,
+            (map_box.grid_delta, map_box.grid_delta),
+            map_box)
         self.projection.refine_corners(self.settings.center_loc)
 
         # The map projection might have changed to avoid singularities.
-        if self.street_map is None or self.settings.map_projection != self.projection.proj_type:
-            self.street_map = self.create_street_map(self.projection,
-                                                     self.settings.use_street_map,
-                                                     self.settings.street_map_type)
-        
+        if self.street_map is None \
+                or self.settings.map_projection != self.projection.proj_type:
+            self.street_map = self.create_street_map(
+                self.projection,
+                self.settings.use_street_map,
+                self.settings.street_map_type)
+
         self.settings.map_projection = self.projection.proj_type
         self.initial_corners_xy = copy.deepcopy(self.projection.corners_xy)
-        self.initial_corners_lonlat = copy.deepcopy(self.projection.corners_lonlat)
-        
+        self.initial_corners_lonlat = copy.deepcopy(
+            self.projection.corners_lonlat)
+
     def _determine_map_limits(self, plot_data, map_opt_passes):
         mb = mapbox.MapBox()
 
@@ -346,19 +367,22 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         )
 
         # cluster information
-        self._read_cluster_info_if_exists(data_list)        
+        self._read_cluster_info_if_exists(data_list)
 
-        outer_grid = matplotlib.gridspec.GridSpec(3, 1,
-                                                  wspace=0.0, hspace=0.0,  # no spaces between subplots
-                                                  width_ratios=[1.0], height_ratios=[3.0, 1.0, 0.75])
+        outer_grid = matplotlib.gridspec.GridSpec(
+            3, 1,
+            wspace=0.0, hspace=0.0,  # no spaces between subplots
+            width_ratios=[1.0], height_ratios=[3.0, 1.0, 0.75])
 
-        inner_grid = matplotlib.gridspec.GridSpecFromSubplotSpec(3, 3,
-                                                                 wspace=0.0, hspace=0.0,
-                                                                 width_ratios=[1, 8, 1], height_ratios=[1, 6, 3],
-                                                                 subplot_spec=outer_grid[1, 0])
+        inner_grid = matplotlib.gridspec.GridSpecFromSubplotSpec(
+            3, 3,
+            wspace=0.0, hspace=0.0,
+            width_ratios=[1, 8, 1], height_ratios=[1, 6, 3],
+            subplot_spec=outer_grid[1, 0])
 
         self.fig = fig
-        self.traj_axes = fig.add_subplot(outer_grid[0, 0], projection=self.projection.crs)
+        self.traj_axes = fig.add_subplot(outer_grid[0, 0],
+                                         projection=self.projection.crs)
         self.height_axes_outer = fig.add_subplot(outer_grid[1, 0])
         self.height_axes = fig.add_subplot(inner_grid[1, 1])
         self.text_axes = fig.add_subplot(outer_grid[2, 0])
@@ -372,17 +396,21 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         ntraj = len(plot_data.trajectories)
 
         fig_title = self.labels.get("TITLE")
-        
+
         if IDLBL == "MERGMEAN":
             if plot_data.is_forward_calculation():
-                fig_title += "\n{0} forward trajectories".format(cluster_list.total_traj)
+                fig_title += "\n{0} forward trajectories" \
+                    .format(cluster_list.total_traj)
             else:
-                fig_title += "\n{0} backward trajectories".format(cluster_list.total_traj)
+                fig_title += "\n{0} backward trajectories" \
+                    .format(cluster_list.total_traj)
         elif IDLBL == "MERGLIST":
             if plot_data.is_forward_calculation():
-                fig_title += "\n{0} forward trajectories starting at various times".format(ntraj)
+                fig_title += "\n{0} forward trajectories starting " \
+                             "at various times".format(ntraj)
             else:
-                fig_title += "\n{0} backward trajectories ending at various times".format(ntraj)
+                fig_title += "\n{0} backward trajectories ending " \
+                             "at various times".format(ntraj)
         else:
             if plot_data.is_forward_calculation():
                 if ntraj > 1:
@@ -394,7 +422,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                     fig_title += "\nBackward trajectories ending at"
                 else:
                     fig_title += "\nBackward trajectory ending at"
-    
+
             traj_times = plot_data.get_unique_start_datetimes()
             if len(traj_times) == 1:
                 dt = self.adjust_for_time_zone(traj_times[0])
@@ -406,36 +434,44 @@ class TrajectoryPlot(plotbase.AbstractPlot):
             # use the first grid for plotting
             model_name = plot_data.grids[0].model.strip()
             if plot_data.get_max_forecast_hour() > 12:
-                dt = self.adjust_for_time_zone(plot_data.get_forecast_init_datetime())
-                init_time_str = dt.strftime("%H %Z %d %b");
-                fig_title += "\n{0}  {1}  Forecast Initialization".format(init_time_str, model_name)
+                dt = self.adjust_for_time_zone(
+                    plot_data.get_forecast_init_datetime())
+                init_time_str = dt.strftime("%H %Z %d %b")
+                fig_title += "\n{0}  {1}  Forecast Initialization" \
+                    .format(init_time_str, model_name)
             else:
                 fig_title += "\n{0}  Meteorological Data".format(model_name)
 
         return fig_title
-    
+
     @staticmethod
     def make_ylabel(plot_data, marker, time_label_interval):
-        y_label = "Source {0} at".format(marker) if time_label_interval >= 0 else "Source at"
+        if time_label_interval >= 0:
+            y_label = "Source {0} at".format(marker)
+        else:
+            y_label = "Source at"
 
         traj_locations = plot_data.get_unique_start_locations()
         if len(traj_locations) == 1:
             lon, lat = traj_locations[0]
-            y_label += "  {0:5.2f} {1}".format(abs(lat), "N" if lat >= 0 else "S")
-            y_label += "  {0:6.2f} {1}".format(abs(lon), "E" if lon >= 0 else "W")
+            lat_dir = "N" if lat >= 0 else "S"
+            lon_dir = "E" if lon >= 0 else "W"
+            y_label += "  {0:5.2f} {1}".format(abs(lat), lat_dir)
+            y_label += "  {0:6.2f} {1}".format(abs(lon), lon_dir)
         else:
             y_label += " multiple locations"
 
         logger.debug("using ylabel %s", y_label)
         return y_label
-    
+
     def get_street_map_target_axes(self):
         return self.traj_axes
-    
+
     def draw_height_profile(self, data_list, terrain_profileQ):
         axes = self.height_axes
 
-        # reset line color and marker cycles to be in sync with the trajectory plot.
+        # reset line color and marker cycles to be in sync with
+        # the trajectory plot.
         self.settings.color_cycle.reset()
         self.settings.reset_marker_cycle()
 
@@ -455,14 +491,19 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         # Add y-gridlines
         axes.grid(True, "major", "y", linestyle="--")
 
-        vert_proj = VerticalProjectionFactory.create_instance(axes, self.settings)
-        
-        time_zone = self.time_zone if self.settings.use_source_time_zone else None
-        
+        vert_proj = VerticalProjectionFactory.create_instance(axes,
+                                                              self.settings)
+
+        if self.settings.use_source_time_zone:
+            time_zone = self.time_zone
+        else:
+            time_zone = None
+
         # Adjust x-range.
         x_range = None
         for pd in data_list:
-            x_range = util.union_ranges(x_range, vert_proj.calc_xrange(pd, time_zone))
+            x_range = util.union_ranges(x_range,
+                                        vert_proj.calc_xrange(pd, time_zone))
         axes.set_xlim(x_range[0], x_range[1])
 
         # Invert the x-axis if it is a backward trajectory
@@ -474,7 +515,8 @@ class TrajectoryPlot(plotbase.AbstractPlot):
 
         for k, plotData in enumerate(data_list):
             for t in plotData.trajectories:
-                clr = self.settings.color_cycle.next_color(t.starting_level_index, t.color)
+                clr = self.settings.color_cycle.next_color(
+                    t.starting_level_index, t.color)
                 ms = self.settings.next_marker()
                 # gather data points
                 ages = vert_proj.select_xvalues(t, time_zone)
@@ -490,16 +532,21 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                     # draw a profile.
                     axes.plot(ages, vc, clr)
                     # draw triangle markers along the profile if necessary
-                    interval_symbol_drawer.draw(t, ages, vc, c=clr, marker=ms, clip_on=False)
+                    interval_symbol_drawer.draw(t, ages, vc,
+                                                c=clr, marker=ms,
+                                                clip_on=False)
                     # show the value of the first vertical coordinate
                     if k == 0:
                         axes.text(ages[0], vc[0], "{0}  ".format(int(vc[0])),
-                                  horizontalalignment="right", verticalalignment="center", clip_on=True)
+                                  horizontalalignment="right",
+                                  verticalalignment="center", clip_on=True)
                 else:
-                    logger.info("skip drawing a trajectory with no vertical coordinate")
+                    logger.info("skip drawing a trajectory with no "
+                                "vertical coordinate")
 
         # draw the terrain profile if it is necessary
-        if terrain_profileQ and self.settings.vertical_coordinate == VerticalCoordinate.ABOVE_GROUND_LEVEL:
+        if terrain_profileQ and self.settings.vertical_coordinate \
+                == VerticalCoordinate.ABOVE_GROUND_LEVEL:
             for plotData in data_list:
                 for t in plotData.trajectories:
                     if t.has_terrain_profile():
@@ -511,7 +558,8 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                         # draw a profile
                         axes.plot(ages, vc, clr)
                         # draw interval markers if necessary
-                        interval_symbol_drawer.draw(t, ages, vc, c=clr, marker=ms, clip_on=False)
+                        interval_symbol_drawer.draw(t, ages, vc, c=clr,
+                                                    marker=ms, clip_on=False)
                         # draw the source marker
                         axes.scatter(ages[0], vc[0],
                                      s=self.settings.source_marker_size,
@@ -525,8 +573,9 @@ class TrajectoryPlot(plotbase.AbstractPlot):
 
         # plot title
         axes.set_title(self.make_plot_title(data_list[0]))
-        
-        # reset line color and marker cycles to be in sync with the height profile plot
+
+        # reset line color and marker cycles to be in sync with
+        # the height profile plot
         self.settings.color_cycle.reset()
         self.settings.reset_marker_cycle()
 
@@ -543,7 +592,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         axes.set_ylabel(self.make_ylabel(data_list[0],
                                          self.settings.source_label,
                                          self.settings.time_label_interval))
-       
+
         # set_yticks([]) is necessary to make the y-label visible.
         axes.set_yticks([])
 
@@ -557,17 +606,19 @@ class TrajectoryPlot(plotbase.AbstractPlot):
 
         # draw optional concentric circles
         if self.settings.ring and self.settings.ring_number > 0:
-            self._draw_concentric_circles(axes,
-                                          data_list[0].trajectories[0].starting_loc,
-                                          self.settings.ring_number,
-                                          self.settings.ring_distance)
+            self._draw_concentric_circles(
+                axes,
+                data_list[0].trajectories[0].starting_loc,
+                self.settings.ring_number,
+                self.settings.ring_distance)
 
         # place station locations
         self._draw_stations_if_exists(axes, self.settings)
 
         # See if the data time span is longer than the specified interval
-        interval_symbol_drawer = IntervalSymbolDrawerFactory.create_instance(axes, self.settings)
-            
+        interval_symbol_drawer = IntervalSymbolDrawerFactory.create_instance(
+            axes, self.settings)
+
         for plotData in data_list:
             for k, t in enumerate(plotData.trajectories):
                 # draw a source marker
@@ -576,7 +627,8 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                         axes.scatter(t.starting_loc[0], t.starting_loc[1],
                                      s=self.settings.source_marker_size,
                                      marker=self.settings.source_marker,
-                                     c=self.settings.source_marker_color, clip_on=True,
+                                     c=self.settings.source_marker_color,
+                                     clip_on=True,
                                      transform=self.data_crs)
                 # gather data points
                 lats = t.latitudes
@@ -584,22 +636,28 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                 if len(lats) == 0 or len(lons) == 0:
                     continue
                 # draw a trajectory
-                clr = self.settings.color_cycle.next_color(t.starting_level_index, t.color)
+                clr = self.settings.color_cycle.next_color(
+                    t.starting_level_index, t.color)
                 ms = self.settings.next_marker()
                 axes.plot(lons, lats, clr, transform=self.data_crs)
                 # draw circles for uncertainty
                 if t.has_trajectory_stddevs():
-                    self.draw_trajectory_uncertainty(lons, lats, t.trajectory_stddevs, clr)
+                    self.draw_trajectory_uncertainty(lons, lats,
+                                                     t.trajectory_stddevs,
+                                                     clr)
                 # draw interval markers
-                interval_symbol_drawer.draw(t, lons, lats, c=clr, marker=ms, clip_on=True,
+                interval_symbol_drawer.draw(t, lons, lats,
+                                            c=clr, marker=ms, clip_on=True,
                                             transform=self.data_crs)
                 # cluster info
                 if self.cluster_list is not None:
                     cluster_label = self.cluster_list.get_label(k)
                     axes.text(lons[-1], lats[-1], cluster_label,
-                              horizontalalignment="right", verticalalignment="bottom",  clip_on=True,
+                              horizontalalignment="right",
+                              verticalalignment="bottom",
+                              clip_on=True,
                               transform=self.data_crs)
-    
+
     def draw_trajectory_uncertainty(self, lons, lats, sigmas, clr):
         axes = self.traj_axes
         for k, slonlat in enumerate(sigmas):
@@ -607,11 +665,13 @@ class TrajectoryPlot(plotbase.AbstractPlot):
             slon, slat = slonlat
             # The multiplier 2 below is for one sigma radius.
             ellipse = matplotlib.patches.Ellipse(xy, 2*slon, 2*slat,
-                                                 color=clr, fill=False, clip_on=True,
+                                                 color=clr,
+                                                 fill=False,
+                                                 clip_on=True,
                                                  linewidth=0.33,
                                                  transform=self.data_crs)
             axes.add_artist(ellipse)
-    
+
     def draw_bottom_plot(self, data_list):
         if self.settings.vertical_coordinate == VerticalCoordinate.NONE:
             self._turn_off_spines(self.height_axes_outer, top=True)
@@ -623,7 +683,8 @@ class TrajectoryPlot(plotbase.AbstractPlot):
             terrainProfileQ = self.has_terrain_profile(data_list)
 
             self._turn_off_ticks(self.height_axes_outer)
-            str = data_list[0].trajectories[0].vertical_coord.get_vertical_label()
+            str = data_list[0].trajectories[0] \
+                .vertical_coord.get_vertical_label()
 
             self.height_axes_outer.set_ylabel(str)
 
@@ -631,55 +692,59 @@ class TrajectoryPlot(plotbase.AbstractPlot):
 
     def draw_bottom_text(self):
         self._turn_off_ticks(self.text_axes)
-                        
+
         alt_text_lines = self.labels.get("TXBOXL")
-        
-        maptext_fname = self._make_maptext_filename(self.settings.output_suffix)
+
+        maptext_fname = self._make_maptext_filename(
+            self.settings.output_suffix)
         if os.path.exists(maptext_fname):
             self._draw_maptext_if_exists(self.text_axes, maptext_fname)
         elif (alt_text_lines is not None) and (len(alt_text_lines) > 0):
             self._draw_alt_text_boxes(self.text_axes, alt_text_lines)
         else:
-            top_spineQ = self.settings.vertical_coordinate != VerticalCoordinate.NONE
+            top_spineQ = \
+                self.settings.vertical_coordinate != VerticalCoordinate.NONE
             self._turn_off_spines(self.text_axes, top=top_spineQ)
 
     def draw(self, ev_handlers=None, *args, **kw):
-        if self.settings.interactive_mode == False:
+        if not self.settings.interactive_mode:
             plt.ioff()
-        
-        frame_data_it = FrameDataIteratorFactory.create_instance(self.settings.frames_per_file, self.data_list)
-        
+
+        frame_data_it = FrameDataIteratorFactory.create_instance(
+            self.settings.frames_per_file, self.data_list)
+
         for data_list in frame_data_it:
             self.layout(data_list, ev_handlers)
-    
+
             self.draw_trajectory_plot(data_list)
             self.draw_bottom_plot(data_list)
             self.draw_bottom_text()
-            
+
             self.fig.canvas.draw()  # to get the plot spines right.
             self.on_update_plot_extent()
             for plot_saver in self.plot_saver_list:
                 plot_saver.save(self.fig, self.current_frame)
-                
+
             if self.settings.interactive_mode:
                 plt.show(*args, **kw)
-                
+
             plt.close(self.fig)
             self.current_frame += 1
 
         for plot_saver in self.plot_saver_list:
-            plot_saver.close()            
+            plot_saver.close()
         self.write_gis_files()
 
     def write_gis_files(self):
-        w = gisout.GISFileWriterFactory.create_instance(self.settings.gis_output,
-                                                        self.settings.height_unit,
-                                                        self.time_zone)
+        w = gisout.GISFileWriterFactory.create_instance(
+                self.settings.gis_output,
+                self.settings.height_unit,
+                self.time_zone)
         if w is not None:
             w.output_suffix = self.settings.output_suffix
-            w.output_name = self.settings.output_filename  
+            w.output_name = self.settings.output_filename
             w.kml_option = self.settings.kml_option
-               
+
             for k, plot_data in enumerate(self.data_list):
                 w.write(k + 1, plot_data)
 
@@ -754,7 +819,9 @@ class IntervalSymbolDrawer(ABC):
 class NullIntervalSymbolDrawer(IntervalSymbolDrawer):
 
     def __init__(self, axes, settings, interval):
-        super(NullIntervalSymbolDrawer, self).__init__(axes, settings, interval)
+        super(NullIntervalSymbolDrawer, self).__init__(axes,
+                                                       settings,
+                                                       interval)
 
     def draw(self, trajectory, x, y, **kwargs):
         return
@@ -763,7 +830,9 @@ class NullIntervalSymbolDrawer(IntervalSymbolDrawer):
 class TimeIntervalSymbolDrawer(IntervalSymbolDrawer):
 
     def __init__(self, axes, settings, interval):
-        super(TimeIntervalSymbolDrawer, self).__init__(axes, settings, abs(interval))
+        super(TimeIntervalSymbolDrawer, self).__init__(axes,
+                                                       settings,
+                                                       abs(interval))
 
     def draw(self, trajectory, x, y, **kwargs):
         dts = trajectory.datetimes
@@ -771,14 +840,20 @@ class TimeIntervalSymbolDrawer(IntervalSymbolDrawer):
         x24, y24, x12, y12 = self._filter_data(dts, x, y, self.interval)
 
         if len(x24) > 0:
-            self.axes.scatter(x24, y24, s=self.settings.major_hour_marker_size, **kwargs)
+            self.axes.scatter(x24, y24,
+                              s=self.settings.major_hour_marker_size, **kwargs)
 
         if len(x12) > 0:
-            self.axes.scatter(x12, y12, s=self.settings.minor_hour_marker_size, **kwargs)
+            self.axes.scatter(x12, y12,
+                              s=self.settings.minor_hour_marker_size, **kwargs)
 
     def _filter_data(self, datetimes, x, y, interval, omit_first=True):
-        x24 = []; y24 = []  # at every 00:00
-        xint = []; yint = []  # at every 1, 3, 6, 12, or 24.
+        # points at every 00:00
+        x24 = []
+        y24 = []
+        # points at every 1, 3, 6, 12, or 24.
+        xint = []
+        yint = []
         firstIndex = 1 if omit_first else 0
 
         if len(x) == len(y) and len(x) > 0:
@@ -786,7 +861,8 @@ class TimeIntervalSymbolDrawer(IntervalSymbolDrawer):
                 if datetimes[k].hour == 0 and datetimes[k].minute == 0:
                     x24.append(x[k])
                     y24.append(y[k])
-                elif (datetimes[k].hour % interval) == 0 and datetimes[k].minute == 0:
+                elif (datetimes[k].hour % interval) == 0 \
+                        and datetimes[k].minute == 0:
                     xint.append(x[k])
                     yint.append(y[k])
 
@@ -796,7 +872,9 @@ class TimeIntervalSymbolDrawer(IntervalSymbolDrawer):
 class AgeIntervalSymbolDrawer(IntervalSymbolDrawer):
 
     def __init__(self, axes, settings, interval):
-        super(AgeIntervalSymbolDrawer, self).__init__(axes, settings, abs(interval))
+        super(AgeIntervalSymbolDrawer, self).__init__(axes,
+                                                      settings,
+                                                      abs(interval))
 
     def draw(self, trajectory, x, y, **kwargs):
         ages = trajectory.ages
@@ -804,14 +882,20 @@ class AgeIntervalSymbolDrawer(IntervalSymbolDrawer):
         x24, y24, x12, y12 = self._filter_data(ages, x, y, self.interval)
 
         if len(x24) > 0:
-            self.axes.scatter(x24, y24, s=self.settings.major_hour_marker_size, **kwargs)
+            self.axes.scatter(x24, y24,
+                              s=self.settings.major_hour_marker_size, **kwargs)
 
         if len(x12) > 0:
-            self.axes.scatter(x12, y12, s=self.settings.minor_hour_marker_size, **kwargs)
+            self.axes.scatter(x12, y12,
+                              s=self.settings.minor_hour_marker_size, **kwargs)
 
     def _filter_data(self, ages, x, y, interval, omit_first=True):
-        x24 = []; y24 = []  # at every 00:00
-        xint = []; yint = []  # at every 1, 3, 6, 12, or 24.
+        # points at every 00:00
+        x24 = []
+        y24 = []
+        # points at every 1, 3, 6, 12, or 24.
+        xint = []
+        yint = []
         firstIndex = 1 if omit_first else 0
 
         if len(x) == len(y) and len(x) > 0:
@@ -838,91 +922,102 @@ class IntervalSymbolDrawerFactory:
         else:
             return NullIntervalSymbolDrawer(axes, settings, time_interval)
 
-        
+
 class AbstractVerticalProjection(ABC):
- 
+
     def __init__(self, axes, settings, time_interval):
         self.axes = axes
         self.settings = settings
         self.time_interval = time_interval
-    
+
     @abstractmethod
     def calc_xrange(self, plot_data, time_zone=None):
         pass
 
-    @abstractmethod    
+    @abstractmethod
     def create_xlabel_formatter(self):
         pass
-    
+
     @abstractmethod
     def select_xvalues(self, trajectory, time_zone=None):
         pass
-    
-    def create_interval_symbol_drawer(self):
-        return IntervalSymbolDrawerFactory.create_instance(self.axes, self.settings)
 
-    
+    def create_interval_symbol_drawer(self):
+        return IntervalSymbolDrawerFactory.create_instance(self.axes,
+                                                           self.settings)
+
+
 class TimeVerticalProjection(AbstractVerticalProjection):
-    
+
     def __init__(self, axes, settings, time_interval):
-        super(TimeVerticalProjection, self).__init__(axes, settings, time_interval)
-        
+        super(TimeVerticalProjection, self).__init__(axes,
+                                                     settings,
+                                                     time_interval)
+
     def calc_xrange(self, plot_data, time_zone=None):
         r = plot_data.get_datetime_range()
         if time_zone is None:
             return r
-        # See _format_datetime() for the reason why tzinfo is removed after applying the timezone.
-        t = [x.astimezone(time_zone).replace(tzinfo=None) for x in r]
-        return t
-    
+        # See _format_datetime() for the reason why tzinfo is removed
+        # after applying the timezone.
+        return [x.astimezone(time_zone).replace(tzinfo=None) for x in r]
+
     def create_xlabel_formatter(self):
         return plt.FuncFormatter(self._format_datetime)
-    
+
     @staticmethod
     def _format_datetime(value, position):
-        if position != None:
-            # The value argument is a floating point number representing a datetime in UTC and only in UTC.
-            # Since this is a static method, a timezone object cannot be accessed (without resorting to a global variable).
-            # An ad hoc solution is to receive a naive datetime value that is unaware of timezone.
-            # select_xvalues() returns "naive" datetime values for this reason.
+        if position is not None:
+            # The value argument is a floating point number representing
+            # a datetime in UTC and only in UTC.  Since this is a static
+            # method, a timezone object cannot be accessed (without resorting
+            # to a global variable).  An ad hoc solution is to receive a naive
+            # datetime value that is unaware of timezone.  select_xvalues()
+            # returns "naive" datetime values for this reason.
             dt = matplotlib.dates.num2date(value)
             if dt.minute == 0 and dt.second == 0:
                 if dt.hour == 0:
-                    return "{0:d}\n{1:d}/{2:d}".format(dt.hour, dt.month, dt.day)
+                    return "{0:d}\n{1:d}/{2:d}".format(dt.hour,
+                                                       dt.month,
+                                                       dt.day)
                 else:
                     return "{0:d}".format(dt.hour)
         return ""
-    
+
     def select_xvalues(self, t, time_zone=None):
         if time_zone is None:
             return t.datetimes
-        # See _format_datetime() for the reason why tzinfo is removed after applying the timezone.
-        return [x.astimezone(time_zone).replace(tzinfo=None) for x in t.datetimes]
-   
-    
+        # See _format_datetime() for the reason why tzinfo is removed
+        # after applying the timezone.
+        return [x.astimezone(time_zone).replace(tzinfo=None)
+                for x in t.datetimes]
+
+
 class AgeVerticalProjection(AbstractVerticalProjection):
-    
+
     def __init__(self, axes, settings, time_interval):
-        super(AgeVerticalProjection, self).__init__(axes, settings, time_interval)
-        
+        super(AgeVerticalProjection, self).__init__(axes,
+                                                    settings,
+                                                    time_interval)
+
     def calc_xrange(self, plot_data, time_zone=None):
         return plot_data.get_age_range()
-    
+
     def create_xlabel_formatter(self):
         return plt.FuncFormatter(self._format_age)
-    
+
     @staticmethod
     def _format_age(value, position):
-        if position != None:
+        if position is not None:
             return "{0:.1f}".format(value)
         return ""
-    
+
     def select_xvalues(self, t, time_zone=None):
         return t.ages
-    
-    
+
+
 class VerticalProjectionFactory:
-   
+
     @staticmethod
     def create_instance(axes, settings):
         time_interval = settings.time_label_interval
@@ -930,43 +1025,41 @@ class VerticalProjectionFactory:
             return TimeVerticalProjection(axes, settings, time_interval)
         else:
             return AgeVerticalProjection(axes, settings, time_interval)
-    
+
 
 class FrameDataIteratorFactory:
-    
+
     @staticmethod
     def create_instance(frame_opt, tdump_list):
         if frame_opt == const.Frames.ALL_FILES_ON_ONE:
             return AllAtOnceFrameDataIterator(tdump_list)
         else:
             return OneByOneFrameDataIterator(tdump_list)
-    
+
 
 class AbstractFrameDataIterator(ABC):
-    
+
     def __init__(self, tdump_list):
         self.tdump_list = tdump_list
-    
+
     @abstractmethod
     def __iter__(self):
         pass
-    
-    
+
+
 class AllAtOnceFrameDataIterator(AbstractFrameDataIterator):
-    
+
     def __init__(self, tdump_list):
         super(AllAtOnceFrameDataIterator, self).__init__(tdump_list)
 
     def __iter__(self):
         return iter([self.tdump_list])
-    
+
 
 class OneByOneFrameDataIterator(AbstractFrameDataIterator):
-    
+
     def __init__(self, tdump_list):
         super(OneByOneFrameDataIterator, self).__init__(tdump_list)
 
     def __iter__(self):
         return iter([[o] for o in self.tdump_list])
-
-

@@ -47,12 +47,12 @@ class StationPlotConfigReader(io.FormattedTextFileReader):
             if len(v) == 2:
                 v.append("")
             if len(v) == 3:
-                self.cfg.stations.append(StationPlotConfig.Station(v[0], v[1], v[2].strip()))
+                self.cfg.stations.append(
+                    StationPlotConfig.Station(v[0], v[1], v[2].strip()))
             else:
-                raise Exception("cannot parse a line in file {0}".format(filename))
+                raise Exception("cannot parse a line in file "
+                                "{0}".format(filename))
 
         self.close()
 
         return self.cfg
-
-

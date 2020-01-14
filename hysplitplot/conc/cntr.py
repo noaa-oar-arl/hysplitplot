@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class ContourSet:
-    
+
     def __init__(self):
         self.raw_colors = []
         self.colors = []
@@ -34,23 +34,23 @@ class ContourSet:
         self.max_concentration_str = "0"
         self.time_of_arrivals = None
 
-        
+
 class Contour:
-    
+
     def __init__(self, contour_set):
         self.parent = contour_set
         self.polygons = []
-        
+
 
 class Polygon:
-    
+
     def __init__(self, contour):
         self.parent = contour
         self.boundaries = []
-        
-        
+
+
 class Boundary:
-    
+
     def __init__(self, polygon):
         self.parent = polygon
         self.hole = False       # It is hole if points are ordered clockwise.
@@ -59,65 +59,65 @@ class Boundary:
 
     def copy_with_dateline_crossing_fix(self, lonlats):
         lons, lats = numpy.transpose(lonlats)
-        
+
         if self._crossing_date_line(lons):
             self.longitudes = [(v if v >= 0 else v + 360.0) for v in lons]
         else:
             self.longitudes = copy.deepcopy(lons)
         self.latitudes = copy.deepcopy(lats)
-        
+
     @staticmethod
     def _crossing_date_line(lons):
         for k in range(1, len(lons)):
-            #if lons[k] < -180.0 and lons[k-1] > 0:
             if util.is_crossing_date_line(lons[k-1], lons[k]):
                 return True
-            
+
         return False
-           
+
     def compute_area(self):
         return self._compute_polygon_area(self.longitudes, self.latitudes)
-    
+
     @staticmethod
     def _compute_polygon_area(lons, lats):
         area = 0.0
-        
+
         n = len(lons)
         if n == len(lats) and n > 0:
             area = (lons[0] + lons[-1]) * (lats[0] - lats[-1])
             for k in range(1, n):
                 area += (lons[k] + lons[k-1]) * (lats[k] - lats[k-1])
-            
+
             if lons[-1] != lons[0] or lats[-1] != lats[0]:
                 area += (lons[0] + lons[-1]) * (lats[0] - lats[-1])
-                
+
         return 0.5 * area
 
 
 def _separate_paths(seg, path_codes, separator_code):
     head = [k for k, c in enumerate(path_codes) if c == separator_code]
-    
+
     tail = copy.deepcopy(head)
     tail.append(len(path_codes))
     tail.pop(0)
-    
+
     paths = []
     for h, t in zip(head, tail):
         paths.append(seg[h:t])
-        
+
     return paths
 
 
 def _reduce_points(path, min_pts=5000, step=5):
     if len(path) > min_pts:
-        logger.warning("More than %d points: keeping only 1 out of %d points", min_pts, step)
+        logger.warning("More than %d points: keeping only 1 out of %d "
+                       "points", min_pts, step)
         return path[0::step]
     return path
 
 
 def convert_matplotlib_quadcontourset(quadContourSet):
     contour_set = ContourSet()
-    
+
     if quadContourSet is not None:
         for k, segs in enumerate(quadContourSet.allsegs):
             contour = Contour(contour_set)
@@ -134,6 +134,9 @@ def convert_matplotlib_quadcontourset(quadContourSet):
                     polygon.boundaries.append(boundary)
                     lonlats = _reduce_points(path)
                     boundary.copy_with_dateline_crossing_fix(lonlats)
-                    boundary.hole = True if boundary.compute_area() < 0 else False
-        
+                    if boundary.compute_area() < 0:
+                        boundary.hole = True
+                    else:
+                        boundary.hole = False
+
     return contour_set

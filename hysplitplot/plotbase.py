@@ -15,14 +15,15 @@ import pytz
 from timezonefinder import TimezoneFinder
 
 from hysplitdata.const import HeightUnit
-from hysplitplot import cmdline, const, labels, logo, multipage, stnplot, streetmap, util
+from hysplitplot import cmdline, const, labels, logo, multipage, stnplot, \
+                        streetmap, util
 
 
 logger = logging.getLogger(__name__)
 
 
 class AbstractPlotSettings(ABC):
-    
+
     def __init__(self):
         self.map_background = "../graphics/arlmap"
         self.map_projection = const.MapProjection.AUTO
@@ -47,39 +48,40 @@ class AbstractPlotSettings(ABC):
         self.gis_output = const.GISOutput.NONE
         self.kml_option = const.KMLOption.NONE
         self.use_source_time_zone = False   # for the --source-time-zone option
-        self.time_zone_str = None   # for the --time-zone option
-        self.use_street_map = False # for the --street-map option
-        
+        self.time_zone_str = None  # for the --time-zone option
+        self.use_street_map = False  # for the --street-map option
+
         # internally defined
-        self.interactive_mode = False    # becomes True if the --interactive option is specified.
+        self.interactive_mode = False  # True if --interactive is specified.
         self.map_color = "#1f77b4"
         self.station_marker = "o"
-        self.station_marker_color= "k"     # black
+        self.station_marker_color = "k"     # black
         self.station_marker_size = 6*6
         self.height_unit = HeightUnit.METERS
         self.street_map_update_delay = 0.3  # in seconds
         self.street_map_type = 0
         self.process_id_set = False
-        
-    
-    def _process_cmdline_args(self, args0):
-        
-        args = cmdline.CommandLineArguments(args0)
-        
-        self.noaa_logo              = True if args.has_arg(["+n", "+N"]) else self.noaa_logo
 
-        self.frames_per_file        = args.get_integer_value(["-f", "-F"], self.frames_per_file)
-        
+    def _process_cmdline_args(self, args0):
+        args = cmdline.CommandLineArguments(args0)
+
+        self.noaa_logo = True if args.has_arg(["+n", "+N"]) else self.noaa_logo
+
+        self.frames_per_file = args.get_integer_value(["-f", "-F"],
+                                                      self.frames_per_file)
+
         if args.has_arg(["-g", "-G"]):
             self.ring = True
             str = args.get_value(["-g", "-G"])
             if str.count(":") > 0:
-                self.ring_number, self.ring_distance = self.parse_ring_option(str)
+                self.ring_number, self.ring_distance = \
+                    self.parse_ring_option(str)
             elif str == "":
                 self.ring_number = 4
             else:
-                self.ring_number = args.get_integer_value(["-g", "-G"], self.ring_number)
-        
+                self.ring_number = args.get_integer_value(["-g", "-G"],
+                                                          self.ring_number)
+
         if args.has_arg(["-h", "-H"]):
             str = args.get_value(["-h", "-H"])
             if str.count(":") > 0:
@@ -87,76 +89,90 @@ class AbstractPlotSettings(ABC):
                 if self.ring_number < 0:
                     self.ring_number = 0
 
-        self.map_background         = args.get_string_value(["-j", "-J"], self.map_background)
-        if self.map_background.startswith(".") and self.map_background.endswith("shapefiles"):
+        self.map_background = args.get_string_value(["-j", "-J"],
+                                                    self.map_background)
+        if self.map_background.startswith(".") \
+                and self.map_background.endswith("shapefiles"):
             logger.warning("enter -jshapefiles... not -j./shapefiles...")
-                       
+
         if args.has_arg("-L"):
             str = args.get_value("-L")
             if str.count(":") > 0:
-                self.lat_lon_label_interval = self.parse_lat_lon_label_interval(str)
+                self.lat_lon_label_interval = \
+                    self.parse_lat_lon_label_interval(str)
                 self.lat_lon_label_interval_option = const.LatLonLabel.SET
             else:
-                self.lat_lon_label_interval_option = args.get_integer_value("-L", self.lat_lon_label_interval_option)
-                self.lat_lon_label_interval_option = max(0, min(1, self.lat_lon_label_interval_option))
- 
-        self.map_projection         = args.get_integer_value(["-m", "-M"], self.map_projection)
+                self.lat_lon_label_interval_option = \
+                    args.get_integer_value("-L",
+                                           self.lat_lon_label_interval_option)
+                self.lat_lon_label_interval_option = \
+                    max(0, min(1, self.lat_lon_label_interval_option))
 
-        self.output_filename        = args.get_string_value(["-o", "-O"], self.output_filename)
+        self.map_projection = args.get_integer_value(["-m", "-M"],
+                                                     self.map_projection)
 
-        output_suffix               = args.get_string_value(["-p", "-P"], self.output_suffix)
+        self.output_filename = args.get_string_value(["-o", "-O"],
+                                                     self.output_filename)
+
+        output_suffix = args.get_string_value(["-p", "-P"], self.output_suffix)
         if output_suffix != self.output_suffix:
             self.process_id_set = True
-            
-        # The output_format is to be normalized with unmodified output_filename.
+
+        # The output_format is to be normalized with unmodified output_filename
         self.output_format = \
-            util.normalize_output_format(self.output_filename, output_suffix, self.output_format)
+            util.normalize_output_format(
+                self.output_filename, output_suffix, self.output_format)
         self.output_filename, self.output_basename, self.output_suffix = \
             util.normalize_output_filename(self.output_filename, output_suffix)
 
         if args.has_arg(["-z", "-Z"]):
-            self.zoom_factor        = self.parse_zoom_factor(args.get_value(["-z", "-Z"]))
-        
-        self.gis_output             = args.get_integer_value("-a", self.gis_output)
-        self.kml_option             = args.get_integer_value("-A", self.kml_option)
+            self.zoom_factor = self.parse_zoom_factor(
+                args.get_value(["-z", "-Z"]))
+
+        self.gis_output = args.get_integer_value("-a", self.gis_output)
+        self.kml_option = args.get_integer_value("-A", self.kml_option)
 
         if args.has_arg(["--interactive"]):
             self.interactive_mode = True
-        
+
         if args.has_arg(["--more-formats"]):
             val = args.get_value("--more-formats")
             self.additional_output_formats = self.parse_output_formats(val)
         if self.output_format in self.additional_output_formats:
             self.additional_output_formats.remove(self.output_format)
-            
+
         if args.has_arg(["--source-time-zone"]):
             self.use_source_time_zone = True
-        
+
         if args.has_arg(["--time-zone"]):
             if self.use_source_time_zone:
-                logger.warning("Discarding the --source-time-zone option because of --time-zone")
+                logger.warning("Discarding the --source-time-zone option "
+                               "because of --time-zone")
                 self.use_source_time_zone = False
-            self.time_zone_str = args.get_string_value("--time-zone", self.time_zone_str)
-            
+            self.time_zone_str = args.get_string_value("--time-zone",
+                                                       self.time_zone_str)
+
         if args.has_arg(["--street-map"]):
             self.use_street_map = True
-            self.street_map_type = args.get_integer_value("--street-map", self.street_map_type)
+            self.street_map_type = args.get_integer_value("--street-map",
+                                                          self.street_map_type)
             if self.map_projection != const.MapProjection.WEB_MERCATOR:
-                logger.warning("The --street-map option changes the map projection to WEB_MERCATOR")
+                logger.warning("The --street-map option changes the map "
+                               "projection to WEB_MERCATOR")
                 self.map_projection = const.MapProjection.WEB_MERCATOR
 
     @staticmethod
     def parse_lat_lon_label_interval(str):
         divider = str.index(":")
         return int(str[divider+1:]) * 0.1
-    
+
     @staticmethod
     def parse_ring_option(str):
         divider = str.index(":")
         count = int(str[:divider])
         distance = float(str[divider+1:])
         return count, distance
-    
+
     @staticmethod
     def parse_map_center(str):
         divider = str.index(":")
@@ -165,7 +181,7 @@ class AbstractPlotSettings(ABC):
         lat = max(-90.0, min(90.0, lat))
         lon = max(-180.0, min(180.0, lon))
         return [lon, lat]
-    
+
     @staticmethod
     def parse_zoom_factor(str):
         kMin = const.ZoomFactor.LEAST_ZOOM
@@ -177,12 +193,13 @@ class AbstractPlotSettings(ABC):
         r = []
         if isinstance(s, str):
             for fmt in s.split(","):
-                if len(fmt) > 0: 
+                if len(fmt) > 0:
                     if fmt in util.PLOT_FORMATS:
                         if fmt not in r:
                             r.append(fmt)
                     else:
-                        logger.warning("Unknown output format %s; ignored", fmt)
+                        logger.warning("Unknown output format %s; ignored",
+                                       fmt)
         return r
 
     def normalize_output_suffix(self, output_format):
@@ -194,11 +211,11 @@ class AbstractPlotSettings(ABC):
 
 
 class AbstractPlot(ABC):
-    
+
     def __init__(self, crs=None):
         self.fig = None
         self.projection = None
-        self.data_crs = crs if crs != None else cartopy.crs.PlateCarree()
+        self.data_crs = crs if crs is not None else cartopy.crs.PlateCarree()
         self.background_maps = []
         self.labels = labels.LabelsConfig()
         self.time_zone = None
@@ -208,27 +225,28 @@ class AbstractPlot(ABC):
         self.settings = None    # child class should create an instance.
         self.initial_corners_xy = None
         self.initial_corners_lonlat = None
-        
+
     def _connect_event_handlers(self, handlers):
         for ev in handlers:
             self.fig.canvas.mpl_connect(ev, handlers[ev])
-       
+
     def compute_pixel_aspect_ratio(self, axes):
         if not self.settings.interactive_mode:
             return 1.0
-        
+
         # compute the pixel aspect ratio
         w_fig = axes.figure.get_figwidth()
         h_fig = axes.figure.get_figheight()
         w_dis, h_dis = axes.figure.transFigure.transform((w_fig, h_fig))
         pixel_aspect_ratio = h_fig * w_dis / (h_dis * w_fig)
-        
+
         # TODO: better?
         pixel_aspect_ratio *= 1.0 / 0.953   # empirical adjustment
-        logger.debug("fig size %f x %f in; display %f x %f px; pixel aspect ratio %f",
-                     w_fig, h_fig, w_dis, h_dis, pixel_aspect_ratio)
+        logger.debug("fig size %f x %f in; display %f x %f px; pixel aspect"
+                     " ratio %f", w_fig, h_fig, w_dis, h_dis,
+                     pixel_aspect_ratio)
         return pixel_aspect_ratio
-                
+
     def _turn_off_spines(self, axes, **kw):
         left = kw["left"] if "left" in kw else False
         right = kw["right"] if "right" in kw else False
@@ -238,61 +256,69 @@ class AbstractPlot(ABC):
         axes.spines["right"].set_visible(right)
         axes.spines["top"].set_visible(top)
         axes.spines["bottom"].set_visible(bottom)
-    
+
     def _turn_off_ticks(self, axes):
         axes.set_xticks([])
         axes.set_yticks([])
-    
+
     @abstractmethod
     def get_street_map_target_axes(self):
         pass
 
     def create_street_map(self, projection, use_street_map, street_map_type):
-        street_map = streetmap.MapBackgroundFactory.create_instance(projection,
-                                                                    use_street_map,
-                                                                    street_map_type)
+        street_map = streetmap.MapBackgroundFactory.create_instance(
+            projection, use_street_map, street_map_type)
         street_map.read_background_map(self.settings.map_background)
         street_map.set_color(self.settings.map_color)
         street_map.set_color_mode(self.settings.color)
-        street_map.set_lat_lon_label_option(self.settings.lat_lon_label_interval_option,
-                                            self.settings.lat_lon_label_interval)
+        street_map.set_lat_lon_label_option(
+            self.settings.lat_lon_label_interval_option,
+            self.settings.lat_lon_label_interval)
         return street_map
-    
+
     def update_plot_extents(self, ax):
         xmin, xmax, ymin, ymax = self.projection.corners_xy = ax.axis()
-        logger.debug("update_plot_extents: xy: %f %f %f %f", xmin, xmax, ymin, ymax)
-        lonl, latb = self.data_crs.transform_point(xmin, ymin, self.projection.crs)
-        lonr, latt = self.data_crs.transform_point(xmax, ymax, self.projection.crs)
+        logger.debug("update_plot_extents: xy: %f %f %f %f",
+                     xmin, xmax, ymin, ymax)
+        lonl, latb = self.data_crs.transform_point(xmin, ymin,
+                                                   self.projection.crs)
+        lonr, latt = self.data_crs.transform_point(xmax, ymax,
+                                                   self.projection.crs)
         self.projection.corners_lonlat = (lonl, lonr, latb, latt)
-        logger.debug("update_plot_extents: lonlat: %f %f %f %f", lonl, lonr, latb, latt)
-        
+        logger.debug("update_plot_extents: lonlat: %f %f %f %f",
+                     lonl, lonr, latb, latt)
+
     def on_update_plot_extent(self):
         ax = self.get_street_map_target_axes()
         self.update_plot_extents(ax)
         self.street_map.update_extent(ax, self.data_crs)
         if self.settings.noaa_logo:
             self._draw_noaa_logo(ax)
-            
+
     @staticmethod
     def _make_labels_filename(output_suffix):
-        return "LABELS.CFG" if output_suffix == "ps" else "LABELS." + output_suffix
+        if output_suffix == "ps":
+            return "LABELS.CFG"
+        return "LABELS." + output_suffix
 
     def read_custom_labels_if_exists(self, filename=None):
         if filename is None:
             filename = self._make_labels_filename(self.settings.output_suffix)
-            
+
         if os.path.exists(filename):
             self.labels.get_reader().read(filename)
             self.labels.after_reading_file(self.settings)
 
     @staticmethod
     def _make_stationplot_filename(output_suffix):
-        return "STATIONPLOT.CFG" if output_suffix == "ps" else "STATIONPLOT." + output_suffix
+        if output_suffix == "ps":
+            return "STATIONPLOT.CFG"
+        return "STATIONPLOT." + output_suffix
 
     def _draw_stations_if_exists(self, axes, settings, filename=None):
         if filename is None:
             filename = self._make_stationplot_filename(settings.output_suffix)
-            
+
         if os.path.exists(filename):
             cfg = stnplot.StationPlotConfig().get_reader().read(filename)
             for stn in cfg.stations:
@@ -319,23 +345,26 @@ class AbstractPlot(ABC):
                 axes.text(m.longitude, m.latitude, m.value_str,
                           horizontalalignment="left",
                           verticalalignment="center", clip_on=True,
-                          transform=self.data_crs) 
-        
+                          transform=self.data_crs)
+
     @staticmethod
     def _make_maptext_filename(output_suffix):
-        return "MAPTEXT.CFG" if output_suffix == "ps" else "MAPTEXT." + output_suffix
+        if output_suffix == "ps":
+            return "MAPTEXT.CFG"
+        return "MAPTEXT." + output_suffix
 
     def _draw_maptext_if_exists(self, axes, filename=None, filter_fn=None):
         if filename is None:
             filename = self._make_maptext_filename(self.settings.output_suffix)
-            
+
         if os.path.exists(filename):
             selected_lines = [0, 2, 3, 4, 8, 14]
             with open(filename, "r") as f:
                 lines = f.read().splitlines()
                 count = 0
                 for k, buff in enumerate(lines):
-                    if (k in selected_lines) and ((filter_fn is None) or filter_fn(buff)):
+                    if (k in selected_lines) \
+                            and ((filter_fn is None) or filter_fn(buff)):
                         axes.text(0.05, 0.928-0.143*count, buff,
                                   verticalalignment="top", clip_on=True,
                                   transform=axes.transAxes)
@@ -351,39 +380,43 @@ class AbstractPlot(ABC):
                       transform=axes.transAxes)
             count += 1
 
-    def _draw_concentric_circles(self, axes, starting_loc, ring_number, ring_distance):
+    def _draw_concentric_circles(self, axes, starting_loc, ring_number,
+                                 ring_distance):
         lon, lat = starting_loc
         R = ring_distance/111.0
         for k in range(ring_number):
             radius = R*(k+1)
             circ = matplotlib.patches.CirclePolygon((lon, lat), radius,
-                                                    color="k", fill=False, resolution=50,
+                                                    color="k", fill=False,
+                                                    resolution=50,
                                                     transform=self.data_crs)
             axes.add_patch(circ)
             str = "{:d} km".format(int(ring_distance * (k+1)))
-            axes.text(lon, lat - radius, str, clip_on=True, transform=self.data_crs)
-        
+            axes.text(lon, lat - radius, str, clip_on=True,
+                      transform=self.data_crs)
+
     def _draw_noaa_logo(self, axes):
         # position of the right bottom corner in the display coordinate
         pt_dis = axes.transAxes.transform((1, 0))
-        
+
         # move it by 10 pixels in each direction
         pt_dis += [-10, +10]
-        
+
         # bounding box in the display coordinate
         r = self.compute_pixel_aspect_ratio(axes)
-        h = 90; w = h * r
+        h = 90
+        w = h * r
         box_dis = [[pt_dis[0]-w, pt_dis[1]], [pt_dis[0], pt_dis[1]+h]]
 
-        # in the axes coordinate        
+        # in the axes coordinate
         box_axes = axes.transAxes.inverted().transform(box_dis)
-        
+
         if self.logo_drawer is None:
             self.logo_drawer = logo.NOAALogoDrawer()
         else:
             self.logo_drawer.clear()
         self.logo_drawer.draw(axes, box_axes)
-    
+
     def lookup_time_zone(self, time_zone_name):
         time_zone = None
         try:
@@ -391,46 +424,51 @@ class AbstractPlot(ABC):
         except pytz.exceptions.UnknownTimeZoneError as ex:
             logger.error("unrecognized time zone {}".format(time_zone_name))
             pass
-        
+
         return time_zone
-    
+
     def get_time_zone_at(self, lonlat):
         lon, lat = lonlat
 
         time_zone = None
         time_zone_name = None
         try:
-            time_zone_name = self.time_zone_finder.timezone_at(lng=lon, lat=lat)
+            finder = self.time_zone_finder
+            time_zone_name = finder.timezone_at(lng=lon, lat=lat)
             if time_zone_name is None:
-                time_zone_name = self.time_zone_finder.closest_timezone_at(lng=lon, lat=lat)
+                time_zone_name = finder.closest_timezone_at(lng=lon, lat=lat)
             if time_zone_name is None:
-                logger.warning("cannot find time zone for lon %f, lat %f: using UTC", lon, lat)
-            
+                logger.warning("cannot find time zone for lon %f, lat %f: "
+                               "using UTC", lon, lat)
+
             time_zone = self.lookup_time_zone(time_zone_name)
         except ValueError as ex:
-            logger.error("cannot find time zone for lon {}, lat {}: {}".format(lon, lat, ex))
+            logger.error("cannot find time zone for "
+                         "lon {}, lat {}: {}".format(lon, lat, ex))
             pass
-        
+
         return pytz.utc if time_zone is None else time_zone
-    
+
     def adjust_for_time_zone(self, dt):
         return dt if self.time_zone is None else dt.astimezone(self.time_zone)
 
     def _create_plot_saver_list(self, settings):
         plot_saver_list = []
-        
-        plot_saver = multipage.PlotFileWriterFactory.create_instance(settings.frames_per_file,
-                                                                     settings.output_basename,
-                                                                     settings.output_suffix,
-                                                                     settings.output_format)
+
+        plot_saver = multipage.PlotFileWriterFactory.create_instance(
+            settings.frames_per_file,
+            settings.output_basename,
+            settings.output_suffix,
+            settings.output_format)
         plot_saver_list.append(plot_saver)
 
         for output_format in settings.additional_output_formats:
             output_suffix = settings.normalize_output_suffix(output_format)
-            plot_saver = multipage.PlotFileWriterFactory.create_instance(settings.frames_per_file,
-                                                                         settings.output_basename,
-                                                                         output_suffix,
-                                                                         output_format)
+            plot_saver = multipage.PlotFileWriterFactory.create_instance(
+                settings.frames_per_file,
+                settings.output_basename,
+                output_suffix,
+                output_format)
             plot_saver_list.append(plot_saver)
-        
+
         return plot_saver_list

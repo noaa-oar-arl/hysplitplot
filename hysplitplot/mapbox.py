@@ -20,7 +20,7 @@ class MapBox:
     def __init__(self, **kwargs):
         self.hit_map = None
         self.grid_delta = kwargs.get("grid_delta", 1.0)
-        self.grid_corner = kwargs.get("grid_corner", [0.0, -90.0]) # (lon, lat)
+        self.grid_corner = kwargs.get("grid_corner", [0.0, -90.0])  # (lon,lat)
         grid_size = kwargs.get("grid_size", (360.0, 181.0))
         self.sz = [util.nearest_int(v / self.grid_delta) for v in grid_size]
         self.plume_sz = [0.0, 0.0]      # (lon, lat)
@@ -30,12 +30,13 @@ class MapBox:
         self._j = 0
 
     def dump(self, stream):
-        stream.write("MapBox: grid delta {0}, sz {1}, corner {2}\n".format(
-            self.grid_delta, self.sz, self.grid_corner))
+        stream.write("MapBox: grid delta {0}, sz {1}, corner {2}\n"
+                     .format(self.grid_delta, self.sz, self.grid_corner))
         for j in range(self.sz[1]):
             for i in range(self.sz[0]):
-                if self.hit_map[i,j] != 0:
-                    stream.write("hit_map[{0},{1}] = {2}\n".format(i, j, self.hit_map[i,j]))
+                if self.hit_map[i, j] != 0:
+                    stream.write("hit_map[{0},{1}] = {2}\n"
+                                 .format(i, j, self.hit_map[i, j]))
 
     def allocate(self):
         self.hit_map = numpy.zeros(self.sz, dtype=int)
@@ -45,8 +46,10 @@ class MapBox:
         lon, lat = lonlat
         if lon < 0.0:
             lon += 360.0
-        self._i = min(self.sz[0], util.nearest_int((lon - self.grid_corner[0]) / self.grid_delta))
-        self._j = min(self.sz[1], util.nearest_int((lat - self.grid_corner[1]) / self.grid_delta))
+        self._i = min(self.sz[0], util.nearest_int((lon - self.grid_corner[0])
+                                                   / self.grid_delta))
+        self._j = min(self.sz[1], util.nearest_int((lat - self.grid_corner[1])
+                                                   / self.grid_delta))
         # count hits
         self.hit_map[self._i, self._j] += 1
         self.hit_count += 1
@@ -73,14 +76,16 @@ class MapBox:
         logger.debug("plume location: index (%d, %d), lonlat (%f, %f)",
                      self.plume_loc[0], self.plume_loc[1],
                      self.grid_corner[0] + self.plume_loc[0] * self.grid_delta,
-                     self.grid_corner[1] + self.plume_loc[1] * self.grid_delta);
+                     self.grid_corner[1] + self.plume_loc[1] * self.grid_delta)
         logger.debug("plume size in degs: %f x %f",
                      self.plume_sz[0],
                      self.plume_sz[1])
         return
 
     def need_to_refine_grid(self):
-        return True if (self.plume_sz[0] <= 2.0 and self.plume_sz[1] <= 2.0) else False
+        if self.plume_sz[0] <= 2.0 and self.plume_sz[1] <= 2.0:
+            return True
+        return False
 
     def refine_grid(self):
         # new corner point based on minimum
@@ -102,7 +107,8 @@ class MapBox:
                                                        settings.ring_number,
                                                        settings.ring_distance)
         settings.ring_distance = ring_distance
-        logger.debug("set_ring_extent: span %d, distance %g", kspan, ring_distance)
+        logger.debug("set_ring_extent: span %d, distance %g", kspan,
+                     ring_distance)
         # plots should be centered about the source point
         self.add(settings.center_loc)
         # set vertical extent of the rings

@@ -15,34 +15,36 @@ logger = logging.getLogger(__name__)
 
 
 class ClusterList:
-    
+
     def __init__(self, start_index):
         self.percent = dict()
         self.start_index = start_index  # 0 or 1
         self.total_traj = 0
 
     def get_label(self, k):
-        return "{0} ({1}%)".format(k + self.start_index, self.percent[k]) if (k in self.percent) else ""
+        if k in self.percent:
+            return "{0} ({1}%)".format(k + self.start_index, self.percent[k])
+        return ""
 
     def get_reader(self):
         return ClusterListReader(self)
-    
+
     def clear(self):
         self.percent.clear()
         self.total_traj = 0
-        
-    
+
+
 class ClusterListReader:
 
     def __init__(self, clist):
         self.clist = clist
-    
+
     def read(self, filename):
         self.clist.clear()
-        
+
         total_traj = 0
         holder = dict()
-        
+
         with open(filename, "rt") as f:
             lines = f.read().splitlines()
             k = 0
@@ -57,12 +59,13 @@ class ClusterListReader:
                 if c >= 0:
                     total_traj += n
                 k += n
-        
+
         self.clist.total_traj = total_traj
         logger.debug("total trajectory count %d", total_traj)
-        
+
         for k, v in holder.items():
-            self.clist.percent[k] = percent = util.nearest_int((100.0*v) / total_traj)
+            self.clist.percent[k] = percent = \
+                util.nearest_int((100.0*v) / total_traj)
             logger.debug("trajectory %d: percentage %d", k, percent)
 
         return self.clist

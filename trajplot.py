@@ -14,13 +14,13 @@ import logging
 import os
 import sys
 import threading
-
-# Register a converter to avoid a warning message.
 from pandas.plotting import register_matplotlib_converters
-register_matplotlib_converters()
 
 import hysplitplot
 
+
+# Register a converter to avoid a warning message.
+register_matplotlib_converters()
 
 logger = logging.getLogger(__name__)
 the_plot = None
@@ -51,19 +51,19 @@ def print_usage():
    -s[Symbol at trajectory origin: 0-no (1)-yes]'
    -v[Vertical: 0-pressure (1)-agl, 2-theta 3-meteo 4-none]'
    -z[Zoom factor:  0-least zoom, (50), 100-most zoom]'
-   
+
    --debug                      print debug messages
    --interactive                show an interactive plot
    --more-formats=f1[,f2,...]   specify one or more additional output format(s); f1 = jpg, pdf, png, tif, etc.
    --source-time-zone           show local time at the source location
    --street-map[=n]             show street map in the background; n = 0 or 1.
-   --time-zone=tz               show local time at a time zone; tz = US/Eastern, US/Central, etc. 
-   
+   --time-zone=tz               show local time at a time zone; tz = US/Eastern, US/Central, etc.
+
  NOTE: leave no space between option and value""")
 
 
 def refresh_overlay(event):
-    the_plot.on_update_plot_extent()    
+    the_plot.on_update_plot_extent()
 
     # next on_draw() should not call this.
     global call_refresh_overlay
@@ -82,8 +82,8 @@ def delayed_refresh_overlay(event):
         the_timer.start()
     else:
         refresh_overlay(event)
-    
-    
+
+
 def on_draw(event):
     global call_refresh_overlay
     if call_refresh_overlay:
@@ -95,9 +95,11 @@ def on_draw(event):
 
 def on_resize(event):
     logger.debug("on_resize: event %s", event)
-    logger.debug("canvas width %d, height %d (pixel)", event.width, event.height)
+    logger.debug("canvas width %d, height %d (pixel)", event.width,
+                 event.height)
 
-    # Important to call canvas.draw() here to get spines of the initial plot right.
+    # Important to call canvas.draw() here to get spines of the initial
+    # plot right.
     event.canvas.draw()
 
 
@@ -113,7 +115,7 @@ def main():
     logger.info("Started Trajectory Drawing")
     hysplitplot.print_version()
 
-    the_plot.draw({"resize_event" : on_resize, "draw_event": on_draw})
+    the_plot.draw({"resize_event": on_resize, "draw_event": on_draw})
 
     return 0
 
@@ -124,8 +126,11 @@ if __name__ == "__main__":
         sys.exit(1)
     else:
         if "SHAPE_RESTORE_SHX" not in os.environ:
-            # when reading a shapefile and its corresponding shx file is missing,
-            # automatically generate the missing file.
-            os.environ['SHAPE_RESTORE_SHX']='YES'
-        log_level = logging.DEBUG if sys.argv.count("--debug") > 0 else logging.INFO
+            # when reading a shapefile and its corresponding shx file is
+            # missing, automatically generate the missing file.
+            os.environ['SHAPE_RESTORE_SHX'] = 'YES'
+        if sys.argv.count("--debug") > 0:
+            log_level = logging.DEBUG
+        else:
+            log_level = logging.INFO
         hysplitplot.run(main, "TRAJPLOT", log_level=log_level)

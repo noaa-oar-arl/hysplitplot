@@ -14,13 +14,13 @@ import logging
 import os
 import sys
 import threading
-
-# Register a converter to avoid a warning message.
 from pandas.plotting import register_matplotlib_converters
-register_matplotlib_converters()
 
 import hysplitplot
 
+
+# Register a converter to avoid a warning message.
+register_matplotlib_converters()
 
 logger = logging.getLogger(__name__)
 the_plot = None
@@ -36,7 +36,7 @@ def print_usage():
    +a[KML altitude mode: (0)-clampedToGround, 1-relativeToGround]
    -A[KML options: 0-none 1-KML with no extra overlays]
    -b[Bottom display level: (0) m]
-   -c[Contours: (0)-dyn/exp 1-fix/exp 2-dyn/lin 3-fix/lin 4-set 50-0,interval 10 51-1,interval 10] 
+   -c[Contours: (0)-dyn/exp 1-fix/exp 2-dyn/lin 3-fix/lin 4-set 50-0,interval 10 51-1,interval 10]
    -d[Display: (1)-by level, 2-levels averaged]
    -e[Exposure units flag: (0)-concentrations, 1-exposure, 2-chemical threshold,
                                  3-hypothetical volcanic ash, 4-mass loading]
@@ -44,7 +44,7 @@ def print_usage():
    -g[Circle overlay: ( )-auto, #circ(4), #circ:dist_km]
    -h[Hold map at center lat-lon: (source point), lat:lon]
    -i[Input file name: (cdump)]
-   -j[Graphics map background file name: (arlmap) or shapefiles.<(txt)|process suffix>]]
+   -j[Graphics map background file name: (arlmap) or shapefiles.<(txt)|process suffix>]
    -k[Kolor: 0-B&W, (1)-Color, 2-No Lines Color, 3-No Lines B&W]
    -l[Label options: ascii code, (73)-open star]
    +l[Use THIS IS A TEST label: (0)-no, 1-yes]
@@ -72,19 +72,20 @@ def print_usage():
    -5[Use -o prefix name for output kml file when -a=3 or 4: (0)-no, 1-yes]
    -8[Create map(s) even if all values zero: (0)-no, 1-yes]
    -9[Force sample start time label to start of release: (0)-no, 1-yes]
-   
+
    --debug                      print debug messages
    --interactive                show an interactive plot
-   --more-formats=f1[,f2,...]   specify one or more additional output format(s); f1 = jpg, pdf, png, tif, etc.
+   --more-formats=f1[,f2,...]   specify one or more additional output format(s)
+                                where f1 = jpg, pdf, png, tif, etc.
    --source-time-zone           show local time at the source location
    --street-map[=n]             show street map in the background; n = 0 or 1.
-   --time-zone=tz               show local time at a time zone; tz = US/Eastern, US/Central, etc. 
-   
+   --time-zone=tz               show local time at a time zone; tz = US/Eastern, US/Central, etc.
+
  NOTE: leave no space between option and value""")
 
 
 def refresh_overlay(event):
-    the_plot.on_update_plot_extent()    
+    the_plot.on_update_plot_extent()
 
     # next on_draw() should not call this.
     global call_refresh_overlay
@@ -102,9 +103,9 @@ def delayed_refresh_overlay(event):
                                     args=(event,))
         the_timer.start()
     else:
-        refresh_overlay(event)  
-    
-    
+        refresh_overlay(event)
+
+
 def on_draw(event):
     global call_refresh_overlay
     if call_refresh_overlay:
@@ -116,11 +117,13 @@ def on_draw(event):
 
 def on_resize(event):
     logger.debug("on_resize: event %s", event)
-    logger.debug("canvas width %d, height %d (pixel)", event.width, event.height)
+    logger.debug("canvas width %d, height %d (pixel)", event.width,
+                 event.height)
 
-    # Important to call canvas.draw() here to get spines of the initial plot right.
+    # Important to call canvas.draw() here to get spines of the initial
+    # plot right.
     event.canvas.draw()
-    
+
 
 def main():
     global the_plot
@@ -134,7 +137,7 @@ def main():
     logger.info("Started Concentration Drawing")
     hysplitplot.print_version()
 
-    the_plot.draw({"resize_event" : on_resize, "draw_event": on_draw})
+    the_plot.draw({"resize_event": on_resize, "draw_event": on_draw})
     logger.info("Complete Concplot: {}".format(the_plot.get_plot_count_str()))
 
     return 0
@@ -146,8 +149,11 @@ if __name__ == "__main__":
         sys.exit(1)
     else:
         if "SHAPE_RESTORE_SHX" not in os.environ:
-            # when reading a shapefile and its corresponding shx file is missing,
-            # automatically generate the missing file.
-            os.environ['SHAPE_RESTORE_SHX']='YES'
-        log_level = logging.DEBUG if sys.argv.count("--debug") > 0 else logging.INFO
+            # when reading a shapefile and its corresponding shx file is
+            # missing, automatically generate the missing file.
+            os.environ['SHAPE_RESTORE_SHX'] = 'YES'
+        if sys.argv.count("--debug") > 0:
+            log_level = logging.DEBUG
+        else:
+            log_level = logging.INFO
         hysplitplot.run(main, "CONCPLOT", log_level=log_level)

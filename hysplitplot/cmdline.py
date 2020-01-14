@@ -27,7 +27,7 @@ class CommandLineArguments:
         """
         self.args = dict()
         self.unprocessed_args = []
-        if args != None:
+        if args is not None:
             self.add(args)
 
     def clear(self):
@@ -55,12 +55,14 @@ class CommandLineArguments:
                         opt = arg
                         val = None
                         self.args[opt] = val
-                    logger.debug("adding command-line argument %s as %s -> %s", arg, opt, val)
+                    logger.debug("adding command-line argument %s as %s -> %s",
+                                 arg, opt, val)
                 elif arg[0] == "+" or arg[0] == "-":
                     opt = arg[:2]
                     val = arg[2:]
                     self.args[opt] = val
-                    logger.debug("adding command-line argument %s as %s -> %s", arg, opt, val)
+                    logger.debug("adding command-line argument %s as %s -> %s",
+                                 arg, opt, val)
                 else:
                     self.unprocessed_args.append(arg)
             else:
@@ -79,7 +81,8 @@ class CommandLineArguments:
         """Returns an option value.
 
         :param option: name of an option, e.g., -a.
-        :return: None if the option is not found. Otherwise, the option value as string.
+        :return: None if the option is not found. Otherwise, the option
+                 value as string.
         """
         if isinstance(option, list):
             for opt in option:
@@ -97,7 +100,7 @@ class CommandLineArguments:
         :return: a string.
         """
         val = self.get_value(option)
-        return default_value if (val == None or (not val)) else val
+        return default_value if (val is None or (not val)) else val
 
     def get_integer_value(self, option, default_value):
         """Returns an option value as integer.
@@ -107,13 +110,14 @@ class CommandLineArguments:
         :return: an integer.
         """
         val = self.get_value(option)
-        if (val == None or (not val)):
+        if (val is None or (not val)):
             return default_value
         else:
             try:
                 return int(val)
             except ValueError:
-                logger.error("ignored non-integer value %s for command-line option %s", val, option)
+                logger.error("ignored non-integer value %s for command-line "
+                             "option %s", val, option)
                 return default_value
 
     def get_float_value(self, option, default_value):
@@ -124,31 +128,34 @@ class CommandLineArguments:
         :return: a floating-point number.
         """
         val = self.get_value(option)
-        if (val == None or (not val)):
+        if (val is None or (not val)):
             return default_value
         else:
             try:
                 return float(val)
             except ValueError:
-                logger.error("ignored non-float value %s for command-line option %s", val, option)
+                logger.error("ignored non-float value %s for command-line "
+                             "option %s", val, option)
                 return default_value
 
     def get_boolean_value(self, option, default_value):
         """Returns an option value as boolean.
 
-        The option value is first converted to an integer. If the integer is equal to or less
-        than 0, False is returned. Otherwise, True is returned.
+        The option value is first converted to an integer. If the integer is
+        equal to or less than 0, False is returned.  Otherwise, True is
+        returned.
 
         :param option: name of an option.
         :param default_value: value to be returned if the option is not found.
         :return: an integer.
         """
         val = self.get_value(option)
-        if (val == None or (not val)):
+        if (val is None or (not val)):
             return default_value
         else:
             try:
                 return util.convert_int_to_bool(val)
             except ValueError:
-                logger.error("ignored non-boolean value %s for command-line option %s", val, option)
+                logger.error("ignored non-boolean value %s for command-line "
+                             "option %s", val, option)
                 return default_value

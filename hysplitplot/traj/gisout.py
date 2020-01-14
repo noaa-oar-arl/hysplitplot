@@ -19,9 +19,10 @@ logger = logging.getLogger(__name__)
 
 
 class GISFileWriterFactory:
-    
+
     @staticmethod
-    def create_instance(selector, height_unit=HeightUnit.METERS, time_zone=None):
+    def create_instance(selector, height_unit=HeightUnit.METERS,
+                        time_zone=None):
         if selector == const.GISOutput.GENERATE_POINTS:
             return PointsGenerateFileWriter(time_zone)
         elif selector == const.GISOutput.GENERATE_LINES:
@@ -36,7 +37,7 @@ class GISFileWriterFactory:
 
 
 class AbstractGISFileWriter(ABC):
-    
+
     def __init__(self, time_zone=None):
         self.output_suffix = "ps"           # for backward compatibility
         self.output_name = "trajplot.ps"    # for backward compatibility
@@ -49,16 +50,16 @@ class AbstractGISFileWriter(ABC):
 
 
 class NullGISFileWriter(AbstractGISFileWriter):
-    
+
     def __init__(self, time_zone=None):
         super(NullGISFileWriter, self).__init__(time_zone)
 
     def write(self, file_no, plot_data):
         pass
-    
+
 
 class GenerateAttributeFileWriter:
-    
+
     @staticmethod
     def write(filename, plot_data, time_zone=None):
         logger.info("Creating file %s", filename)
@@ -66,22 +67,26 @@ class GenerateAttributeFileWriter:
             f.write("#TRAJNUM,YYYYMMDD,TIME,LEVEL\n")
             for k, t in enumerate(plot_data.trajectories):
                 for j in range(len(t.longitudes)):
-                    dt = t.datetimes[j] if time_zone is None else t.datetimes[j].astimezone(time_zone)
-                    f.write("{0:6d},{1:4d}{2:02d}{3:02d},{4:02d}{5:02d},{6:8d}.\n".format(
-                        (k+1)*1000 + j,
-                        dt.year,
-                        dt.month,
-                        dt.day,
-                        dt.hour,
-                        dt.minute,
-                        int(t.heights[j])))
+                    if time_zone is None:
+                        dt = t.datetimes[j]
+                    else:
+                        dt = t.datetimes[j].astimezone(time_zone)
+                    f.write("{0:6d},{1:4d}{2:02d}{3:02d},{4:02d}{5:02d},"
+                            "{6:8d}.\n".format(
+                                (k+1)*1000 + j,
+                                dt.year,
+                                dt.month,
+                                dt.day,
+                                dt.hour,
+                                dt.minute,
+                                int(t.heights[j])))
 
 
 class PointsGenerateFileWriter(AbstractGISFileWriter):
-    
+
     def __init__(self, time_zone=None):
         super(PointsGenerateFileWriter, self).__init__(time_zone)
-    
+
     def write(self, file_no, plot_data):
         gisout = "GIS_traj_{0}_{1:02d}.txt".format(self.output_suffix, file_no)
         logger.info("Creating file %s", gisout)
@@ -94,16 +99,16 @@ class PointsGenerateFileWriter(AbstractGISFileWriter):
                         t.latitudes[j],
                         int(t.heights[j])))
             f.write("END\n")
-            
+
         gisatt = "GIS_traj_{0}_{1:02d}.att".format(self.output_suffix, file_no)
         GenerateAttributeFileWriter.write(gisatt, plot_data, self.time_zone)
 
 
 class LinesGenerateFileWriter(AbstractGISFileWriter):
-    
+
     def __init__(self, time_zone=None):
         super(LinesGenerateFileWriter, self).__init__(time_zone)
-    
+
     def write(self, file_no, plot_data):
         gisout = "GIS_traj_{0}_{1:02d}.txt".format(self.output_suffix, file_no)
         logger.info("Creating file %s", gisout)
@@ -119,38 +124,39 @@ class LinesGenerateFileWriter(AbstractGISFileWriter):
                         t.latitudes[j]))
                 f.write("END\n")
             f.write("END\n")
-            
+
         gisatt = "GIS_traj_{0}_{1:02d}.att".format(self.output_suffix, file_no)
         GenerateAttributeFileWriter.write(gisatt, plot_data, self.time_zone)
 
 
 class KMLWriter(AbstractGISFileWriter):
-    
+
     def __init__(self, height_unit=HeightUnit.METERS, time_zone=None):
         super(KMLWriter, self).__init__(time_zone)
         self.height_unit = height_unit
-    
+
     @staticmethod
     def make_filename(output_name, output_suffix, file_no):
-        if output_name.startswith("trajplot.") or output_name.startswith("trajplot "):
+        if output_name.startswith("trajplot.") \
+                or output_name.startswith("trajplot "):
             return "HYSPLITtraj_{0}_{1:02d}.kml".format(output_suffix, file_no)
         else:
             k = output_name.find(".")
             if k == -1:
                 k = output_name.find(" ")
-            
+
             name = output_name if (k == -1) else output_name[0:k]
             return "{0}_{1:02d}.kml".format(name, file_no)
-    
+
     @staticmethod
     def _get_timestamp_str(dt, time_zone=None):
         t = dt if time_zone is None else dt.astimezone(time_zone)
         return t.strftime("%m/%d/%Y %H%M %Z")
-    
+
     @staticmethod
     def _get_alt_mode(t):
         return "absolute" if t.has_terrain_profile() else "relativeToGround"
-    
+
     def _get_level_type(self, t):
         if self.height_unit == HeightUnit.METERS:
             return "m AMSL" if t.has_terrain_profile() else "m AGL"
@@ -160,25 +166,29 @@ class KMLWriter(AbstractGISFileWriter):
             return "AMSL" if t.has_terrain_profile() else "AGL"
 
     def write(self, file_no, plot_data):
-        file_name = self.make_filename(self.output_name, self.output_suffix, file_no)
-        
+        file_name = self.make_filename(self.output_name,
+                                       self.output_suffix,
+                                       file_no)
+
         logger.info("Creating file %s", file_name)
         with open(file_name, "wt") as f:
             self._write_preamble(f, plot_data)
-            
-            if self.kml_option != const.KMLOption.NO_EXTRA_OVERLAYS and self.kml_option != const.KMLOption.BOTH_1_AND_2:
+
+            if self.kml_option != const.KMLOption.NO_EXTRA_OVERLAYS \
+                    and self.kml_option != const.KMLOption.BOTH_1_AND_2:
                 self._write_overlay(f)
 
             for t_idx, t in enumerate(plot_data.trajectories):
                 self._write_trajectory(f, t, t_idx)
 
             self._write_postamble(f)
-    
+
     def _write_preamble(self, f, plot_data):
         t = plot_data.trajectories[0]
         starting_loc = t.starting_loc
         starting_datetime = t.starting_datetime
-        timestamp_str = util.get_iso_8601_str(starting_datetime, self.time_zone)
+        timestamp_str = util.get_iso_8601_str(starting_datetime,
+                                              self.time_zone)
 
         f.write("""\
 <?xml version="1.0" encoding="UTF-8"?>
@@ -333,7 +343,7 @@ class KMLWriter(AbstractGISFileWriter):
       <description>http://weather.gov/gis/  Click on the link to access weather related overlays from the National Weather Service.</description>
     </Folder>\n""")
 
-	    # add a link to NOAA NESDIS kml smoke/fire data overlays
+        # add a link to NOAA NESDIS kml smoke/fire data overlays
         f.write("""\
     <Folder>
       <name>NOAA NESDIS kml Smoke/Fire Data</name>
@@ -341,7 +351,7 @@ class KMLWriter(AbstractGISFileWriter):
       <description>http://www.ssd.noaa.gov/PS/FIRE/hms.html  Click on the link to access wildfire smoke overlays from NOAA NESDIS.</description>
     </Folder>\n""")
 
-	    # add a link to EPA AIRnow kml Air Quality Index (AQI)
+        # add a link to EPA AIRnow kml Air Quality Index (AQI)
         f.write("""\
     <Folder>
       <name>EPA AIRNow Air Quality Index (AQI)</name>
@@ -350,12 +360,13 @@ class KMLWriter(AbstractGISFileWriter):
     </Folder>\n""")
 
     def _write_trajectory(self, f, t, t_index):
-        vc = model.VerticalCoordinateFactory.create_instance(VerticalCoordinate.ABOVE_GROUND_LEVEL, self.height_unit, t)
+        vc = model.VerticalCoordinateFactory.create_instance(
+            VerticalCoordinate.ABOVE_GROUND_LEVEL, self.height_unit, t)
         vc.make_vertical_coordinates()
         if (t.starting_loc is None) or (len(vc.values) == 0):
             logger.info("skip writing an empty trajectory")
             return
-        
+
         f.write("""\
     <Folder>
       <name>{0:.1f} {1} Trajectory</name>
@@ -364,12 +375,13 @@ class KMLWriter(AbstractGISFileWriter):
         <LookAt>
           <longitude>{2:.4f}</longitude>
           <latitude>{3:.4f}</latitude>\n""".format(
-    		t.starting_level,
+            t.starting_level,
             self._get_level_type(t),
-    		t.starting_loc[0],
-    		t.starting_loc[1]))
+            t.starting_loc[0],
+            t.starting_loc[1]))
 
-        timestamp_str = util.get_iso_8601_str(t.starting_datetime, self.time_zone)
+        timestamp_str = util.get_iso_8601_str(t.starting_datetime,
+                                              self.time_zone)
 
         f.write("""\
           <range>2000000.0</range>
@@ -382,7 +394,7 @@ class KMLWriter(AbstractGISFileWriter):
         </LookAt>\n""".format(
             timestamp_str,
             "relativeToSeaFloor"))
-        
+
         f.write("""\
         <name>{0:.1f} {1} Trajectory</name>
         <styleUrl>#traj{2:1d}</styleUrl>
@@ -392,7 +404,7 @@ class KMLWriter(AbstractGISFileWriter):
           <coordinates>\n""".format(
             t.starting_level,
             self._get_level_type(t),
-	        (t_index % 3) + 1,
+            (t_index % 3) + 1,
             self._get_alt_mode(t)))
 
         for k in range(len(t.longitudes)):
@@ -401,9 +413,10 @@ class KMLWriter(AbstractGISFileWriter):
                 t.longitudes[k],
                 t.latitudes[k],
                 vc.values[k]))
-        
-        starttime_str = self._get_timestamp_str(t.starting_datetime, self.time_zone)
-        
+
+        starttime_str = self._get_timestamp_str(t.starting_datetime,
+                                                self.time_zone)
+
         f.write("""\
           </coordinates>
         </LineString>
@@ -435,18 +448,19 @@ LAT: {1:.4f} LON: {2:.4f} Hght({3}): {4:.1f}
 
         if t.has_trajectory_stddevs():
             self._write_ellipses_of_uncertainty(f, t, t_index, vc)
-            
-        if self.kml_option != const.KMLOption.NO_ENDPOINTS and self.kml_option != const.KMLOption.BOTH_1_AND_2:
+
+        if self.kml_option != const.KMLOption.NO_ENDPOINTS \
+                and self.kml_option != const.KMLOption.BOTH_1_AND_2:
             self._write_endpts(f, t, t_index, vc)
 
         f.write("""\
     </Folder>\n""")
-        
+
     def _write_ellipses_of_uncertainty(self, f, t, t_index, vc):
         is_backward = False if t.parent.is_forward_calculation() else True
         npts_ellipse = 64
         delta_theta = 2*math.pi / npts_ellipse
-        
+
         f.write("""\
       <Folder>
         <name>Ellipses of uncertainty for center-of-mass trajectory</name>
@@ -455,7 +469,7 @@ LAT: {1:.4f} LON: {2:.4f} Hght({3}): {4:.1f}
         for k in range(len(t.longitudes)):
             if k == 0:
                 continue
-            
+
             f.write("""\
         <Placemark>
           <name>{0}</name>
@@ -473,20 +487,21 @@ LAT: {1:.4f} LON: {2:.4f} Hght({3}): {4:.1f}
                 t.longitudes[k],
                 t.latitudes[k]))
 
-            # Use the entire time period so that the ellipse would be initially visible with Google Earth.
+            # Use the entire time period so that the ellipse would be
+            # initially visible with Google Earth.
             if is_backward:
                 f.write("""\
             <end>{0}</end>
             <begin>{1}</begin>\n""".format(
                     util.get_iso_8601_str(t.datetimes[-1], self.time_zone),
-                    util.get_iso_8601_str(t.datetimes[ 0], self.time_zone)))
+                    util.get_iso_8601_str(t.datetimes[0], self.time_zone)))
             else:
                 f.write("""\
             <begin>{0}</begin>
             <end>{1}</end>\n""".format(
-                    util.get_iso_8601_str(t.datetimes[ 0], self.time_zone),
+                    util.get_iso_8601_str(t.datetimes[0], self.time_zone),
                     util.get_iso_8601_str(t.datetimes[-1], self.time_zone)))
-            
+
             f.write("""\
           </TimeSpan>
           <description><![CDATA[<pre>HYSPLIT {0:4.0f}. hour ellipse of uncertainty
@@ -494,7 +509,7 @@ LAT: {1:.4f} LON: {2:.4f} Hght({3}): {4:.1f}
 {1}
 LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
 </pre>]]></description>
-          <styleUrl>#traj{6:1d}a</styleUrl> 
+          <styleUrl>#traj{6:1d}a</styleUrl>
           <LineString>
             <extrude>1</extrude>
             <altitudeMode>{7}</altitudeMode>
@@ -518,18 +533,18 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
                     x,
                     y,
                     vc.values[k]))
-                       
+
             f.write("""\
             </coordinates>
           </LineString>
         </Placemark>\n""")
-            
+
         f.write("""\
       </Folder>\n""")
-        
+
     def _write_endpts(self, f, t, t_index, vc):
         is_backward = False if t.parent.is_forward_calculation() else True
-        
+
         f.write("""\
       <Folder>
         <name>Trajectory Endpoints</name>
@@ -538,7 +553,7 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
         for k in range(len(t.longitudes)):
             if k == 0:
                 continue
-            
+
             f.write("""\
         <Placemark>
           <name>{0}</name>
@@ -568,7 +583,7 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
             <end>{1}</end>\n""".format(
                     util.get_iso_8601_str(t.datetimes[k-1], self.time_zone),
                     util.get_iso_8601_str(t.datetimes[k], self.time_zone)))
-            
+
             f.write("""\
           </TimeSpan>
           <description><![CDATA[<pre>HYSPLIT {0:4.0f}. hour endpoint
@@ -576,7 +591,7 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
 {1}
 LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
 </pre>]]></description>
-          <styleUrl>#traj{6:1d}</styleUrl> 
+          <styleUrl>#traj{6:1d}</styleUrl>
           <Point>
             <altitudeMode>{7}</altitudeMode>
             <coordinates>{8:.4f},{9:.4f},{10:.1f}</coordinates>
@@ -597,26 +612,29 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
         f.write("""\
       </Folder>\n""")
 
- 
+
 class PartialKMLWriter(KMLWriter):
-    
+
     def __init__(self, height_unit=HeightUnit.METERS, time_zone=None):
         super(PartialKMLWriter, self).__init__(height_unit, time_zone)
-    
+
     @staticmethod
     def make_filename(output_name, output_suffix, file_no):
-        if output_name.startswith("trajplot.") or output_name.startswith("trajplot "):
+        if output_name.startswith("trajplot.") \
+                or output_name.startswith("trajplot "):
             return "HYSPLITtraj_{0}_{1:02d}.txt".format(output_suffix, file_no)
         else:
             k = output_name.find(".")
             if k == -1:
                 k = output_name.find(" ")
-            
+
             name = output_name if (k == -1) else output_name[0:k]
             return "{0}_{1:02d}.txt".format(name, file_no)
 
     def write(self, file_no, plot_data):
-        file_name = self.make_filename(self.output_name, self.output_suffix, file_no)
+        file_name = self.make_filename(self.output_name,
+                                       self.output_suffix,
+                                       file_no)
 
         logger.info("Creating file %s", file_name)
         with open(file_name, "wt") as f:
