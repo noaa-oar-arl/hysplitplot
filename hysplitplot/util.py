@@ -45,7 +45,7 @@ def run(mainFunction, programName, **kwargs):
     :param programName: program name.
     """
     log_level = kwargs.get("log_level", logging.INFO)
-    logger.setLevel(log_level)
+    logging.getLogger().setLevel(log_level)
 
     if log_level == logging.DEBUG:
         log_format = MESSAGE_FORMAT_DEBUG
