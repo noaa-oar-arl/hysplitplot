@@ -816,26 +816,29 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         if conc_grid.nonzero_conc_count > 0 and len(contour_levels) > 1:
             # draw filled contours
-            contour_set = axes.contourf(conc_grid.longitudes,
-                                        conc_grid.latitudes,
-                                        scaled_conc,
-                                        contour_levels,
-                                        colors=fill_colors,
-                                        extend="max",
-                                        transform=self.data_crs)
-            if self.settings.color != \
-                    const.ConcentrationPlotColor.COLOR_NO_LINES \
-                    and self.settings.color != \
-                    const.ConcentrationPlotColor.BW_NO_LINES:
-                # draw contour lines
-                line_colors = ["k"] * len(fill_colors)
-                axes.contour(conc_grid.longitudes,
-                             conc_grid.latitudes,
-                             scaled_conc,
-                             contour_levels,
-                             colors=line_colors,
-                             linewidths=0.25,
-                             transform=self.data_crs)
+            try:
+                contour_set = axes.contourf(conc_grid.longitudes,
+                                            conc_grid.latitudes,
+                                            scaled_conc,
+                                            contour_levels,
+                                            colors=fill_colors,
+                                            extend="max",
+                                            transform=self.data_crs)
+                if self.settings.color != \
+                        const.ConcentrationPlotColor.COLOR_NO_LINES \
+                        and self.settings.color != \
+                        const.ConcentrationPlotColor.BW_NO_LINES:
+                    # draw contour lines
+                    line_colors = ["k"] * len(fill_colors)
+                    axes.contour(conc_grid.longitudes,
+                                 conc_grid.latitudes,
+                                 scaled_conc,
+                                 contour_levels,
+                                 colors=line_colors,
+                                 linewidths=0.25,
+                                 transform=self.data_crs)
+            except ValueError as ex:
+                logger.error("cannot generate contours")
 
         if self.settings.show_max_conc == 1 \
                 or self.settings.show_max_conc == 3:

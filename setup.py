@@ -26,7 +26,7 @@ setup(
               "hysplitplot.toa"],
     python_requires="==3.7",
     install_requires=[
-        "hysplitdata==0.0.4",
+        "hysplitdata==0.0.*",  # omit the patch level
         "geopandas==0.4.1",
         "cartopy==0.17.0",
         "descartes==1.1.0",  # required by geopandas

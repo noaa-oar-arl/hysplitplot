@@ -787,24 +787,27 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
             contour_levels = [x + 0.5 for x in toa_data.contour_levels]
             contour_levels.insert(0, 0.5)
 
-            # draw filled contours
-            contour_set = axes.contourf(toa_data.longitudes,
-                                        toa_data.latitudes,
-                                        toa_data.data,
-                                        contour_levels,
-                                        colors=toa_data.fill_colors,
-                                        transform=self.data_crs)
-            if self.settings.color != const.ConcentrationPlotColor.COLOR_NO_LINES and \
-               self.settings.color != const.ConcentrationPlotColor.BW_NO_LINES:
-                # draw contour lines
-                line_colors = ["k"] * len(toa_data.fill_colors)
-                axes.contour(toa_data.longitudes,
-                             toa_data.latitudes,
-                             toa_data.data,
-                             contour_levels,
-                             colors=line_colors,
-                             linewidths=0.25,
-                             transform=self.data_crs)
+            try:
+                # draw filled contours
+                contour_set = axes.contourf(toa_data.longitudes,
+                                            toa_data.latitudes,
+                                            toa_data.data,
+                                            contour_levels,
+                                            colors=toa_data.fill_colors,
+                                            transform=self.data_crs)
+                if self.settings.color != const.ConcentrationPlotColor.COLOR_NO_LINES and \
+                        self.settings.color != const.ConcentrationPlotColor.BW_NO_LINES:
+                    # draw contour lines
+                    line_colors = ["k"] * len(toa_data.fill_colors)
+                    axes.contour(toa_data.longitudes,
+                                 toa_data.latitudes,
+                                 toa_data.data,
+                                 contour_levels,
+                                 colors=line_colors,
+                                 linewidths=0.25,
+                                 transform=self.data_crs)
+            except ValueError as ex:
+                logger.error("cannot generate contours")
 
         # place station locations
         self._draw_stations_if_exists(axes, self.settings)
