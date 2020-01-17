@@ -295,9 +295,8 @@ class AbstractPlot(ABC):
         if self.settings.noaa_logo:
             self._draw_noaa_logo(ax)
 
-    @staticmethod
-    def _make_labels_filename(output_suffix):
-        if output_suffix == "ps":
+    def _make_labels_filename(self, output_suffix):
+        if not self.settings.process_id_set:
             return "LABELS.CFG"
         return "LABELS." + output_suffix
 
@@ -309,9 +308,8 @@ class AbstractPlot(ABC):
             self.labels.get_reader().read(filename)
             self.labels.after_reading_file(self.settings)
 
-    @staticmethod
-    def _make_stationplot_filename(output_suffix):
-        if output_suffix == "ps":
+    def _make_stationplot_filename(self, output_suffix):
+        if not self.settings.process_id_set:
             return "STATIONPLOT.CFG"
         return "STATIONPLOT." + output_suffix
 
@@ -347,9 +345,8 @@ class AbstractPlot(ABC):
                           verticalalignment="center", clip_on=True,
                           transform=self.data_crs)
 
-    @staticmethod
-    def _make_maptext_filename(output_suffix):
-        if output_suffix == "ps":
+    def _make_maptext_filename(self, output_suffix):
+        if not self.settings.process_id_set:
             return "MAPTEXT.CFG"
         return "MAPTEXT." + output_suffix
 

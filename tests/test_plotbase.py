@@ -416,8 +416,13 @@ def test_AbstractPlot_on_update_plot_extent():
 
     
 def test_AbstractPlot__make_labels_filename():
-    assert plotbase.AbstractPlot._make_labels_filename("ps") == "LABELS.CFG"
-    assert plotbase.AbstractPlot._make_labels_filename("pdf") == "LABELS.pdf"
+    p = AbstractPlotTest()
+    assert p._make_labels_filename("ps") == "LABELS.CFG"
+    assert p._make_labels_filename("pdf") == "LABELS.CFG"
+
+    p.settings.process_id_set = True
+    assert p._make_labels_filename("ps") == "LABELS.ps"
+    assert p._make_labels_filename("pdf") == "LABELS.pdf"
 
 
 def test_AbstractPlot_read_custom_labels_if_exists():
@@ -437,8 +442,13 @@ def test_AbstractPlot_read_custom_labels_if_exists():
 
 
 def test_AbstractPlot__make_stationplot_filename():
-    assert plotbase.AbstractPlot._make_stationplot_filename("ps") == "STATIONPLOT.CFG"
-    assert plotbase.AbstractPlot._make_stationplot_filename("pdf") == "STATIONPLOT.pdf"
+    p = AbstractPlotTest()
+    assert p._make_stationplot_filename("ps") == "STATIONPLOT.CFG"
+    assert p._make_stationplot_filename("pdf") == "STATIONPLOT.CFG"
+
+    p.settings.process_id_set = True
+    assert p._make_stationplot_filename("ps") == "STATIONPLOT.ps"
+    assert p._make_stationplot_filename("pdf") == "STATIONPLOT.pdf"
 
 
 def test_AbstractPlot__draw_stations_if_exists():
@@ -484,8 +494,13 @@ def test_AbstractPlot__draw_datem():
 
 
 def test_AbstractPlot_make_maptext_filename():
-    assert plotbase.AbstractPlot._make_maptext_filename("ps") == "MAPTEXT.CFG"
-    assert plotbase.AbstractPlot._make_maptext_filename("pdf") == "MAPTEXT.pdf"
+    p = AbstractPlotTest()
+    assert p._make_maptext_filename("ps") == "MAPTEXT.CFG"
+    assert p._make_maptext_filename("pdf") == "MAPTEXT.CFG"
+
+    p.settings.process_id_set = True
+    assert p._make_maptext_filename("ps") == "MAPTEXT.ps"
+    assert p._make_maptext_filename("pdf") == "MAPTEXT.pdf"
 
 
 def test_AbstractPlot__draw_maptext_if_exists():
