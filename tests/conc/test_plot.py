@@ -1177,6 +1177,14 @@ def test_LabelledContourLevel___init__():
     o = plot.LabelledContourLevel(10.0, "USER1", 0.5, 0.6, 0.7)
     assert o.alpha == 1.0
 
+    o = plot.LabelledContourLevel()
+    assert o.level == 0.0
+    assert o.label == ""
+    assert o.r == 1.0
+    assert o.g == 1.0
+    assert o.b == 1.0
+    assert o.alpha == 1.0
+
 
 def test_LabelledContourLevel___repr__():
     o = plot.LabelledContourLevel(10.0, "USER1", 0.5, 0.6, 0.7)

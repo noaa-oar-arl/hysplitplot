@@ -16,6 +16,7 @@ def test_CommandLineArguments___init__():
 
     assert c.args is not None
     assert c.unprocessed_args is not None
+    assert c.ignore_arg_stopper is True
 
     args = ["-a0", "+b1", "filename"]
     c2 = CommandLineArguments(args)
@@ -40,9 +41,17 @@ def test_CommandLineArguments_add():
     c = CommandLineArguments()
 
     # processing stops at "-:"
+    c.ignore_arg_stopper = False
     c.add(["-a0", "-:", "+b1"])
     assert len(c.args) == 1
     assert len(c.unprocessed_args) == 0
+    c.clear()
+
+    c.ignore_arg_stopper = True
+    c.add(["-a0", "-:", "+b1"])
+    assert len(c.args) == 2
+    assert len(c.unprocessed_args) == 0
+    c.clear()
 
     # options start with "-" or "+"
     c.clear()

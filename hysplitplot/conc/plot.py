@@ -1313,7 +1313,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
 class LabelledContourLevel:
 
-    def __init__(self, level=0.0, label="NONAME", r=1.0, g=1.0, b=1.0,
+    def __init__(self, level=0.0, label="", r=1.0, g=1.0, b=1.0,
                  alpha=1.0):
         self.level = level
         self.label = label

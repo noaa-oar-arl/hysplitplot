@@ -27,6 +27,7 @@ class CommandLineArguments:
         """
         self.args = dict()
         self.unprocessed_args = []
+        self.ignore_arg_stopper = True  # ignore -:
         if args is not None:
             self.add(args)
 
@@ -44,7 +45,8 @@ class CommandLineArguments:
         for arg in args:
             if len(arg) >= 2:
                 if arg == "-:":
-                    break
+                    if not self.ignore_arg_stopper:
+                        break
                 elif arg[0:2] == "--":
                     if arg.count("=") > 0:
                         k = arg.index("=")
