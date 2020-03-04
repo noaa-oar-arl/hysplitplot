@@ -19,8 +19,8 @@ import sys
 
 from hysplitdata.const import VerticalCoordinate
 from hysplitdata.traj import model
-from hysplitplot import clist, cmdline, const, mapbox, mapproj, plotbase, \
-                        stnplot, streetmap, util
+from hysplitplot import clist, cmdline, const, mapbox, mapproj, \
+                        plotbase, stnplot, streetmap, timezone, util
 from hysplitplot.traj import gisout
 
 
@@ -220,13 +220,14 @@ class TrajectoryPlot(plotbase.AbstractPlot):
 
         self.plot_saver_list = self._create_plot_saver_list(self.settings)
 
+        time_zone_helper = timezone.TimeZoneHelper()
         if self.settings.time_zone_str is not None:
-            self.time_zone = self.lookup_time_zone(self.settings.time_zone_str)
+            self.time_zone = time_zone_helper.lookup_time_zone(self.settings.time_zone_str)
         elif self.settings.use_source_time_zone:
-            self.time_zone = self.get_time_zone_at(
+            self.time_zone = time_zone_helper.get_time_zone_at(
                 self.data_list[0].trajectories[0].starting_loc)
         elif self.labels.has("TZONE"):
-            self.time_zone = self.lookup_time_zone(self.labels.get("TZONE"))
+            self.time_zone = time_zone_helper.lookup_time_zone(self.labels.get("TZONE"))
 
     @staticmethod
     def has_terrain_profile(tdump_list):

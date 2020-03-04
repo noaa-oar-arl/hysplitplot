@@ -20,8 +20,8 @@ import sys
 from hysplitdata import io
 from hysplitdata.conc import model
 from hysplitdata.const import HeightUnit
-from hysplitplot import cmdline, util, const, datem, plotbase, mapbox, \
-                        mapproj, smooth, streetmap
+from hysplitplot import cmdline, const, datem, mapbox, mapproj, \
+                        plotbase, smooth, streetmap, timezone, util
 from hysplitplot.conc import helper, gisout, cntr
 from hysplitplot.conc.plot import ColorTableFactory, LabelledContourLevel
 from hysplitplot.toa import helper as thelper
@@ -444,12 +444,13 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         self.depo_sum = helper.DepositSumFactory.create_instance(
             self.settings.NDEP, self.cdump.has_ground_level_grid())
 
+        time_zone_helper = timezone.TimeZoneHelper()
         if self.settings.time_zone_str is not None:
-            self.time_zone = self.lookup_time_zone(self.settings.time_zone_str)
+            self.time_zone = time_zone_helper.lookup_time_zone(self.settings.time_zone_str)
         elif self.settings.use_source_time_zone:
-            self.time_zone = self.get_time_zone_at(self.cdump.release_locs[0])
+            self.time_zone = time_zone_helper.get_time_zone_at(self.cdump.release_locs[0])
         elif self.labels.has("TZONE"):
-            self.time_zone = self.lookup_time_zone(self.labels.get("TZONE"))
+            self.time_zone = time_zone_helper.lookup_time_zone(self.labels.get("TZONE"))
 
         if self.settings.QFILE is not None:
             if os.path.exists(self.settings.QFILE):

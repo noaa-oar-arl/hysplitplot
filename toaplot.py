@@ -113,6 +113,7 @@ def on_resize(event):
 def main():
     global the_plot
 
+    hysplitplot.print_version()
     the_plot = hysplitplot.TimeOfArrivalPlot()
 
     the_plot.merge_plot_settings(None, sys.argv[1:])
@@ -120,7 +121,6 @@ def main():
     the_plot.read_data_files()
 
     logger.info("Started Time-of-Arrival Drawing")
-    hysplitplot.print_version()
 
     the_plot.draw({"resize_event": on_resize, "draw_event": on_draw})
     logger.info("Complete Toaplot: {}".format(the_plot.get_plot_count_str()))

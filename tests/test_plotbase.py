@@ -307,7 +307,6 @@ def test_AbstractPlot___init__():
     assert hasattr(p, "background_maps")
     assert hasattr(p, "labels") and isinstance(p.labels, labels.LabelsConfig)
     assert hasattr(p, "time_zone")
-    assert hasattr(p, "time_zone_finder")
     assert hasattr(p, "street_map") and p.street_map is None
     assert hasattr(p, "logo_drawer")
     assert hasattr(p, "settings")
@@ -519,7 +518,7 @@ def test_AbstractPlot__draw_maptext_if_exists():
         raise pytest.fail("unexpected exception: {0}".format(ex))
  
 
-def test_TrajectoryPlot__draw_alt_text_boxes():
+def test_AbstractPlot__draw_alt_text_boxes():
     p = AbstractPlotTest()
     p.projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
     p.projection.corners_xy = [1.0, 500.0, 1.0, 500.0]
@@ -555,41 +554,6 @@ def test_AbstractPlot__draw_noaa_logo():
         plt.close(axes.figure)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
-
-
-def test_AbstractPlot_lookup_time_zone():
-    p = AbstractPlotTest()
-    
-    tz = p.lookup_time_zone("US/Eastern")
-    assert tz is not None
-    assert tz.zone == "US/Eastern"
-    
-    tz = p.lookup_time_zone("Deep/InTheSpace")
-    assert tz is None
-    
-    
-def test_AbstractPlot_get_time_zone_at():
-    p = AbstractPlotTest()
-    
-    tz = p.get_time_zone_at((-73.9620, 40.7874))
-    assert tz is not None
-    assert tz.zone == "America/New_York"
-    
-    tz = p.get_time_zone_at((-157.9791, 21.4862))
-    assert tz is not None
-    assert tz.zone == "Pacific/Honolulu"
-    
-    # Somewhere in the Pacific Ocean
-    tz = p.get_time_zone_at((-128.6962, 6.8179))
-    assert tz is not None
-    assert tz.zone == "Etc/GMT+9"
-    # If "UTC" is returned, you will need to install a timezone database with oceans included.
-    
-    # somewhere in the Philippine Sea
-    tz = p.get_time_zone_at((133.0391, 14.5434))
-    assert tz is not None
-    assert tz.zone == "Etc/GMT-9"
-    # If "UTC" is returned, you will need to install a timezone database with oceans included.
 
 
 def test_AbstractPlot_adjust_for_time_zone():

@@ -128,6 +128,7 @@ def on_resize(event):
 def main():
     global the_plot
 
+    hysplitplot.print_version()
     the_plot = hysplitplot.ConcentrationPlot()
 
     the_plot.merge_plot_settings(None, sys.argv[1:])
@@ -135,7 +136,6 @@ def main():
     the_plot.read_data_files()
 
     logger.info("Started Concentration Drawing")
-    hysplitplot.print_version()
 
     the_plot.draw({"resize_event": on_resize, "draw_event": on_draw})
     logger.info("Complete Concplot: {}".format(the_plot.get_plot_count_str()))

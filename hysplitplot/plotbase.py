@@ -11,12 +11,10 @@ import cartopy.crs
 import logging
 import matplotlib.patches
 import os
-import pytz
-from timezonefinder import TimezoneFinder
 
 from hysplitdata.const import HeightUnit
-from hysplitplot import cmdline, const, labels, logo, multipage, stnplot, \
-                        streetmap, util
+from hysplitplot import cmdline, const, labels, logo, multipage, \
+                        stnplot, streetmap, util
 
 
 logger = logging.getLogger(__name__)
@@ -219,7 +217,6 @@ class AbstractPlot(ABC):
         self.background_maps = []
         self.labels = labels.LabelsConfig()
         self.time_zone = None  # None implies UTC.
-        self.time_zone_finder = TimezoneFinder()
         self.street_map = None
         self.logo_drawer = None
         self.settings = None    # child class should create an instance.
@@ -413,38 +410,6 @@ class AbstractPlot(ABC):
         else:
             self.logo_drawer.clear()
         self.logo_drawer.draw(axes, box_axes)
-
-    def lookup_time_zone(self, time_zone_name):
-        time_zone = None
-        try:
-            time_zone = pytz.timezone(time_zone_name)
-        except pytz.exceptions.UnknownTimeZoneError as ex:
-            logger.error("unrecognized time zone {}".format(time_zone_name))
-            pass
-
-        return time_zone
-
-    def get_time_zone_at(self, lonlat):
-        lon, lat = lonlat
-
-        time_zone = None
-        time_zone_name = None
-        try:
-            finder = self.time_zone_finder
-            time_zone_name = finder.timezone_at(lng=lon, lat=lat)
-            if time_zone_name is None:
-                time_zone_name = finder.closest_timezone_at(lng=lon, lat=lat)
-            if time_zone_name is None:
-                logger.warning("cannot find time zone for lon %f, lat %f: "
-                               "using UTC", lon, lat)
-
-            time_zone = self.lookup_time_zone(time_zone_name)
-        except ValueError as ex:
-            logger.error("cannot find time zone for "
-                         "lon {}, lat {}: {}".format(lon, lat, ex))
-            pass
-
-        return pytz.utc if time_zone is None else time_zone
 
     def adjust_for_time_zone(self, dt):
         return dt if self.time_zone is None else dt.astimezone(self.time_zone)
