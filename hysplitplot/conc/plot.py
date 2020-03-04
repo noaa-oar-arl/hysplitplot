@@ -457,7 +457,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         elif self.settings.use_source_time_zone:
             self.time_zone = self.get_time_zone_at(self.cdump.release_locs[0])
         elif self.labels.has("TZONE"):
-            self.time_zone = pytz.timezone(self.labels.get("TZONE"))
+            self.time_zone = self.lookup_time_zone(self.labels.get("TZONE"))
 
         if self.settings.QFILE is not None:
             if os.path.exists(self.settings.QFILE):
@@ -523,13 +523,13 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         # default values from labels.cfg
         if labels.has("ALTTD"):
             alttd = labels.get("ALTTD")
-            if alttd == "feet":
+            if alttd == "feet" or alttd == "ft":
                 self.settings.height_unit = HeightUnit.FEET
-            elif alttd == "meters":
+            elif alttd == "meters" or alttd == "m":
                 self.settings.height_unit = HeightUnit.METERS
             else:
                 raise Exception("ALTTD units must be meters or feet in "
-                                "labels.cfg or its equivalent file: {0}"
+                                "LABELS.CFG or its equivalent file: {0}"
                                 .format(alttd))
 
     @staticmethod

@@ -226,7 +226,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
             self.time_zone = self.get_time_zone_at(
                 self.data_list[0].trajectories[0].starting_loc)
         elif self.labels.has("TZONE"):
-            self.time_zone = pytz.timezone(self.labels.get("TZONE"))
+            self.time_zone = self.lookup_time_zone(self.labels.get("TZONE"))
 
     @staticmethod
     def has_terrain_profile(tdump_list):

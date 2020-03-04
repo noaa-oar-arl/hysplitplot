@@ -674,9 +674,19 @@ def test_ConcentrationPlot_update_height_unit():
     o.cfg["ALTTD"] = "feet"
     p.update_height_unit(o)
     assert p.settings.height_unit == HeightUnit.FEET
-
+    
+    # test with "ft"
+    o.cfg["ALTTD"] = "ft"
+    p.update_height_unit(o)
+    assert p.settings.height_unit == HeightUnit.FEET
+    
     # test with "meters"
     o.cfg["ALTTD"] = "meters"
+    p.update_height_unit(o)
+    assert p.settings.height_unit == HeightUnit.METERS
+    
+    # test with "m"
+    o.cfg["ALTTD"] = "m"
     p.update_height_unit(o)
     assert p.settings.height_unit == HeightUnit.METERS
 

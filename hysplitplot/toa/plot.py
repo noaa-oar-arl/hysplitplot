@@ -449,7 +449,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         elif self.settings.use_source_time_zone:
             self.time_zone = self.get_time_zone_at(self.cdump.release_locs[0])
         elif self.labels.has("TZONE"):
-            self.time_zone = pytz.timezone(self.labels.get("TZONE"))
+            self.time_zone = self.lookup_time_zone(self.labels.get("TZONE"))
 
         if self.settings.QFILE is not None:
             if os.path.exists(self.settings.QFILE):

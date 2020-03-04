@@ -218,7 +218,7 @@ class AbstractPlot(ABC):
         self.data_crs = crs if crs is not None else cartopy.crs.PlateCarree()
         self.background_maps = []
         self.labels = labels.LabelsConfig()
-        self.time_zone = None
+        self.time_zone = None  # None implies UTC.
         self.time_zone_finder = TimezoneFinder()
         self.street_map = None
         self.logo_drawer = None
