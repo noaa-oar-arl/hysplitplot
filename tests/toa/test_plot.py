@@ -550,32 +550,6 @@ def test_TimeOfArrivalPlot__normalize_settings(cdump):
     assert p.contour_labels is not None
     assert p.contour_labels == ["NONE", "NONE", "NONE", "NONE", "NONE"]
 
-
-def test_TimeOfArrivalPlot_update_height_unit():
-    p = plot.TimeOfArrivalPlot()
-    o = labels.LabelsConfig()
-    
-    # check the default
-    assert p.settings.height_unit == HeightUnit.METERS
-    
-    # test with "feet"
-    o.cfg["ALTTD"] = "feet"
-    p.update_height_unit(o)
-    assert p.settings.height_unit == HeightUnit.FEET
-
-    # test with "meters"
-    o.cfg["ALTTD"] = "meters"
-    p.update_height_unit(o)
-    assert p.settings.height_unit == HeightUnit.METERS
-
-    # test with "kg"
-    o.cfg["ALTTD"] = "kg"
-    try:
-        p.update_height_unit(o)
-        pytest.fail("expected an exception")
-    except Exception as ex:
-        assert str(ex).startswith("ALTTD units must be meters or feet")
-
         
 def test_TimeOfArrivalPlot__fix_map_color():
     p = plot.TimeOfArrivalPlot()

@@ -305,6 +305,19 @@ class AbstractPlot(ABC):
             self.labels.get_reader().read(filename)
             self.labels.after_reading_file(self.settings)
 
+    def update_height_unit(self, labels):
+        # default values from labels.cfg
+        if labels.has("ALTTD"):
+            alttd = labels.get("ALTTD")
+            if alttd == "feet" or alttd == "ft":
+                self.settings.height_unit = HeightUnit.FEET
+            elif alttd == "meters" or alttd == "m":
+                self.settings.height_unit = HeightUnit.METERS
+            else:
+                raise Exception("ALTTD units must be meters or feet in "
+                                "LABELS.CFG or its equivalent file: {0}"
+                                .format(alttd))
+
     def _make_stationplot_filename(self, output_suffix):
         if not self.settings.process_id_set:
             return "STATIONPLOT.CFG"

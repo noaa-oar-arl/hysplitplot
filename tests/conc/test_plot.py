@@ -662,42 +662,6 @@ def test_ConcentrationPlot__normalize_settings(cdump2):
     p._normalize_settings(cdump2)
     assert s.KMAP == const.ConcentrationMapType.MASS_LOADING #
 
-
-def test_ConcentrationPlot_update_height_unit():
-    p = plot.ConcentrationPlot()
-    o = labels.LabelsConfig()
-    
-    # check the default
-    assert p.settings.height_unit == HeightUnit.METERS
-    
-    # test with "feet"
-    o.cfg["ALTTD"] = "feet"
-    p.update_height_unit(o)
-    assert p.settings.height_unit == HeightUnit.FEET
-    
-    # test with "ft"
-    o.cfg["ALTTD"] = "ft"
-    p.update_height_unit(o)
-    assert p.settings.height_unit == HeightUnit.FEET
-    
-    # test with "meters"
-    o.cfg["ALTTD"] = "meters"
-    p.update_height_unit(o)
-    assert p.settings.height_unit == HeightUnit.METERS
-    
-    # test with "m"
-    o.cfg["ALTTD"] = "m"
-    p.update_height_unit(o)
-    assert p.settings.height_unit == HeightUnit.METERS
-
-    # test with "kg"
-    o.cfg["ALTTD"] = "kg"
-    try:
-        p.update_height_unit(o)
-        pytest.fail("expected an exception")
-    except Exception as ex:
-        assert str(ex).startswith("ALTTD units must be meters or feet")
-
         
 def test_ConcentrationPlot__fix_map_color():
     p = plot.ConcentrationPlot()

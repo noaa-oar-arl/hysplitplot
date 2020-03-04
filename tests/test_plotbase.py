@@ -437,7 +437,42 @@ def test_AbstractPlot_read_custom_labels_if_exists():
 
     p.read_custom_labels_if_exists("data/LABELS.CFG")
     assert p.labels.get("TITLE") == "Sagebrush Exp #5"
+  
+
+def test_AbstractPlot_update_height_unit():
+    p = AbstractPlotTest()
+    o = labels.LabelsConfig()
     
+    # check the default
+    assert p.settings.height_unit == HeightUnit.METERS
+    
+    # test with "feet"
+    o.cfg["ALTTD"] = "feet"
+    p.update_height_unit(o)
+    assert p.settings.height_unit == HeightUnit.FEET
+    
+    # test with "ft"
+    o.cfg["ALTTD"] = "ft"
+    p.update_height_unit(o)
+    assert p.settings.height_unit == HeightUnit.FEET
+    
+    # test with "meters"
+    o.cfg["ALTTD"] = "meters"
+    p.update_height_unit(o)
+    assert p.settings.height_unit == HeightUnit.METERS
+    
+    # test with "m"
+    o.cfg["ALTTD"] = "m"
+    p.update_height_unit(o)
+    assert p.settings.height_unit == HeightUnit.METERS
+
+    # test with "kg"
+    o.cfg["ALTTD"] = "kg"
+    try:
+        p.update_height_unit(o)
+        pytest.fail("expected an exception")
+    except Exception as ex:
+        assert str(ex).startswith("ALTTD units must be meters or feet")
 
 
 def test_AbstractPlot__make_stationplot_filename():

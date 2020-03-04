@@ -520,19 +520,6 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             else:
                 self.contour_labels = [""] * self.settings.contour_level_count
 
-    def update_height_unit(self, labels):
-        # default values from labels.cfg
-        if labels.has("ALTTD"):
-            alttd = labels.get("ALTTD")
-            if alttd == "feet" or alttd == "ft":
-                self.settings.height_unit = HeightUnit.FEET
-            elif alttd == "meters" or alttd == "m":
-                self.settings.height_unit = HeightUnit.METERS
-            else:
-                raise Exception("ALTTD units must be meters or feet in "
-                                "LABELS.CFG or its equivalent file: {0}"
-                                .format(alttd))
-
     @staticmethod
     def _fix_map_color(color, color_mode):
         if color_mode == const.ConcentrationPlotColor.BLACK_AND_WHITE or \
