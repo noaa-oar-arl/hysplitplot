@@ -46,13 +46,21 @@ class MapBox:
         lon, lat = lonlat
         if lon < 0.0:
             lon += 360.0
-        self._i = min(self.sz[0], util.nearest_int((lon - self.grid_corner[0])
-                                                   / self.grid_delta))
-        self._j = min(self.sz[1], util.nearest_int((lat - self.grid_corner[1])
-                                                   / self.grid_delta))
-        # count hits
-        self.hit_map[self._i, self._j] += 1
-        self.hit_count += 1
+        try:
+            i = min(self.sz[0] - 1,
+                    util.nearest_int((lon - self.grid_corner[0])
+                                     / self.grid_delta))
+            j = min(self.sz[1] - 1,
+                    util.nearest_int((lat - self.grid_corner[1])
+                                     / self.grid_delta))
+            # count hits
+            self.hit_map[i, j] += 1
+            self._i = i
+            self._j = j
+            self.hit_count += 1
+        except IndexError:
+            logger.error("out-of-bound mapbox index: lonlat (%f, %f)",
+                         lon, lat)
 
     def determine_plume_extent(self):
         self.plume_sz[1] = 0.0

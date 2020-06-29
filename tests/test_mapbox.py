@@ -54,6 +54,16 @@ def test_MapBox_add():
     assert mb.hit_map[240, 135] == 1
     assert mb.hit_count == 1
 
+    # Test a point near the longitude maximum.
+    mb.add((359.696, 45.3))
+
+    # hit at the nearest grid indices.
+    assert mb._i == 359
+    assert mb._j == 135
+    assert mb.hit_map[359, 135] == 1
+    assert mb.hit_count == 2
+
+
 def test_MapBox_determine_plume_extent():
     mb = mapbox.MapBox()
     mb.allocate()
