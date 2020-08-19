@@ -68,7 +68,10 @@ def run(mainFunction, programName, **kwargs):
     exitCode = mainFunction()
     logging.debug("exiting with code %d", exitCode)
 
-    sys.exit(exitCode)
+    exit_flag = kwargs.get("exit", True);
+    if exit_flag:
+        sys.exit(exitCode)
+    return exitCode
 
 
 def myzip(xlist, ylist):
