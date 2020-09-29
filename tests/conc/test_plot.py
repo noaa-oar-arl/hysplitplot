@@ -86,32 +86,12 @@ class AbstractColorTableTest(plot.AbstractColorTable):
 def test_ConcentrationPlotSettings___init__():
     s = plot.ConcentrationPlotSettings()
 
-    # base class
-    assert s.map_background == "../graphics/arlmap"
-    assert s.map_projection == 0
-    assert s.zoom_factor == 0.5
-    assert s.ring == False
-    assert s.ring_number == -1
-    assert s.ring_distance == 0.0
-    assert s.center_loc == [0.0, 0.0]
-    #assert s.output_filename == "trajplot.ps"
-    assert s.output_suffix == "ps"
-    #assert s.output_basename == "trajplot"
-    assert s.noaa_logo == False
-    assert s.lat_lon_label_interval_option == 1
-    assert s.lat_lon_label_interval == 1.0
-    assert s.frames_per_file == 0
-    assert s.interactive_mode == False
-    assert s.map_color == "#1f77b4"
-    assert s.station_marker != None
-    assert s.station_marker_color != None
-    assert s.station_marker_size > 0
-        
     assert s.input_file == "cdump"
     assert s.output_filename == "concplot.ps"
     assert s.output_basename == "concplot"
     
     assert s.pollutant_index == 1
+
     assert s.first_time_index == 1
     assert s.last_time_index == 9999
     assert s.time_index_step == 1
@@ -140,7 +120,13 @@ def test_ConcentrationPlotSettings___init__():
     assert s.color == const.ConcentrationPlotColor.COLOR
     assert s.gis_alt_mode == const.GISOutputAltitude.CLAMPED_TO_GROUND
     assert s.KMLOUT == 0
-    
+    assert s.ring == False
+    assert s.ring_number == -1
+    assert s.ring_distance == 0.0
+    assert s.center_loc == [0.0, 0.0]
+    assert s.gis_output == const.GISOutput.NONE
+    assert s.kml_option == const.KMLOption.NONE
+
     assert s.label_source == True
     assert s.source_label_color != None
     assert s.source_label_font_size > 0
@@ -154,15 +140,51 @@ def test_ConcentrationPlotSettings___init__():
     assert s.station_marker_color != None
     assert s.station_marker_size > 0
     assert s.max_contour_legend_count == 25
+    
 
 def test_ConcentrationPlotSettings_process_command_line_arguments():
     s = plot.ConcentrationPlotSettings()
 
+    # test -m and -M
+    s.map_projection = 0
+
+    s.process_command_line_arguments(["-m1"])
+    assert s.map_projection == 1
+    
+    s.process_command_line_arguments(["-M2"])
+    assert s.map_projection == 2
+    
     # test with few options processed by the base class.
     s.process_command_line_arguments(["-j../graphics/else", "-z10"])
     assert s.map_background == "../graphics/else"
     assert s.zoom_factor == 0.90
+
+    # test -a
+    s.gis_output = 0
+    s.process_command_line_arguments(["-a2"])
+    assert s.gis_output == 2
     
+    # test -A
+    s.kml_option = 0
+    s.process_command_line_arguments(["-A3"])
+    assert s.kml_option == 3
+
+    # test +a or +A
+    s.gis_alt_mode = 0
+    s.process_command_line_arguments(["+a1"])
+    assert s.gis_alt_mode == 1
+    
+    s.process_command_line_arguments(["+A0"])
+    assert s.gis_alt_mode == 0
+
+    # test -b or -B
+    s.LEVEL1 = None
+    s.process_command_line_arguments(["-b1"])
+    assert s.LEVEL1 == 1
+    
+    s.process_command_line_arguments(["-B2"])
+    assert s.LEVEL1 == 2   
+
     # test -c or -C
     s.contour_level_generator = 0
     s.process_command_line_arguments(["-c1"])
@@ -171,17 +193,71 @@ def test_ConcentrationPlotSettings_process_command_line_arguments():
     s.process_command_line_arguments(["-C2"])
     assert s.contour_level_generator == 2
 
+    # test -d or -D
+    s.KAVG = None
+    s.process_command_line_arguments(["-d1"])
+    assert s.KAVG == 1
+    
+    s.process_command_line_arguments(["-D2"])
+    assert s.KAVG == 2
+   
+    # test -e or -E
+    s.exposure_unit = None
+    s.process_command_line_arguments(["-e1"])
+    assert s.exposure_unit == 1
+    
+    s.process_command_line_arguments(["-E2"])
+    assert s.exposure_unit == 2
+ 
+    # test -f or -F
+    s.frames_per_file = 0
+    s.process_command_line_arguments(["-f2"])
+    assert s.frames_per_file == 2
+
+    s.process_command_line_arguments(["-F5"])
+    assert s.frames_per_file == 5
+
+    # test -g or -G
+    s.ring_number = 0
+    s.ring_distance = 0.0
+
+    s.process_command_line_arguments(["-g"])
+    assert s.ring_number == 4
+    assert s.ring_distance == 0.0
+
+    s.process_command_line_arguments(["-G9"])
+    assert s.ring_number == 9
+    assert s.ring_distance == 0.0
+
+    s.process_command_line_arguments(["-G5:5.5"])
+    assert s.ring_number == 5
+    assert s.ring_distance == 5.5
+
+    # test -h or -H
+    s.center_loc = [0.0, 0.0]
+
+    s.process_command_line_arguments(["-h"])
+    assert s.center_loc == [0.0, 0.0]
+
+    s.process_command_line_arguments(["-H12.3:45.6"])
+    assert s.center_loc == [45.6, 12.3]
+
+    s.process_command_line_arguments(["-h-112.3:-195.6"])
+    assert s.center_loc == [-180.0, -90.0]
+
+    s.process_command_line_arguments(["-H112.3:195.6"])
+    assert s.center_loc == [180.0, 90.0]
+
     # test -i or -I
     s.process_command_line_arguments(["-iINPUT"])
     assert s.input_file == "INPUT"
     
     s.process_command_line_arguments(["-ITEST_INPUT"])
     assert s.input_file == "TEST_INPUT"
-
-    # test -l
-    s.source_label = None
-    s.process_command_line_arguments(["-l72"])
-    assert s.source_label == "*"
+   
+    # input file override.
+    s.process_command_line_arguments(["-icdump", "cdump_two", "cdump_three"])
+    assert s.input_file == "cdump_three"
 
     # test -k or -K
     s.color = 0
@@ -190,11 +266,35 @@ def test_ConcentrationPlotSettings_process_command_line_arguments():
     
     s.process_command_line_arguments(["-K2"])
     assert s.color == 2
+  
+    # test -l
+    s.source_label = None
+    s.process_command_line_arguments(["-l72"])
+    assert s.source_label == "*"
     
     # test +l
     s.this_is_test = 0
     s.process_command_line_arguments(["+l1"])
     assert s.this_is_test == 1
+
+    # test -L
+    s.lat_lon_label_interval_option = 0
+    s.lat_lon_label_interval = 0
+
+    s.process_command_line_arguments(["-L1"])
+    assert s.lat_lon_label_interval_option == 1
+
+    s.process_command_line_arguments(["-L2:50"])
+    assert s.lat_lon_label_interval_option == 2
+    assert s.lat_lon_label_interval == 5.0
+          
+    # test +m or +M
+    s.show_max_conc = None
+    s.process_command_line_arguments(["+m1"])
+    assert s.show_max_conc == 1
+    
+    s.process_command_line_arguments(["+M2"])
+    assert s.show_max_conc == 2   
 
     # test -n or -N
     s.first_time_index = None
@@ -214,7 +314,15 @@ def test_ConcentrationPlotSettings_process_command_line_arguments():
     
     s.process_command_line_arguments(["-QNAME2"])
     assert s.QFILE == "NAME2"
+            
+    # test -r or -R
+    s.NDEP = None
+    s.process_command_line_arguments(["-r1"])
+    assert s.NDEP == 1
     
+    s.process_command_line_arguments(["-R2"])
+    assert s.NDEP == 2
+  
     # test -s or -S
     s.pollutant_index = None
     s.process_command_line_arguments(["-s1"])
@@ -222,14 +330,6 @@ def test_ConcentrationPlotSettings_process_command_line_arguments():
     
     s.process_command_line_arguments(["-s2"])
     assert s.pollutant_index == 1
-    
-    # test -b or -B
-    s.LEVEL1 = None
-    s.process_command_line_arguments(["-b1"])
-    assert s.LEVEL1 == 1
-    
-    s.process_command_line_arguments(["-B2"])
-    assert s.LEVEL1 == 2   
 
     # test -t or -T
     s.LEVEL1 = 0
@@ -239,39 +339,7 @@ def test_ConcentrationPlotSettings_process_command_line_arguments():
     
     s.process_command_line_arguments(["-T2"])
     assert s.LEVEL2 == 2   
-    
-    # test -e or -E
-    s.exposure_unit = None
-    s.process_command_line_arguments(["-e1"])
-    assert s.exposure_unit == 1
-    
-    s.process_command_line_arguments(["-E2"])
-    assert s.exposure_unit == 2
-        
-    # test -d or -D
-    s.KAVG = None
-    s.process_command_line_arguments(["-d1"])
-    assert s.KAVG == 1
-    
-    s.process_command_line_arguments(["-D2"])
-    assert s.KAVG == 2
-         
-    # test -r or -R
-    s.NDEP = None
-    s.process_command_line_arguments(["-r1"])
-    assert s.NDEP == 1
-    
-    s.process_command_line_arguments(["-R2"])
-    assert s.NDEP == 2
-          
-    # test +m or +M
-    s.show_max_conc = None
-    s.process_command_line_arguments(["+m1"])
-    assert s.show_max_conc == 1
-    
-    s.process_command_line_arguments(["+M2"])
-    assert s.show_max_conc == 2   
-    
+   
     # test -u or -U
     s.mass_unit = None
     s.mass_unit_by_user = False
@@ -284,7 +352,13 @@ def test_ConcentrationPlotSettings_process_command_line_arguments():
     s.process_command_line_arguments(["-Umg"])
     assert s.mass_unit == "mg"
     assert s.mass_unit_by_user == True
-    
+       
+    # test -v
+    s.process_command_line_arguments(["-v10E+2:USER1:100050200+10E+3:USER2:100070200"])
+    assert len(s.contour_levels) == 2
+    assert s.contour_level_count == 2
+    assert s.contour_level_generator == const.ContourLevelGenerator.USER_SPECIFIED
+ 
     # test -w or -W
     s.smoothing_distance = None
     s.process_command_line_arguments(["-w1"])
@@ -317,29 +391,11 @@ def test_ConcentrationPlotSettings_process_command_line_arguments():
     assert s.KHEMIN == 6
     assert s.IZRO == 7
     assert s.NSSLBL == 8
-    
-    # test -v
-    s.process_command_line_arguments(["-v10E+2:USER1:100050200+10E+3:USER2:100070200"])
-    assert len(s.contour_levels) == 2
-    assert s.contour_level_count == 2
-    assert s.contour_level_generator == const.ContourLevelGenerator.USER_SPECIFIED
 
-    # test +a or +A
-    s.gis_alt_mode = 0
-    s.process_command_line_arguments(["+a1"])
-    assert s.gis_alt_mode == 1
-    
-    s.process_command_line_arguments(["+A0"])
-    assert s.gis_alt_mode == 0
-    
     # test -5
     s.KMLOUT = 0
     s.process_command_line_arguments(["-51"])
     assert s.KMLOUT == 1
-    
-    # input file override.
-    s.process_command_line_arguments(["-icdump", "cdump_two", "cdump_three"])
-    assert s.input_file == "cdump_three"
 
 
 def test_ConcentrationPlotSettings_parse_source_label():

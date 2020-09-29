@@ -72,6 +72,16 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.color = const.ConcentrationPlotColor.COLOR  # KOLOR
         self.gis_alt_mode = const.GISOutputAltitude.CLAMPED_TO_GROUND
         self.KMLOUT = 0
+        self.ring = False
+        self.ring_number = -1
+        # ring_number values:
+        #       -1      skip all related code sections
+        #        0      draw no circle but set square map scaling
+        #        n      scale square map for n circles
+        self.ring_distance = 0.0
+        self.center_loc = [0.0, 0.0]    # lon, lat
+        self.gis_output = const.GISOutput.NONE
+        self.kml_option = const.KMLOption.NONE
 
         # internally defined
         self.label_source = True
@@ -104,28 +114,86 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         """
         args = cmdline.CommandLineArguments(args0)
 
+        # self.map_projection must be set so that --street-map may override it.
+        self.map_projection = args.get_integer_value(["-m", "-M"],
+                                                     self.map_projection)
+
         # process options common to trajplot, concplot, etc.
         self._process_cmdline_args(args0)
+        
+        self.gis_output = args.get_integer_value("-a", self.gis_output)
+        self.kml_option = args.get_integer_value("-A", self.kml_option)
+        self.gis_alt_mode = args.get_integer_value(["+a", "+A"],
+                                                   self.gis_alt_mode)
+
+        self.LEVEL1 = args.get_integer_value(["-b", "-B"], self.LEVEL1)
+        self.LEVEL1 = max(0, self.LEVEL1)
 
         self.contour_level_generator = \
             args.get_integer_value(["-c", "-C"], self.contour_level_generator)
+
+        self.KAVG = args.get_integer_value(["-d", "-D"], self.KAVG)
+        self.KAVG = max(1, min(2, self.KAVG))
+
+        self.exposure_unit = args.get_integer_value(["-e", "-E"],
+                                                    self.exposure_unit)
+        self.exposure_unit = max(0, min(4, self.exposure_unit))
+
+        self.frames_per_file = args.get_integer_value(["-f", "-F"],
+                                                      self.frames_per_file)
+
+        if args.has_arg(["-g", "-G"]):
+            self.ring = True
+            str = args.get_value(["-g", "-G"])
+            if str.count(":") > 0:
+                self.ring_number, self.ring_distance = \
+                    self.parse_ring_option(str)
+            elif str == "":
+                self.ring_number = 4
+            else:
+                self.ring_number = args.get_integer_value(["-g", "-G"],
+                                                          self.ring_number)
+
+        if args.has_arg(["-h", "-H"]):
+            str = args.get_value(["-h", "-H"])
+            if str.count(":") > 0:
+                self.center_loc = self.parse_map_center(str)
+                if self.ring_number < 0:
+                    self.ring_number = 0
+
         self.input_file = \
             args.get_string_value(["-i", "-I"], self.input_file)
-
         if len(args.unprocessed_args) > 0:
             self.input_file = args.unprocessed_args[-1]
-
-        if args.has_arg("-l"):
-            self.source_label = self.parse_source_label(args.get_value("-l"))
-            self.label_source = True
 
         if args.has_arg(["-k", "-K"]):
             self.color = args.get_integer_value(["-k", "-K"], self.color)
             self.color = max(0, min(3, self.color))
 
+        if args.has_arg("-l"):
+            self.source_label = self.parse_source_label(args.get_value("-l"))
+            self.label_source = True
+
         if args.has_arg("+l"):
             self.this_is_test = args.get_integer_value("+l", self.this_is_test)
             self.this_is_test = max(0, min(1, self.this_is_test))
+
+        if args.has_arg("-L"):
+            str = args.get_value("-L")
+            if str.count(":") > 0:
+                self.lat_lon_label_interval = \
+                    self.parse_lat_lon_label_interval(str)
+                self.lat_lon_label_interval_option = const.LatLonLabel.SET
+            else:
+                self.lat_lon_label_interval_option = \
+                    args.get_integer_value("-L",
+                                           self.lat_lon_label_interval_option)
+                self.lat_lon_label_interval_option = \
+                    max(0, min(1, self.lat_lon_label_interval_option))
+
+        self.show_max_conc = args.get_integer_value(["+m", "+M"],
+                                                    self.show_max_conc)
+        self.show_max_conc = max(0, min(3, self.show_max_conc))
 
         if args.has_arg(["-n", "-N"]):
             self.parse_time_indices(args.get_value(["-n", "-N"]))
@@ -134,36 +202,26 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
 
         self.QFILE = args.get_string_value(["-q", "-Q"], self.QFILE)
 
+        self.NDEP = args.get_integer_value(["-r", "-R"], self.NDEP)
+        self.NDEP = max(0, min(3, self.NDEP))
+
         self.pollutant_index = args.get_integer_value(["-s", "-S"],
                                                       self.pollutant_index)
         self.pollutant_index -= 1       # to 0-based index
 
-        self.LEVEL1 = args.get_integer_value(["-b", "-B"], self.LEVEL1)
-        self.LEVEL1 = max(0, self.LEVEL1)
-
         self.LEVEL2 = args.get_integer_value(["-t", "-T"], self.LEVEL2)
         self.LEVEL2 = max(0, self.LEVEL2)
-
         if self.LEVEL1 > self.LEVEL2:
             self.LEVEL1, self.LEVEL2 = self.LEVEL2, self.LEVEL1
-
-        self.exposure_unit = args.get_integer_value(["-e", "-E"],
-                                                    self.exposure_unit)
-        self.exposure_unit = max(0, min(4, self.exposure_unit))
-
-        self.KAVG = args.get_integer_value(["-d", "-D"], self.KAVG)
-        self.KAVG = max(1, min(2, self.KAVG))
-
-        self.NDEP = args.get_integer_value(["-r", "-R"], self.NDEP)
-        self.NDEP = max(0, min(3, self.NDEP))
-
-        self.show_max_conc = args.get_integer_value(["+m", "+M"],
-                                                    self.show_max_conc)
-        self.show_max_conc = max(0, min(3, self.show_max_conc))
 
         if args.has_arg(["-u", "-U"]):
             self.mass_unit = args.get_value(["-u", "-U"])
             self.mass_unit_by_user = True
+
+        if args.has_arg("-v"):
+            self.parse_contour_levels(args.get_value("-v"))
+            self.contour_level_generator = \
+                const.ContourLevelGenerator.USER_SPECIFIED
 
         self.smoothing_distance = \
             args.get_integer_value(["-w", "-W"], self.smoothing_distance)
@@ -175,17 +233,9 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.UDMIN = args.get_float_value("-2", self.UDMIN)
         self.IDYNC = args.get_integer_value("-3", self.IDYNC)
         self.KHEMIN = args.get_integer_value("-4", self.KHEMIN)
+        self.KMLOUT = args.get_integer_value(["-5"], self.KMLOUT)
         self.IZRO = args.get_integer_value("-8", self.IZRO)
         self.NSSLBL = args.get_integer_value("-9", self.NSSLBL)
-
-        if args.has_arg("-v"):
-            self.parse_contour_levels(args.get_value("-v"))
-            self.contour_level_generator = \
-                const.ContourLevelGenerator.USER_SPECIFIED
-
-        self.gis_alt_mode = args.get_integer_value(["+a", "+A"],
-                                                   self.gis_alt_mode)
-        self.KMLOUT = args.get_integer_value(["-5"], self.KMLOUT)
 
     @staticmethod
     def parse_source_label(str):

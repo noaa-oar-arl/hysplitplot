@@ -74,29 +74,6 @@ class AbstractVerticalProjectionTest(plot.AbstractVerticalProjection):
 def test_TrajectoryPlotSettings___init__():
     s = plot.TrajectoryPlotSettings()
 
-    # base class
-    assert s.map_background == "../graphics/arlmap"
-    assert s.map_projection == 0
-    assert s.zoom_factor == 0.5
-    assert s.ring == False
-    assert s.ring_number == -1
-    assert s.ring_distance == 0.0
-    assert s.center_loc == [0.0, 0.0]
-    #assert s.output_filename == "trajplot.ps"
-    assert s.output_suffix == "ps"
-    #assert s.output_basename == "trajplot"
-    assert s.noaa_logo == False
-    assert s.lat_lon_label_interval_option == 1
-    assert s.lat_lon_label_interval == 1.0
-    assert s.frames_per_file == 0
-    assert s.interactive_mode == False
-    assert s.map_color == "#1f77b4"
-    assert s.station_marker != None
-    assert s.station_marker_color != None
-    assert s.station_marker_size > 0
-    assert s.height_unit == HeightUnit.METERS
-    
-    assert s.gis_output == 0
     assert s.view == 1
     assert s.output_filename == "trajplot.ps"
     assert s.output_basename == "trajplot"
@@ -107,9 +84,14 @@ def test_TrajectoryPlotSettings___init__():
     assert s.color == 1
     assert s.color_codes == None
     
-    assert s.kml_option == 0
     assert s.end_hour_duration == 0
     assert s.input_files == "tdump"
+    assert s.ring == False
+    assert s.ring_number == -1
+    assert s.ring_distance == 0.0
+    assert s.center_loc == [0.0, 0.0]
+    assert s.gis_output == const.GISOutput.NONE
+    assert s.kml_option == const.KMLOption.NONE
 
     assert len(s.marker_cycle) > 0
     assert s.marker_cycle_index == -1
@@ -121,6 +103,9 @@ def test_TrajectoryPlotSettings___init__():
     assert s.minor_hour_marker_size > 0
     assert s.terrain_line_color != None
     assert s.terrain_marker != None
+    assert s.station_marker != None
+    assert s.station_marker_color != None
+    assert s.station_marker_size > 0
     assert s.color_cycle == None
 
 
@@ -144,15 +129,24 @@ def test_TrajectoryPlotSettings_process_command_line_arguments():
     # The -o option implies non-interactive mode
     assert s.interactive_mode == False
 
-    # test +n
-    s.noaa_logo = False
-    s.process_command_line_arguments(["+n"])
-    assert s.noaa_logo == True
+    # test -m and -M
+    s.map_projection = 0
 
-    # test +N
-    s.noaa_logo = False
-    s.process_command_line_arguments(["+N"])
-    assert s.noaa_logo == True
+    s.process_command_line_arguments(["-m1"])
+    assert s.map_projection == 1
+    
+    s.process_command_line_arguments(["-M2"])
+    assert s.map_projection == 2
+    
+    # test -a
+    s.gis_output = 0
+    s.process_command_line_arguments(["-a2"])
+    assert s.gis_output == 2
+    
+    # test -A
+    s.kml_option = 0
+    s.process_command_line_arguments(["-A3"])
+    assert s.kml_option == 3
 
     # test -e or -E
     s.end_hour_duration = 0
@@ -169,37 +163,6 @@ def test_TrajectoryPlotSettings_process_command_line_arguments():
 
     s.process_command_line_arguments(["-F5"])
     assert s.frames_per_file == 5
-
-    # test -k or -K
-    s.color = 0
-    s.color_codes = []
-
-    s.process_command_line_arguments(["-k1"])
-    assert s.color == 1
-
-    s.process_command_line_arguments(["-K0"])
-    assert s.color == 0
-
-    s.process_command_line_arguments(["-k2"])
-    assert s.color == 1
-
-    s.process_command_line_arguments(["-K-1"])
-    assert s.color == 0
-
-    s.process_command_line_arguments(["-k3:123"])
-    assert s.color_codes == ["1", "2", "3"]
-    assert s.color == 2
-
-    # test -L
-    s.lat_lon_label_interval_option = 0
-    s.lat_lon_label_interval = 0
-
-    s.process_command_line_arguments(["-L1"])
-    assert s.lat_lon_label_interval_option == 1
-
-    s.process_command_line_arguments(["-L2:50"])
-    assert s.lat_lon_label_interval_option == 2
-    assert s.lat_lon_label_interval == 5.0
 
     # test -g or -G
     s.ring_number = 0
@@ -231,6 +194,74 @@ def test_TrajectoryPlotSettings_process_command_line_arguments():
 
     s.process_command_line_arguments(["-H112.3:195.6"])
     assert s.center_loc == [180.0, 90.0]
+
+    # test -i or -I
+    s.process_command_line_arguments(["-iINPUT"])
+    assert s.input_files == "INPUT"
+    
+    s.process_command_line_arguments(["-ITEST_INPUT"])
+    assert s.input_files == "TEST_INPUT"
+
+    # test -k or -K
+    s.color = 0
+    s.color_codes = []
+
+    s.process_command_line_arguments(["-k1"])
+    assert s.color == 1
+
+    s.process_command_line_arguments(["-K0"])
+    assert s.color == 0
+
+    s.process_command_line_arguments(["-k2"])
+    assert s.color == 1
+
+    s.process_command_line_arguments(["-K-1"])
+    assert s.color == 0
+
+    s.process_command_line_arguments(["-k3:123"])
+    assert s.color_codes == ["1", "2", "3"]
+    assert s.color == 2
+
+    # test -l
+    s.time_label_interval = 10
+    s.process_command_line_arguments(["-l15"])
+    assert s.time_label_interval == 15
+
+    # test -L
+    s.lat_lon_label_interval_option = 0
+    s.lat_lon_label_interval = 0
+
+    s.process_command_line_arguments(["-L1"])
+    assert s.lat_lon_label_interval_option == 1
+
+    s.process_command_line_arguments(["-L2:50"])
+    assert s.lat_lon_label_interval_option == 2
+    assert s.lat_lon_label_interval == 5.0
+    
+    # test -s or -S
+    s.label_source = False
+    s.process_command_line_arguments(["-s1"])
+    assert s.label_source == True
+
+    s.process_command_line_arguments(["-S0"])
+    assert s.label_source == False
+    
+    # test -v or -V
+    s.vertical_coordinate = -1
+    s.process_command_line_arguments(["-v0"])
+    assert s.vertical_coordinate == 0
+
+    s.process_command_line_arguments(["-v4"])
+    assert s.vertical_coordinate == 4
+
+    # test +n or +N
+    s.noaa_logo = False
+    s.process_command_line_arguments(["+n"])
+    assert s.noaa_logo == True
+
+    s.noaa_logo = False
+    s.process_command_line_arguments(["+N"])
+    assert s.noaa_logo == True
 
     # test -p or -P
     s.output_suffix = "ps"

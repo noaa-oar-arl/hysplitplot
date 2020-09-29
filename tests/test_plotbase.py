@@ -41,40 +41,42 @@ def test_AbstractPlotSettings___init__():
     s = plotbase.AbstractPlotSettings()
 
     assert s.map_background == "../graphics/arlmap"
-    assert s.map_projection == 0
-    assert s.zoom_factor == 0.5
-    assert s.ring == False
-    assert s.ring_number == -1
-    assert s.ring_distance == 0.0
-    assert s.center_loc == [0.0, 0.0]
+    assert s.noaa_logo == False
     assert s.output_filename == "output.ps"
     assert s.output_basename == "output"
     assert s.output_suffix == "ps"
     assert s.output_format == "ps"
+    assert s.zoom_factor == 0.5
+    assert s.interactive_mode == False
     assert len(s.additional_output_formats) == 0
-    assert s.noaa_logo == False
-    assert s.lat_lon_label_interval_option == 1
-    assert s.lat_lon_label_interval == 1.0
-    assert s.frames_per_file == 0
-    assert s.gis_output == const.GISOutput.NONE
-    assert s.kml_option == const.KMLOption.NONE
     assert s.use_source_time_zone == False
     assert s.time_zone_str is None
     assert s.use_street_map == False
-    
-    assert s.interactive_mode == False
+    assert s.street_map_type == 0
+    assert s.map_projection == 0
+
+    assert s.lat_lon_label_interval_option == 1
+    assert s.lat_lon_label_interval == 1.0
+    assert s.frames_per_file == 0
     assert s.map_color == "#1f77b4"
     assert s.station_marker != None
     assert s.station_marker_color != None
     assert s.station_marker_size > 0
     assert s.height_unit == HeightUnit.METERS
     assert s.street_map_update_delay > 0
-    assert s.street_map_type == 0
-    assert s.process_id_set == False
     
+    assert s.process_id_set == False
+#         
 
 def test_AbstractPlotSettings__process_cmdline_args():
     s = plotbase.AbstractPlotSettings()
+    
+    # test -j or -J
+    s._process_cmdline_args(["-j../graphics/else"])
+    assert s.map_background == "../graphics/else"
+    
+    s._process_cmdline_args(["-J../graphics/else_where"])
+    assert s.map_background == "../graphics/else_where"
 
     # test +n
     s.noaa_logo = False
@@ -85,72 +87,6 @@ def test_AbstractPlotSettings__process_cmdline_args():
     s.noaa_logo = False
     s._process_cmdline_args(["+N"])
     assert s.noaa_logo == True
-
-    # test -f or -F
-    s.frames_per_file = 0
-    s._process_cmdline_args(["-f2"])
-    assert s.frames_per_file == 2
-
-    s._process_cmdline_args(["-F5"])
-    assert s.frames_per_file == 5
-
-    # test -g or -G
-    s.ring_number = 0
-    s.ring_distance = 0.0
-
-    s._process_cmdline_args(["-g"])
-    assert s.ring_number == 4
-    assert s.ring_distance == 0.0
-
-    s._process_cmdline_args(["-G9"])
-    assert s.ring_number == 9
-    assert s.ring_distance == 0.0
-
-    s._process_cmdline_args(["-G5:5.5"])
-    assert s.ring_number == 5
-    assert s.ring_distance == 5.5
-
-    # test -h or -H
-    s.center_loc = [0.0, 0.0]
-
-    s._process_cmdline_args(["-h"])
-    assert s.center_loc == [0.0, 0.0]
-
-    s._process_cmdline_args(["-H12.3:45.6"])
-    assert s.center_loc == [45.6, 12.3]
-
-    s._process_cmdline_args(["-h-112.3:-195.6"])
-    assert s.center_loc == [-180.0, -90.0]
-
-    s._process_cmdline_args(["-H112.3:195.6"])
-    assert s.center_loc == [180.0, 90.0]
-    
-    # test -j or -J
-    s._process_cmdline_args(["-j../graphics/else"])
-    assert s.map_background == "../graphics/else"
-    
-    s._process_cmdline_args(["-J../graphics/else_where"])
-    assert s.map_background == "../graphics/else_where"
-
-    # test -L
-    s.lat_lon_label_interval_option = 0
-    s.lat_lon_label_interval = 0
-
-    s._process_cmdline_args(["-L1"])
-    assert s.lat_lon_label_interval_option == 1
-
-    s._process_cmdline_args(["-L2:50"])
-    assert s.lat_lon_label_interval_option == 2
-    assert s.lat_lon_label_interval == 5.0
-
-    # test -m and -M
-    s.map_projection = 0
-
-    s._process_cmdline_args(["-m1"])
-    assert s.map_projection == 1
-    
-    s._process_cmdline_args(["-M2"])
-    assert s.map_projection == 2
 
     # test -o or -O
     s.output_filename = None
@@ -192,17 +128,7 @@ def test_AbstractPlotSettings__process_cmdline_args():
 
     s._process_cmdline_args(["-Z70"])
     assert s.zoom_factor == 0.3
-    
-    # test -a
-    s.gis_output = 0
-    s._process_cmdline_args(["-a2"])
-    assert s.gis_output == 2
-    
-    # test -A
-    s.kml_option = 0
-    s._process_cmdline_args(["-A3"])
-    assert s.kml_option == 3
-    
+
     # test --interactive
     s.interactive_mode = False
     s._process_cmdline_args(["--interactive"])
@@ -215,7 +141,7 @@ def test_AbstractPlotSettings__process_cmdline_args():
     s._process_cmdline_args(["--more-formats=png,tif,pdf,jpg"])
     assert len(s.additional_output_formats) == 4
     
-    # test --sourec-time-zone
+    # test --source-time-zone
     s.use_source_time_zone = False
     s._process_cmdline_args(["--source-time-zone"])
     assert s.use_source_time_zone == True

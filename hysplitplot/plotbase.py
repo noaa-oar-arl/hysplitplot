@@ -24,68 +24,35 @@ class AbstractPlotSettings(ABC):
 
     def __init__(self):
         self.map_background = "../graphics/arlmap"
-        self.map_projection = const.MapProjection.AUTO
-        self.zoom_factor = 0.50
-        self.ring = False
-        self.ring_number = -1
-        # ring_number values:
-        #       -1      skip all related code sections
-        #        0      draw no circle but set square map scaling
-        #        n      scale square map for n circles
-        self.ring_distance = 0.0
-        self.center_loc = [0.0, 0.0]    # lon, lat
+        self.noaa_logo = False
         self.output_filename = "output.ps"
         self.output_basename = "output"
         self.output_suffix = "ps"
         self.output_format = "ps"
+        self.zoom_factor = 0.50
+        self.interactive_mode = False  # True if --interactive is specified.
         self.additional_output_formats = []
-        self.noaa_logo = False
-        self.lat_lon_label_interval_option = const.LatLonLabel.AUTO
-        self.lat_lon_label_interval = 1.0
-        self.frames_per_file = const.Frames.ALL_FILES_ON_ONE
-        self.gis_output = const.GISOutput.NONE
-        self.kml_option = const.KMLOption.NONE
         self.use_source_time_zone = False   # for the --source-time-zone option
         self.time_zone_str = None  # for the --time-zone option
         self.use_street_map = False  # for the --street-map option
+        self.street_map_type = 0
+        self.map_projection = const.MapProjection.AUTO
 
         # internally defined
-        self.interactive_mode = False  # True if --interactive is specified.
+        self.lat_lon_label_interval_option = const.LatLonLabel.AUTO
+        self.lat_lon_label_interval = 1.0
+        self.frames_per_file = const.Frames.ALL_FILES_ON_ONE
         self.map_color = "#1f77b4"
         self.station_marker = "o"
         self.station_marker_color = "k"     # black
         self.station_marker_size = 6*6
         self.height_unit = HeightUnit.METERS
         self.street_map_update_delay = 0.3  # in seconds
-        self.street_map_type = 0
+
         self.process_id_set = False
 
     def _process_cmdline_args(self, args0):
         args = cmdline.CommandLineArguments(args0)
-
-        self.noaa_logo = True if args.has_arg(["+n", "+N"]) else self.noaa_logo
-
-        self.frames_per_file = args.get_integer_value(["-f", "-F"],
-                                                      self.frames_per_file)
-
-        if args.has_arg(["-g", "-G"]):
-            self.ring = True
-            str = args.get_value(["-g", "-G"])
-            if str.count(":") > 0:
-                self.ring_number, self.ring_distance = \
-                    self.parse_ring_option(str)
-            elif str == "":
-                self.ring_number = 4
-            else:
-                self.ring_number = args.get_integer_value(["-g", "-G"],
-                                                          self.ring_number)
-
-        if args.has_arg(["-h", "-H"]):
-            str = args.get_value(["-h", "-H"])
-            if str.count(":") > 0:
-                self.center_loc = self.parse_map_center(str)
-                if self.ring_number < 0:
-                    self.ring_number = 0
 
         self.map_background = args.get_string_value(["-j", "-J"],
                                                     self.map_background)
@@ -93,21 +60,7 @@ class AbstractPlotSettings(ABC):
                 and self.map_background.endswith("shapefiles"):
             logger.warning("enter -jshapefiles... not -j./shapefiles...")
 
-        if args.has_arg("-L"):
-            str = args.get_value("-L")
-            if str.count(":") > 0:
-                self.lat_lon_label_interval = \
-                    self.parse_lat_lon_label_interval(str)
-                self.lat_lon_label_interval_option = const.LatLonLabel.SET
-            else:
-                self.lat_lon_label_interval_option = \
-                    args.get_integer_value("-L",
-                                           self.lat_lon_label_interval_option)
-                self.lat_lon_label_interval_option = \
-                    max(0, min(1, self.lat_lon_label_interval_option))
-
-        self.map_projection = args.get_integer_value(["-m", "-M"],
-                                                     self.map_projection)
+        self.noaa_logo = True if args.has_arg(["+n", "+N"]) else self.noaa_logo
 
         self.output_filename = args.get_string_value(["-o", "-O"],
                                                      self.output_filename)
@@ -127,9 +80,6 @@ class AbstractPlotSettings(ABC):
             self.zoom_factor = self.parse_zoom_factor(
                 args.get_value(["-z", "-Z"]))
 
-        self.gis_output = args.get_integer_value("-a", self.gis_output)
-        self.kml_option = args.get_integer_value("-A", self.kml_option)
-
         if args.has_arg(["--interactive"]):
             self.interactive_mode = True
 
@@ -142,14 +92,6 @@ class AbstractPlotSettings(ABC):
         if args.has_arg(["--source-time-zone"]):
             self.use_source_time_zone = True
 
-        if args.has_arg(["--time-zone"]):
-            if self.use_source_time_zone:
-                logger.warning("Discarding the --source-time-zone option "
-                               "because of --time-zone")
-                self.use_source_time_zone = False
-            self.time_zone_str = args.get_string_value("--time-zone",
-                                                       self.time_zone_str)
-
         if args.has_arg(["--street-map"]):
             self.use_street_map = True
             self.street_map_type = args.get_integer_value("--street-map",
@@ -158,6 +100,14 @@ class AbstractPlotSettings(ABC):
                 logger.warning("The --street-map option changes the map "
                                "projection to WEB_MERCATOR")
                 self.map_projection = const.MapProjection.WEB_MERCATOR
+
+        if args.has_arg(["--time-zone"]):
+            if self.use_source_time_zone:
+                logger.warning("Discarding the --source-time-zone option "
+                               "because of --time-zone")
+                self.use_source_time_zone = False
+            self.time_zone_str = args.get_string_value("--time-zone",
+                                                       self.time_zone_str)
 
     @staticmethod
     def parse_lat_lon_label_interval(str):

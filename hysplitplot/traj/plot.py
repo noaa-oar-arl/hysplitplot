@@ -53,6 +53,16 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
         # command-line option only
         self.end_hour_duration = 0
         self.input_files = "tdump"
+        self.ring = False
+        self.ring_number = -1
+        # ring_number values:
+        #       -1      skip all related code sections
+        #        0      draw no circle but set square map scaling
+        #        n      scale square map for n circles
+        self.ring_distance = 0.0
+        self.center_loc = [0.0, 0.0]    # lon, lat
+        self.gis_output = const.GISOutput.NONE
+        self.kml_option = const.KMLOption.NONE
 
         # internally defined
         self.marker_cycle = ["^", "s", "o"]   # triangle, square, circle
@@ -86,17 +96,43 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
         """
         args = cmdline.CommandLineArguments(args0)
 
+        # self.map_projection must be set so that --street-map may override it.
+        self.map_projection = args.get_integer_value(["-m", "-M"],
+                                                     self.map_projection)
+
         # process options common to trajplot, concplot, etc.
         self._process_cmdline_args(args0)
 
+        self.gis_output = args.get_integer_value("-a", self.gis_output)
+        self.kml_option = args.get_integer_value("-A", self.kml_option)
+
         self.end_hour_duration = args.get_integer_value(
             ["-e", "-E"], self.end_hour_duration)
+
+        self.frames_per_file = args.get_integer_value(["-f", "-F"],
+                                                      self.frames_per_file)
+
+        if args.has_arg(["-g", "-G"]):
+            self.ring = True
+            str = args.get_value(["-g", "-G"])
+            if str.count(":") > 0:
+                self.ring_number, self.ring_distance = \
+                    self.parse_ring_option(str)
+            elif str == "":
+                self.ring_number = 4
+            else:
+                self.ring_number = args.get_integer_value(["-g", "-G"],
+                                                          self.ring_number)
+
+        if args.has_arg(["-h", "-H"]):
+            str = args.get_value(["-h", "-H"])
+            if str.count(":") > 0:
+                self.center_loc = self.parse_map_center(str)
+                if self.ring_number < 0:
+                    self.ring_number = 0
+
         self.input_files = args.get_string_value(
             ["-i", "-I"], self.input_files)
-        self.time_label_interval = args.get_integer_value(
-            "-l", self.time_label_interval)
-        self.label_source = args.get_boolean_value(
-            ["-s", "-S"], self.label_source)
 
         if args.has_arg(["-k", "-K"]):
             str = args.get_value(["-k", "-K"])
@@ -106,6 +142,25 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
             else:
                 self.color = args.get_integer_value(["-k", "-K"], self.color)
                 self.color = max(0, min(1, self.color))
+
+        self.time_label_interval = args.get_integer_value(
+            "-l", self.time_label_interval)
+
+        if args.has_arg("-L"):
+            str = args.get_value("-L")
+            if str.count(":") > 0:
+                self.lat_lon_label_interval = \
+                    self.parse_lat_lon_label_interval(str)
+                self.lat_lon_label_interval_option = const.LatLonLabel.SET
+            else:
+                self.lat_lon_label_interval_option = \
+                    args.get_integer_value("-L",
+                                           self.lat_lon_label_interval_option)
+                self.lat_lon_label_interval_option = \
+                    max(0, min(1, self.lat_lon_label_interval_option))
+
+        self.label_source = args.get_boolean_value(
+            ["-s", "-S"], self.label_source)
 
         if args.has_arg(["-v", "-V"]):
             self.vertical_coordinate = args.get_integer_value(
