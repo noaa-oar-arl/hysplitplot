@@ -100,9 +100,6 @@ class MapBox:
 
     def refine_grid(self):
         # new corner point based on minimum
-        print('DEBUG: grid_corner[0]', type(self.grid_corner[0]), type(self.grid_corner))
-        print('DEBUG: plume_loc[0]', type(self.plume_loc[0]), type(self.plume_loc))
-        print('DEBUG: grid_delta', type(self.grid_delta))
         self.grid_corner[0] += self.plume_loc[0] * self.grid_delta
         self.grid_corner[1] += self.plume_loc[1] * self.grid_delta
         self.grid_delta = 0.10
