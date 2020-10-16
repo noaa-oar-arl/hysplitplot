@@ -105,19 +105,22 @@ class HYSPLITMapBackground(AbstractMapBackground):
 
     def read_background_map(self, filename):
         self.background_maps.clear()
-        if filename.startswith("shapefiles"):
-            shapefiles = mapfile.ShapeFilesReader().read(filename)
-            for sf in shapefiles:
-                map = mapfile.ShapeFileConverter.convert(sf)
-                self.background_maps.append(map)
-        else:
-            fname = self._fix_arlmap_filename(filename)
-            if fname is None:
-                logger.warning("map background file %s not found", fname)
+        try:
+            if filename.startswith("shapefiles"):
+                shapefiles = mapfile.ShapeFilesReader().read(filename)
+                for sf in shapefiles:
+                    map = mapfile.ShapeFileConverter.convert(sf)
+                    self.background_maps.append(map)
             else:
-                arlmap = mapfile.ARLMap().get_reader().read(fname)
-                for m in mapfile.ARLMapConverter.convert(arlmap):
-                    self.background_maps.append(m)
+                fname = self._fix_arlmap_filename(filename)
+                if fname is None:
+                    logger.warning("map background file %s not found", fname)
+                else:
+                    arlmap = mapfile.ARLMap().get_reader().read(fname)
+                    for m in mapfile.ARLMapConverter.convert(arlmap):
+                        self.background_maps.append(m)
+        except ValueError as ex:
+            logger.error(str(ex))
 
     @staticmethod
     def _fix_arlmap_filename(filename):
