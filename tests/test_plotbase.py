@@ -547,7 +547,8 @@ def test_AbstractPlot__draw_maptext_if_exists():
     # See if no exception is thrown.
     try:
         p._draw_maptext_if_exists(p.text_axes, "data/MAPTEXT.CFG")
-        p._draw_maptext_if_exists(p.text_axes, "data/MAPTEXT.CFG", lambda s: True)
+        p._draw_maptext_if_exists(p.text_axes, "data/MAPTEXT.CFG", lambda s, idx: True)
+        p._draw_maptext_if_exists(p.text_axes, "data/MAPTEXT.CFG", lambda s, idx: True, vskip=0.100)
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))

@@ -360,19 +360,23 @@ class AbstractPlot(ABC):
             return "MAPTEXT.CFG"
         return "MAPTEXT." + output_suffix
 
-    def _draw_maptext_if_exists(self, axes, filename=None, filter_fn=None):
+    def _draw_maptext_if_exists(self, axes, filename=None, filter_fn=None, vskip=0.143):
         if filename is None:
             filename = self._make_maptext_filename(self.settings.output_suffix)
 
+        if filter_fn is None:
+            # Compatible with TRAJPLOT.
+            filter_fn = lambda s, idx: idx in [0, 2, 3, 4, 8, 14]
+
+        logger.info('Reading {}'.format(filename))
         if os.path.exists(filename):
             selected_lines = [0, 2, 3, 4, 8, 14]
             with open(filename, "r") as f:
                 lines = f.read().splitlines()
                 count = 0
                 for k, buff in enumerate(lines):
-                    if (k in selected_lines) \
-                            and ((filter_fn is None) or filter_fn(buff)):
-                        axes.text(0.05, 0.928-0.143*count, buff,
+                    if filter_fn(buff, k):
+                        axes.text(0.05, 0.928-vskip*count, buff,
                                   verticalalignment="top", clip_on=True,
                                   transform=axes.transAxes)
                         count += 1

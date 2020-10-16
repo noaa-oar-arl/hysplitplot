@@ -102,6 +102,7 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
 
         :param args0: arguments excluding the program name.
         """
+        logger.debug('cmdln args {}'.format(args0))
         args = cmdline.CommandLineArguments(args0)
 
         # process options common to trajplot, concplot, etc.
@@ -1021,11 +1022,14 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         map_text_filename = self._make_maptext_filename(
             self.settings.output_suffix)
+        logger.debug('Checking if {} exists'.format(map_text_filename))
         if os.path.exists(map_text_filename):
-            filter_fn = lambda s: not s.startswith("Traj")
+            filter_fn = lambda s, idx: not s.startswith("Traj") and \
+                                       idx in [2, 4, 7, 8, 9, 10, 11, 12, 13, 14]
             self._draw_maptext_if_exists(self.text_axes,
                                          map_text_filename,
-                                         filter_fn)
+                                         filter_fn,
+                                         vskip=0.090)
         elif (alt_text_lines is not None) and (len(alt_text_lines) > 0):
             self._draw_alt_text_boxes(self.text_axes, alt_text_lines)
         else:
