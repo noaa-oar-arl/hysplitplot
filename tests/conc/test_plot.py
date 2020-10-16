@@ -47,8 +47,8 @@ def contourLevels():
     c.append(plot.LabelledContourLevel(20.0, "L3", 0.8, 0.8, 0.8))
     c.append(plot.LabelledContourLevel(25.0, "L4", 1.0, 1.0, 1.0))
     return c
-    
-    
+
+
 def blank_event_handler(event):
     # do nothing
     return
