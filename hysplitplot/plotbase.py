@@ -368,7 +368,7 @@ class AbstractPlot(ABC):
             # Compatible with TRAJPLOT.
             filter_fn = lambda s, idx: idx in [0, 2, 3, 4, 8, 14]
 
-        logger.info('Reading {}'.format(filename))
+        logger.debug('Reading {}'.format(filename))
         if os.path.exists(filename):
             selected_lines = [0, 2, 3, 4, 8, 14]
             with open(filename, "r") as f:
