@@ -21,6 +21,9 @@ class MapBox:
         self.hit_map = None
         self.grid_delta = kwargs.get("grid_delta", 1.0)
         self.grid_corner = kwargs.get("grid_corner", [0.0, -90.0])  # (lon,lat)
+        if type(self.grid_corner) is tuple:
+            # Convert a tuple to a list so that its element can be updated.
+            self.grid_corner = list(self.grid_corner)
         grid_size = kwargs.get("grid_size", (360.0, 181.0))
         self.sz = [util.nearest_int(v / self.grid_delta) for v in grid_size]
         self.plume_sz = [0.0, 0.0]      # (lon, lat)
