@@ -44,6 +44,7 @@ class AbstractPlotSettings(ABC):
         self.lat_lon_label_interval = 1.0
         self.frames_per_file = const.Frames.ALL_FILES_ON_ONE
         self.gis_output = const.GISOutput.NONE
+        self.additional_gis_outputs = []
         self.kml_option = const.KMLOption.NONE
         self.use_source_time_zone = False   # for the --source-time-zone option
         self.time_zone_str = None  # for the --time-zone option
@@ -70,20 +71,20 @@ class AbstractPlotSettings(ABC):
 
         if args.has_arg(["-g", "-G"]):
             self.ring = True
-            str = args.get_value(["-g", "-G"])
-            if str.count(":") > 0:
+            s = args.get_value(["-g", "-G"])
+            if s.count(":") > 0:
                 self.ring_number, self.ring_distance = \
-                    self.parse_ring_option(str)
-            elif str == "":
+                    self.parse_ring_option(s)
+            elif s == "":
                 self.ring_number = 4
             else:
                 self.ring_number = args.get_integer_value(["-g", "-G"],
                                                           self.ring_number)
 
         if args.has_arg(["-h", "-H"]):
-            str = args.get_value(["-h", "-H"])
-            if str.count(":") > 0:
-                self.center_loc = self.parse_map_center(str)
+            s = args.get_value(["-h", "-H"])
+            if s.count(":") > 0:
+                self.center_loc = self.parse_map_center(s)
                 if self.ring_number < 0:
                     self.ring_number = 0
 
@@ -94,10 +95,10 @@ class AbstractPlotSettings(ABC):
             logger.warning("enter -jshapefiles... not -j./shapefiles...")
 
         if args.has_arg("-L"):
-            str = args.get_value("-L")
-            if str.count(":") > 0:
+            s = args.get_value("-L")
+            if s.count(":") > 0:
                 self.lat_lon_label_interval = \
-                    self.parse_lat_lon_label_interval(str)
+                    self.parse_lat_lon_label_interval(s)
                 self.lat_lon_label_interval_option = const.LatLonLabel.SET
             else:
                 self.lat_lon_label_interval_option = \
@@ -138,6 +139,18 @@ class AbstractPlotSettings(ABC):
             self.additional_output_formats = self.parse_output_formats(val)
         if self.output_format in self.additional_output_formats:
             self.additional_output_formats.remove(self.output_format)
+
+        if args.has_arg(["--more-gis-options"]):
+            val = args.get_value("--more-gis-options")
+            self.additional_gis_outputs = []
+            try:
+                a = [int(s) for s in list(set(val.split(",")))]
+                self.additional_gis_outputs.extend(a)
+            except Exception as ex:
+                logger.debug(str(ex))
+                logger.error("Discarding the --more-gis-options option because it has an invalid value")
+        if self.gis_output in self.additional_gis_outputs:
+            self.additional_gis_outputs.remove(self.gis_output)
 
         if args.has_arg(["--source-time-zone"]):
             self.use_source_time_zone = True

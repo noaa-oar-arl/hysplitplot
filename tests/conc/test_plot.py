@@ -987,7 +987,10 @@ def test_ConcentrationPlot__write_gisout():
     if os.path.exists("GELABEL_ps.txt"):
         os.remove("GELABEL_ps.txt")
     
-    p._write_gisout(gis_writer, g, lower_vert_level, upper_vert_level, quad_contour_set, contour_levels, color_table, scaling_factor)
+    p._write_gisout([gis_writer], g,
+                     lower_vert_level, upper_vert_level,
+                     quad_contour_set, contour_levels,
+                     color_table, scaling_factor)
     
     gis_writer.finalize()
     plt.close(axes.figure)

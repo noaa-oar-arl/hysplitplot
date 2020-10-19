@@ -1035,7 +1035,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         else:
             self._turn_off_spines(self.text_axes)
 
-    def _write_gisout(self, gis_writer, g, lower_vert_level, upper_vert_level,
+    def _write_gisout(self, gis_writers, g, lower_vert_level, upper_vert_level,
                       quad_contour_set, contour_levels, color_table,
                       scaling_factor):
         if g.extension.max_locs is None:
@@ -1058,20 +1058,20 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         contour_set.min_concentration_str = self.conc_map.format_conc(min_conc)
         contour_set.max_concentration_str = self.conc_map.format_conc(max_conc)
 
-        basename = gis_writer.make_output_basename(
-            g,
-            self.conc_type,
-            self.depo_sum,
-            self.settings.output_basename,
-            self.settings.output_suffix,
-            self.settings.KMLOUT,
-            upper_vert_level)
-
-        gis_writer.write(basename, g, contour_set,
-                         lower_vert_level, upper_vert_level)
+        for w in gis_writers:
+            basename = w.make_output_basename(
+                    g,
+                    self.conc_type,
+                    self.depo_sum,
+                    self.settings.output_basename,
+                    self.settings.output_suffix,
+                    self.settings.KMLOUT,
+                    upper_vert_level)
+            w.write(basename, g, contour_set,
+                    lower_vert_level, upper_vert_level)
 
     def draw_conc_above_ground(self, g, event_handlers, level_generator,
-                               color_table, gis_writer=None, *args, **kwargs):
+                               color_table, gis_writers=None, *args, **kwargs):
 
         self.layout(g, event_handlers)
 
@@ -1130,8 +1130,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                   conc_scaling_factor)
         self.draw_bottom_text()
 
-        if gis_writer is not None:
-            self._write_gisout(gis_writer, g, level1, level2,
+        if isinstance(gis_writers, list) and len(gis_writers) > 0:
+            self._write_gisout(gis_writers, g, level1, level2,
                                quad_contour_set, contour_levels,
                                color_table, conc_scaling_factor)
 
@@ -1149,7 +1149,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.current_frame += 1
 
     def draw_conc_on_ground(self, g, event_handlers, level_generator,
-                            color_table, gis_writer=None, *args, **kwargs):
+                            color_table, gis_writers=None, *args, **kwargs):
 
         self.layout(g, event_handlers)
 
@@ -1197,8 +1197,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                   conc_scaling_factor)
         self.draw_bottom_text()
 
-        if gis_writer is not None:
-            self._write_gisout(gis_writer, g, level1, level2,
+        if isinstance(gis_writers, list) and len(gis_writers) > 0:
+            self._write_gisout(gis_writers, g, level1, level2,
                                contour_set, contour_levels, color_table,
                                conc_scaling_factor)
 
@@ -1212,6 +1212,32 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         plt.close(self.fig)
         self.current_frame += 1
+
+    def _create_gis_writer_list(self, settings, time_zone):
+        gis_writer_list = []
+        
+        o = gisout.GISFileWriterFactory.create_instance(
+                settings.gis_output,
+                settings.kml_option,
+                time_zone)
+        gis_writer_list.append(o)
+        
+        for gis_opt in settings.additional_gis_outputs:
+            o = gisout.GISFileWriterFactory.create_instance(
+                    gis_opt,
+                    settings.kml_option,
+                    time_zone)
+            gis_writer_list.append(o)
+        
+        for w in gis_writer_list:
+            w.initialize(settings.gis_alt_mode,
+                         settings.KMLOUT,
+                         settings.output_suffix,
+                         settings.KMAP,
+                         settings.NSSLBL,
+                         settings.show_max_conc)
+
+        return gis_writer_list
 
     def draw(self, ev_handlers=None, *args, **kwargs):
         if not self.settings.interactive_mode:
@@ -1229,17 +1255,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             self.settings.user_color)
         color_table = ColorTableFactory.create_instance(self.settings)
 
-        gis_writer = gisout.GISFileWriterFactory.create_instance(
-            self.settings.gis_output,
-            self.settings.kml_option,
-            self.time_zone)
-
-        gis_writer.initialize(self.settings.gis_alt_mode,
-                              self.settings.KMLOUT,
-                              self.settings.output_suffix,
-                              self.settings.KMAP,
-                              self.settings.NSSLBL,
-                              self.settings.show_max_conc)
+        gis_writers = self._create_gis_writer_list(self.settings, self.time_zone)
 
         self._initialize_map_projection(self.cdump)
 
@@ -1274,7 +1290,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
             for g in grids_above_ground:
                 self.draw_conc_above_ground(g, ev_handlers, level_generator,
-                                            color_table, gis_writer,
+                                            color_table, gis_writers,
                                             *args, **kwargs)
 
             grids = self.depo_sum.get_grids_to_plot(
@@ -1282,14 +1298,15 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 t_index == self.time_selector.last)
             for g in grids:
                 self.draw_conc_on_ground(g, ev_handlers, level_gen_depo,
-                                         color_table, gis_writer,
+                                         color_table, gis_writers,
                                          *args, **kwargs)
 
             self.time_period_count += 1
 
         for plot_saver in self.plot_saver_list:
             plot_saver.close()
-        gis_writer.finalize()
+        for w in gis_writers:
+            w.finalize()
 
     def get_plot_count_str(self):
         plot_saver = self.plot_saver_list[0]

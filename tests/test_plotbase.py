@@ -214,8 +214,23 @@ def test_AbstractPlotSettings__process_cmdline_args():
     s.additional_output_formats = []
     s._process_cmdline_args(["--more-formats=png,tif,pdf,jpg"])
     assert len(s.additional_output_formats) == 4
+
+    # test --more-gis-options
+    s.gis_output = 1
+    s.additional_gis_outputs = []
+    s._process_cmdline_args(["--more-gis-options=3,2,5"])
+    print('DEBUG:', s.additional_gis_outputs)
+    assert len(s.additional_gis_outputs) == 3
+    assert 5 in s.additional_gis_outputs
+    assert 3 in s.additional_gis_outputs
+    assert 2 in s.additional_gis_outputs
     
-    # test --sourec-time-zone
+    # test with an invalid non-integer value
+    s.additional_gis_outputs = []
+    s._process_cmdline_args(["--more-gis-options=3,q,5"])
+    assert len(s.additional_gis_outputs) == 0
+    
+    # test --source-time-zone
     s.use_source_time_zone = False
     s._process_cmdline_args(["--source-time-zone"])
     assert s.use_source_time_zone == True
