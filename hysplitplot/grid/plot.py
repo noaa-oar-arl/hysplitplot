@@ -123,7 +123,9 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
 
         # process options common to trajplot, concplot, etc.
         self._process_cmdline_args(args0)
-        
+
+        self.NSCALE = args.get_integer_value(["-a", "-A"], self.NSCALE)
+
         self.CFACT = args.get_float_value(["-c", "-C"], self.CFACT)
 
         self.DELTA = args.get_float_value(["-d", "-D"], self.DELTA)
@@ -898,15 +900,16 @@ class GridPlot(plotbase.AbstractPlot):
                 for i, lon in enumerate(conc_grid.longitudes):
                     for j, lng in enumerate(conc_grid.latitudes):
                         c = scaled_conc[j, i]
-                        if c >= contour_levels[-1]:
-                            r = matplotlib.patches.Rectangle((lon-hx, lng-hy), dx, dy)
-                            rect_list[-1].append(r)
-                        else:
-                            for k in range(contour_levels_len - 1):
-                                if c >= contour_levels[k] and c < contour_levels[k+1]:
-                                    r = matplotlib.patches.Rectangle((lon-hx, lng-hy), dx, dy)
-                                    rect_list[k].append(r)
-                                    break
+                        if c > 0:
+                            if c >= contour_levels[-1]:
+                                r = matplotlib.patches.Rectangle((lon-hx, lng-hy), dx, dy)
+                                rect_list[-1].append(r)
+                            else:
+                                for k in range(contour_levels_len - 1):
+                                    if contour_levels[k] > 0 and c >= contour_levels[k] and c < contour_levels[k+1]:
+                                        r = matplotlib.patches.Rectangle((lon-hx, lng-hy), dx, dy)
+                                        rect_list[k].append(r)
+                                        break
                 for k, rects in enumerate(rect_list):
                     if len(rects) > 0:
                         if color_skip > 1:
@@ -1239,9 +1242,9 @@ class GridPlot(plotbase.AbstractPlot):
         if self.settings.MINCON:
             max_conc_idx = len(contour_levels) - 1
             min_conc_idx = 0
-            for k in range(len(contour_levels)):
+            for k in range(1, len(contour_levels)):
                 if max_conc < contour_levels[k]:
-                    max_conc_idx = k
+                    max_conc_idx = k - 1
                     break
             for k in range(len(contour_levels) - 1, -1, -1):
                 if min_conc > contour_levels[k]:
