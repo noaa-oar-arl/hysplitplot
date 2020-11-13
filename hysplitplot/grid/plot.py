@@ -893,23 +893,25 @@ class GridPlot(plotbase.AbstractPlot):
                 dy = conc_grid.parent.grid_deltas[1]
                 hx = 0.5 * dx
                 hy = 0.5 * dy
+                rect_list = [[] for _ in range(len(contour_levels))]
                 for i, lon in enumerate(conc_grid.longitudes):
                     for j, lng in enumerate(conc_grid.latitudes):
                         c = scaled_conc[j, i]
-                        if c > 0:
-                            clr = None
-                            if c >= contour_levels[-1]:
-                                clr = fill_colors[-1]
-                            else:
-                                for k in range(len(contour_levels) - 1):
-                                    if c >= contour_levels[k] and c < contour_levels[k+1]:
-                                        clr = fill_colors[k]
-                                        break
-                            if clr is not None:
-                                r = matplotlib.patches.Rectangle((lon-hx, lng-hy), dx, dy,
-                                        color=clr,
-                                        transform=self.data_crs)
-                                axes.add_patch(r)
+                        if c >= contour_levels[-1]:
+                            r = matplotlib.patches.Rectangle((lon-hx, lng-hy), dx, dy)
+                            rect_list[-1].append(r)
+                        else:
+                            for k in range(len(contour_levels) - 1):
+                                if c >= contour_levels[k] and c < contour_levels[k+1]:
+                                    r = matplotlib.patches.Rectangle((lon-hx, lng-hy), dx, dy)
+                                    rect_list[k].append(r)
+                                    break
+                for clr, rects in zip(fill_colors, rect_list):
+                    if len(rects) > 0:
+                        rectangles = matplotlib.collections.PatchCollection(rects)
+                        rectangles.set_transform(self.data_crs)
+                        rectangles.set_color(clr)
+                        axes.add_collection(rectangles)
 #                 if self.settings.color != \
 #                         const.ConcentrationPlotColor.COLOR_NO_LINES \
 #                         and self.settings.color != \
