@@ -826,7 +826,7 @@ class GridPlot(plotbase.AbstractPlot):
         return mbox
 
     def draw_concentration_plot(self, conc_grid, scaled_conc, conc_map,
-                                contour_levels, fill_colors):
+                                contour_levels, fill_colors, color_skip=1):
         """
         Draws a concentration contour plot and returns the contour data points.
         """
@@ -885,7 +885,8 @@ class GridPlot(plotbase.AbstractPlot):
                           clip_on=True,
                           transform=self.data_crs)
 
-        if conc_grid.nonzero_conc_count > 0 and len(contour_levels) > 1:
+        contour_levels_len = len(contour_levels)
+        if conc_grid.nonzero_conc_count > 0 and contour_levels_len > 1:
             # draw filled contours
             # TODO: delete patches of previous drawing?
             try:
@@ -893,7 +894,7 @@ class GridPlot(plotbase.AbstractPlot):
                 dy = conc_grid.parent.grid_deltas[1]
                 hx = 0.5 * dx
                 hy = 0.5 * dy
-                rect_list = [[] for _ in range(len(contour_levels))]
+                rect_list = [[] for _ in range(contour_levels_len)]
                 for i, lon in enumerate(conc_grid.longitudes):
                     for j, lng in enumerate(conc_grid.latitudes):
                         c = scaled_conc[j, i]
@@ -901,13 +902,19 @@ class GridPlot(plotbase.AbstractPlot):
                             r = matplotlib.patches.Rectangle((lon-hx, lng-hy), dx, dy)
                             rect_list[-1].append(r)
                         else:
-                            for k in range(len(contour_levels) - 1):
+                            for k in range(contour_levels_len - 1):
                                 if c >= contour_levels[k] and c < contour_levels[k+1]:
                                     r = matplotlib.patches.Rectangle((lon-hx, lng-hy), dx, dy)
                                     rect_list[k].append(r)
                                     break
-                for clr, rects in zip(fill_colors, rect_list):
+                for k, rects in enumerate(rect_list):
                     if len(rects) > 0:
+                        if color_skip > 1:
+                            idx = contour_levels_len - 1 - (contour_levels_len - 1 - k) * color_skip
+                            logger.debug('color at k %d, idx %d', k, idx)
+                            clr = fill_colors[idx % contour_levels_len]
+                        else:
+                            clr = fill_colors[k]
                         rectangles = matplotlib.collections.PatchCollection(rects)
                         rectangles.set_transform(self.data_crs)
                         rectangles.set_color(clr)
@@ -982,7 +989,8 @@ class GridPlot(plotbase.AbstractPlot):
         return contour_levels
 
     def draw_contour_legends(self, grid, conc_map, contour_labels,
-                             contour_levels, fill_colors, conc_scaling_factor):
+                             contour_levels, fill_colors, conc_scaling_factor,
+                             color_skip=1):
         axes = self.legends_axes
         s = self.settings
 
@@ -1032,16 +1040,24 @@ class GridPlot(plotbase.AbstractPlot):
         colors = copy.deepcopy(fill_colors)
         colors.reverse()
 
+        contour_levels_len = len(contour_levels)
+
         display_levels = self._limit_contour_levels_for_legends(
             contour_levels,
             s.max_contour_legend_count)
         for k, level in enumerate(reversed(display_levels)):
-            clr = colors[k]
+            if color_skip > 1:
+                idx = k * color_skip
+                logger.debug('legend color at k %d, idx %d', k, idx)
+                clr = colors[idx] if idx < contour_levels_len else None
+            else:
+                clr = colors[k]
 
-            box = matplotlib.patches.Rectangle((x, y-dy), dx, dy,
-                                               color=clr,
-                                               transform=axes.transAxes)
-            axes.add_patch(box)
+            if clr is not None:
+                box = matplotlib.patches.Rectangle((x, y-dy), dx, dy,
+                                                   color=clr,
+                                                   transform=axes.transAxes)
+                axes.add_patch(box)
 
             if k < len(labels):
                 label = "NR" if level == -1.0 else labels[k]
@@ -1197,7 +1213,7 @@ class GridPlot(plotbase.AbstractPlot):
 #                                            self.conc_type.contour_max_conc)
         contour_levels = level_generator.make_levels(
             min_conc, max_conc, self.settings.contour_level_count, self.settings.DELTA)
-        logger.info("*** CONC LEVELS {} ".format(contour_levels))
+        logger.debug('conc levels {}'.format(contour_levels))
 #         color_offset = level_generator.compute_color_table_offset(
 #             contour_levels)
 #         color_offset = 0
@@ -1217,17 +1233,37 @@ class GridPlot(plotbase.AbstractPlot):
         self.conc_outer.set_title(title)
         self.conc_outer.set_xlabel(self.make_xlabel(g))
 
+        # compute the color skip when the number of contours is less than
+        # the number of colors.
+        color_skip = 0
+        if self.settings.MINCON:
+            max_conc_idx = len(contour_levels) - 1
+            min_conc_idx = 0
+            for k in range(len(contour_levels)):
+                if max_conc < contour_levels[k]:
+                    max_conc_idx = k
+                    break
+            for k in range(len(contour_levels) - 1, -1, -1):
+                if min_conc > contour_levels[k]:
+                    min_conc_idx = k
+                    break
+            color_skip = max(1, int(len(contour_levels)/(max_conc_idx - min_conc_idx + 1)))
+            logger.debug('min_conc_idx %d, max_conc_idx %d, color_skip %d',
+                         min_conc_idx, max_conc_idx, color_skip)
+        
         quad_contour_set = self.draw_concentration_plot(g,
                                                         scaled_conc,
                                                         self.conc_map,
                                                         contour_levels,
-                                                        color_table.colors)
+                                                        color_table.colors,
+                                                        color_skip=color_skip)
         self.draw_contour_legends(g,
                                   self.conc_map,
                                   self.contour_labels,
                                   contour_levels,
                                   color_table.colors,
-                                  conc_scaling_factor)
+                                  conc_scaling_factor,
+                                  color_skip=color_skip)
         self.draw_bottom_text()
 
         if gis_writer is not None:
