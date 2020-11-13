@@ -37,6 +37,7 @@ class AbstractPlotSettings(ABC):
         self.use_street_map = False  # for the --street-map option
         self.street_map_type = 0
         self.map_projection = const.MapProjection.AUTO
+        self.additional_gis_outputs = []
 
         # internally defined
         self.lat_lon_label_interval_option = const.LatLonLabel.AUTO
@@ -91,7 +92,6 @@ class AbstractPlotSettings(ABC):
 
         if args.has_arg(["--more-gis-options"]):
             val = args.get_value("--more-gis-options")
-            self.additional_gis_outputs = []
             try:
                 a = [int(s) for s in list(set(val.split(",")))]
                 self.additional_gis_outputs.extend(a)

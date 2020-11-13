@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import numpy
 import os
 import pytz
+import shapely  # shapely.errors.TopologicalError
 import sys
 
 from hysplitdata import io
@@ -93,10 +94,10 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
         self.label_source = True
         self.source_label_color = "k"       # black
         self.source_label_font_size = 12    # font size
-        self.user_color = False
+        self.user_color = True
         self.user_label = False
         self.contour_levels = None
-        self.contour_level_count = 4
+        self.contour_level_count = 12
         self.pollutant = ""         # name of the selected pollutant
         self.SCALE = 1.0
         self.station_marker = "o"
@@ -886,29 +887,44 @@ class GridPlot(plotbase.AbstractPlot):
 
         if conc_grid.nonzero_conc_count > 0 and len(contour_levels) > 1:
             # draw filled contours
+            # TODO: delete patches of previous drawing?
             try:
-                contour_set = axes.contourf(conc_grid.longitudes,
-                                            conc_grid.latitudes,
-                                            scaled_conc,
-                                            contour_levels,
-                                            colors=fill_colors,
-                                            extend="max",
-                                            transform=self.data_crs)
-                if self.settings.color != \
-                        const.ConcentrationPlotColor.COLOR_NO_LINES \
-                        and self.settings.color != \
-                        const.ConcentrationPlotColor.BW_NO_LINES:
-                    # draw contour lines
-                    line_colors = ["k"] * len(fill_colors)
-                    axes.contour(conc_grid.longitudes,
-                                 conc_grid.latitudes,
-                                 scaled_conc,
-                                 contour_levels,
-                                 colors=line_colors,
-                                 linewidths=0.25,
-                                 transform=self.data_crs)
+                dx = conc_grid.parent.grid_deltas[0]
+                dy = conc_grid.parent.grid_deltas[1]
+                hx = 0.5 * dx
+                hy = 0.5 * dy
+                for i, lon in enumerate(conc_grid.longitudes):
+                    for j, lng in enumerate(conc_grid.latitudes):
+                        c = scaled_conc[j, i]
+                        if c > 0:
+                            clr = None
+                            if c >= contour_levels[-1]:
+                                clr = fill_colors[-1]
+                            else:
+                                for k in range(len(contour_levels) - 1):
+                                    if c >= contour_levels[k] and c < contour_levels[k+1]:
+                                        clr = fill_colors[k]
+                                        break
+                            if clr is not None:
+                                r = matplotlib.patches.Rectangle((lon-hx, lng-hy), dx, dy,
+                                        color=clr,
+                                        transform=self.data_crs)
+                                axes.add_patch(r)
+#                 if self.settings.color != \
+#                         const.ConcentrationPlotColor.COLOR_NO_LINES \
+#                         and self.settings.color != \
+#                         const.ConcentrationPlotColor.BW_NO_LINES:
+#                     # draw contour lines
+#                     line_colors = ["k"] * len(fill_colors)
+#                     axes.contour(conc_grid.longitudes,
+#                                  conc_grid.latitudes,
+#                                  scaled_conc,
+#                                  contour_levels,
+#                                  colors=line_colors,
+#                                  linewidths=0.25,
+#                                  transform=self.data_crs)
             except ValueError as ex:
-                logger.error("cannot generate contours")
+                logger.error("cannot generate contours: {}".format(str(ex)))
 
         if self.settings.show_max_conc == 1 \
                 or self.settings.show_max_conc == 3:
@@ -1179,7 +1195,7 @@ class GridPlot(plotbase.AbstractPlot):
 #                                            self.conc_type.contour_max_conc)
         contour_levels = level_generator.make_levels(
             min_conc, max_conc, self.settings.contour_level_count, self.settings.DELTA)
-
+        logger.info("*** CONC LEVELS {} ".format(contour_levels))
 #         color_offset = level_generator.compute_color_table_offset(
 #             contour_levels)
 #         color_offset = 0
@@ -1307,6 +1323,16 @@ class GridPlot(plotbase.AbstractPlot):
 #             self.settings.contour_levels,
 #             self.settings.UDMIN,
 #             self.settings.user_color)
+        # Create a color table.
+        self.settings.contour_levels = []
+        self.user_label = False
+        for rgb in [(0.0, 0.0, 1.0), (0.5, 0.0, 1.0), (0.0, 0.5 , 1.0),
+                    (0.0, 1.0, 1.0), (0.0, 1.0, 0.5), (0.0, 0.5 , 0.0),
+                    (0.5, 1.0, 0.0), (1.0, 1.0, 0.0), (1.0, 0.75, 0.0),
+                    (1.0, 0.5, 0.0), (1.0, 0.3, 0.0), (1.0, 0.0 , 0.0)]:
+            r, g, b = rgb
+            o = LabelledContourLevel(r=r, g=g, b=b)
+            self.settings.contour_levels.append(o)
         color_table = ColorTableFactory.create_instance(self.settings)
 
         gis_writer = None
@@ -1492,6 +1518,9 @@ class ExponentialFixedLevelGenerator(ExponentialDynamicLevelGenerator):
         super(ExponentialFixedLevelGenerator, self).__init__(**kwargs)
 
     def make_levels(self, min_conc, max_conc, max_levels, delta):
+        # Override min_conc and delta for GRIDPLOT.
+        min_conc = 1.0e-36
+        delta = 1000.0
         levels = numpy.empty(max_levels, dtype=float)
         levels[0] = min_conc
         for k in range(1, max_levels):
@@ -1532,6 +1561,9 @@ class LinearFixedLevelGenerator(LinearDynamicLevelGenerator):
         super(LinearFixedLevelGenerator, self).__init__()
 
     def make_levels(self, min_conc, max_conc, max_levels, delta):
+        # Override min_conc and delta for GRIDPLOT.
+        min_conc = 1.0e-36
+        delta = 1000.0
         levels = numpy.empty(max_levels, dtype=float)
         for k in range(max_levels):
             v = min_conc + delta * k
