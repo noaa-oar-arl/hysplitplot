@@ -120,13 +120,15 @@ class ARLMapConverter:
         thicknesses = dict()
         for s in arlmap.segments:
             lonlats = util.myzip(s.longitudes, s.latitudes)
-            style = ARLMapConverter.style_ref(s.color, s.thickness)
-            if style in segments:
-                segments[style].append(shapely.geometry.LineString(lonlats))
-            else:
-                segments[style] = [shapely.geometry.LineString(lonlats)]
-                colors[style] = s.color
-                thicknesses[style] = s.thickness
+            # LineString() requires at least two points.
+            if len(lonlats) > 1:
+                style = ARLMapConverter.style_ref(s.color, s.thickness)
+                if style in segments:
+                    segments[style].append(shapely.geometry.LineString(lonlats))
+                else:
+                    segments[style] = [shapely.geometry.LineString(lonlats)]
+                    colors[style] = s.color
+                    thicknesses[style] = s.thickness
 
         # create drawables
         drawables = []

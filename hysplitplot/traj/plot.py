@@ -792,17 +792,34 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         self.write_gis_files()
 
     def write_gis_files(self):
-        w = gisout.GISFileWriterFactory.create_instance(
-                self.settings.gis_output,
-                self.settings.height_unit,
-                self.time_zone)
-        if w is not None:
-            w.output_suffix = self.settings.output_suffix
-            w.output_name = self.settings.output_filename
-            w.kml_option = self.settings.kml_option
+        gis_writers = self._create_gis_writer_list(self.settings,
+                                                   self.time_zone)
+        for w in gis_writers:
+            if w is not None:
+                w.output_suffix = self.settings.output_suffix
+                w.output_name = self.settings.output_filename
+                w.kml_option = self.settings.kml_option
+    
+                for k, plot_data in enumerate(self.data_list):
+                    w.write(k + 1, plot_data)
 
-            for k, plot_data in enumerate(self.data_list):
-                w.write(k + 1, plot_data)
+    def _create_gis_writer_list(self, settings, time_zone):
+        gis_writer_list = []
+        
+        o = gisout.GISFileWriterFactory.create_instance(
+                settings.gis_output,
+                settings.height_unit,
+                time_zone)
+        gis_writer_list.append(o)
+        
+        for gis_opt in settings.additional_gis_outputs:
+            o = gisout.GISFileWriterFactory.create_instance(
+                    gis_opt,
+                    settings.height_unit,
+                    time_zone)
+            gis_writer_list.append(o)
+
+        return gis_writer_list
 
 
 class ColorCycle(ABC):
