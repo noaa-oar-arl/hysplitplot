@@ -134,8 +134,8 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
 # #         self.contour_level_generator = \
 # #             args.get_integer_value(["-c", "-C"], self.contour_level_generator)
 # 
-#         self.frames_per_file = args.get_integer_value(["-f", "-F"],
-#                                                       self.frames_per_file)
+        self.frames_per_file = args.get_integer_value(["-m", "-M"],
+                                                      self.frames_per_file)
 
         self.gis_output = args.get_integer_value(["-g", "-G"], self.gis_output)
         self.hlevel = args.get_integer_value(["-h", "-H"], self.hlevel)
