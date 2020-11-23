@@ -62,8 +62,9 @@ class MapBox:
             self._j = j
             self.hit_count += 1
         except IndexError:
-            logger.error("out-of-bound mapbox index: lonlat (%f, %f)",
-                         lon, lat)
+            logger.error("out-of-bound mapbox index: lonlat ({:f}, {:f})"
+                         "; hit map corner {}, sz {}, grid size {}".format(
+                         lon, lat, self.grid_corner, self.sz, self.grid_delta))
 
     def determine_plume_extent(self):
         self.plume_sz[1] = 0.0

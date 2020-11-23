@@ -80,7 +80,8 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
         #        0      draw no circle but set square map scaling
         #        n      scale square map for n circles
         self.ring_distance = 0.0
-        self.center_loc = [0.0, 0.0]    # lon, lat
+        self.center_loc = [None, None]    # lon, lat
+        self.center_loc_specified = False
         self.gis_output = const.GISOutput.NONE
         self.kml_option = const.KMLOption.NONE
         self.science_for_sphere = False     # NSOS
@@ -239,7 +240,11 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
 #         self.smoothing_distance = \
 #             args.get_integer_value(["-w", "-W"], self.smoothing_distance)
 #         self.smoothing_distance = max(0, min(99, self.smoothing_distance))
-# 
+
+        self.center_loc[0] = args.get_float_value(["-x", "-X"], self.center_loc[0])
+        self.center_loc[1] = args.get_float_value(["-y", "-Y"], self.center_loc[1])
+        if args.has_arg(["-x", "-X", "-y", "-Y"]):
+            self.center_loc_specified = True
 #         self.DEPADJ = args.get_float_value(["-y", "-Y"], self.DEPADJ)
 #         self.UCMIN = args.get_float_value("-1", self.UCMIN)
 #         self.UDMIN = args.get_float_value("-2", self.UDMIN)
@@ -733,11 +738,22 @@ class GridPlot(plotbase.AbstractPlot):
         return x_label
 
     def _initialize_map_projection(self, cdump):
+        if self.settings.center_loc[0] is None:
+            self.settings.center_loc[0] = self.cdump.release_locs[0][0]
+        if self.settings.center_loc[1] is None:
+            self.settings.center_loc[1] = self.cdump.release_locs[0][1]
+
+        if self.settings.center_loc_specified:
+            self.settings.ring = True
+            self.settings.ring_number = 0
+            ring_radius = 2 * max(
+                abs(self.settings.center_loc[0] - self.cdump.release_locs[0][0]),
+                abs(self.settings.center_loc[1] - self.cdump.release_locs[0][1])
+            )
+            self.settings.ring_distance = ring_radius * 111.0  # convert degrees to km.
+
         map_opt_passes = 1 if self.settings.ring_number == 0 else 2
         map_box = self._determine_map_limits(cdump, map_opt_passes)
-
-        if self.settings.center_loc == [0.0, 0.0]:
-            self.settings.center_loc = self.cdump.release_locs[0]
 
         if self.settings.ring and self.settings.ring_number >= 0:
             map_box.determine_plume_extent()
@@ -769,16 +785,36 @@ class GridPlot(plotbase.AbstractPlot):
             copy.deepcopy(self.projection.corners_lonlat)
 
     def _create_map_box_instance(self, cdump):
+        start_corner = cdump.grid_loc
         lat_span = cdump.grid_sz[1] * cdump.grid_deltas[1]
         lon_span = cdump.grid_sz[0] * cdump.grid_deltas[0]
 
+        # adjust the region of interest if the ring option is set.
+        if self.settings.ring:
+            ring_radius = self.settings.ring_distance / 111.0  # km to deg
+            l = min(self.settings.center_loc[0] - ring_radius, cdump.grid_loc[0])
+            r = max(self.settings.center_loc[0] + ring_radius, cdump.grid_loc[0])
+            lon_span = min(360.0, r - l)
+            b = min(self.settings.center_loc[1] - ring_radius, cdump.grid_loc[1])
+            t = max(self.settings.center_loc[1] + ring_radius, cdump.grid_loc[1])
+            lat_span = min(180.0, t - b)
+            # normalize angles
+            b = max(-90.0, min(90.0, b))
+            while l > 360.0:
+                l -= 360.0
+            while l < 0.0:
+                l += 360.0
+            start_corner = [l, b]
+            logger.debug('region of interest: l {}, r {}, b {}, t {}'.format(l, r, b, t))
+            logger.debug('corner {}; span lon {}, lat {}'.format(start_corner, lon_span, lat_span))
+
         # use finer grids for small maps
         if lat_span < 2.0 and lon_span < 2.0:
-            mbox = mapbox.MapBox(grid_corner=cdump.grid_loc,
+            mbox = mapbox.MapBox(grid_corner=start_corner,
                                  grid_size=(lon_span, lat_span),
                                  grid_delta=0.10)
         elif lat_span < 5.0 and lon_span < 5.0:
-            mbox = mapbox.MapBox(grid_corner=cdump.grid_loc,
+            mbox = mapbox.MapBox(grid_corner=start_corner,
                                  grid_size=(lon_span, lat_span),
                                  grid_delta=0.20)
         else:
