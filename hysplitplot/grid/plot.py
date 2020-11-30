@@ -24,7 +24,8 @@ from hysplitdata.conc import model
 from hysplitdata.const import HeightUnit
 from hysplitplot import cmdline, const, datem, mapbox, mapproj, \
                         plotbase, smooth, streetmap, timezone, util
-from hysplitplot.conc import helper, gisout, cntr
+from hysplitplot.conc import helper, cntr
+from hysplitplot.grid import gisout
 
 
 logger = logging.getLogger(__name__)
@@ -866,9 +867,9 @@ class GridPlot(plotbase.AbstractPlot):
     def draw_concentration_plot(self, conc_grid, scaled_conc, conc_map,
                                 contour_levels, fill_colors, color_skip=1):
         """
-        Draws a concentration contour plot and returns the contour data points.
+        Draws a concentration grid plot and returns collections of rectangles.
         """
-        contour_set = None
+        rect_list = None
         axes = self.conc_axes
 
         # keep the plot size after zooming
@@ -927,12 +928,12 @@ class GridPlot(plotbase.AbstractPlot):
         if conc_grid.nonzero_conc_count > 0 and contour_levels_len > 1:
             # draw filled contours
             # TODO: delete patches of previous drawing?
+            rect_list = [[] for _ in range(contour_levels_len)]
             try:
                 dx = conc_grid.parent.grid_deltas[0]
                 dy = conc_grid.parent.grid_deltas[1]
                 hx = 0.5 * dx
                 hy = 0.5 * dy
-                rect_list = [[] for _ in range(contour_levels_len)]
                 for i, lon in enumerate(conc_grid.longitudes):
                     for j, lng in enumerate(conc_grid.latitudes):
                         c = scaled_conc[j, i]
@@ -974,21 +975,21 @@ class GridPlot(plotbase.AbstractPlot):
             except ValueError as ex:
                 logger.error("cannot generate contours: {}".format(str(ex)))
 
-        if self.settings.show_max_conc == 1 \
-                or self.settings.show_max_conc == 3:
-            clr = self._fix_map_color(conc_map.get_color_at_max(),
-                                      self.settings.color)
-            conc_grid.extension.max_locs = helper.find_max_locs(conc_grid)
-            dx = conc_grid.parent.grid_deltas[0]
-            dy = conc_grid.parent.grid_deltas[1]
-            hx = 0.5 * dx
-            hy = 0.5 * dy
-            for loc in conc_grid.extension.max_locs:
-                x, y = loc
-                r = matplotlib.patches.Rectangle((x-hx, y-hy), dx, dy,
-                                                 color=clr,
-                                                 transform=self.data_crs)
-                axes.add_patch(r)
+#         if self.settings.show_max_conc == 1 \
+#                 or self.settings.show_max_conc == 3:
+#             clr = self._fix_map_color(conc_map.get_color_at_max(),
+#                                       self.settings.color)
+#             conc_grid.extension.max_locs = helper.find_max_locs(conc_grid)
+#             dx = conc_grid.parent.grid_deltas[0]
+#             dy = conc_grid.parent.grid_deltas[1]
+#             hx = 0.5 * dx
+#             hy = 0.5 * dy
+#             for loc in conc_grid.extension.max_locs:
+#                 x, y = loc
+#                 r = matplotlib.patches.Rectangle((x-hx, y-hy), dx, dy,
+#                                                  color=clr,
+#                                                  transform=self.data_crs)
+#                 axes.add_patch(r)
 
         # place station locations
         self._draw_stations_if_exists(axes, self.settings)
@@ -1001,7 +1002,7 @@ class GridPlot(plotbase.AbstractPlot):
                              conc_grid.starting_datetime,
                              conc_grid.ending_datetime)
 
-        return contour_set
+        return rect_list
 
     def get_conc_unit(self, conc_map, settings):
         # default values from labels.cfg
@@ -1189,7 +1190,7 @@ class GridPlot(plotbase.AbstractPlot):
             self._turn_off_spines(self.text_axes)
 
     def _write_gisout(self, gis_writer, g, lower_vert_level, upper_vert_level,
-                      quad_contour_set, contour_levels, color_table,
+                      rect_collections, contour_levels, color_table,
                       scaling_factor):
         if g.extension.max_locs is None:
             g.extension.max_locs = helper.find_max_locs(g)
@@ -1197,7 +1198,7 @@ class GridPlot(plotbase.AbstractPlot):
         min_conc, max_conc = self.conc_type.get_plot_conc_range(g,
                                                                 scaling_factor)
 
-        contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
+        contour_set = cntr.convert_matplotlib_rectangle_collections(rect_collections)
         contour_set.raw_colors = color_table.raw_colors
         contour_set.colors = color_table.colors
         contour_set.levels = contour_levels
@@ -1412,18 +1413,17 @@ class GridPlot(plotbase.AbstractPlot):
             self.settings.contour_levels.append(o)
         color_table = ColorTableFactory.create_instance(self.settings)
 
-        gis_writer = None
-#         gis_writer = gisout.GISFileWriterFactory.create_instance(
-#             self.settings.gis_output,
-#             self.settings.kml_option,
-#             self.time_zone)
+        gis_writer = gisout.GISFileWriterFactory.create_instance(
+            self.settings.gis_output,
+            self.settings.kml_option,
+            self.time_zone)
 
-#         gis_writer.initialize(self.settings.gis_alt_mode,
-#                               self.settings.KMLOUT,
-#                               self.settings.output_suffix,
-#                               self.settings.KMAP,
-#                               self.settings.NSSLBL,
-#                               self.settings.show_max_conc)
+        gis_writer.initialize(self.settings.gis_alt_mode,
+                              self.settings.KMLOUT,
+                              self.settings.output_suffix,
+                              self.settings.KMAP,
+                              self.settings.NSSLBL,
+                              self.settings.show_max_conc)
 
         self._initialize_map_projection(self.cdump)
 

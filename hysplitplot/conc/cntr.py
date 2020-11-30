@@ -10,6 +10,7 @@ import copy
 import logging
 import numpy
 from matplotlib.path import Path
+import sys
 
 from hysplitplot import util
 
@@ -139,4 +140,27 @@ def convert_matplotlib_quadcontourset(quadContourSet):
                     else:
                         boundary.hole = False
 
+    return contour_set
+
+
+def convert_matplotlib_rectangle_collections(rect_colls):
+    contour_set = ContourSet()
+    
+    if rect_colls is not None:
+        for k, coll in enumerate(rect_colls):
+            contour = Contour(contour_set)
+            contour_set.contours.append(contour)
+            contour_set.contour_orders.append(k)
+            polygon = Polygon(contour)
+            contour.polygons.append(polygon)
+            for r in coll:
+                x0, y0 = r.get_xy()
+                w = r.get_width()
+                h = r.get_height()
+                boundary = Boundary(polygon)
+                polygon.boundaries.append(boundary)
+                lonlats = [[x0 + w, y0], [x0, y0], [x0, y0 + h], [x0 + w, y0 + h], [x0 + w, y0]]
+                boundary.copy_with_dateline_crossing_fix(lonlats)
+                boundary.hole = False
+    
     return contour_set
