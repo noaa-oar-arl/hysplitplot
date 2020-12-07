@@ -30,8 +30,8 @@ setup(
         "geopandas==0.4.1",
         "cartopy==0.17.0",
         "descartes==1.1.0",  # required by geopandas
-        "numpy==1.16.3",
-        "pytz==2019.1",
+        "numpy==1.19.2",
+        "pytz==2020.4",
         "timezonefinder==4.1.0",
         "contextily==0.99.0",
         "mercantile==1.1.1"]
