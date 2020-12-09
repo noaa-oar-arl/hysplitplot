@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import os
 import pytest
 import pytz
+import xml.etree.ElementTree as ET
 
 from hysplitdata.conc import model
 from hysplitplot import const, util
@@ -415,11 +416,13 @@ def test_StringFormWriter_write_attributes(cdump_two_pollutants):
 def test_KMLWriter___init__():
     kml_option = 1
     o = gisout.KMLWriter(kml_option)
-    assert o.kml_option == 1
-    assert o.kml_file is None
-    assert o.att_file is None
-    assert o.contour_writer is None
     assert o.time_zone is None
+    assert o.kml_option == 1
+    assert hasattr(o, 'att_file')
+    assert hasattr(o, 'contour_writer')
+    assert hasattr(o, 'xml_root')
+    assert hasattr(o, 'kml_filename')
+
     
     tz = pytz.timezone("America/New_York")
     o = gisout.KMLWriter(kml_option, tz)
@@ -516,7 +519,7 @@ def test_KMLWriter_write(cdump_two_pollutants):
         
     assert os.path.exists("HYSPLIT_ps.kml")
     assert os.path.exists("GELABEL_ps.txt")
-        
+
     os.remove("HYSPLIT_ps.kml")
     os.remove("GELABEL_ps.txt")
 
@@ -615,10 +618,11 @@ def test_PartialKMLWriter___init__():
     kml_option = 1
     o = gisout.PartialKMLWriter(kml_option)
     assert o.kml_option == 1
-    assert o.kml_file is None
-    assert o.att_file is None
-    assert o.contour_writer is None
-    
+    assert hasattr(o, 'att_file')
+    assert hasattr(o, 'contour_writer')
+    assert hasattr(o, 'xml_root')
+    assert hasattr(o, 'kml_filename')
+
     tz = pytz.timezone("America/New_York")
     o = gisout.PartialKMLWriter(kml_option, tz)
     assert o.time_zone is tz
@@ -841,18 +845,15 @@ def test_AbstractKMLContourWriter_write(cdump_two_pollutants):
     contour_set.min_concentration_str = "1.0e-16"
     contour_set.max_concentration_str = "8.0e-12"
     
-    f = open("__AbstractKMLContourWriter.txt", "wt")
+    xml_root = ET.Element('kml')
+    doc = ET.SubElement(xml_root, 'Document')
     
     try:
-        o.write(f, g, contour_set, 100, 500, "ps")
+        o.write(xml_root, g, contour_set, 100, 500, "ps")
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
 
-    f.close()
-    
     assert o.frame_count == 1
-    
-    os.remove("__AbstractKMLContourWriter.txt")
 
 
 def test_AbstractKMLContourWriter__get_contour_height_at():
@@ -889,17 +890,13 @@ def test_AbstractKMLContourWriter__write_contour(cdump_two_pollutants):
     contour_set.min_concentration_str = "1.0e-16"
     contour_set.max_concentration_str = "8.0e-12"
     
-    f = open("__AbstractKMLContourWriter.txt", "wt")
+    xml_root = ET.Element('kml')
     
     # just see if there is any exception
     try:
-        o._write_contour(f, g, contour_set, 100)
+        o._write_contour(xml_root, g, contour_set, 100)
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
-        
-    f.close()
-    
-    os.remove("__AbstractKMLContourWriter.txt")
 
 
 def test_AbstractKMLContourWriter__write_polygon(cdump_two_pollutants):
@@ -928,17 +925,13 @@ def test_AbstractKMLContourWriter__write_polygon(cdump_two_pollutants):
     contour_set.min_concentration_str = "1.0e-16"
     contour_set.max_concentration_str = "8.0e-12"
     
-    f = open("__AbstractKMLContourWriter.txt", "wt")
+    xml_root = ET.Element('kml')
     
     # just see if there is any exception
     try:
-        o._write_polygon(f, contour_set.contours[0].polygons[0], 100)
+        o._write_polygon(xml_root, contour_set.contours[0].polygons[0], 100)
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
-            
-    f.close()
-    
-    os.remove("__AbstractKMLContourWriter.txt")
 
 
 def test_AbstractKMLContourWriter__write_boundary(cdump_two_pollutants):
@@ -967,17 +960,13 @@ def test_AbstractKMLContourWriter__write_boundary(cdump_two_pollutants):
     contour_set.min_concentration_str = "1.0e-16"
     contour_set.max_concentration_str = "8.0e-12"
     
-    f = open("__AbstractKMLContourWriter.txt", "wt")
+    xml_root = ET.Element('kml')
     
     # just see if there is any exception
     try:
-        o._write_boundary(f, contour_set.contours[0].polygons[0].boundaries[0], 100)
+        o._write_boundary(xml_root, contour_set.contours[0].polygons[0].boundaries[0], 100)
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
-            
-    f.close()
-    
-    os.remove("__AbstractKMLContourWriter.txt")
 
 
 def test_AbstractKMLContourWriter__write_max_location(cdump_two_pollutants):
@@ -989,17 +978,13 @@ def test_AbstractKMLContourWriter__write_max_location(cdump_two_pollutants):
    
     cntr_labels = ["AEGL-1", "AEGL-2"]
     
-    f = open("__AbstractKMLContourWriter.txt", "wt")
+    xml_root = ET.Element('kml')
     
     # just see if there is any exception
     try:
-        o._write_max_location(f, g, 8.0e-12, 300, cntr_labels[0])
+        o._write_max_location(xml_root, g, 8.0e-12, 300, cntr_labels[0])
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
-            
-    f.close()
-    
-    os.remove("__AbstractKMLContourWriter.txt")
 
 
 def test_AbstractKMLContourWriter__get_timestamp_str():
@@ -1114,16 +1099,17 @@ def test_KMLDepositionWriter__get_max_location_text():
 def test_KMLDepositionWriter__write_placemark_visibility():
     o = gisout.KMLDepositionWriter("relativeToGround")
     
-    f = open("__KMLDepositionWriter.txt", "wt")
+    xml_root = ET.Element('kml')
     o.frame_count = 2
-    o._write_placemark_visibility(f)
-    f.close()
-
+    o._write_placemark_visibility(xml_root)
+    tree = ET.ElementTree(xml_root)
+    tree.write("__KMLDepositionWriter.txt")
+    
     f = open("__KMLDepositionWriter.txt", "rt")
     lines = f.read().splitlines()
     f.close()
     
-    assert lines[0].strip() == "<visibility>0</visibility>"
+    assert lines[0].strip() == "<kml><visibility>0</visibility></kml>"
 
     os.remove("__KMLDepositionWriter.txt")
 
@@ -1171,16 +1157,17 @@ def test_KMLMassLoadingWriter__get_max_location_text():
 def test_KMLMassLoadingWriter__write_placemark_visibility():
     o = gisout.KMLMassLoadingWriter("relativeToGround")
     
-    f = open("__KMLMassLoadingWriter.txt", "wt")
+    xml_root = ET.Element('kml');
     o.frame_count = 2
-    o._write_placemark_visibility(f)
-    f.close()
+    o._write_placemark_visibility(xml_root)
+    tree = ET.ElementTree(xml_root)
+    tree.write("__KMLMassLoadingWriter.txt")
 
     f = open("__KMLMassLoadingWriter.txt", "rt")
     lines = f.read().splitlines()
     f.close()
     
-    assert lines[0].strip() == "<visibility>0</visibility>"
+    assert lines[0].strip() == "<kml><visibility>0</visibility></kml>"
 
     os.remove("__KMLMassLoadingWriter.txt")
 

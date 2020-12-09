@@ -61,8 +61,6 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
         #        n      scale square map for n circles
         self.ring_distance = 0.0
         self.center_loc = [0.0, 0.0]    # lon, lat
-        self.gis_output = const.GISOutput.NONE
-        self.kml_option = const.KMLOption.NONE
 
         # internally defined
         self.marker_cycle = ["^", "s", "o"]   # triangle, square, circle

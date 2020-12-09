@@ -37,6 +37,8 @@ class AbstractPlotSettings(ABC):
         self.use_street_map = False  # for the --street-map option
         self.street_map_type = 0
         self.map_projection = const.MapProjection.AUTO
+        self.gis_output = const.GISOutput.NONE
+        self.kml_option = const.KMLOption.NONE
         self.additional_gis_outputs = []
 
         # internally defined

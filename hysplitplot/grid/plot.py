@@ -24,8 +24,7 @@ from hysplitdata.conc import model
 from hysplitdata.const import HeightUnit
 from hysplitplot import cmdline, const, datem, mapbox, mapproj, \
                         plotbase, smooth, streetmap, timezone, util
-from hysplitplot.conc import helper, cntr
-from hysplitplot.grid import gisout
+from hysplitplot.conc import helper, cntr, gisout
 
 
 logger = logging.getLogger(__name__)
@@ -36,9 +35,9 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
     def __init__(self):
         super(GridPlotSettings, self).__init__()
 
-        self.input_file = "cdump"
-        self.output_filename = "gridplot.ps"
-        self.output_basename = "gridplot"
+        self.input_file = "cdump.bin"
+        self.output_filename = "plot.ps"
+        self.output_basename = "plot"
 
         # Index of the selected pollutant. It is 1-based for now but it will
         # be changed to 0-based.  If the index is -1 after the change, all
@@ -83,8 +82,6 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
         self.ring_distance = 0.0
         self.center_loc = [None, None]    # lon, lat
         self.center_loc_specified = False
-        self.gis_output = const.GISOutput.NONE
-        self.kml_option = const.KMLOption.NONE
         self.science_for_sphere = False     # NSOS
         self.hlevel = 0  # hlevel
         self.CVAL1 = 1.0e-36  # CVAL(1)
@@ -1251,8 +1248,9 @@ class GridPlot(plotbase.AbstractPlot):
             g, conc_scaling_factor)
 #         level_generator.set_global_min_max(self.conc_type.contour_min_conc,
 #                                            self.conc_type.contour_max_conc)
+        # Use 1.0e-36 in place of min_conc to be compatible with Fortran GRIDPLOT?
         contour_levels = level_generator.make_levels(
-            min_conc, max_conc, self.settings.contour_level_count, self.settings.DELTA)
+            1.0e-36, max_conc, self.settings.contour_level_count, self.settings.DELTA)
         logger.debug('conc levels {}'.format(contour_levels))
 #         color_offset = level_generator.compute_color_table_offset(
 #             contour_levels)
@@ -1393,10 +1391,10 @@ class GridPlot(plotbase.AbstractPlot):
         if not self.settings.interactive_mode:
             plt.ioff()
 
-        level_generator = ContourLevelGeneratorFactory.create_instance(
+        level_generator = GridLevelGeneratorFactory.create_instance(
             self.settings.NSCALE,
             self.settings.MINCON)
-#         level_gen_depo = ContourLevelGeneratorFactory.create_instance(
+#         level_gen_depo = GridLevelGeneratorFactory.create_instance(
 #             self.settings.contour_level_generator,
 #             self.settings.contour_levels,
 #             self.settings.UDMIN,
@@ -1505,7 +1503,7 @@ class LabelledContourLevel:
             self.label, self.level, self.r, self.g, self.b)
 
 
-class ContourLevelGeneratorFactory:
+class GridLevelGeneratorFactory:
 
     LINEAR = 0
     LOGARITHMIC = 1
@@ -1513,12 +1511,12 @@ class ContourLevelGeneratorFactory:
 
     @staticmethod
     def create_instance(scale, dynamic):
-        if scale == ContourLevelGeneratorFactory.LINEAR:
+        if scale == GridLevelGeneratorFactory.LINEAR:
             if dynamic:
                 return LinearDynamicLevelGenerator()
             else:
                 return LinearFixedLevelGenerator()
-        elif scale == ContourLevelGeneratorFactory.LOGARITHMIC:
+        elif scale == GridLevelGeneratorFactory.LOGARITHMIC:
             if dynamic:
                 return ExponentialDynamicLevelGenerator()
             else:
@@ -1595,9 +1593,6 @@ class ExponentialFixedLevelGenerator(ExponentialDynamicLevelGenerator):
         super(ExponentialFixedLevelGenerator, self).__init__(**kwargs)
 
     def make_levels(self, min_conc, max_conc, max_levels, delta):
-        # Override min_conc and delta for GRIDPLOT.
-        min_conc = 1.0e-36
-        delta = 1000.0
         levels = numpy.empty(max_levels, dtype=float)
         levels[0] = min_conc
         for k in range(1, max_levels):
@@ -1638,9 +1633,6 @@ class LinearFixedLevelGenerator(LinearDynamicLevelGenerator):
         super(LinearFixedLevelGenerator, self).__init__()
 
     def make_levels(self, min_conc, max_conc, max_levels, delta):
-        # Override min_conc and delta for GRIDPLOT.
-        min_conc = 1.0e-36
-        delta = 1000.0
         levels = numpy.empty(max_levels, dtype=float)
         for k in range(max_levels):
             v = min_conc + delta * k

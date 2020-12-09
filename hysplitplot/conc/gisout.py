@@ -14,12 +14,20 @@ import logging
 import math
 from matplotlib.path import Path
 import numpy
+import xml.etree.ElementTree as ET
 
 from hysplitdata.conc import model
 from hysplitplot import const, util
 
 
 logger = logging.getLogger(__name__)
+
+
+# override CDATA serializer
+def _cdata_serializer(text, encoding=None):
+    return text
+
+ET._escape_cdata = _cdata_serializer
 
 
 class GISFileWriterFactory:
@@ -136,11 +144,10 @@ class PointsGenerateFileWriter(AbstractWriter):
                 level = contour_set.levels[k]
                 clr = self._reformat_color(contour_set.colors[k])
                 for polygon in contour.polygons:
-                    for boundary in polygon.boundaries:
-                        self.formatter.write_attributes(f, g,
-                                                        lower_vert_level,
-                                                        upper_vert_level,
-                                                        level, clr)
+                    self.formatter.write_attributes(f, g,
+                                                    lower_vert_level,
+                                                    upper_vert_level,
+                                                    level, clr)
 
     class DecimalFormWriter:
 
@@ -246,9 +253,10 @@ class KMLWriter(AbstractWriter):
     def __init__(self, kml_option, time_zone=None):
         super(KMLWriter, self).__init__(time_zone)
         self.kml_option = kml_option    # IKML
-        self.kml_file = None
         self.att_file = None
         self.contour_writer = None
+        self.xml_root = None
+        self.kml_filename = None
 
     def make_output_basename(self, g, conc_type, depo_sum, output_basename,
                              output_suffix, KMLOUT, upper_vert_level):
@@ -263,25 +271,29 @@ class KMLWriter(AbstractWriter):
             self.KMAP, self.alt_mode_str, self.time_zone)
         self.contour_writer.set_show_max_conc(show_max_conc)
 
+
     def write(self, basename, g, contour_set,
               lower_vert_level, upper_vert_level):
-        if self.kml_file is None:
-            filename = "{}.kml".format(basename)
-            logger.info("Creating file %s", filename)
-            self.kml_file = open(filename, "wt")
+        if self.xml_root is None:
+            self.kml_filename = "{}.kml".format(basename)
+            logger.info("Creating file %s", self.kml_filename)
 
-            self._write_preamble(self.kml_file, g)
+            self.xml_root = ET.Element('kml',
+                    attrib={'xmlns':'http://www.opengis.net/kml/2.2',
+                            'xmlns:gx':'http://www.google.com/kml/ext/2.2'})
+
+            self._write_preamble(self.xml_root, g)
 
             if contour_set is not None:
-                self._write_colors(self.kml_file, contour_set.colors)
+                self._write_colors(self.xml_root, contour_set.colors)
 
-            self._write_source_locs(self.kml_file, g)
+            self._write_source_locs(self.xml_root, g)
 
             if self.kml_option != const.KMLOption.NO_EXTRA_OVERLAYS \
                     and self.kml_option != const.KMLOption.BOTH_1_AND_2:
-                self._write_overlays(self.kml_file)
+                self._write_overlays(self.xml_root)
 
-        self.contour_writer.write(self.kml_file, g, contour_set,
+        self.contour_writer.write(self.xml_root, g, contour_set,
                                   lower_vert_level, upper_vert_level,
                                   self.output_suffix)
 
@@ -293,9 +305,12 @@ class KMLWriter(AbstractWriter):
         self._write_attributes(self.att_file, g, contour_set)
 
     def finalize(self):
-        if self.kml_file is not None:
-            self._write_postamble(self.kml_file)
-            self.kml_file.close()
+        if self.kml_filename is not None and self.xml_root is not None:
+            self._write_postamble(self.xml_root)
+            tree = ET.ElementTree(self.xml_root)
+            tree.write(self.kml_filename, encoding='UTF-8',
+                       xml_declaration=True,
+                       short_empty_elements=False)
 
         if self.att_file is not None:
             self.att_file.close()
@@ -350,159 +365,138 @@ class KMLWriter(AbstractWriter):
             return "\"{}\"".format(o)
         return o
 
-    def _write_preamble(self, f, g):
+    def _write_preamble(self, x, g):
         first_release_loc = g.parent.release_locs[0]
 
-        f.write("""\
-<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
-  <Document>
-    <name>NOAA HYSPLIT RESULTS</name>
-    <open>1</open>
-    <LookAt>
-      <longitude>{:.4f}</longitude>
-      <latitude>{:.4f}</latitude>
-      <altitude>0</altitude>
-      <tilt>0</tilt>
-      <range>13700</range>
-      <gx:TimeStamp>
-        <when>{}</when>
-      </gx:TimeStamp>
-      <gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
-    </LookAt>\n""".format(first_release_loc[0],
-                          first_release_loc[1],
-                          util.get_iso_8601_str(g.starting_datetime,
-                                                self.time_zone)))
+        doc = ET.SubElement(x, 'Document')
+        ET.SubElement(doc, 'name').text = 'NOAA HYSPLIT RESULTS'
+        ET.SubElement(doc, 'open').text = '1'
+        lookAt = ET.SubElement(doc, 'LookAt')
+        ET.SubElement(lookAt, 'longitude').text = '{:.4f}'.format(first_release_loc[0])
+        ET.SubElement(lookAt, 'latitude').text = '{:.4f}'.format(first_release_loc[1])
+        ET.SubElement(lookAt, 'altitude').text = '0'
+        ET.SubElement(lookAt, 'tilt').text = '0'
+        ET.SubElement(lookAt, 'range').text = '13700'
+        timestamp = ET.SubElement(lookAt, 'gx:TimeStamp')
+        ET.SubElement(timestamp, 'when').text = util.get_iso_8601_str(g.starting_datetime,
+                                                                      self.time_zone)
+        ET.SubElement(lookAt, 'gx:altitudeMode').text = 'relativeToSeaFloor'
 
-    def _write_colors(self, f, colors):
+    def _write_colors(self, x, colors):
+        doc = x.find('Document')
         for k, color in enumerate(colors):
-            f.write("""\
-    <Style id="conc{:d}">
-      <LineStyle>
-        <color>C8000000</color>
-      </LineStyle>
-      <PolyStyle>
-        <color>{}</color>
-        <fill>1</fill>
-        <outline>1</outline>
-      </PolyStyle>
-    </Style>\n""".format(k + 1,
-                         self._reformat_color(color)))
-
+            style = ET.SubElement(doc, 'Style', attrib={'id': 'conc{:d}'.format(k + 1)})
+            linestyle = ET.SubElement(style, 'LineStyle')
+            ET.SubElement(linestyle, 'color').text = 'C8000000'
+            polystyle = ET.SubElement(style, 'PolyStyle')
+            ET.SubElement(polystyle, 'color').text = self._reformat_color(color)
+            ET.SubElement(polystyle, 'fill').text = '1'
+            ET.SubElement(polystyle, 'outline').text = '1'
         # max square
-        f.write("""\
-    <Style id="maxv">
-      <LineStyle>
-        <color>FFFFFFFF</color>
-        <width>3</width>
-      </LineStyle>
-      <PolyStyle>
-        <fill>0</fill>
-      </PolyStyle>
-    </Style>\n""")
+        style = ET.SubElement(doc, 'Style', attrib={'id': 'maxv'})
+        linestyle = ET.SubElement(style, 'LineStyle')
+        ET.SubElement(linestyle, 'color').text = 'FFFFFFFF'
+        ET.SubElement(linestyle, 'width').text = '3'
+        polystyle = ET.SubElement(style, 'PolyStyle')
+        ET.SubElement(polystyle, 'fill').text = '0'
 
-    def _write_source_locs(self, f, g):
-        f.write("""\
-    <Folder>
-      <name>Soure Locations</name>
-      <visibility>0</visibility>\n""")
-
+    def _write_source_locs(self, x, g):
+        doc = x.find('Document')
+        folder = ET.SubElement(doc, 'Folder')
+        ET.SubElement(folder, 'name').text = 'Soure Locations'
+        ET.SubElement(folder, 'visibility').text = '0'
+        
         release_heights = g.parent.release_heights
         level1 = min(release_heights)
         level2 = max(release_heights)
 
         for k, loc in enumerate(g.parent.release_locs):
-            f.write("""\
-      <Placemark>
-        <description><![CDATA[<pre>
+            placemark = ET.SubElement(folder, 'Placemark')
+            ET.SubElement(placemark, 'description').text = """<![CDATA[<pre>
 LAT: {:.6f} LON: {:.6f}
 Released between {} and {} m AGL
-</pre>]]></description>\n""".format(loc[1], loc[0], level1, level2))
-
+</pre>]]>""".format(loc[1], loc[0], level1, level2)
             # white line to source height
-            f.write("""\
-        <Style id="sorc">
-          <IconStyle>
-            <color>ff0000ff</color>
-            <scale>0.8</scale>
-            <Icon>
-              <href>icon63.png</href>
-            </Icon>
-            <hotSpot x="0.5" y="0.5" xunits="fraction" yunits="fraction"></hotSpot>
-          </IconStyle>
-          <LabelStyle>
-            <color>ff0000ff</color>
-          </LabelStyle>
-          <LineStyle>
-            <color>c8ffffff</color>
-            <width>2</width>
-          </LineStyle>
-        </Style>
-        <Point>
-          <extrude>1</extrude>
-          <altitudeMode>{}</altitudeMode>
-          <coordinates>{:.6f},{:.6f},{:.1f}</coordinates>
-        </Point>
-      </Placemark>\n""".format(self.alt_mode_str,
-                               loc[0], loc[1], float(level2)))
+            style = ET.SubElement(placemark, 'Style', attrib={'id': 'sorc'})
+            iconstyle = ET.SubElement(style, 'IconStyle')
+            ET.SubElement(iconstyle, 'color').text = 'ff0000ff'
+            ET.SubElement(iconstyle, 'scale').text = '0.8'
+            icon = ET.SubElement(iconstyle, 'Icon')
+            ET.SubElement(icon, 'href').text = 'icon63.png'
+            ET.SubElement(iconstyle, 'hotSpot',
+                          attrib={'x': '0.5', 'y': '0.5',
+                                  'xunits': 'fraction', 'yunits': 'fraction'})
+            labelstyle = ET.SubElement(style, 'LabelStyle')
+            ET.SubElement(labelstyle, 'color').text = 'ff0000ff'
+            linestyle = ET.SubElement(style, 'LineStyle')
+            ET.SubElement(linestyle, 'color').text = 'c8ffffff'
+            ET.SubElement(linestyle, 'width').text = '2'
+            point = ET.SubElement(placemark, 'Point')
+            ET.SubElement(point, 'extrude').text = '1'
+            ET.SubElement(point, 'altitudeMode').text = self.alt_mode_str
+            ET.SubElement(point, 'coordinates').text = \
+                    '{:.6f},{:.6f},{:.1f}'.format(loc[0], loc[1], float(level2))
 
-        f.write("""\
-    </Folder>\n""")
+    def _write_overlays(self, x):
+        doc = x.find('Document')
 
-    def _write_overlays(self, f):
-        f.write("""\
-    <ScreenOverlay>
-      <name>HYSPLIT Information</name>
-      <description>NOAA ARL HYSPLIT Model  http://www.arl.noaa.gov/HYSPLIT_info.php</description>
-      <Icon>
-        <href>logocon.gif</href>
-      </Icon>
-      <overlayXY x="1" y="1" xunits="fraction" yunits="fraction"/>
-      <screenXY x="1" y="1" xunits="fraction" yunits="fraction"/>
-      <rotationXY x="0" y="0" xunits="fraction" yunits="fraction"/>
-      <size x="0" y="0" xunits="pixels" yunits="pixels"/>
-    </ScreenOverlay>
-    <ScreenOverlay>
-      <name>NOAA</name>
-      <Snippet maxLines="0"></Snippet>
-      <description>National Oceanic and Atmospheric Administration  http://www.noaa.gov</description>
-      <Icon>
-        <href>noaa_google.gif</href>
-      </Icon>
-      <overlayXY x="0" y="1" xunits="fraction" yunits="fraction"/>
-      <screenXY x="0.3" y="1" xunits="fraction" yunits="fraction"/>
-      <rotationXY x="0" y="0" xunits="fraction" yunits="fraction"/>
-      <size x="0" y="0" xunits="pixels" yunits="pixels"/>
-    </ScreenOverlay>\n""")
+        screenoverlay = ET.SubElement(doc, 'ScreenOverlay')
+        ET.SubElement(screenoverlay, 'name').text = 'HYSPLIT Information'
+        ET.SubElement(screenoverlay, 'description').text = 'NOAA ARL HYSPLIT Model  http://www.arl.noaa.gov/HYSPLIT_info.php'
+        icon = ET.SubElement(screenoverlay, 'Icon')
+        ET.SubElement(icon, 'href').text = 'logocon.gif'
+        ET.SubElement(screenoverlay, 'overlayXY',
+                      attrib={'x': '1', 'y': '1',
+                              'xunits': 'fraction', 'yunits': 'fraction'})
+        ET.SubElement(screenoverlay, 'screenXY',
+                      attrib={'x': '1', 'y': '1',
+                              'xunits': 'fraction', 'yunits': 'fraction'})
+        ET.SubElement(screenoverlay, 'rotationXY',
+                      attrib={'x': '0', 'y': '0',
+                              'xunits': 'fraction', 'yunits': 'fraction'})
+        ET.SubElement(screenoverlay, 'size',
+                      attrib={'x': '0', 'y': '0',
+                              'xunits': 'pixels', 'yunits': 'pixels'})
+
+        screenoverlay = ET.SubElement(doc, 'ScreenOverlay')
+        ET.SubElement(screenoverlay, 'name').text = 'NOAA'
+        ET.SubElement(screenoverlay, 'Snippet', attrib={'maxLines': '0'})
+        ET.SubElement(screenoverlay, 'description').text = 'National Oceanic and Atmospheric Administration  http://www.noaa.gov'
+        icon = ET.SubElement(screenoverlay, 'Icon')
+        ET.SubElement(icon, 'href').text = 'noaa_google.gif'
+        ET.SubElement(screenoverlay, 'overlayXY',
+                      attrib={'x': '0', 'y': '1',
+                              'xunits': 'fraction', 'yunits': 'fraction'})
+        ET.SubElement(screenoverlay, 'screenXY',
+                      attrib={'x': '0.3', 'y': '1',
+                              'xunits': 'fraction', 'yunits': 'fraction'})
+        ET.SubElement(screenoverlay, 'rotationXY',
+                      attrib={'x': '0', 'y': '0',
+                              'xunits': 'fraction', 'yunits': 'fraction'})
+        ET.SubElement(screenoverlay, 'size',
+                      attrib={'x': '0', 'y': '0',
+                              'xunits': 'pixels', 'yunits': 'pixels'})
 
         # add a link to NOAA NWS kml weather data overlays
-        f.write("""\
-    <Folder>
-      <name>NOAA NWS kml Weather Data</name>
-      <visibility>0</visibility>
-      <description>http://weather.gov/gis/  Click on the link to access weather related overlays from the National Weather Service.</description>
-    </Folder>\n""")
-
+        folder = ET.SubElement(doc, 'Folder')
+        ET.SubElement(folder, 'name').text = 'NOAA NWS kml Weather Data'
+        ET.SubElement(folder, 'visibility').text = '0'
+        ET.SubElement(folder, 'description').text = 'http://weather.gov/gis/  Click on the link to access weather related overlays from the National Weather Service.'
+        
         # add a link to NOAA NESDIS kml smoke/fire data overlays
-        f.write("""\
-    <Folder>
-      <name>NOAA NESDIS kml Smoke/Fire Data</name>
-      <visibility>0</visibility>
-      <description>http://www.ssd.noaa.gov/PS/FIRE/hms.html  Click on the link to access wildfire smoke overlays from NOAA NESDIS.</description>
-    </Folder>\n""")
-
+        folder = ET.SubElement(doc, 'Folder')
+        ET.SubElement(folder, 'name').text = 'NOAA NESDIS kml Smoke/Fire Data'
+        ET.SubElement(folder, 'visibility').text = '0'
+        ET.SubElement(folder, 'description').text = 'http://www.ssd.noaa.gov/PS/FIRE/hms.html  Click on the link to access wildfire smoke overlays from NOAA NESDIS.'
+ 
         # add a link to EPA AIRnow kml Air Quality Index (AQI)
-        f.write("""\
-    <Folder>
-      <name>EPA AIRNow Air Quality Index (AQI)</name>
-      <visibility>0</visibility>
-      <description>http://www.epa.gov/airnow/today/airnow.kml  Click on the link to access AQI data from EPA. The results will appear in the list below.</description>
-    </Folder>\n""")
+        folder = ET.SubElement(doc, 'Folder')
+        ET.SubElement(folder, 'name').text = 'EPA AIRNow Air Quality Index (AQI)'
+        ET.SubElement(folder, 'visibility').text = '0'
+        ET.SubElement(folder, 'description').text = 'http://www.epa.gov/airnow/today/airnow.kml  Click on the link to access AQI data from EPA. The results will appear in the list below.'
 
-    def _write_postamble(self, f):
-        f.write("""\
-  </Document>
-</kml>\n""")
+    def _write_postamble(self, x):
+        pass
 
 
 class PartialKMLWriter(KMLWriter):
@@ -512,12 +506,16 @@ class PartialKMLWriter(KMLWriter):
 
     def write(self, basename, g, contour_set,
               lower_vert_level, upper_vert_level):
-        if self.kml_file is None:
-            filename = "{}.txt".format(basename)
-            logger.info("Creating file %s", filename)
-            self.kml_file = open(filename, "wt")
+        if self.xml_root is None:
+            self.kml_filename = "{}.txt".format(basename)
+            logger.info("Creating file %s", self.kml_filename)
 
-        self.contour_writer.write(self.kml_file, g, contour_set,
+            self.xml_root = ET.Element('kml',
+                    attrib={'xmlns':'http://www.opengis.net/kml/2.2',
+                            'xmlns:gx':'http://www.google.com/kml/ext/2.2'})
+            doc = ET.SubElement(self.xml_root, 'Document')
+
+        self.contour_writer.write(self.xml_root, g, contour_set,
                                   lower_vert_level, upper_vert_level,
                                   self.output_suffix)
 
@@ -533,12 +531,15 @@ class PartialKMLWriter(KMLWriter):
         pass
 
     def finalize(self):
-        if self.kml_file is not None:
-            self.kml_file.close()
+        if self.kml_filename is not None and self.xml_root is not None:
+            self._write_postamble(self.xml_root)
+            tree = ET.ElementTree(self.xml_root)
+            tree.write(self.kml_filename, encoding='UTF-8',
+                       xml_declaration=False,
+                       short_empty_elements=False)
 
         if self.att_file is not None:
             self.att_file.close()
-
 
 class KMLContourWriterFactory:
 
@@ -597,66 +598,60 @@ class AbstractKMLContourWriter(ABC):
     def _get_contour_name(self, level_str, conc_unit):
         return "Contour Level: {} {}".format(level_str, conc_unit)
 
-    def write(self, f, g, contour_set, lower_vert_level, upper_vert_level,
+    def write(self, x, g, contour_set, lower_vert_level, upper_vert_level,
               suffix):
         self.frame_count += 1
 
         begin_ts, end_ts = self._get_begin_end_timestamps(g)
 
-        f.write("""\
-    <Folder>
-      <name><![CDATA[{}]]></name>\n""".format(
-            self._get_name_cdata(g.ending_datetime)))
+        doc = x.find('Document')
+        folder = ET.SubElement(doc, 'Folder')
+        ET.SubElement(folder, 'name').text = '<![CDATA[{}]]>'.format(self._get_name_cdata(g.ending_datetime))
 
         # when not all of the concentration values are a zero
         if contour_set is not None and len(contour_set.contours) > 0:
             if self.frame_count == 1:
-                f.write("""\
-      <visibility>1</visibility>
-      <open>1</open>\n""")
+                ET.SubElement(folder, 'visibility').text = '1'
+                ET.SubElement(folder, 'open').text = '1'
             else:
-                f.write("""\
-      <visibility>0</visibility>\n""")
+                ET.SubElement(folder, 'visibility').text = '0'
 
-        f.write("""\
-      <description><![CDATA[{}]]></description>\n""".format(
-          self._get_description_cdata(lower_vert_level,
-                                      upper_vert_level,
-                                      g.ending_datetime)))
+        ET.SubElement(folder, 'description').text = '<![CDATA[{}]]>'.format(
+                self._get_description_cdata(lower_vert_level,
+                                            upper_vert_level,
+                                            g.ending_datetime))
 
-        f.write("""\
-      <ScreenOverlay>
-        <name>Legend</name>
-        <Snippet maxLines="0"></Snippet>
-        <TimeSpan>
-          <begin>{}</begin>
-          <end>{}</end>
-        </TimeSpan>
-        <Icon>
-          <href>GELABEL_{:02d}_{}.gif</href>
-        </Icon>
-        <overlayXY x="0" y="1" xunits="fraction" yunits="fraction"/>
-        <screenXY x="0" y="1" xunits="fraction" yunits="fraction"/>
-        <rotationXY x="0" y="0" xunits="fraction" yunits="fraction"/>
-        <size x="0" y="0" xunits="pixels" yunits="pixels"/>
-      </ScreenOverlay>\n""".format(begin_ts,
-                                   end_ts,
-                                   self.frame_count,
-                                   suffix))
-
-        self._write_contour(f, g, contour_set, upper_vert_level)
+        screenoverlay = ET.SubElement(folder, 'ScreenOverlay')
+        ET.SubElement(screenoverlay, 'name').text = 'Legend'
+        ET.SubElement(screenoverlay, 'Snippet', attrib={'maxLines': '0'})
+        timespan = ET.SubElement(screenoverlay, 'TimeSpan')
+        ET.SubElement(timespan, 'begin').text = begin_ts
+        ET.SubElement(timespan, 'end').text = end_ts
+        icon = ET.SubElement(screenoverlay, 'Icon')
+        ET.SubElement(icon, 'href').text = 'GELABEL_{:02d}_{}.gif'.format(self.frame_count, suffix)
+        ET.SubElement(screenoverlay, 'overlayXY',
+                      attrib={'x': '0', 'y': '1',
+                              'xunits': 'fraction', 'yunits': 'fraction'})
+        ET.SubElement(screenoverlay, 'screenXY',
+                      attrib={'x': '0', 'y': '1',
+                              'xunits': 'fraction', 'yunits': 'fraction'})
+        ET.SubElement(screenoverlay, 'rotationXY',
+                      attrib={'x': '0', 'y': '0',
+                              'xunits': 'fraction', 'yunits': 'fraction'})
+        ET.SubElement(screenoverlay, 'size',
+                      attrib={'x': '0', 'y': '0',
+                              'xunits': 'pixels', 'yunits': 'pixels'})
+        
+        self._write_contour(folder, g, contour_set, upper_vert_level)
 
         if self.show_max_conc:
-            self._write_max_location(f, g, contour_set.max_concentration_str,
+            self._write_max_location(folder, g, contour_set.max_concentration_str,
                                      upper_vert_level, contour_set.labels[-1])
-
-        f.write("""\
-    </Folder>\n""")
 
     def _get_contour_height_at(self, k, vert_level):
         return int(vert_level) + (200 * k)
 
-    def _write_contour(self, f, g, contour_set, vert_level):
+    def _write_contour(self, x, g, contour_set, vert_level):
         if contour_set is None:
             return
 
@@ -671,88 +666,60 @@ class AbstractKMLContourWriter(ABC):
             # increasing concentration
             vert_level = self._get_contour_height_at(k, vert_level_ref)
 
-            f.write("""\
-      <Placemark>\n""")
-
+            placemark = ET.SubElement(x, 'Placemark')
+            
             contour_name = self._get_contour_name(
                                     contour_set.levels_str[k],
                                     contour_set.concentration_unit)
 
             if len(contour_set.labels[k]) > 0:
-                f.write("""\
-        <name LOC="{}">{}</name>\n""".format(contour_set.labels[k],
-                                             contour_name))
+                ET.SubElement(placemark, 'name', attrib={'LOC': contour_set.labels[k]}).text = contour_name
             else:
-                f.write("""\
-        <name>{}</name>\n""".format(contour_name))
+                ET.SubElement(placemark, 'name').text = contour_name
 
-            self._write_placemark_visibility(f)
+            self._write_placemark_visibility(placemark)
 
-            f.write("""\
-        <Snippet maxLines="0"></Snippet>
-        <TimeSpan>
-          <begin>{}</begin>
-          <end>{}</end>
-        </TimeSpan>
-        <styleUrl>#conc{}</styleUrl>
-        <MultiGeometry>\n""".format(begin_ts, end_ts, k + 1))
-
+            ET.SubElement(placemark, 'Snippet', attrib={'maxLines': '0'})
+            timespan = ET.SubElement(placemark, 'TimeSpan')
+            ET.SubElement(timespan, 'begin').text = begin_ts
+            ET.SubElement(timespan, 'end').text = end_ts
+            ET.SubElement(placemark, 'styleUrl').text = '#conc{}'.format(k + 1)
+            
+            multigeometry = ET.SubElement(placemark, 'MultiGeometry')
             for polygon in contour.polygons:
-                self._write_polygon(f, polygon, vert_level)
+                self._write_polygon(multigeometry, polygon, vert_level)
 
-            f.write("""\
-        </MultiGeometry>
-      </Placemark>\n""")
-
-    def _write_polygon(self, f, polygon, vert_level):
+    def _write_polygon(self, x, polygon, vert_level):
         if len(polygon.boundaries) > 0:
-            f.write("""\
-          <Polygon>
-            <extrude>1</extrude>
-            <altitudeMode>{}</altitudeMode>\n""".format(self.alt_mode_str))
-
+            polygon_node = ET.SubElement(x, 'Polygon')
+            ET.SubElement(polygon_node, 'extrude').text = '1'
+            ET.SubElement(polygon_node, 'altitudeMode').text = self.alt_mode_str
             for boundary in polygon.boundaries:
-                self._write_boundary(f, boundary, vert_level)
+                self._write_boundary(polygon_node, boundary, vert_level)
 
-            f.write("""\
-          </Polygon>\n""")
-
-    def _write_boundary(self, f, boundary, vert_level):
+    def _write_boundary(self, x, boundary, vert_level):
         lons = boundary.longitudes
         lats = boundary.latitudes
 
         if boundary.hole:
-            f.write("""\
-            <innerBoundaryIs>
-              <LinearRing>
-                <coordinates>\n""")
+            boundaryIs = ET.SubElement(x, 'innerBoundaryIs')
         else:
-            f.write("""\
-            <outerBoundaryIs>
-              <LinearRing>
-                <coordinates>\n""")
+            boundaryIs = ET.SubElement(x, 'outerBoundaryIs')
 
+        linearRing = ET.SubElement(boundaryIs, 'LinearRing')
+
+        coordinates_text = ['\n']
         for k in range(len(lons)):
-            f.write("{:.5f},{:.5f},{:05d}\n".format(lons[k],
-                                                    lats[k],
-                                                    int(vert_level)))
-
-        if boundary.hole:
-            f.write("""\
-                </coordinates>
-              </LinearRing>
-            </innerBoundaryIs>\n""")
-        else:
-            f.write("""\
-                </coordinates>
-              </LinearRing>
-            </outerBoundaryIs>\n""")
+            coordinates_text.append("{:.5f},{:.5f},{:05d}\n".format(lons[k],
+                                                                 lats[k],
+                                                                 int(vert_level)))
+        ET.SubElement(linearRing, 'coordinates').text = ''.join(coordinates_text)
 
     @abstractmethod
     def _get_max_location_text(self):
         pass
 
-    def _write_max_location(self, f, g, max_conc_str, vert_level,
+    def _write_max_location(self, x, g, max_conc_str, vert_level,
                             contour_label):
         if g.extension is None or len(g.extension.max_locs) == 0:
             logger.warning("No max location is found: "
@@ -769,78 +736,60 @@ class AbstractKMLContourWriter(ABC):
 
         begin_ts, end_ts = self._get_begin_end_timestamps(g)
 
-        f.write("""\
-      <Placemark>\n""")
+        placemark = ET.SubElement(x, 'Placemark')
 
         if len(contour_label) > 0:
-            f.write("""\
-        <name LOC="{}">Maximum Value Grid Cell</name>\n""".format(
-                contour_label))
+            ET.SubElement(placemark, 'name', attrib={'LOC': contour_label}).text = 'Maximum Value Grid Cell'
         else:
-            f.write("""\
-        <name>Maximum Value Grid Cell</name>\n""")
+            ET.SubElement(placemark, 'name').text = 'Maximum Value Grid Cell'
 
-        self._write_placemark_visibility(f)
+        self._write_placemark_visibility(placemark)
 
-        f.write("""\
-        <description><![CDATA[<pre>
+        ET.SubElement(placemark, 'description').text = """<![CDATA[<pre>
 LAT: {:.4f} LON: {:.4f}
 Value: {}
-{}</pre>]]></description>\n""".format(loc[1],
-                                      loc[0],
-                                      max_conc_str,
-                                      self._get_max_location_text()))
+{}</pre>]]>""".format(loc[1],
+                      loc[0],
+                      max_conc_str,
+                      self._get_max_location_text())
 
-        f.write("""\
-        <Snippet maxLines="0"></Snippet>
-        <TimeSpan>
-          <begin>{}</begin>
-          <end>{}</end>
-        </TimeSpan>
-        <styleUrl>#maxv</styleUrl>
-        <MultiGeometry>\n""".format(begin_ts,
-                                    end_ts))
+        ET.SubElement(placemark, 'Snippet', attrib={'maxLines': '0'})
+        timespan = ET.SubElement(placemark, 'TimeSpan')
+        ET.SubElement(timespan, 'begin').text = begin_ts
+        ET.SubElement(timespan, 'end').text = end_ts
+        ET.SubElement(placemark, 'styleUrl').text = '#maxv'
 
+        multigeometry = ET.SubElement(placemark, 'MultiGeometry')
         for loc in g.extension.max_locs:
-            f.write("""\
-          <Polygon>
-            <extrude>1</extrude>
-            <altitudeMode>{}</altitudeMode>
-            <outerBoundaryIs>
-              <LinearRing>
-                <coordinates>\n""".format(self.alt_mode_str))
-
-            f.write("{:.5f},{:.5f},{:05d}\n".format(loc[0]-hx,
-                                                    loc[1]-hy,
-                                                    vert_level))
-            f.write("{:.5f},{:.5f},{:05d}\n".format(loc[0]+hx,
-                                                    loc[1]-hy,
-                                                    vert_level))
-            f.write("{:.5f},{:.5f},{:05d}\n".format(loc[0]+hx,
-                                                    loc[1]+hy,
-                                                    vert_level))
-            f.write("{:.5f},{:.5f},{:05d}\n".format(loc[0]-hx,
-                                                    loc[1]+hy,
-                                                    vert_level))
-            f.write("{:.5f},{:.5f},{:05d}\n".format(loc[0]-hx,
-                                                    loc[1]-hy,
-                                                    vert_level))
-
-            f.write("""\
-                </coordinates>
-              </LinearRing>
-            </outerBoundaryIs>
-          </Polygon>\n""")
-
-        f.write("""\
-        </MultiGeometry>
-      </Placemark>\n""")
+            polygon = ET.SubElement(multigeometry, 'Polygon')
+            ET.SubElement(polygon, 'extrude').text = '1'
+            ET.SubElement(polygon, 'altitudeMode').text = self.alt_mode_str
+            boundaryIs = ET.SubElement(polygon, 'outerBoundaryIs')
+            linearRing = ET.SubElement(boundaryIs, 'LinearRing')
+            
+            coordinates_text = ['\n']
+            coordinates_text.append("{:.5f},{:.5f},{:05d}\n".format(loc[0]-hx,
+                                                                    loc[1]-hy,
+                                                                    vert_level))
+            coordinates_text.append("{:.5f},{:.5f},{:05d}\n".format(loc[0]+hx,
+                                                                    loc[1]-hy,
+                                                                    vert_level))
+            coordinates_text.append("{:.5f},{:.5f},{:05d}\n".format(loc[0]+hx,
+                                                                    loc[1]+hy,
+                                                                    vert_level))
+            coordinates_text.append("{:.5f},{:.5f},{:05d}\n".format(loc[0]-hx,
+                                                                    loc[1]+hy,
+                                                                    vert_level))
+            coordinates_text.append("{:.5f},{:.5f},{:05d}\n".format(loc[0]-hx,
+                                                                    loc[1]-hy,
+                                                                    vert_level))
+            ET.SubElement(linearRing, 'coordinates').text = ''.join(coordinates_text)
 
     def _get_timestamp_str(self, dt):
         t = dt if self.time_zone is None else dt.astimezone(self.time_zone)
         return t.strftime("%Y%m%d %H%M %Z")
 
-    def _write_placemark_visibility(self, f):
+    def _write_placemark_visibility(self, x):
         pass
 
 
@@ -898,11 +847,9 @@ Valid:{}</pre>""".format(self._get_timestamp_str(dt))
       size of the square represents the
       deposition grid cell size."""
 
-    def _write_placemark_visibility(self, f):
+    def _write_placemark_visibility(self, x):
         if self.frame_count > 1:
-            f.write("""\
-        <visibility>0</visibility>
-        \n""")
+            ET.SubElement(x, 'visibility').text = '0'
 
 
 class KMLMassLoadingWriter(AbstractKMLContourWriter):
@@ -928,12 +875,9 @@ Valid:{}</pre>""".format(lower_vert_level,
       size of the square represents the
       deposition grid cell size."""
 
-    def _write_placemark_visibility(self, f):
+    def _write_placemark_visibility(self, x):
         if self.frame_count > 1:
-            f.write("""\
-        <visibility>0</visibility>
-        \n""")
-
+            ET.SubElement(x, 'visibility').text = '0'
 
 class KMLTimeOfArrivalWriter(AbstractKMLContourWriter):
 
