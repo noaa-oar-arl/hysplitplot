@@ -1075,7 +1075,8 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
                               self.settings.output_suffix,
                               self.settings.KMAP,
                               self.settings.NSSLBL,
-                              self.settings.show_max_conc)
+                              self.settings.show_max_conc,
+                              const.DepositionType.NONE)
 
         self._initialize_map_projection(self.cdump)
 

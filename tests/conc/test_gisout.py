@@ -134,13 +134,14 @@ def test_AbstractWriter___init__():
 
 def test_AbstractWriter_initialize():
     o = AbstractWriterTest()
-    o.initialize(0, 2, "3", 5, 6, 7)
+    o.initialize(0, 2, "3", 5, 6, 7, 8)
     assert o.alt_mode_str == "clampedToGround"
     assert o.KMLOUT == 2
     assert o.output_suffix == "3"
     assert o.KMAP == 5
     assert o.NSSLBL == 6
     assert o.show_max_conc == 7
+    assert o.NDEP == 8
 
 
 def test_AbstractWriter_write():
@@ -234,7 +235,8 @@ def test_PointsGenerateFileWriter_write(cdump_two_pollutants):
                  s.output_suffix,
                  s.KMAP,
                  s.NSSLBL,
-                 s.show_max_conc)
+                 s.show_max_conc,
+                 s.NDEP)
 
     ax = plt.axes()
     quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
@@ -448,10 +450,13 @@ def test_KMLWriter_initialize(cdump_two_pollutants):
                  s.output_suffix,
                  s.KMAP,
                  s.NSSLBL,
-                 s.show_max_conc)
-    
+                 s.show_max_conc,
+                 s.NDEP)
+
     assert isinstance(o.contour_writer, gisout.AbstractKMLContourWriter)
     assert o.contour_writer.show_max_conc == True
+    assert isinstance(o.deposition_contour_writer, gisout.AbstractKMLContourWriter)
+    assert o.deposition_contour_writer.show_max_conc == True
 
     # test initialize() again with s.show_max_conc = 0.
 
@@ -462,11 +467,12 @@ def test_KMLWriter_initialize(cdump_two_pollutants):
                  s.output_suffix,
                  s.KMAP,
                  s.NSSLBL,
-                 s.show_max_conc)
+                 s.show_max_conc,
+                 const.DepositionType.NONE)
     
     assert isinstance(o.contour_writer, gisout.AbstractKMLContourWriter)
     assert o.contour_writer.show_max_conc == False
-
+    assert o.deposition_contour_writer is None
 
 def test_KMLWriter_write(cdump_two_pollutants):
     # delete files we are about to create
@@ -487,7 +493,8 @@ def test_KMLWriter_write(cdump_two_pollutants):
                  s.output_suffix,
                  s.KMAP,
                  s.NSSLBL,
-                 s.show_max_conc)
+                 s.show_max_conc,
+                 s.NDEP)
     
     ax = plt.axes()
     quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
@@ -563,7 +570,8 @@ def test_KMLWriter__write_attributes(cdump_two_pollutants):
                  s.output_suffix,
                  s.KMAP,
                  s.NSSLBL,
-                 s.show_max_conc)
+                 s.show_max_conc,
+                 s.NDEP)
     
     ax = plt.axes()
     quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
@@ -643,7 +651,8 @@ def test_PartialKMLWriter_write(cdump_two_pollutants):
                  s.output_suffix,
                  s.KMAP,
                  s.NSSLBL,
-                 s.show_max_conc)
+                 s.show_max_conc,
+                 s.NDEP)
     
     ax = plt.axes()
     quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,

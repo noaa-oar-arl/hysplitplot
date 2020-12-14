@@ -970,7 +970,8 @@ def test_ConcentrationPlot__write_gisout():
                           p.settings.output_suffix,
                           p.settings.KMAP,
                           p.settings.NSSLBL,
-                          p.settings.show_max_conc)
+                          p.settings.show_max_conc,
+                          p.settings.NDEP)
     g = p.cdump.grids[0]
     lower_vert_level = util.LengthInMeters(0)
     upper_vert_level = util.LengthInMeters(100)
@@ -1027,7 +1028,8 @@ def test_ConcentrationPlot_draw_conc_above_ground():
                           p.settings.output_suffix,
                           p.settings.KMAP,
                           p.settings.NSSLBL,
-                          p.settings.show_max_conc)
+                          p.settings.show_max_conc,
+                          p.settings.NDEP)
         
     # See if no exception is thrown.
     try:
@@ -1062,17 +1064,18 @@ def test_ConcentrationPlot_draw_conc_on_ground():
                                                              p.settings.UCMIN,
                                                              p.settings.user_color)
     ctbl = plot.ColorTableFactory.create_instance(p.settings)
-    
+
     gis_writer = gisout.GISFileWriterFactory.create_instance(p.settings.gis_output,
                                                              p.settings.kml_option)
-                                                             
+
     gis_writer.initialize(p.settings.gis_alt_mode,
                           p.settings.KMLOUT,
                           p.settings.output_suffix,
                           p.settings.KMAP,
                           p.settings.NSSLBL,
-                          p.settings.show_max_conc)
-        
+                          p.settings.show_max_conc,
+                          p.settings.NDEP)
+
     # See if no exception is thrown.
     try:
         p._initialize_map_projection(p.cdump)

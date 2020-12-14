@@ -841,7 +841,8 @@ def test_TimeOfArrivalPlot__write_gisout():
                           p.settings.output_suffix,
                           p.settings.KMAP,
                           p.settings.NSSLBL,
-                          p.settings.show_max_conc)
+                          p.settings.show_max_conc,
+                          const.DepositionType.NONE)
  
     toa_data = p.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_0, color_table.colors)
     lower_vert_level = util.LengthInMeters(0)
@@ -893,7 +894,8 @@ def test_TimeOfArrivalPlot_draw_toa_plot_above_ground():
                           p.settings.output_suffix,
                           p.settings.KMAP,
                           p.settings.NSSLBL,
-                          p.settings.show_max_conc)
+                          p.settings.show_max_conc,
+                          const.DepositionType.NONE)
     
     toa_data = p.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_0,
                                                ctbl.colors)
@@ -934,7 +936,8 @@ def test_TimeOfArrivalPlot_draw_toa_plot_on_ground():
                           p.settings.output_suffix,
                           p.settings.KMAP,
                           p.settings.NSSLBL,
-                          p.settings.show_max_conc)
+                          p.settings.show_max_conc,
+                          const.DepositionType.NONE)
     
     toa_data = p.toa_generator.make_deposition_data(thelper.TimeOfArrival.DAY_0,
                                                ctbl.colors)

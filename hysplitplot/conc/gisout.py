@@ -54,7 +54,7 @@ class AbstractWriter(ABC):
         self.time_zone = time_zone
 
     def initialize(self, gis_alt_mode, KMLOUT, output_suffix, KMAP, NSSLBL,
-                   show_max_conc):
+                   show_max_conc, NDEP):
         if gis_alt_mode == const.GISOutputAltitude.RELATIVE_TO_GROUND:
             self.alt_mode_str = "relativeToGround"
         else:
@@ -64,6 +64,7 @@ class AbstractWriter(ABC):
         self.KMAP = KMAP
         self.NSSLBL = NSSLBL
         self.show_max_conc = show_max_conc
+        self.NDEP = NDEP
 
     @abstractmethod
     def write(self, basename, g, contour_set, lower_vert_level,
@@ -256,12 +257,29 @@ class KMLWriter(AbstractWriter):
         return "{}_{}".format(s, output_suffix)
 
     def initialize(self, gis_alt_mode, KMLOUT, output_suffix, KMAP, NSSLBL,
-                   show_max_conc):
+                   show_max_conc, NDEP):
         super(KMLWriter, self).initialize(gis_alt_mode, KMLOUT, output_suffix,
-                                          KMAP, NSSLBL, show_max_conc)
+                                          KMAP, NSSLBL, show_max_conc, NDEP)
         self.contour_writer = KMLContourWriterFactory.create_instance(
-            self.KMAP, self.alt_mode_str, self.time_zone)
+                self.KMAP, self.alt_mode_str, self.time_zone)
         self.contour_writer.set_show_max_conc(show_max_conc)
+        self.deposition_contour_writer = self.create_deposition_contour_writer(
+                KMAP, self.alt_mode_str, self.time_zone, NDEP, show_max_conc)
+
+    def create_deposition_contour_writer(self, KMAP, alt_modestr, time_zine,
+                                         NDEP, show_max_conc):
+        if NDEP == const.DepositionType.NONE:
+            return None
+
+        if KMAP == const.ConcentrationMapType.VOLCANIC_ERUPTION:
+            deposition_kmap = const.ConcentrationMapType.VOLCANIC_ERUPTION
+        else:
+            deposition_kmap = const.ConcentrationMapType.DEPOSITION_6
+
+        w = KMLContourWriterFactory.create_instance(
+                    deposition_kmap, self.alt_mode_str, self.time_zone)
+        w.set_show_max_conc(show_max_conc)
+        return w
 
     def write(self, basename, g, contour_set,
               lower_vert_level, upper_vert_level):
@@ -281,9 +299,14 @@ class KMLWriter(AbstractWriter):
                     and self.kml_option != const.KMLOption.BOTH_1_AND_2:
                 self._write_overlays(self.kml_file)
 
-        self.contour_writer.write(self.kml_file, g, contour_set,
-                                  lower_vert_level, upper_vert_level,
-                                  self.output_suffix)
+        if g.vert_level == 0 and self.deposition_contour_writer is not None:
+            self.deposition_contour_writer.write(self.kml_file, g, contour_set,
+                                      lower_vert_level, upper_vert_level,
+                                      self.output_suffix)
+        else:
+            self.contour_writer.write(self.kml_file, g, contour_set,
+                                      lower_vert_level, upper_vert_level,
+                                      self.output_suffix)
 
         if self.att_file is None:
             filename = "GELABEL_{}.txt".format(self.output_suffix)
@@ -517,9 +540,14 @@ class PartialKMLWriter(KMLWriter):
             logger.info("Creating file %s", filename)
             self.kml_file = open(filename, "wt")
 
-        self.contour_writer.write(self.kml_file, g, contour_set,
-                                  lower_vert_level, upper_vert_level,
-                                  self.output_suffix)
+        if g.vert_level == 0 and self.deposition_contour_writer is not None:
+            self.deposition_contour_writer.write(self.kml_file, g, contour_set,
+                                      lower_vert_level, upper_vert_level,
+                                      self.output_suffix)
+        else:
+            self.contour_writer.write(self.kml_file, g, contour_set,
+                                      lower_vert_level, upper_vert_level,
+                                      self.output_suffix)
 
         if self.att_file is None:
             filename = "GELABEL_{}.txt".format(self.output_suffix)

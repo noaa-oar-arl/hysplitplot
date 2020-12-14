@@ -1235,7 +1235,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                          settings.output_suffix,
                          settings.KMAP,
                          settings.NSSLBL,
-                         settings.show_max_conc)
+                         settings.show_max_conc,
+                         settings.NDEP)
 
         return gis_writer_list
 
