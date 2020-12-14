@@ -207,13 +207,27 @@ def test_PointsGenerateFileWriter_make_output_basename(cdump_two_pollutants):
     s = plot.ConcentrationPlotSettings()
     conc_type = helper.ConcentrationTypeFactory.create_instance( s.KAVG )
     depo_sum = helper.DepositSumFactory.create_instance(s.NDEP,
-                                                     cdump_two_pollutants.has_ground_level_grid())
-    
+                                                        cdump_two_pollutants.has_ground_level_grid())
+
     o = gisout.PointsGenerateFileWriter( gisout.PointsGenerateFileWriter.DecimalFormWriter() )
+    # Choose a concentration grid at 100 m.
     g = cdump_two_pollutants.grids[0]
+    assert g.vert_level == 100
     basename = o.make_output_basename(g, conc_type, depo_sum, "output", "ps", s.KMLOUT, 500)
     assert basename == "GIS_00100_ps_01"
-        
+    # Choose a concentration grid at 300 m
+    g = cdump_two_pollutants.grids[1]
+    assert g.vert_level == 300
+    basename = o.make_output_basename(g, conc_type, depo_sum, "output", "ps", s.KMLOUT, 500)
+    assert basename == "GIS_00300_ps_01"
+    # Recreate depo_sum with the flag for ground-level grid set to True.
+    depo_sum = helper.DepositSumFactory.create_instance(s.NDEP,
+                                                        True)
+    # Change the height of the grid to zero.
+    g.vert_level = 0
+    basename = o.make_output_basename(g, conc_type, depo_sum, "output", "ps", s.KMLOUT, 500)
+    assert basename == "GIS_DEP_ps_01"
+
 
 def test_PointsGenerateFileWriter_write(cdump_two_pollutants):
     # delete files we are about to create

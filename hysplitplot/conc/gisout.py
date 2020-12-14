@@ -109,8 +109,9 @@ class PointsGenerateFileWriter(AbstractWriter):
 
     def make_output_basename(self, g, conc_type, depo_sum, output_basename,
                              output_suffix, KMLOUT, upper_vert_level):
-        basename = depo_sum.make_gis_basename(g.time_index + 1, output_suffix)
-        if basename is None:
+        if g.vert_level == 0 and depo_sum is not None:
+            basename = depo_sum.make_gis_basename(g.time_index + 1, output_suffix)
+        else:
             basename = conc_type.make_gis_basename(g.time_index + 1,
                                                    output_suffix,
                                                    g.vert_level,
