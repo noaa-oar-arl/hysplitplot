@@ -466,9 +466,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         # if only one non-depositing level, change -d2 to -d1.
         if self.settings.KAVG == const.ConcentrationType.VERTICAL_AVERAGE:
-            if len(cdump.release_heights) == 1 \
-                    or (len(cdump.release_heights) == 2
-                        and cdump.release_heights[0] == 0):
+            if len(cdump.vert_levels) == 1 \
+                    or (len(cdump.vert_levels) == 2
+                        and cdump.vert_levels[0] == 0):
                 logger.warning("Changing -d2 to -d1 since single layer")
                 self.settings.KAVG = const.ConcentrationType.EACH_LEVEL
 
