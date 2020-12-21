@@ -71,8 +71,8 @@ class AbstractContourLevelGeneratorTest(plot.AbstractContourLevelGenerator):
 
 class AbstractColorTableTest(plot.AbstractColorTable):
     
-    def __init__(self, ncolors):
-        super(AbstractColorTableTest, self).__init__(ncolors)
+    def __init__(self, ncolors, color_opacity=100):
+        super(AbstractColorTableTest, self).__init__(ncolors, color_opacity)
         
     @property
     def raw_colors(self):
@@ -545,6 +545,8 @@ def test_ConcentrationPlot___init__():
     assert hasattr(p, "legends_axes")
     assert hasattr(p, "text_axes")
     assert hasattr(p, "plot_saver_list")
+    assert p.color_opacity == 100
+    assert hasattr(p, "color_table")
 
     assert hasattr(p, "TFACT")
     assert hasattr(p, "initial_time")
@@ -591,6 +593,7 @@ def test_ConcentrationPlot_read_data_files():
     assert p.level_selector.min == 0
     assert p.level_selector.max == 99999
     assert p.conc_type is not None
+    assert isinstance(p.color_table, plot.AbstractColorTable)
     assert p.plot_saver_list is not None
     assert p.conc_map is not None
     assert p.depo_map is not None
@@ -1467,28 +1470,47 @@ def test_ColorTableFactory_create_instance():
     saved = plot.ColorTableFactory.COLOR_TABLE_FILE_NAMES
     plot.ColorTableFactory.COLOR_TABLE_FILE_NAMES = ["data/CLRTBL.CFG"]
 
+    # DefaultChemicalThresholdColorTable
     s.KMAP = const.ConcentrationMapType.THRESHOLD_LEVELS
     s.KHEMIN = 1
     ct = plot.ColorTableFactory.create_instance(s)
     assert isinstance(ct, plot.DefaultChemicalThresholdColorTable)
-    
+    assert ct.scaled_opacity == pytest.approx(1.0)
+    # repeat with the color opacity specified
+    ct = plot.ColorTableFactory.create_instance(s, 50)
+    assert isinstance(ct, plot.DefaultChemicalThresholdColorTable)
+    assert ct.scaled_opacity == pytest.approx(0.5)
+
+    # UserColorTable
     s.KMAP = const.ConcentrationMapType.CONCENTRATION
     s.user_color = True
     s.parse_contour_levels("10E+2:USER1:100050200+10E+3:USER2:100070200")
     ct = plot.ColorTableFactory.create_instance(s)
     assert isinstance(ct, plot.UserColorTable)
-    
+    assert ct.scaled_opacity == pytest.approx(1.0)
+    # repeat with the color opacity specified
+    ct = plot.ColorTableFactory.create_instance(s, 50)
+    assert isinstance(ct, plot.UserColorTable)
+    assert ct.scaled_opacity == pytest.approx(0.5)
+
+    # DefaultColorTable
     s.user_color = False
     ct = plot.ColorTableFactory.create_instance(s)
     assert isinstance(ct, plot.DefaultColorTable)
-    
+    assert ct.scaled_opacity == pytest.approx(1.0)
+    # repeat with the color opacity specified
+    ct = plot.ColorTableFactory.create_instance(s, 50)
+    assert isinstance(ct, plot.DefaultColorTable)
+    assert ct.scaled_opacity == pytest.approx(0.5)
+
     # check conversion to grayscale table
     s.color = const.ConcentrationPlotColor.BLACK_AND_WHITE
     ct = plot.ColorTableFactory.create_instance(s)
     assert isinstance(ct, plot.DefaultColorTable)
     for rgb in ct.rgbs:
-        r, g, b = rgb
+        r, g, b, a = rgb
         assert r == g and g == b
+        assert a == pytest.approx(1.0)
 
     plot.ColorTableFactory.COLOR_TABLE_FILE_NAMES = saved
 
@@ -1504,11 +1526,12 @@ def test_ColorTableFactory__get_color_table_filename():
 
     
 def test_AbstractColorTable___init__():
-    o = AbstractColorTableTest(4)
+    o = AbstractColorTableTest(4, 50)
     assert hasattr(o, "ncolors")
     assert hasattr(o, "rgbs")
     assert hasattr(o, "offset")
     assert o.ncolors == 4
+    assert o.scaled_opacity == pytest.approx(0.5)
     assert o.offset == 0
     assert o.use_offset == False
 
@@ -1523,10 +1546,14 @@ def test_AbstractColorTable_get_reader():
 def test_AbstractColorTable_set_rgb():
     o = AbstractColorTableTest(2)
     o.rgbs = [(0,0,0), (.5, .5, .5)]
-    
+
     o.set_rgb(0, (.2, .2, .2))
-    assert o.rgbs[0] == pytest.approx((0.2, 0.2, 0.2))
-    
+    assert o.rgbs[0] == pytest.approx((0.2, 0.2, 0.2, 1.0))
+
+    # repeat with an alpha value specified
+    o.set_rgb(0, (.1, .2, .2, 0.75))
+    assert o.rgbs[0] == pytest.approx((0.1, 0.2, 0.2, 0.75))
+
 
 def test_AbstractColorTable_change_to_grayscale():
     o = AbstractColorTableTest(2)
@@ -1534,9 +1561,16 @@ def test_AbstractColorTable_change_to_grayscale():
     
     o.change_to_grayscale()
     
-    assert o.rgbs[0] == pytest.approx((0.0, 0.0, 0.0))
-    assert o.rgbs[1] == pytest.approx((0.5815, 0.5815, 0.5815))
+    assert o.rgbs[0] == pytest.approx((0.0, 0.0, 0.0, 1.0))
+    assert o.rgbs[1] == pytest.approx((0.5815, 0.5815, 0.5815, 1.0))
     
+    # repeat with an alpha value specified
+    o.scaled_opacity = 0.50
+    o.rgbs = [(0,0,0), (.5, .6, .7)]
+    o.change_to_grayscale()
+    assert o.rgbs[0] == pytest.approx((0.0, 0.0, 0.0, 0.5))
+    assert o.rgbs[1] == pytest.approx((0.5815, 0.5815, 0.5815, 0.5))
+
 
 def test_AbstractColorTable_get_luminance():
     assert AbstractColorTableTest.get_luminance((0.5, 0.6, 0.7)) == pytest.approx(0.5815)
@@ -1592,37 +1626,42 @@ def test_AbstractColorTable_enable_offset():
 def test_DefaultColorTable___init__():
     o = plot.DefaultColorTable(3, False)
     assert o.ncolors == 3
+    assert o.scaled_opacity == pytest.approx(1.0)
     assert o.skip_std_colors == False
     assert len(o.rgbs) == 32
-    assert o.rgbs[3] == pytest.approx((0.0, 1.0, 0.0))
+    assert o.rgbs[3] == pytest.approx((0.0, 1.0, 0.0, 1.0))
     assert hasattr(o, "colors")
     assert hasattr(o, "raw_colors")
     assert o._DefaultColorTable__current_offset == 0
-   
+    
+    # repeat with an alpha value
+    o = plot.DefaultColorTable(3, False, 50)
+    assert o.scaled_opacity == pytest.approx(0.5)
+
 
 def test_DefaultColorTable_raw_colors():
     o = plot.DefaultColorTable(3, False)
     clrs = o.raw_colors
     assert len(clrs) == 3
-    assert clrs[0] == pytest.approx((0.0, 1.0, 0.0))
-    assert clrs[1] == pytest.approx((0.0, 0.0, 1.0))
-    assert clrs[2] == pytest.approx((1.0, 1.0, 0.0))
+    assert clrs[0] == pytest.approx((0.0, 1.0, 0.0, 1.0))
+    assert clrs[1] == pytest.approx((0.0, 0.0, 1.0, 1.0))
+    assert clrs[2] == pytest.approx((1.0, 1.0, 0.0, 1.0))
 
     o = plot.DefaultColorTable(3, True)
     clrs = o.raw_colors
     assert len(clrs) == 3
-    assert clrs[0] == pytest.approx((1.0, 1.0, 0.0))
-    assert clrs[1] == pytest.approx((1.0, 0.6, 0.0))
-    assert clrs[2] == pytest.approx((1.0, 0.0, 0.0)) 
+    assert clrs[0] == pytest.approx((1.0, 1.0, 0.0, 1.0))
+    assert clrs[1] == pytest.approx((1.0, 0.6, 0.0, 1.0))
+    assert clrs[2] == pytest.approx((1.0, 0.0, 0.0, 1.0)) 
     
     o.enable_offset( True )
     o.set_offset(1)
     
     clrs = o.raw_colors
     assert len(clrs) == 3
-    assert clrs[0] == pytest.approx((0.8, 1.0, 0.0))
-    assert clrs[1] == pytest.approx((1.0, 1.0, 0.0))
-    assert clrs[2] == pytest.approx((1.0, 0.6, 0.0))
+    assert clrs[0] == pytest.approx((0.8, 1.0, 0.0, 1.0))
+    assert clrs[1] == pytest.approx((1.0, 1.0, 0.0, 1.0))
+    assert clrs[2] == pytest.approx((1.0, 0.6, 0.0, 1.0))
     
 
 def test_DefaultColorTable_colors():
@@ -1653,37 +1692,42 @@ def test_DefaultColorTable_colors():
 def test_DefaultChemicalThresholdColorTable___init__():
     o = plot.DefaultChemicalThresholdColorTable(3, False)
     assert o.ncolors == 3
+    assert o.scaled_opacity == pytest.approx(1.0)
     assert o.skip_std_colors == False
     assert len(o.rgbs) == 32
-    assert o.rgbs[3] == pytest.approx((1.0, 0.5, 0.0))
+    assert o.rgbs[3] == pytest.approx((1.0, 0.5, 0.0, 1.0))
     assert hasattr(o, "colors")
     assert hasattr(o, "raw_colors")
     assert o._DefaultChemicalThresholdColorTable__current_offset == 0
-   
+
+    # repeat with an alpha value
+    o = plot.DefaultChemicalThresholdColorTable(3, False, 50)
+    assert o.scaled_opacity == pytest.approx(0.5)
+
 
 def test_DefaultChemicalThresholdColorTable_raw_colors():
     o = plot.DefaultChemicalThresholdColorTable(3, False)
     clrs = o.raw_colors
     assert len(clrs) == 3
-    assert clrs[2] == pytest.approx((1.0, 0.5, 0.0))
-    assert clrs[1] == pytest.approx((1.0, 1.0, 0.0))
-    assert clrs[0] == pytest.approx((0.8, 0.8, 0.8))
+    assert clrs[2] == pytest.approx((1.0, 0.5, 0.0, 1.0))
+    assert clrs[1] == pytest.approx((1.0, 1.0, 0.0, 1.0))
+    assert clrs[0] == pytest.approx((0.8, 0.8, 0.8, 1.0))
 
     o.enable_offset( True )
     o.set_offset( 1 )
     
     clrs = o.raw_colors
     assert len(clrs) == 3
-    assert clrs[2] == pytest.approx((1.0, 0.0, 0.0))
-    assert clrs[1] == pytest.approx((1.0, 0.5, 0.0))
-    assert clrs[0] == pytest.approx((1.0, 1.0, 0.0))
+    assert clrs[2] == pytest.approx((1.0, 0.0, 0.0, 1.0))
+    assert clrs[1] == pytest.approx((1.0, 0.5, 0.0, 1.0))
+    assert clrs[0] == pytest.approx((1.0, 1.0, 0.0, 1.0))
     
     o = plot.DefaultChemicalThresholdColorTable(3, True)
     clrs = o.raw_colors
     assert len(clrs) == 3
-    assert clrs[2] == pytest.approx((1.0, 1.0, 1.0))
-    assert clrs[1] == pytest.approx((1.0, 1.0, 1.0))
-    assert clrs[0] == pytest.approx((1.0, 1.0, 1.0)) 
+    assert clrs[2] == pytest.approx((1.0, 1.0, 1.0, 1.0))
+    assert clrs[1] == pytest.approx((1.0, 1.0, 1.0, 1.0))
+    assert clrs[0] == pytest.approx((1.0, 1.0, 1.0, 1.0)) 
 
 
 def test_DefaultChemicalThresholdColorTable_colors():
@@ -1713,8 +1757,13 @@ def test_DefaultChemicalThresholdColorTable_colors():
 
 def test_UserColorTable___init__(contourLevels):
     o = plot.UserColorTable(contourLevels)
+    assert o.scaled_opacity == pytest.approx(1.0)
     assert len(o.rgbs) == 4
     assert o.rgbs[0] == pytest.approx((0.4, 0.4, 0.4, 1.0))
+
+    # repeat with an alpha value.
+    o = plot.UserColorTable(contourLevels, 50)
+    assert o.scaled_opacity == pytest.approx(0.5)
 
 
 def test_UserColorTable_raw_colors(contourLevels):
@@ -1740,4 +1789,11 @@ def test_ColorTableReader_read():
     o = plot.ColorTableReader(tbl)
     tbl2 = o.read("data/CLRTBL.CFG")
     assert tbl2 is tbl
-    assert tbl2.rgbs[20] == pytest.approx((153.0/255.0, 0, 0))
+    assert tbl2.rgbs[20] == pytest.approx((153.0/255.0, 0, 0, 1.0))
+
+    # repeat with an alpha value specified
+    tbl = plot.DefaultColorTable(4, False, 50)
+    o = plot.ColorTableReader(tbl)
+    tbl2 = o.read("data/CLRTBL.CFG")
+    assert tbl2 is tbl
+    assert tbl2.rgbs[20] == pytest.approx((153.0/255.0, 0, 0, 0.5))
