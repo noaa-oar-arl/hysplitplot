@@ -623,12 +623,12 @@ def test_KMLWriter__write_attributes(cdump_two_pollutants):
     assert lines[1] == "mass/m^3&"
     assert lines[2] == "Integrated: 1700 UTC Sep 25 1983&"
     assert lines[3] == "        to: 0500 UTC Sep 26 1983&"
-    assert lines[4] == "8.0e-12 1.0e-16 2"
+    assert lines[4] == "8.0e-12 1.0e-16  2"
     assert lines[5] == "1.0e-15 1.0e-12 "
-    assert lines[6] == "1.00 1.00 "
-    assert lines[7] == "1.00 0.00 "
-    assert lines[8] == "1.00 0.00 "
-    assert lines[9] == "USER-2 USER-1 "
+    assert lines[6] == " 1.00 1.00"
+    assert lines[7] == " 1.00 0.00"
+    assert lines[8] == " 1.00 0.00"
+    assert lines[9] == "USER-2   USER-1   "
     
     os.remove("__KMLWriter.txt")
 

@@ -342,30 +342,30 @@ class KMLWriter(AbstractWriter):
             self._get_att_datetime_str(g.ending_datetime)))
 
         if self.show_max_conc == 1 or self.show_max_conc == 2:
-            f.write("{} {} {}\n".format(contour_set.max_concentration_str,
+            f.write("{:7s} {:7s} {:2d}\n".format(contour_set.max_concentration_str,
                                         contour_set.min_concentration_str,
                                         len(contour_set.levels)))
         else:
-            f.write("NOMAXNM NOMAXNM {}\n".format(len(contour_set.levels)))
+            f.write("NOMAXNM NOMAXNM {:2d}\n".format(len(contour_set.levels)))
 
         for level in contour_set.levels_str:
-            f.write("{} ".format(self._quote_if_space_present(level)))
+            f.write("{:8s}".format(self._quote_if_space_present(level)))
         f.write("\n")
 
         for c in contour_set.raw_colors:
-            f.write("{:.2f} ".format(c[0]))
+            f.write("{:5.2f}".format(c[0]))
         f.write("\n")
 
         for c in contour_set.raw_colors:
-            f.write("{:.2f} ".format(c[1]))
+            f.write("{:5.2f}".format(c[1]))
         f.write("\n")
 
         for c in contour_set.raw_colors:
-            f.write("{:.2f} ".format(c[2]))
+            f.write("{:5.2f}".format(c[2]))
         f.write("\n")
 
         for label in contour_set.labels:
-            f.write("{} ".format(self._quote_if_space_present(label)))
+            f.write("{:8s} ".format(self._quote_if_space_present(label)))
 
         f.write("\n")
 
