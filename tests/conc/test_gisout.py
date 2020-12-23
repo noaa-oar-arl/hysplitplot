@@ -567,8 +567,8 @@ def test_KMLWriter__quote_if_space_present():
     
     assert o._quote_if_space_present("1.0e-12") == "1.0e-12"
     assert o._quote_if_space_present("0-6 hours") == "\"0-6 hours\""
-    assert o._quote_if_space_present(12) == 12
-    assert o._quote_if_space_present(3.14) == 3.14
+    assert o._quote_if_space_present(12) == "12"
+    assert o._quote_if_space_present(3.14) == "3.14"
     
     
 def test_KMLWriter__write_attributes(cdump_two_pollutants):
@@ -625,10 +625,73 @@ def test_KMLWriter__write_attributes(cdump_two_pollutants):
     assert lines[3] == "        to: 0500 UTC Sep 26 1983&"
     assert lines[4] == "8.0e-12 1.0e-16  2"
     assert lines[5] == "1.0e-15 1.0e-12 "
-    assert lines[6] == " 1.00 1.00"
-    assert lines[7] == " 1.00 0.00"
-    assert lines[8] == " 1.00 0.00"
-    assert lines[9] == "USER-2   USER-1   "
+    assert lines[6] == " 1.00 1.00 1.00"
+    assert lines[7] == " 1.00 1.00 0.00"
+    assert lines[8] == " 1.00 1.00 0.00"
+    assert lines[9] == "USER-1   USER-2   "
+    
+    os.remove("__KMLWriter.txt")
+    
+    
+def test_KMLWriter__write_attributes_case2(cdump_two_pollutants):
+    # Test for chemical thresholds.
+    s = plot.ConcentrationPlotSettings()
+    o = gisout.KMLWriter(s.kml_option)
+
+    g = cdump_two_pollutants.grids[0]
+    g.extension = helper.GridProperties()
+    g.extension.max_locs = helper.find_max_locs(g)
+    
+    o.initialize(s.gis_alt_mode,
+                 s.KMLOUT,
+                 s.output_suffix,
+                 const.ConcentrationMapType.THRESHOLD_LEVELS,
+                 s.NSSLBL,
+                 s.show_max_conc,
+                 s.NDEP)
+    
+    ax = plt.axes()
+    quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
+                                    [1.0e-15, 1.0e-12],
+                                    colors=["#ff0000", "#00ff00"],
+                                    extend="max")
+    plt.close(ax.figure)
+    
+    contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
+    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
+    contour_set.colors = ["#ff0000", "#00ff00"]
+    contour_set.levels = [1.0e-15, 1.0e-12]
+    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
+    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.concentration_unit = "mass/m^3"
+    contour_set.min_concentration = 1.0e-16
+    contour_set.max_concentration = 8.0e-12
+    contour_set.min_concentration_str = "1.0e-16"
+    contour_set.max_concentration_str = "8.0e-12"
+    
+    f = open("__KMLWriter.txt", "wt")
+    
+    try:
+        o._write_attributes(f, g, contour_set)
+    except Exception as ex:
+        pytest.fail("unexpected exception: {}".format(ex))
+        
+    f.close()
+    
+    f = open("__KMLWriter.txt", "rt")
+    lines = f.read().splitlines()
+    f.close()
+    
+    assert lines[0] == "4"
+    assert lines[1] == "mass/m^3&"
+    assert lines[2] == "Integrated: 1700 UTC Sep 25 1983&"
+    assert lines[3] == "        to: 0500 UTC Sep 26 1983&"
+    assert lines[4] == "8.0e-12 1.0e-16  4"
+    assert lines[5] == "0       0       1.0e-15 1.0e-12 "
+    assert lines[6] == " 1.00 1.00 1.00 1.00 1.00"
+    assert lines[7] == " 1.00 1.00 1.00 1.00 0.00"
+    assert lines[8] == " 1.00 1.00 1.00 1.00 0.00"
+    assert lines[9] == "USER-1   USER-2                     "
     
     os.remove("__KMLWriter.txt")
 
