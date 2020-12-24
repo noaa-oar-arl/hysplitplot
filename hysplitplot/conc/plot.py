@@ -228,9 +228,20 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
 
         # sort by contour level if the levels are set
         if self.validate_contour_levels(self.contour_levels):
+            self.sort_contour_levels_and_colors()
+
+        logger.debug("sorted contour levels: %s", self.contour_levels)
+
+    def sort_contour_levels_and_colors(self):
+        if not self.user_color:
+            # sort the contour levels only
             self.contour_levels = sorted(self.contour_levels,
                                          key=lambda o: o.level)
-        logger.debug("sorted contour levels: %s", self.contour_levels)
+        else:
+            a = list(zip(self.contour_levels, self.user_colors))
+            s = sorted(a, key=lambda t: t[0].level)
+            self.contour_levels = [it[0] for it in s]
+            self.user_colors = [it[1] for it in s]
 
     def validate_contour_levels(self, contour_levels):
         # See if the -v option is used without contour levels. 
