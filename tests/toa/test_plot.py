@@ -277,6 +277,7 @@ def test_TimeOfArrivalPlotSettings_parse_contour_levels():
     s = plot.TimeOfArrivalPlotSettings()
     s.parse_contour_levels("1E3+100+10")
     assert s.user_color == False
+    assert s.user_colors is None
     assert s.user_label == False
     assert len(s.contour_levels) == 3
     assert s.contour_level_count == 3
@@ -289,6 +290,7 @@ def test_TimeOfArrivalPlotSettings_parse_contour_levels():
     s = plot.TimeOfArrivalPlotSettings()
     s.parse_contour_levels("10E+2:USER1+10E+3:USER2")
     assert s.user_color == False
+    assert s.user_colors is None
     assert s.user_label == True
     a = s.contour_levels
     assert len(a) == 2
@@ -306,20 +308,22 @@ def test_TimeOfArrivalPlotSettings_parse_contour_levels():
     s = plot.TimeOfArrivalPlotSettings()
     s.parse_contour_levels("10E+2:USER1:100050200+10E+3:USER2:100070200")
     assert s.user_color == True
+    assert s.user_colors is not None
     assert s.user_label == True
     a = s.contour_levels
+    c = s.user_colors
     assert len(a) == 2
     assert s.contour_level_count == 2
     k = 0
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == "USER1"
-    assert (a[k].r, a[k].g, a[k].b) == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
+    assert c[k] == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
     k += 1
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == "USER2"
-    assert (a[k].r, a[k].g, a[k].b) == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
+    assert c[k] == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
 
 
 def test_TimeOfArrivalPlotSettings_parse_simple_contour_levels():
@@ -328,55 +332,56 @@ def test_TimeOfArrivalPlotSettings_parse_simple_contour_levels():
 
 
 def test_TimeOfArrivalPlotSettings_parse_labeled_contour_levels():
-    a, clr_set = plot.TimeOfArrivalPlotSettings.parse_labeled_contour_levels("10E+2:USER1:100050200+10E+3:USER2:100070200")
+    a, clrs, clr_set = plot.TimeOfArrivalPlotSettings.parse_labeled_contour_levels("10E+2:USER1:100050200+10E+3:USER2:100070200")
     assert len(a) == 2
+    assert len(clrs) == 2
     assert clr_set == True
     
     k = 0
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == "USER1"
-    assert (a[k].r, a[k].g, a[k].b) == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
+    assert clrs[k] == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
     
     k += 1
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == "USER2"
-    assert (a[k].r, a[k].g, a[k].b) == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
+    assert clrs[k] == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
     
     # without labels
-    a, clr_set = plot.TimeOfArrivalPlotSettings.parse_labeled_contour_levels("10E+2::100050200+10E+3::100070200")
+    a, clrs, clr_set = plot.TimeOfArrivalPlotSettings.parse_labeled_contour_levels("10E+2::100050200+10E+3::100070200")
     assert len(a) == 2
+    assert len(clrs) == 2
     assert clr_set == True
     
     k = 0
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == ""
-    assert (a[k].r, a[k].g, a[k].b) == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
+    assert clrs[k] == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
     
     k += 1
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == ""
-    assert (a[k].r, a[k].g, a[k].b) == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
+    assert clrs[k] == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
   
     #without colors
-    a, clr_set = plot.TimeOfArrivalPlotSettings.parse_labeled_contour_levels("10E+2:USER1+10E+3:USER2")
+    a, clrs, clr_set = plot.TimeOfArrivalPlotSettings.parse_labeled_contour_levels("10E+2:USER1+10E+3:USER2")
     assert len(a) == 2
+    assert len(clrs) == 0
     assert clr_set == False
     
     k = 0
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == "USER1"
-    assert (a[k].r, a[k].g, a[k].b) == pytest.approx((1.0, 1.0, 1.0), 1.0e-5)
     
     k += 1
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == "USER2"
-    assert (a[k].r, a[k].g, a[k].b) == pytest.approx((1.0, 1.0, 1.0), 1.0e-5)
 
 
 def test_TimeOfArrivalPlotSettings_get_reader():

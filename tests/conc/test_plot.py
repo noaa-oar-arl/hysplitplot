@@ -42,13 +42,23 @@ def cdump2():
 @pytest.fixture
 def contourLevels():
     c = []
-    c.append(plot.LabelledContourLevel(10.0, "L1", 0.4, 0.4, 0.4))
-    c.append(plot.LabelledContourLevel(15.0, "L2", 0.6, 0.6, 0.6))
-    c.append(plot.LabelledContourLevel(20.0, "L3", 0.8, 0.8, 0.8))
-    c.append(plot.LabelledContourLevel(25.0, "L4", 1.0, 1.0, 1.0))
+    c.append(plot.LabelledContourLevel(10.0, "L1"))
+    c.append(plot.LabelledContourLevel(15.0, "L2"))
+    c.append(plot.LabelledContourLevel(20.0, "L3"))
+    c.append(plot.LabelledContourLevel(25.0, "L4"))
     return c
-    
-    
+
+
+@pytest.fixture
+def userColors():
+    c = []
+    c.append((0.4, 0.4, 0.4))
+    c.append((0.5, 0.5, 0.5))
+    c.append((0.6, 0.6, 0.6))
+    c.append((0.7, 0.7, 0.7))
+    return c
+
+
 def blank_event_handler(event):
     # do nothing
     return
@@ -376,6 +386,7 @@ def test_ConcentrationPlotSettings_parse_contour_levels():
     s = plot.ConcentrationPlotSettings()
     s.parse_contour_levels("1E3+100+10")
     assert s.user_color == False
+    assert s.user_colors is None
     assert s.user_label == False
     assert len(s.contour_levels) == 3
     assert s.contour_level_count == 3
@@ -388,6 +399,7 @@ def test_ConcentrationPlotSettings_parse_contour_levels():
     s = plot.ConcentrationPlotSettings()
     s.parse_contour_levels("10E+2:USER1+10E+3:USER2")
     assert s.user_color == False
+    assert s.user_colors is None
     assert s.user_label == True
     a = s.contour_levels
     assert len(a) == 2
@@ -405,20 +417,43 @@ def test_ConcentrationPlotSettings_parse_contour_levels():
     s = plot.ConcentrationPlotSettings()
     s.parse_contour_levels("10E+2:USER1:100050200+10E+3:USER2:100070200")
     assert s.user_color == True
+    assert s.user_colors is not None
     assert s.user_label == True
     a = s.contour_levels
+    c = s.user_colors
     assert len(a) == 2
     assert s.contour_level_count == 2
     k = 0
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == "USER1"
-    assert (a[k].r, a[k].g, a[k].b) == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
+    assert c[k] == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
     k += 1
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == "USER2"
-    assert (a[k].r, a[k].g, a[k].b) == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
+    assert c[k] == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
+
+    # hysplitcameo test case
+    s = plot.ConcentrationPlotSettings()
+    s.parse_contour_levels("::000255255+::000255000+::000000255+::255255000+::255000000")
+    assert s.user_color == True
+    assert s.user_colors is not None
+    assert s.user_label == True
+    a = s.contour_levels
+    c = s.user_colors
+    assert len(a) == 5
+    assert s.contour_level_count == 5
+    k = 0
+    assert isinstance(a[k], plot.LabelledContourLevel)
+    assert a[k].level is None
+    assert a[k].label == ""
+    assert c[k] == pytest.approx((0.0, 1.0, 1.0), 1.0e-5)
+    k += 4
+    assert isinstance(a[k], plot.LabelledContourLevel)
+    assert a[k].level is None
+    assert a[k].label == ""
+    assert c[k] == pytest.approx((1.0, 0.0, 0.0), 1.0e-5)
 
 
 def test_ConcentrationPlotSettings_parse_simple_contour_levels():
@@ -427,55 +462,56 @@ def test_ConcentrationPlotSettings_parse_simple_contour_levels():
 
 
 def test_ConcentrationPlotSettings_parse_labeled_contour_levels():
-    a, clr_set = plot.ConcentrationPlotSettings.parse_labeled_contour_levels("10E+2:USER1:100050200+10E+3:USER2:100070200")
+    a, clrs, clr_set = plot.ConcentrationPlotSettings.parse_labeled_contour_levels("10E+2:USER1:100050200+10E+3:USER2:100070200")
     assert len(a) == 2
+    assert len(clrs) == 2
     assert clr_set == True
     
     k = 0
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == "USER1"
-    assert (a[k].r, a[k].g, a[k].b) == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
+    assert clrs[k] == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
     
     k += 1
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == "USER2"
-    assert (a[k].r, a[k].g, a[k].b) == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
+    assert clrs[k] == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
     
     # without labels
-    a, clr_set = plot.ConcentrationPlotSettings.parse_labeled_contour_levels("10E+2::100050200+10E+3::100070200")
+    a, clrs, clr_set = plot.ConcentrationPlotSettings.parse_labeled_contour_levels("10E+2::100050200+10E+3::100070200")
     assert len(a) == 2
+    assert len(clrs) == 2
     assert clr_set == True
     
     k = 0
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == ""
-    assert (a[k].r, a[k].g, a[k].b) == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
+    assert clrs[k] == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
     
     k += 1
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == ""
-    assert (a[k].r, a[k].g, a[k].b) == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
+    assert clrs[k] == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
   
     #without colors
-    a, clr_set = plot.ConcentrationPlotSettings.parse_labeled_contour_levels("10E+2:USER1+10E+3:USER2")
+    a, clrs, clr_set = plot.ConcentrationPlotSettings.parse_labeled_contour_levels("10E+2:USER1+10E+3:USER2")
     assert len(a) == 2
+    assert len(clrs) == 0
     assert clr_set == False
     
     k = 0
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == "USER1"
-    assert (a[k].r, a[k].g, a[k].b) == pytest.approx((1.0, 1.0, 1.0), 1.0e-5)
     
     k += 1
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == "USER2"
-    assert (a[k].r, a[k].g, a[k].b) == pytest.approx((1.0, 1.0, 1.0), 1.0e-5)
 
 
 def test_ConcentrationPlotSettings_get_reader():
@@ -1149,29 +1185,18 @@ def test_ConcentrationPlot_get_plot_count_str():
     
 
 def test_LabelledContourLevel___init__():
-    o = plot.LabelledContourLevel(10.0, "USER1", 0.5, 0.6, 0.7, 0.8)
+    o = plot.LabelledContourLevel(10.0, "USER1")
     assert o.level == 10.0
     assert o.label == "USER1"
-    assert o.r == 0.5
-    assert o.g == 0.6
-    assert o.b == 0.7
-    assert o.alpha == 0.8
     
-    o = plot.LabelledContourLevel(10.0, "USER1", 0.5, 0.6, 0.7)
-    assert o.alpha == 1.0
-
     o = plot.LabelledContourLevel()
     assert o.level == 0.0
     assert o.label == ""
-    assert o.r == 1.0
-    assert o.g == 1.0
-    assert o.b == 1.0
-    assert o.alpha == 1.0
 
 
 def test_LabelledContourLevel___repr__():
-    o = plot.LabelledContourLevel(10.0, "USER1", 0.5, 0.6, 0.7)
-    assert str(o) == "LabelledContourLevel(USER1, 10.0, r0.5, g0.6, b0.7)"
+    o = plot.LabelledContourLevel(10.0, "USER1")
+    assert str(o) == "LabelledContourLevel(USER1, 10.0)"
 
 
 def test_ContourLevelGeneratorFactory_create_instance(contourLevels):
@@ -1755,25 +1780,25 @@ def test_DefaultChemicalThresholdColorTable_colors():
     assert clrs[0] == "#ffffff"   
 
 
-def test_UserColorTable___init__(contourLevels):
-    o = plot.UserColorTable(contourLevels)
+def test_UserColorTable___init__(userColors):
+    o = plot.UserColorTable(userColors)
     assert o.scaled_opacity == pytest.approx(1.0)
     assert len(o.rgbs) == 4
     assert o.rgbs[0] == pytest.approx((0.4, 0.4, 0.4, 1.0))
 
     # repeat with an alpha value.
-    o = plot.UserColorTable(contourLevels, 50)
+    o = plot.UserColorTable(userColors, 50)
     assert o.scaled_opacity == pytest.approx(0.5)
 
 
-def test_UserColorTable_raw_colors(contourLevels):
-    o = plot.UserColorTable(contourLevels)
+def test_UserColorTable_raw_colors(userColors):
+    o = plot.UserColorTable(userColors)
     clrs = o.raw_colors
     assert len(clrs) == 4
     
 
-def test_UserColorTable_colors(contourLevels):
-    o = plot.UserColorTable(contourLevels)
+def test_UserColorTable_colors(userColors):
+    o = plot.UserColorTable(userColors)
     clrs = o.colors
     assert len(clrs) == 4
     

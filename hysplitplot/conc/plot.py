@@ -78,6 +78,7 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.source_label_color = "k"       # black
         self.source_label_font_size = 12    # font size
         self.user_color = False
+        self.user_colors = None             # list of (r, g, b) tuples
         self.user_label = False
         self.contour_levels = None
         self.contour_level_count = 4
@@ -181,8 +182,9 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
 
         if args.has_arg("-v"):
             self.parse_contour_levels(args.get_value("-v"))
-            self.contour_level_generator = \
-                const.ContourLevelGenerator.USER_SPECIFIED
+            if self.validate_contour_levels(self.contour_levels):
+                self.contour_level_generator = \
+                    const.ContourLevelGenerator.USER_SPECIFIED
 
         self.gis_alt_mode = args.get_integer_value(["+a", "+A"],
                                                    self.gis_alt_mode)
@@ -213,19 +215,29 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
 
     def parse_contour_levels(self, str):
         if str.count(":") > 0:
-            self.contour_levels, self.user_color = \
+            self.contour_levels, clrs, self.user_color = \
                 self.parse_labeled_contour_levels(str)
             self.user_label = True
+            if self.user_color:
+                self.user_colors = clrs
         else:
             levels = self.parse_simple_contour_levels(str)
             self.contour_levels = [LabelledContourLevel(v) for v in levels]
 
         self.contour_level_count = len(self.contour_levels)
 
-        # sort by contour level
-        self.contour_levels = sorted(self.contour_levels,
-                                     key=lambda o: o.level)
+        # sort by contour level if the levels are set
+        if self.validate_contour_levels(self.contour_levels):
+            self.contour_levels = sorted(self.contour_levels,
+                                         key=lambda o: o.level)
         logger.debug("sorted contour levels: %s", self.contour_levels)
+
+    def validate_contour_levels(self, contour_levels):
+        # See if the -v option is used without contour levels. 
+        for c in contour_levels:
+            if (c.level is None):
+                return False
+        return True
 
     @staticmethod
     def parse_simple_contour_levels(str):
@@ -260,6 +272,7 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         and 10000.0.
         """
         list = []
+        clrs = []
         color_set = True
 
         tokens = str.split("+")
@@ -275,19 +288,24 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
             a = s.split(":")
 
             o = LabelledContourLevel()
-            o.level = float(a[0])
+            try:
+                o.level = float(a[0])
+            except ValueError as ex:
+                logger.error(ex)
+                o.level = None
             o.label = a[1]
             if len(a) > 2:
-                o.r = int(a[2][0:3]) / 255.0
-                o.g = int(a[2][3:6]) / 255.0
-                o.b = int(a[2][6:9]) / 255.0
+                r = int(a[2][0:3]) / 255.0
+                g = int(a[2][3:6]) / 255.0
+                b = int(a[2][6:9]) / 255.0
+                clrs.append((r, g, b))
             else:
                 color_set = False
 
             list.append(o)
             k += 1
 
-        return list, color_set
+        return list, clrs, color_set
 
     def get_reader(self):
         return ConcentrationPlotSettingsReader(self)
@@ -1328,18 +1346,12 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
 class LabelledContourLevel:
 
-    def __init__(self, level=0.0, label="", r=1.0, g=1.0, b=1.0,
-                 alpha=1.0):
+    def __init__(self, level=0.0, label=""):
         self.level = level
         self.label = label
-        self.r = r
-        self.g = g
-        self.b = b
-        self.alpha = alpha
 
     def __repr__(self):
-        return "LabelledContourLevel({0}, {1}, r{2}, g{3}, b{4})".format(
-            self.label, self.level, self.r, self.g, self.b)
+        return "LabelledContourLevel({0}, {1})".format(self.label, self.level)
 
 
 class ContourLevelGeneratorFactory:
@@ -1566,7 +1578,7 @@ class ColorTableFactory:
                 and settings.KHEMIN == 1:
             ct = DefaultChemicalThresholdColorTable(ncolors, skip_std_colors, color_opacity)
         elif settings.user_color:
-            ct = UserColorTable(settings.contour_levels, color_opacity)
+            ct = UserColorTable(settings.user_colors, color_opacity)
         else:
             ct = DefaultColorTable(ncolors, skip_std_colors, color_opacity)
             f = ColorTableFactory._get_color_table_filename()
@@ -1739,9 +1751,9 @@ class DefaultChemicalThresholdColorTable(AbstractColorTable):
 
 class UserColorTable(AbstractColorTable):
 
-    def __init__(self, contour_levels, color_opacity=100):
-        super(UserColorTable, self).__init__(len(contour_levels), color_opacity)
-        self.rgbs = [(o.r, o.g, o.b, o.alpha) for o in contour_levels]
+    def __init__(self, user_colors, color_opacity=100):
+        super(UserColorTable, self).__init__(len(user_colors), color_opacity)
+        self.rgbs = [(o[0], o[1], o[2], self.scaled_opacity) for o in user_colors]
         self.__colors = None
 
     @property
