@@ -62,7 +62,7 @@ class AbstractWriter(ABC):
         self.time_zone = time_zone
 
     def initialize(self, gis_alt_mode, KMLOUT, output_suffix, KMAP, NSSLBL,
-                   show_max_conc):
+                   show_max_conc, NDEP):
         if gis_alt_mode == const.GISOutputAltitude.RELATIVE_TO_GROUND:
             self.alt_mode_str = "relativeToGround"
         else:
@@ -72,6 +72,7 @@ class AbstractWriter(ABC):
         self.KMAP = KMAP
         self.NSSLBL = NSSLBL
         self.show_max_conc = show_max_conc
+        self.NDEP = NDEP
 
     @abstractmethod
     def write(self, basename, g, contour_set, lower_vert_level,
@@ -116,8 +117,9 @@ class PointsGenerateFileWriter(AbstractWriter):
 
     def make_output_basename(self, g, conc_type, depo_sum, output_basename,
                              output_suffix, KMLOUT, upper_vert_level):
-        basename = depo_sum.make_gis_basename(g.time_index + 1, output_suffix)
-        if basename is None:
+        if g.vert_level == 0 and depo_sum is not None:
+            basename = depo_sum.make_gis_basename(g.time_index + 1, output_suffix)
+        else:
             basename = conc_type.make_gis_basename(g.time_index + 1,
                                                    output_suffix,
                                                    g.vert_level,
@@ -264,12 +266,29 @@ class KMLWriter(AbstractWriter):
         return "{}_{}".format(s, output_suffix)
 
     def initialize(self, gis_alt_mode, KMLOUT, output_suffix, KMAP, NSSLBL,
-                   show_max_conc):
+                   show_max_conc, NDEP):
         super(KMLWriter, self).initialize(gis_alt_mode, KMLOUT, output_suffix,
-                                          KMAP, NSSLBL, show_max_conc)
+                                          KMAP, NSSLBL, show_max_conc, NDEP)
         self.contour_writer = KMLContourWriterFactory.create_instance(
-            self.KMAP, self.alt_mode_str, self.time_zone)
+                self.KMAP, self.alt_mode_str, self.time_zone)
         self.contour_writer.set_show_max_conc(show_max_conc)
+        self.deposition_contour_writer = self.create_deposition_contour_writer(
+                KMAP, self.alt_mode_str, self.time_zone, NDEP, show_max_conc)
+
+    def create_deposition_contour_writer(self, KMAP, alt_modestr, time_zine,
+                                         NDEP, show_max_conc):
+        if NDEP == const.DepositionType.NONE:
+            return None
+
+        if KMAP == const.ConcentrationMapType.VOLCANIC_ERUPTION:
+            deposition_kmap = const.ConcentrationMapType.VOLCANIC_ERUPTION
+        else:
+            deposition_kmap = const.ConcentrationMapType.DEPOSITION_6
+
+        w = KMLContourWriterFactory.create_instance(
+                    deposition_kmap, self.alt_mode_str, self.time_zone)
+        w.set_show_max_conc(show_max_conc)
+        return w
 
 
     def write(self, basename, g, contour_set,
@@ -293,9 +312,14 @@ class KMLWriter(AbstractWriter):
                     and self.kml_option != const.KMLOption.BOTH_1_AND_2:
                 self._write_overlays(self.xml_root)
 
-        self.contour_writer.write(self.xml_root, g, contour_set,
-                                  lower_vert_level, upper_vert_level,
-                                  self.output_suffix)
+        if g.vert_level == 0 and self.deposition_contour_writer is not None:
+            self.deposition_contour_writer.write(self.kml_file, g, contour_set,
+                                      lower_vert_level, upper_vert_level,
+                                      self.output_suffix)
+        else:
+            self.contour_writer.write(self.kml_file, g, contour_set,
+                                      lower_vert_level, upper_vert_level,
+                                      self.output_suffix)
 
         if self.att_file is None:
             filename = "GELABEL_{}.txt".format(self.output_suffix)
@@ -332,38 +356,59 @@ class KMLWriter(AbstractWriter):
         f.write("        to: {}\n".format(
             self._get_att_datetime_str(g.ending_datetime)))
 
+        # Always use 4 levels for chemical thresholds
+        additional_levels = 0
+        if self.KMAP == const.ConcentrationMapType.THRESHOLD_LEVELS:
+            if len(contour_set.levels) < 4:
+                additional_levels = 4 - len(contour_set.levels)
+
         if self.show_max_conc == 1 or self.show_max_conc == 2:
-            f.write("{} {} {}\n".format(contour_set.max_concentration_str,
+            f.write("{:7s} {:7s} {:2d}\n".format(contour_set.max_concentration_str,
                                         contour_set.min_concentration_str,
-                                        len(contour_set.levels)))
+                                        len(contour_set.levels) + additional_levels))
         else:
-            f.write("NOMAXNM NOMAXNM {}\n".format(len(contour_set.levels)))
+            f.write("NOMAXNM NOMAXNM {:2d}\n".format(len(contour_set.levels)
+                                                     + additional_levels))
 
+        for k in range(additional_levels):
+            f.write("{:8s}".format(str(0)))
         for level in contour_set.levels_str:
-            f.write("{} ".format(self._quote_if_space_present(level)))
+            f.write("{:8s}".format(self._quote_if_space_present(level)))
         f.write("\n")
 
+        f.write("{:5.2f}".format(1.0))
+        for k in range(additional_levels):
+            f.write("{:5.2f}".format(1.0))
         for c in contour_set.raw_colors:
-            f.write("{:.2f} ".format(c[0]))
+            f.write("{:5.2f}".format(c[0]))
         f.write("\n")
 
+        f.write("{:5.2f}".format(1.0))
+        for k in range(additional_levels):
+            f.write("{:5.2f}".format(1.0))
         for c in contour_set.raw_colors:
-            f.write("{:.2f} ".format(c[1]))
+            f.write("{:5.2f}".format(c[1]))
         f.write("\n")
 
+        f.write("{:5.2f}".format(1.0))
+        for k in range(additional_levels):
+            f.write("{:5.2f}".format(1.0))
         for c in contour_set.raw_colors:
-            f.write("{:.2f} ".format(c[2]))
+            f.write("{:5.2f}".format(c[2]))
         f.write("\n")
 
+        contour_set.labels.reverse()
         for label in contour_set.labels:
-            f.write("{} ".format(self._quote_if_space_present(label)))
-
+            f.write("{:8s} ".format(self._quote_if_space_present(label)))
+        contour_set.labels.reverse()
+        for k in range(additional_levels):
+            f.write("{:8s} ".format(" "))
         f.write("\n")
 
     def _quote_if_space_present(self, o):
         if isinstance(o, str) and o.count(" ") > 0:
             return "\"{}\"".format(o)
-        return o
+        return str(o)
 
     def _write_preamble(self, x, g):
         first_release_loc = g.parent.release_locs[0]
@@ -515,9 +560,14 @@ class PartialKMLWriter(KMLWriter):
                             'xmlns:gx':'http://www.google.com/kml/ext/2.2'})
             doc = ET.SubElement(self.xml_root, 'Document')
 
-        self.contour_writer.write(self.xml_root, g, contour_set,
-                                  lower_vert_level, upper_vert_level,
-                                  self.output_suffix)
+        if g.vert_level == 0 and self.deposition_contour_writer is not None:
+            self.deposition_contour_writer.write(self.kml_file, g, contour_set,
+                                      lower_vert_level, upper_vert_level,
+                                      self.output_suffix)
+        else:
+            self.contour_writer.write(self.kml_file, g, contour_set,
+                                      lower_vert_level, upper_vert_level,
+                                      self.output_suffix)
 
         if self.att_file is None:
             filename = "GELABEL_{}.txt".format(self.output_suffix)

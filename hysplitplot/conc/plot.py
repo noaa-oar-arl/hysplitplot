@@ -86,6 +86,7 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.source_label_color = "k"       # black
         self.source_label_font_size = 12    # font size
         self.user_color = False
+        self.user_colors = None             # list of (r, g, b) tuples
         self.user_label = False
         self.contour_levels = None
         self.contour_level_count = 4
@@ -236,6 +237,12 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.IZRO = args.get_integer_value("-8", self.IZRO)
         self.NSSLBL = args.get_integer_value("-9", self.NSSLBL)
 
+        if args.has_arg("-v"):
+            self.parse_contour_levels(args.get_value("-v"))
+            if self.validate_contour_levels(self.contour_levels):
+                self.contour_level_generator = \
+                    const.ContourLevelGenerator.USER_SPECIFIED
+
     @staticmethod
     def parse_source_label(str):
         c = int(str)
@@ -261,19 +268,40 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
 
     def parse_contour_levels(self, str):
         if str.count(":") > 0:
-            self.contour_levels, self.user_color = \
+            self.contour_levels, clrs, self.user_color = \
                 self.parse_labeled_contour_levels(str)
             self.user_label = True
+            if self.user_color:
+                self.user_colors = clrs
         else:
             levels = self.parse_simple_contour_levels(str)
             self.contour_levels = [LabelledContourLevel(v) for v in levels]
 
         self.contour_level_count = len(self.contour_levels)
 
-        # sort by contour level
-        self.contour_levels = sorted(self.contour_levels,
-                                     key=lambda o: o.level)
+        # sort by contour level if the levels are set
+        if self.validate_contour_levels(self.contour_levels):
+            self.sort_contour_levels_and_colors()
+
         logger.debug("sorted contour levels: %s", self.contour_levels)
+
+    def sort_contour_levels_and_colors(self):
+        if not self.user_color:
+            # sort the contour levels only
+            self.contour_levels = sorted(self.contour_levels,
+                                         key=lambda o: o.level)
+        else:
+            a = list(zip(self.contour_levels, self.user_colors))
+            s = sorted(a, key=lambda t: t[0].level)
+            self.contour_levels = [it[0] for it in s]
+            self.user_colors = [it[1] for it in s]
+
+    def validate_contour_levels(self, contour_levels):
+        # See if the -v option is used without contour levels. 
+        for c in contour_levels:
+            if (c.level is None):
+                return False
+        return True
 
     @staticmethod
     def parse_simple_contour_levels(str):
@@ -308,6 +336,7 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         and 10000.0.
         """
         list = []
+        clrs = []
         color_set = True
 
         tokens = str.split("+")
@@ -323,19 +352,24 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
             a = s.split(":")
 
             o = LabelledContourLevel()
-            o.level = float(a[0])
+            try:
+                o.level = float(a[0])
+            except ValueError as ex:
+                logger.error(ex)
+                o.level = None
             o.label = a[1]
             if len(a) > 2:
-                o.r = int(a[2][0:3]) / 255.0
-                o.g = int(a[2][3:6]) / 255.0
-                o.b = int(a[2][6:9]) / 255.0
+                r = int(a[2][0:3]) / 255.0
+                g = int(a[2][3:6]) / 255.0
+                b = int(a[2][6:9]) / 255.0
+                clrs.append((r, g, b))
             else:
                 color_set = False
 
             list.append(o)
             k += 1
 
-        return list, color_set
+        return list, clrs, color_set
 
     def get_reader(self):
         return ConcentrationPlotSettingsReader(self)
@@ -403,6 +437,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.legends_axes = None
         self.text_axes = None
         self.plot_saver_list = None
+        self.color_opacity = 100  # 0 to 100%
+        self.color_table = None
 
         self.TFACT = 1.0
         self.initial_time = None
@@ -479,6 +515,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             self.conc_type.set_alt_KAVG(3)
         if self.labels.has("LAYER"):
             self.conc_type.set_custom_layer_str(self.labels.get("LAYER"))
+
+        self.color_table = ColorTableFactory.create_instance(self.settings,
+                                                             color_opacity=self.color_opacity)
 
         self.plot_saver_list = self._create_plot_saver_list(self.settings)
 
@@ -702,6 +741,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         if self.settings.center_loc == [0.0, 0.0]:
             self.settings.center_loc = self.cdump.release_locs[0]
+        logger.debug('settings.center_loc {}'.format(self.settings.center_loc))
 
         if self.settings.ring and self.settings.ring_number >= 0:
             map_box.determine_plume_extent()
@@ -1283,7 +1323,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                          settings.output_suffix,
                          settings.KMAP,
                          settings.NSSLBL,
-                         settings.show_max_conc)
+                         settings.show_max_conc,
+                         settings.NDEP)
 
         return gis_writer_list
 
@@ -1301,7 +1342,6 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             self.settings.contour_levels,
             self.settings.UDMIN,
             self.settings.user_color)
-        color_table = ColorTableFactory.create_instance(self.settings)
 
         gis_writers = self._create_gis_writer_list(self.settings, self.time_zone)
 
@@ -1338,7 +1378,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
             for g in grids_above_ground:
                 self.draw_conc_above_ground(g, ev_handlers, level_generator,
-                                            color_table, gis_writers,
+                                            self.color_table, gis_writers,
                                             *args, **kwargs)
 
             grids = self.depo_sum.get_grids_to_plot(
@@ -1346,7 +1386,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 t_index == self.time_selector.last)
             for g in grids:
                 self.draw_conc_on_ground(g, ev_handlers, level_gen_depo,
-                                         color_table, gis_writers,
+                                         self.color_table, gis_writers,
                                          *args, **kwargs)
 
             self.time_period_count += 1
@@ -1370,18 +1410,12 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
 class LabelledContourLevel:
 
-    def __init__(self, level=0.0, label="", r=1.0, g=1.0, b=1.0,
-                 alpha=1.0):
+    def __init__(self, level=0.0, label=""):
         self.level = level
         self.label = label
-        self.r = r
-        self.g = g
-        self.b = b
-        self.alpha = alpha
 
     def __repr__(self):
-        return "LabelledContourLevel({0}, {1}, r{2}, g{3}, b{4})".format(
-            self.label, self.level, self.r, self.g, self.b)
+        return "LabelledContourLevel({0}, {1})".format(self.label, self.level)
 
 
 class ContourLevelGeneratorFactory:
@@ -1590,10 +1624,10 @@ class ColorTableFactory:
     COLOR_TABLE_FILE_NAMES = ["CLRTBL.CFG", "../graphics/CLRTBL.CFG"]
 
     @staticmethod
-    def create_instance(settings):
+    def create_instance(settings, color_opacity=100):
         ncolors = settings.contour_level_count
-        logger.debug("ColorTableFactory::create_instance: color count %d",
-                     ncolors)
+        logger.debug("ColorTableFactory::create_instance: color count %d, opacity %d",
+                     ncolors, color_opacity)
 
         skip_std_colors = False
         if settings.contour_level_generator == \
@@ -1606,19 +1640,20 @@ class ColorTableFactory:
 
         if settings.KMAP == const.ConcentrationMapType.THRESHOLD_LEVELS \
                 and settings.KHEMIN == 1:
-            ct = DefaultChemicalThresholdColorTable(ncolors, skip_std_colors)
+            ct = DefaultChemicalThresholdColorTable(ncolors, skip_std_colors, color_opacity)
         elif settings.user_color:
-            ct = UserColorTable(settings.contour_levels)
+            ct = UserColorTable(settings.user_colors, color_opacity)
         else:
-            ct = DefaultColorTable(ncolors, skip_std_colors)
+            ct = DefaultColorTable(ncolors, skip_std_colors, color_opacity)
             f = ColorTableFactory._get_color_table_filename()
             if f is not None:
                 ct.get_reader().read(f)
                 if settings.contour_level_generator == \
                         const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC \
                         and settings.IDYNC != 0:
+                    scaled_opacity = color_opacity * 0.01
                     for k in range(5):
-                        ct.set_rgb(k, (1.0, 1.0, 1.0))
+                        ct.set_rgb(k, (1.0, 1.0, 1.0, scaled_opacity))
 
         if settings.IDYNC == 1:
             ct.enable_offset(True)
@@ -1641,9 +1676,10 @@ class ColorTableFactory:
 
 class AbstractColorTable(ABC):
 
-    def __init__(self, ncolors):
+    def __init__(self, ncolors, color_opacity=100):
         self.rgbs = []
         self.ncolors = ncolors
+        self.scaled_opacity = color_opacity * 0.01
         self.offset = 0
         self.use_offset = False
         return
@@ -1652,12 +1688,15 @@ class AbstractColorTable(ABC):
         return ColorTableReader(self)
 
     def set_rgb(self, k, rgb):
-        self.rgbs[k] = rgb
+        if len(rgb) == 3:
+            self.rgbs[k] = (rgb[0], rgb[1], rgb[2], self.scaled_opacity)
+        else:
+            self.rgbs[k] = rgb
 
     def change_to_grayscale(self):
         for k, rgb in enumerate(self.rgbs):
             lum = self.get_luminance(rgb)
-            self.rgbs[k] = (lum, lum, lum)
+            self.rgbs[k] = (lum, lum, lum, self.scaled_opacity)
 
     @staticmethod
     def get_luminance(rgb):
@@ -1693,13 +1732,13 @@ class AbstractColorTable(ABC):
 
 class DefaultColorTable(AbstractColorTable):
 
-    def __init__(self, ncolors, skip_std_colors):
-        super(DefaultColorTable, self).__init__(ncolors)
+    def __init__(self, ncolors, skip_std_colors, color_opacity=100):
+        super(DefaultColorTable, self).__init__(ncolors, color_opacity)
         self.skip_std_colors = skip_std_colors
         self.__colors = None
         self.__raw_colors = None
         self.__current_offset = 0
-        self.rgbs = [
+        self.rgbs = [(c[0], c[1], c[2], self.scaled_opacity) for c in [
             (1.0, 1.0, 1.0), (1.0, 1.0, 0.0), (0.0, 0.0, 1.0), (0.0, 1.0, 0.0),
             (0.0, 1.0, 1.0), (1.0, 0.0, 0.0), (1.0, 0.6, 0.0), (1.0, 1.0, 0.0),
             (0.8, 1.0, 0.0), (0.0, 0.6, 0.0), (0.0, 1.0, 0.4), (0.0, 1.0, 1.0),
@@ -1708,6 +1747,7 @@ class DefaultColorTable(AbstractColorTable):
             (0.6, 0.0, 0.0), (1.0, 0.8, 1.0), (0.4, 0.4, 1.0), (1.0, 1.0, 1.0),
             (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
             (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0)]
+        ]
 
     @property
     def raw_colors(self):
@@ -1733,13 +1773,14 @@ class DefaultColorTable(AbstractColorTable):
 
 class DefaultChemicalThresholdColorTable(AbstractColorTable):
 
-    def __init__(self, ncolors, skip_std_colors):
-        super(DefaultChemicalThresholdColorTable, self).__init__(ncolors)
+    def __init__(self, ncolors, skip_std_colors, color_opacity=100):
+        super(DefaultChemicalThresholdColorTable, self).__init__(ncolors,
+                                                                 color_opacity)
         self.skip_std_colors = skip_std_colors
         self.__colors = None
         self.__raw_colors = None
         self.__current_offset = 0
-        self.rgbs = [
+        self.rgbs = [(c[0], c[1], c[2], self.scaled_opacity) for c in [
             (1.0, 1.0, 1.0), (0.8, 0.8, 0.8), (1.0, 1.0, 0.0), (1.0, 0.5, 0.0),
             (1.0, 0.0, 0.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
             (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
@@ -1748,6 +1789,7 @@ class DefaultChemicalThresholdColorTable(AbstractColorTable):
             (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
             (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
             (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0)]
+        ]
 
     @property
     def raw_colors(self):
@@ -1773,9 +1815,9 @@ class DefaultChemicalThresholdColorTable(AbstractColorTable):
 
 class UserColorTable(AbstractColorTable):
 
-    def __init__(self, contour_levels):
-        super(UserColorTable, self).__init__(len(contour_levels))
-        self.rgbs = [(o.r, o.g, o.b, o.alpha) for o in contour_levels]
+    def __init__(self, user_colors, color_opacity=100):
+        super(UserColorTable, self).__init__(len(user_colors), color_opacity)
+        self.rgbs = [(o[0], o[1], o[2], self.scaled_opacity) for o in user_colors]
         self.__colors = None
 
     @property
@@ -1810,7 +1852,7 @@ class ColorTableReader(io.FormattedTextFileReader):
             v = self.parse_line("A15,I3,4X,I3,4X,I3")
             logger.debug("color [%s], r %d, g %d, b %d",
                          v[0], v[1], v[2], v[3])
-            rgbs.append((v[1]*w, v[2]*w, v[3]*w))
+            rgbs.append((v[1]*w, v[2]*w, v[3]*w, self.color_table.scaled_opacity))
             k += 1
 
         self.color_table.rgbs = rgbs

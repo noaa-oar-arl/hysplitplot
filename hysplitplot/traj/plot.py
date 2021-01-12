@@ -669,21 +669,16 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         # place station locations
         self._draw_stations_if_exists(axes, self.settings)
 
+        self.draw_trajectories(self.traj_axes, data_list)
+        self.draw_source_markers(self.traj_axes, data_list)
+
+    def draw_trajectories(self, axes, data_list):
         # See if the data time span is longer than the specified interval
         interval_symbol_drawer = IntervalSymbolDrawerFactory.create_instance(
             axes, self.settings)
 
         for plotData in data_list:
             for k, t in enumerate(plotData.trajectories):
-                # draw a source marker
-                if self.settings.label_source == 1:
-                    if util.is_valid_lonlat(t.starting_loc):
-                        axes.scatter(t.starting_loc[0], t.starting_loc[1],
-                                     s=self.settings.source_marker_size,
-                                     marker=self.settings.source_marker,
-                                     c=self.settings.source_marker_color,
-                                     clip_on=True,
-                                     transform=self.data_crs)
                 # gather data points
                 lats = t.latitudes
                 lons = t.longitudes
@@ -711,6 +706,19 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                               verticalalignment="bottom",
                               clip_on=True,
                               transform=self.data_crs)
+
+    def draw_source_markers(self, axes, data_list):
+        # draw a source marker
+        if self.settings.label_source == 1:
+            for plotData in data_list:
+                for k, t in enumerate(plotData.trajectories):
+                    if util.is_valid_lonlat(t.starting_loc):
+                        axes.scatter(t.starting_loc[0], t.starting_loc[1],
+                                     s=self.settings.source_marker_size,
+                                     marker=self.settings.source_marker,
+                                     c=self.settings.source_marker_color,
+                                     clip_on=True,
+                                     transform=self.data_crs)
 
     def draw_trajectory_uncertainty(self, lons, lats, sigmas, clr):
         axes = self.traj_axes

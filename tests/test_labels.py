@@ -91,6 +91,12 @@ def test_LabelsConfigReader_read():
 
 def test_LabelsConfigReader_check_consistency():
     r = labels.LabelsConfig().get_reader()
+    assert r.escape('meter&') == 'meter&'
+    assert r.escape(' %&') == ' \%&'
+
+
+def test_LabelsConfigReader_check_consistency():
+    r = labels.LabelsConfig().get_reader()
     assert r.check_consistency("data/LABELS.CFG") == True
 
     # when TXBOXL appears before NTXBOXL

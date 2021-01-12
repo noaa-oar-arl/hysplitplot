@@ -733,6 +733,34 @@ def test_TrajectoryPlot_draw_trajectory_plot():
         raise pytest.fail("unexpected exception: {0}".format(ex))
 
 
+def test_TrajectoryPlot_draw_trajectories():
+    p = plot.TrajectoryPlot()
+    p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
+    p.read_data_files()
+    p.layout(p.data_list)
+
+    # See if no exception is thrown.
+    try:
+        p.draw_trajectories(p.traj_axes, p.data_list)
+        cleanup_plot(p)
+    except Exception as ex:
+        raise pytest.fail("unexpected exception: {0}".format(ex))
+
+
+def test_TrajectoryPlot_draw_source_markers():
+    p = plot.TrajectoryPlot()
+    p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
+    p.read_data_files()
+    p.layout(p.data_list)
+
+    # See if no exception is thrown.
+    try:
+        p.draw_source_markers(p.traj_axes, p.data_list)
+        cleanup_plot(p)
+    except Exception as ex:
+        raise pytest.fail("unexpected exception: {0}".format(ex))
+
+
 def test_TrajectoryPlot_draw_trajectory_uncertainty():
     p = plot.TrajectoryPlot()
     ax = plt.axes()

@@ -135,13 +135,14 @@ def test_AbstractWriter___init__():
 
 def test_AbstractWriter_initialize():
     o = AbstractWriterTest()
-    o.initialize(0, 2, "3", 5, 6, 7)
+    o.initialize(0, 2, "3", 5, 6, 7, 8)
     assert o.alt_mode_str == "clampedToGround"
     assert o.KMLOUT == 2
     assert o.output_suffix == "3"
     assert o.KMAP == 5
     assert o.NSSLBL == 6
     assert o.show_max_conc == 7
+    assert o.NDEP == 8
 
 
 def test_AbstractWriter_write():
@@ -207,13 +208,27 @@ def test_PointsGenerateFileWriter_make_output_basename(cdump_two_pollutants):
     s = plot.ConcentrationPlotSettings()
     conc_type = helper.ConcentrationTypeFactory.create_instance( s.KAVG )
     depo_sum = helper.DepositSumFactory.create_instance(s.NDEP,
-                                                     cdump_two_pollutants.has_ground_level_grid())
-    
+                                                        cdump_two_pollutants.has_ground_level_grid())
+
     o = gisout.PointsGenerateFileWriter( gisout.PointsGenerateFileWriter.DecimalFormWriter() )
+    # Choose a concentration grid at 100 m.
     g = cdump_two_pollutants.grids[0]
+    assert g.vert_level == 100
     basename = o.make_output_basename(g, conc_type, depo_sum, "output", "ps", s.KMLOUT, 500)
     assert basename == "GIS_00100_ps_01"
-        
+    # Choose a concentration grid at 300 m
+    g = cdump_two_pollutants.grids[1]
+    assert g.vert_level == 300
+    basename = o.make_output_basename(g, conc_type, depo_sum, "output", "ps", s.KMLOUT, 500)
+    assert basename == "GIS_00300_ps_01"
+    # Recreate depo_sum with the flag for ground-level grid set to True.
+    depo_sum = helper.DepositSumFactory.create_instance(s.NDEP,
+                                                        True)
+    # Change the height of the grid to zero.
+    g.vert_level = 0
+    basename = o.make_output_basename(g, conc_type, depo_sum, "output", "ps", s.KMLOUT, 500)
+    assert basename == "GIS_DEP_ps_01"
+
 
 def test_PointsGenerateFileWriter_write(cdump_two_pollutants):
     # delete files we are about to create
@@ -235,7 +250,8 @@ def test_PointsGenerateFileWriter_write(cdump_two_pollutants):
                  s.output_suffix,
                  s.KMAP,
                  s.NSSLBL,
-                 s.show_max_conc)
+                 s.show_max_conc,
+                 s.NDEP)
 
     ax = plt.axes()
     quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
@@ -451,10 +467,13 @@ def test_KMLWriter_initialize(cdump_two_pollutants):
                  s.output_suffix,
                  s.KMAP,
                  s.NSSLBL,
-                 s.show_max_conc)
-    
+                 s.show_max_conc,
+                 s.NDEP)
+
     assert isinstance(o.contour_writer, gisout.AbstractKMLContourWriter)
     assert o.contour_writer.show_max_conc == True
+    assert isinstance(o.deposition_contour_writer, gisout.AbstractKMLContourWriter)
+    assert o.deposition_contour_writer.show_max_conc == True
 
     # test initialize() again with s.show_max_conc = 0.
 
@@ -465,11 +484,12 @@ def test_KMLWriter_initialize(cdump_two_pollutants):
                  s.output_suffix,
                  s.KMAP,
                  s.NSSLBL,
-                 s.show_max_conc)
+                 s.show_max_conc,
+                 const.DepositionType.NONE)
     
     assert isinstance(o.contour_writer, gisout.AbstractKMLContourWriter)
     assert o.contour_writer.show_max_conc == False
-
+    assert o.deposition_contour_writer is None
 
 def test_KMLWriter_write(cdump_two_pollutants):
     # delete files we are about to create
@@ -490,7 +510,8 @@ def test_KMLWriter_write(cdump_two_pollutants):
                  s.output_suffix,
                  s.KMAP,
                  s.NSSLBL,
-                 s.show_max_conc)
+                 s.show_max_conc,
+                 s.NDEP)
     
     ax = plt.axes()
     quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
@@ -549,8 +570,8 @@ def test_KMLWriter__quote_if_space_present():
     
     assert o._quote_if_space_present("1.0e-12") == "1.0e-12"
     assert o._quote_if_space_present("0-6 hours") == "\"0-6 hours\""
-    assert o._quote_if_space_present(12) == 12
-    assert o._quote_if_space_present(3.14) == 3.14
+    assert o._quote_if_space_present(12) == "12"
+    assert o._quote_if_space_present(3.14) == "3.14"
     
     
 def test_KMLWriter__write_attributes(cdump_two_pollutants):
@@ -566,7 +587,8 @@ def test_KMLWriter__write_attributes(cdump_two_pollutants):
                  s.output_suffix,
                  s.KMAP,
                  s.NSSLBL,
-                 s.show_max_conc)
+                 s.show_max_conc,
+                 s.NDEP)
     
     ax = plt.axes()
     quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
@@ -604,12 +626,75 @@ def test_KMLWriter__write_attributes(cdump_two_pollutants):
     assert lines[1] == "mass/m^3&"
     assert lines[2] == "Integrated: 1700 UTC Sep 25 1983&"
     assert lines[3] == "        to: 0500 UTC Sep 26 1983&"
-    assert lines[4] == "8.0e-12 1.0e-16 2"
+    assert lines[4] == "8.0e-12 1.0e-16  2"
     assert lines[5] == "1.0e-15 1.0e-12 "
-    assert lines[6] == "1.00 1.00 "
-    assert lines[7] == "1.00 0.00 "
-    assert lines[8] == "1.00 0.00 "
-    assert lines[9] == "USER-2 USER-1 "
+    assert lines[6] == " 1.00 1.00 1.00"
+    assert lines[7] == " 1.00 1.00 0.00"
+    assert lines[8] == " 1.00 1.00 0.00"
+    assert lines[9] == "USER-1   USER-2   "
+    
+    os.remove("__KMLWriter.txt")
+    
+    
+def test_KMLWriter__write_attributes_case2(cdump_two_pollutants):
+    # Test for chemical thresholds.
+    s = plot.ConcentrationPlotSettings()
+    o = gisout.KMLWriter(s.kml_option)
+
+    g = cdump_two_pollutants.grids[0]
+    g.extension = helper.GridProperties()
+    g.extension.max_locs = helper.find_max_locs(g)
+    
+    o.initialize(s.gis_alt_mode,
+                 s.KMLOUT,
+                 s.output_suffix,
+                 const.ConcentrationMapType.THRESHOLD_LEVELS,
+                 s.NSSLBL,
+                 s.show_max_conc,
+                 s.NDEP)
+    
+    ax = plt.axes()
+    quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
+                                    [1.0e-15, 1.0e-12],
+                                    colors=["#ff0000", "#00ff00"],
+                                    extend="max")
+    plt.close(ax.figure)
+    
+    contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
+    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
+    contour_set.colors = ["#ff0000", "#00ff00"]
+    contour_set.levels = [1.0e-15, 1.0e-12]
+    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
+    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.concentration_unit = "mass/m^3"
+    contour_set.min_concentration = 1.0e-16
+    contour_set.max_concentration = 8.0e-12
+    contour_set.min_concentration_str = "1.0e-16"
+    contour_set.max_concentration_str = "8.0e-12"
+    
+    f = open("__KMLWriter.txt", "wt")
+    
+    try:
+        o._write_attributes(f, g, contour_set)
+    except Exception as ex:
+        pytest.fail("unexpected exception: {}".format(ex))
+        
+    f.close()
+    
+    f = open("__KMLWriter.txt", "rt")
+    lines = f.read().splitlines()
+    f.close()
+    
+    assert lines[0] == "4"
+    assert lines[1] == "mass/m^3&"
+    assert lines[2] == "Integrated: 1700 UTC Sep 25 1983&"
+    assert lines[3] == "        to: 0500 UTC Sep 26 1983&"
+    assert lines[4] == "8.0e-12 1.0e-16  4"
+    assert lines[5] == "0       0       1.0e-15 1.0e-12 "
+    assert lines[6] == " 1.00 1.00 1.00 1.00 1.00"
+    assert lines[7] == " 1.00 1.00 1.00 1.00 0.00"
+    assert lines[8] == " 1.00 1.00 1.00 1.00 0.00"
+    assert lines[9] == "USER-1   USER-2                     "
     
     os.remove("__KMLWriter.txt")
 
@@ -647,7 +732,8 @@ def test_PartialKMLWriter_write(cdump_two_pollutants):
                  s.output_suffix,
                  s.KMAP,
                  s.NSSLBL,
-                 s.show_max_conc)
+                 s.show_max_conc,
+                 s.NDEP)
     
     ax = plt.axes()
     quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,

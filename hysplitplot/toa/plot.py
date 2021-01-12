@@ -85,6 +85,7 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         self.source_label_color = "k"      # black
         self.source_label_font_size = 12   # font size
         self.user_color = False
+        self.user_colors = None             # list of (r, g, b) tuples
         self.user_label = False
         self.contour_levels = None
         self.contour_level_count = 4
@@ -200,8 +201,9 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
 
         if args.has_arg("-v"):
             self.parse_contour_levels(args.get_value("-v"))
-            self.contour_level_generator = \
-                const.ContourLevelGenerator.USER_SPECIFIED
+            if self.validate_contour_levels(self.contour_levels):
+                self.contour_level_generator = \
+                    const.ContourLevelGenerator.USER_SPECIFIED
         else:
             self.setup_contour_styles()
 
@@ -245,28 +247,48 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
             (0.5020, 0.5020, 0.5020, 0.5)]
 
         for k, c in enumerate(colors):
-            r, g, b, x = c
-            self.contour_levels.append(
-                LabelledContourLevel(k, "NONE", r, g, b, x))
+            self.contour_levels.append(LabelledContourLevel(k, "NONE"))
 
         self.contour_level_count = len(self.contour_levels)
         self.user_color = True
+        self.user_colors = colors
 
     def parse_contour_levels(self, str):
         if str.count(":") > 0:
-            self.contour_levels, self.user_color = \
+            self.contour_levels, clrs, self.user_color = \
                 self.parse_labeled_contour_levels(str)
             self.user_label = True
+            if self.user_color:
+                self.user_colors = clrs
         else:
             levels = self.parse_simple_contour_levels(str)
             self.contour_levels = [LabelledContourLevel(v) for v in levels]
 
         self.contour_level_count = len(self.contour_levels)
 
-        # sort by contour level
-        self.contour_levels = sorted(self.contour_levels,
-                                     key=lambda o: o.level)
+        # sort by contour level if the levels are set
+        if self.validate_contour_levels(self.contour_levels):
+            self.sort_contour_levels_and_colors()
+
         logger.debug("sorted contour levels: %s", self.contour_levels)
+
+    def sort_contour_levels_and_colors(self):
+        if not self.user_color:
+            # sort the contour levels only
+            self.contour_levels = sorted(self.contour_levels,
+                                         key=lambda o: o.level)
+        else:
+            a = list(zip(self.contour_levels, self.user_colors))
+            s = sorted(a, key=lambda t: t[0].level)
+            self.contour_levels = [it[0] for it in s]
+            self.user_colors = [it[1] for it in s]
+
+    def validate_contour_levels(self, contour_levels):
+        # See if the -v option is used without contour levels. 
+        for c in contour_levels:
+            if (c.level is None):
+                return False
+        return True
 
     @staticmethod
     def parse_simple_contour_levels(str):
@@ -301,6 +323,7 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         and 10000.0.
         """
         list = []
+        clrs = []
         color_set = True
 
         tokens = str.split("+")
@@ -316,19 +339,24 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
             a = s.split(":")
 
             o = LabelledContourLevel()
-            o.level = float(a[0])
+            try:
+                o.level = float(a[0])
+            except ValueError as ex:
+                logger.error(ex)
+                o.level = None
             o.label = a[1]
             if len(a) > 2:
-                o.r = int(a[2][0:3]) / 255.0
-                o.g = int(a[2][3:6]) / 255.0
-                o.b = int(a[2][6:9]) / 255.0
+                r = int(a[2][0:3]) / 255.0
+                g = int(a[2][3:6]) / 255.0
+                b = int(a[2][6:9]) / 255.0
+                clrs.append((r, g, b))
             else:
                 color_set = False
 
             list.append(o)
             k += 1
 
-        return list, color_set
+        return list, clrs, color_set
 
     def get_reader(self):
         return TimeOfArrivalPlotSettingsReader(self)
@@ -1117,7 +1145,8 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
                               self.settings.output_suffix,
                               self.settings.KMAP,
                               self.settings.NSSLBL,
-                              self.settings.show_max_conc)
+                              self.settings.show_max_conc,
+                              const.DepositionType.NONE)
 
         self._initialize_map_projection(self.cdump)
 
