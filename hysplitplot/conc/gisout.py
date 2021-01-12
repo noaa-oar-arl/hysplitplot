@@ -580,13 +580,13 @@ class PartialKMLWriter(KMLWriter):
         self._write_attributes(self.att_file, g, contour_set)
 
     def _write_attributes(self, f, g, contour_set):
-        # do nothing
-        pass
+        super(PartialKMLWriter, self)._write_attributes(f, g, contour_set)
 
     def finalize(self):
         if self.kml_filename is not None and self.xml_root is not None:
             self._write_postamble(self.xml_root)
-            tree = ET.ElementTree(self.xml_root)
+            folder = self.xml_root.find('Document/Folder')
+            tree = ET.ElementTree(folder)
             tree.write(self.kml_filename, encoding='UTF-8',
                        xml_declaration=False,
                        short_empty_elements=False)

@@ -784,9 +784,34 @@ def test_PartialKMLWriter__write_attributes(cdump_two_pollutants):
     g = cdump_two_pollutants.grids[0]
     g.extension = helper.GridProperties()
     g.extension.max_locs = helper.find_max_locs(g)
-
-    contour_set = None
-                  
+    
+    o.initialize(s.gis_alt_mode,
+                 s.KMLOUT,
+                 s.output_suffix,
+                 s.KMAP,
+                 s.NSSLBL,
+                 s.show_max_conc,
+                 s.NDEP)
+    
+    ax = plt.axes()
+    quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
+                                    [1.0e-15, 1.0e-12],
+                                    colors=["#ff0000", "#00ff00"],
+                                    extend="max")
+    plt.close(ax.figure)
+    
+    contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
+    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
+    contour_set.colors = ["#ff0000", "#00ff00"]
+    contour_set.levels = [1.0e-15, 1.0e-12]
+    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
+    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.concentration_unit = "mass/m^3"
+    contour_set.min_concentration = 1.0e-16
+    contour_set.max_concentration = 8.0e-12
+    contour_set.min_concentration_str = "1.0e-16"
+    contour_set.max_concentration_str = "8.0e-12"
+    
     f = open("__PartialKMLWriter.txt", "wt")
     
     try:
