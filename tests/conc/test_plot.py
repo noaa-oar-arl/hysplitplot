@@ -456,6 +456,42 @@ def test_ConcentrationPlotSettings_parse_contour_levels():
     assert c[k] == pytest.approx((1.0, 0.0, 0.0), 1.0e-5)
 
 
+def test_ConcentrationPlotSettings_sort_contour_levels_and_colors():
+    s = plot.ConcentrationPlotSettings()
+    # parse_contour_levels() calls sort_contour_levels_and_colors().
+    s.parse_contour_levels("1::000255255+2::000255000+3::000000255+4::255255000+5::255000000")
+    assert s.contour_levels[0].level == 1
+    assert s.user_colors[0] == pytest.approx((0.0, 1.0, 1.0))
+    assert s.contour_levels[4].level == 5
+    assert s.user_colors[4] == pytest.approx((1.0, 0.0, 0.0))
+    # reverse the order of contour levels.
+    s.parse_contour_levels("5::000255255+4::000255000+3::000000255+2::255255000+1::255000000")
+    assert s.contour_levels[0].level == 1
+    assert s.user_colors[0] == pytest.approx((1.0, 0.0, 0.0))
+    assert s.contour_levels[4].level == 5
+    assert s.user_colors[4] == pytest.approx((0.0, 1.0, 1.0))
+    # without colors
+    s.parse_contour_levels("1E3+100+10")
+    assert s.contour_levels[0].level == 10
+    assert s.contour_levels[1].level == 100
+    assert s.contour_levels[2].level == 1000
+    # reverse the listing order
+    s.parse_contour_levels("10+100+1E3")
+    assert s.contour_levels[0].level == 10
+    assert s.contour_levels[1].level == 100
+    assert s.contour_levels[2].level == 1000
+
+
+def test_ConcentrationPlotSettings_validate_contour_levels():
+    s = plot.ConcentrationPlotSettings()
+    # without contour levels
+    s.parse_contour_levels("::000255255+::000255000+::000000255+::255255000+::255000000")
+    assert s.validate_contour_levels(s.contour_levels) == False 
+    # with contour levels
+    s.parse_contour_levels("1E3+100+10")
+    assert s.validate_contour_levels(s.contour_levels)
+
+
 def test_ConcentrationPlotSettings_parse_simple_contour_levels():
     a = plot.ConcentrationPlotSettings.parse_simple_contour_levels("1E3+100+10")
     assert a == pytest.approx([1000.0, 100.0, 10.0])

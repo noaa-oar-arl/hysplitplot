@@ -325,6 +325,63 @@ def test_TimeOfArrivalPlotSettings_parse_contour_levels():
     assert a[k].label == "USER2"
     assert c[k] == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
 
+    # hysplitcameo test case
+    s = plot.TimeOfArrivalPlotSettings()
+    s.parse_contour_levels("::000255255+::000255000+::000000255+::255255000+::255000000")
+    assert s.user_color == True
+    assert s.user_colors is not None
+    assert s.user_label == True
+    a = s.contour_levels
+    c = s.user_colors
+    assert len(a) == 5
+    assert s.contour_level_count == 5
+    k = 0
+    assert isinstance(a[k], plot.LabelledContourLevel)
+    assert a[k].level is None
+    assert a[k].label == ""
+    assert c[k] == pytest.approx((0.0, 1.0, 1.0), 1.0e-5)
+    k += 4
+    assert isinstance(a[k], plot.LabelledContourLevel)
+    assert a[k].level is None
+    assert a[k].label == ""
+    assert c[k] == pytest.approx((1.0, 0.0, 0.0), 1.0e-5)
+
+
+def test_TimeOfArrivalPlotSettings_sort_contour_levels_and_colors():
+    s = plot.TimeOfArrivalPlotSettings()
+    # parse_contour_levels() calls sort_contour_levels_and_colors().
+    s.parse_contour_levels("1::000255255+2::000255000+3::000000255+4::255255000+5::255000000")
+    assert s.contour_levels[0].level == 1
+    assert s.user_colors[0] == pytest.approx((0.0, 1.0, 1.0))
+    assert s.contour_levels[4].level == 5
+    assert s.user_colors[4] == pytest.approx((1.0, 0.0, 0.0))
+    # reverse the order of contour levels.
+    s.parse_contour_levels("5::000255255+4::000255000+3::000000255+2::255255000+1::255000000")
+    assert s.contour_levels[0].level == 1
+    assert s.user_colors[0] == pytest.approx((1.0, 0.0, 0.0))
+    assert s.contour_levels[4].level == 5
+    assert s.user_colors[4] == pytest.approx((0.0, 1.0, 1.0))
+    # without colors
+    s.parse_contour_levels("1E3+100+10")
+    assert s.contour_levels[0].level == 10
+    assert s.contour_levels[1].level == 100
+    assert s.contour_levels[2].level == 1000
+    # reverse the listing order
+    s.parse_contour_levels("10+100+1E3")
+    assert s.contour_levels[0].level == 10
+    assert s.contour_levels[1].level == 100
+    assert s.contour_levels[2].level == 1000
+
+
+def test_TimeOfArrivalPlotSettings_validate_contour_levels():
+    s = plot.TimeOfArrivalPlotSettings()
+    # without contour levels
+    s.parse_contour_levels("::000255255+::000255000+::000000255+::255255000+::255000000")
+    assert s.validate_contour_levels(s.contour_levels) == False 
+    # with contour levels
+    s.parse_contour_levels("1E3+100+10")
+    assert s.validate_contour_levels(s.contour_levels)
+
 
 def test_TimeOfArrivalPlotSettings_parse_simple_contour_levels():
     a = plot.TimeOfArrivalPlotSettings.parse_simple_contour_levels("1E3+100+10")
