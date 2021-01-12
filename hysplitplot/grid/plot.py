@@ -136,6 +136,8 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
                                                       self.frames_per_file)
 
         self.gis_output = args.get_integer_value(["-g", "-G"], self.gis_output)
+        self.gis_output = self.normalize_gis_output_option(self.gis_output)
+
         self.hlevel = args.get_integer_value(["-h", "-H"], self.hlevel)
 
 #         if args.has_arg(["-g", "-G"]):
@@ -259,6 +261,13 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
 #         self.gis_alt_mode = args.get_integer_value(["+a", "+A"],
 #                                                    self.gis_alt_mode)
 #         self.KMLOUT = args.get_integer_value(["-5"], self.KMLOUT)
+
+    @staticmethod
+    def normalize_gis_output_option(gisopt):  # TODO: add unit test
+        # GRIDPLOT always outputs contour values as log10(value).
+        if gisopt == const.GISOutput.GENERATE_POINTS_2:
+            return const.GISOutput.GENERATE_POINTS
+        return gisopt
 
     @staticmethod
     def parse_source_label(str):
@@ -1219,7 +1228,8 @@ class GridPlot(plotbase.AbstractPlot):
             upper_vert_level)
 
         gis_writer.write(basename, g, contour_set,
-                         lower_vert_level, upper_vert_level)
+                         lower_vert_level, upper_vert_level,
+                         distinguishable_vert_level=False)
 
     def draw_conc_grid(self, g, event_handlers, level_generator,
                                color_table, gis_writer=None, *args, **kwargs):
@@ -1421,7 +1431,8 @@ class GridPlot(plotbase.AbstractPlot):
                               self.settings.output_suffix,
                               self.settings.KMAP,
                               self.settings.NSSLBL,
-                              self.settings.show_max_conc)
+                              self.settings.show_max_conc,
+                              self.settings.NDEP)
 
         self._initialize_map_projection(self.cdump)
 

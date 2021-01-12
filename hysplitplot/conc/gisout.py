@@ -76,7 +76,7 @@ class AbstractWriter(ABC):
 
     @abstractmethod
     def write(self, basename, g, contour_set, lower_vert_level,
-              upper_vert_level):
+              upper_vert_level, distinguishable_vert_level):
         pass
 
     def finalize(self):
@@ -101,7 +101,7 @@ class NullWriter(AbstractWriter):
         super(NullWriter, self).__init__(time_zone)
 
     def write(self, basename, g, contour_set, lower_vert_level,
-              upper_vert_level):
+              upper_vert_level, distinguishable_vert_level=True):
         pass
 
     def make_output_basename(self, g, conc_type, depo_sum, output_basename,
@@ -127,7 +127,7 @@ class PointsGenerateFileWriter(AbstractWriter):
         return basename
 
     def write(self, basename, g, contour_set, lower_vert_level,
-              upper_vert_level):
+              upper_vert_level, distinguishable_vert_level=True):
         filename = basename + ".txt"
         logger.info("Creating file %s", filename)
         with open(filename, "wt") as f:
@@ -290,9 +290,9 @@ class KMLWriter(AbstractWriter):
         w.set_show_max_conc(show_max_conc)
         return w
 
-
     def write(self, basename, g, contour_set,
-              lower_vert_level, upper_vert_level):
+              lower_vert_level, upper_vert_level,
+              distinguishable_vert_level=True):
         if self.xml_root is None:
             self.kml_filename = "{}.kml".format(basename)
             logger.info("Creating file %s", self.kml_filename)
@@ -315,11 +315,13 @@ class KMLWriter(AbstractWriter):
         if g.vert_level == 0 and self.deposition_contour_writer is not None:
             self.deposition_contour_writer.write(self.xml_root, g, contour_set,
                                       lower_vert_level, upper_vert_level,
-                                      self.output_suffix)
+                                      self.output_suffix,
+                                      distinguishable_vert_level)
         else:
             self.contour_writer.write(self.xml_root, g, contour_set,
                                       lower_vert_level, upper_vert_level,
-                                      self.output_suffix)
+                                      self.output_suffix,
+                                      distinguishable_vert_level)
 
         if self.att_file is None:
             filename = "GELABEL_{}.txt".format(self.output_suffix)
@@ -550,7 +552,8 @@ class PartialKMLWriter(KMLWriter):
         super(PartialKMLWriter, self).__init__(kml_option, time_zone)
 
     def write(self, basename, g, contour_set,
-              lower_vert_level, upper_vert_level):
+              lower_vert_level, upper_vert_level,
+              distinguishable_vert_level=True):
         if self.xml_root is None:
             self.kml_filename = "{}.txt".format(basename)
             logger.info("Creating file %s", self.kml_filename)
@@ -563,11 +566,11 @@ class PartialKMLWriter(KMLWriter):
         if g.vert_level == 0 and self.deposition_contour_writer is not None:
             self.deposition_contour_writer.write(self.xml_root, g, contour_set,
                                       lower_vert_level, upper_vert_level,
-                                      self.output_suffix)
+                                      self.output_suffix, distinguishable_vert_level)
         else:
             self.contour_writer.write(self.xml_root, g, contour_set,
                                       lower_vert_level, upper_vert_level,
-                                      self.output_suffix)
+                                      self.output_suffix, distinguishable_vert_level)
 
         if self.att_file is None:
             filename = "GELABEL_{}.txt".format(self.output_suffix)
@@ -649,7 +652,7 @@ class AbstractKMLContourWriter(ABC):
         return "Contour Level: {} {}".format(level_str, conc_unit)
 
     def write(self, x, g, contour_set, lower_vert_level, upper_vert_level,
-              suffix):
+              suffix, distinguishable_vert_level=True):
         self.frame_count += 1
 
         begin_ts, end_ts = self._get_begin_end_timestamps(g)
@@ -692,7 +695,8 @@ class AbstractKMLContourWriter(ABC):
                       attrib={'x': '0', 'y': '0',
                               'xunits': 'pixels', 'yunits': 'pixels'})
         
-        self._write_contour(folder, g, contour_set, upper_vert_level)
+        self._write_contour(folder, g, contour_set, upper_vert_level,
+                            distinguishable_vert_level)
 
         if self.show_max_conc:
             self._write_max_location(folder, g, contour_set.max_concentration_str,
@@ -701,7 +705,8 @@ class AbstractKMLContourWriter(ABC):
     def _get_contour_height_at(self, k, vert_level):
         return int(vert_level) + (200 * k)
 
-    def _write_contour(self, x, g, contour_set, vert_level):
+    def _write_contour(self, x, g, contour_set, vert_level,
+                       distinguishable_vert_level):
         if contour_set is None:
             return
 
@@ -712,9 +717,10 @@ class AbstractKMLContourWriter(ABC):
             k = contour_set.contour_orders.index(i)
             contour = contour_set.contours[k]
 
-            # arbitrary height above ground in order of
-            # increasing concentration
-            vert_level = self._get_contour_height_at(k, vert_level_ref)
+            if distinguishable_vert_level:
+                # arbitrary height above ground in order of
+                # increasing concentration
+                vert_level = self._get_contour_height_at(k, vert_level_ref)
 
             placemark = ET.SubElement(x, 'Placemark')
             

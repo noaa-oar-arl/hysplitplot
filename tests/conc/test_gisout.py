@@ -33,7 +33,7 @@ class AbstractWriterTest(gisout.AbstractWriter):
     def __init__(self, time_zone=None):
         super(AbstractWriterTest, self).__init__(time_zone)
     
-    def write(self, basename, g, contour_set, lower_vert_level, upper_vert_level):
+    def write(self, basename, g, contour_set, lower_vert_level, upper_vert_level, distinguishable_vert_level):
         pass
     
     def make_output_basename(self, g, conc_type, depo_sum, output_basename, output_suffix, KMLOUT, upper_vert_level):
@@ -149,7 +149,7 @@ def test_AbstractWriter_write():
     o = AbstractWriterTest()
     try:
         # a silly test
-        o.write(1, 2, 3, 4, 5)
+        o.write(1, 2, 3, 4, 5, False)
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
 
@@ -242,7 +242,7 @@ def test_PointsGenerateFileWriter_write(cdump_two_pollutants):
     conc_type = helper.ConcentrationTypeFactory.create_instance( s.KAVG )
     conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
     depo_type = helper.DepositSumFactory.create_instance(s.NDEP,
-                                                      cdump_two_pollutants.has_ground_level_grid())
+                                                         cdump_two_pollutants.has_ground_level_grid())
     g = cdump_two_pollutants.grids[0]
     
     o.initialize(s.gis_alt_mode,
@@ -980,7 +980,7 @@ def test_AbstractKMLContourWriter__write_contour(cdump_two_pollutants):
     
     # just see if there is any exception
     try:
-        o._write_contour(xml_root, g, contour_set, 100)
+        o._write_contour(xml_root, g, contour_set, 100, True)
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
 
