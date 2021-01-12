@@ -300,25 +300,27 @@ class KMLWriter(AbstractWriter):
             self.xml_root = ET.Element('kml',
                     attrib={'xmlns':'http://www.opengis.net/kml/2.2',
                             'xmlns:gx':'http://www.google.com/kml/ext/2.2'})
-
-            self._write_preamble(self.xml_root, g)
+            doc = ET.SubElement(self.xml_root, 'Document')
+            self._write_preamble(doc, g)
 
             if contour_set is not None:
-                self._write_colors(self.xml_root, contour_set.colors)
+                self._write_colors(doc, contour_set.colors)
 
-            self._write_source_locs(self.xml_root, g)
+            self._write_source_locs(doc, g)
 
             if self.kml_option != const.KMLOption.NO_EXTRA_OVERLAYS \
                     and self.kml_option != const.KMLOption.BOTH_1_AND_2:
-                self._write_overlays(self.xml_root)
+                self._write_overlays(doc)
+        else:
+            doc = self.xml_root.find("Document")
 
         if g.vert_level == 0 and self.deposition_contour_writer is not None:
-            self.deposition_contour_writer.write(self.xml_root, g, contour_set,
+            self.deposition_contour_writer.write(doc, g, contour_set,
                                       lower_vert_level, upper_vert_level,
                                       self.output_suffix,
                                       distinguishable_vert_level)
         else:
-            self.contour_writer.write(self.xml_root, g, contour_set,
+            self.contour_writer.write(doc, g, contour_set,
                                       lower_vert_level, upper_vert_level,
                                       self.output_suffix,
                                       distinguishable_vert_level)
@@ -332,7 +334,6 @@ class KMLWriter(AbstractWriter):
 
     def finalize(self):
         if self.kml_filename is not None and self.xml_root is not None:
-            self._write_postamble(self.xml_root)
             tree = ET.ElementTree(self.xml_root)
             tree.write(self.kml_filename, encoding='UTF-8',
                        xml_declaration=True,
@@ -412,10 +413,9 @@ class KMLWriter(AbstractWriter):
             return "\"{}\"".format(o)
         return str(o)
 
-    def _write_preamble(self, x, g):
+    def _write_preamble(self, doc, g):
         first_release_loc = g.parent.release_locs[0]
 
-        doc = ET.SubElement(x, 'Document')
         ET.SubElement(doc, 'name').text = 'NOAA HYSPLIT RESULTS'
         ET.SubElement(doc, 'open').text = '1'
         lookAt = ET.SubElement(doc, 'LookAt')
@@ -429,8 +429,7 @@ class KMLWriter(AbstractWriter):
                                                                       self.time_zone)
         ET.SubElement(lookAt, 'gx:altitudeMode').text = 'relativeToSeaFloor'
 
-    def _write_colors(self, x, colors):
-        doc = x.find('Document')
+    def _write_colors(self, doc, colors):
         for k, color in enumerate(colors):
             style = ET.SubElement(doc, 'Style', attrib={'id': 'conc{:d}'.format(k + 1)})
             linestyle = ET.SubElement(style, 'LineStyle')
@@ -447,8 +446,7 @@ class KMLWriter(AbstractWriter):
         polystyle = ET.SubElement(style, 'PolyStyle')
         ET.SubElement(polystyle, 'fill').text = '0'
 
-    def _write_source_locs(self, x, g):
-        doc = x.find('Document')
+    def _write_source_locs(self, doc, g):
         folder = ET.SubElement(doc, 'Folder')
         ET.SubElement(folder, 'name').text = 'Soure Locations'
         ET.SubElement(folder, 'visibility').text = '0'
@@ -484,9 +482,7 @@ Released between {} and {} m AGL
             ET.SubElement(point, 'coordinates').text = \
                     '{:.6f},{:.6f},{:.1f}'.format(loc[0], loc[1], float(level2))
 
-    def _write_overlays(self, x):
-        doc = x.find('Document')
-
+    def _write_overlays(self, doc):
         screenoverlay = ET.SubElement(doc, 'ScreenOverlay')
         ET.SubElement(screenoverlay, 'name').text = 'HYSPLIT Information'
         ET.SubElement(screenoverlay, 'description').text = 'NOAA ARL HYSPLIT Model  http://www.arl.noaa.gov/HYSPLIT_info.php'
@@ -542,9 +538,6 @@ Released between {} and {} m AGL
         ET.SubElement(folder, 'visibility').text = '0'
         ET.SubElement(folder, 'description').text = 'http://www.epa.gov/airnow/today/airnow.kml  Click on the link to access AQI data from EPA. The results will appear in the list below.'
 
-    def _write_postamble(self, x):
-        pass
-
 
 class PartialKMLWriter(KMLWriter):
 
@@ -562,13 +555,15 @@ class PartialKMLWriter(KMLWriter):
                     attrib={'xmlns':'http://www.opengis.net/kml/2.2',
                             'xmlns:gx':'http://www.google.com/kml/ext/2.2'})
             doc = ET.SubElement(self.xml_root, 'Document')
+        else:
+            doc = self.xml_root.find("Document")
 
         if g.vert_level == 0 and self.deposition_contour_writer is not None:
-            self.deposition_contour_writer.write(self.xml_root, g, contour_set,
+            self.deposition_contour_writer.write(doc, g, contour_set,
                                       lower_vert_level, upper_vert_level,
                                       self.output_suffix, distinguishable_vert_level)
         else:
-            self.contour_writer.write(self.xml_root, g, contour_set,
+            self.contour_writer.write(doc, g, contour_set,
                                       lower_vert_level, upper_vert_level,
                                       self.output_suffix, distinguishable_vert_level)
 
@@ -584,7 +579,6 @@ class PartialKMLWriter(KMLWriter):
 
     def finalize(self):
         if self.kml_filename is not None and self.xml_root is not None:
-            self._write_postamble(self.xml_root)
             folder = self.xml_root.find('Document/Folder')
             tree = ET.ElementTree(folder)
             tree.write(self.kml_filename, encoding='UTF-8',
@@ -593,6 +587,7 @@ class PartialKMLWriter(KMLWriter):
 
         if self.att_file is not None:
             self.att_file.close()
+
 
 class KMLContourWriterFactory:
 
@@ -651,13 +646,12 @@ class AbstractKMLContourWriter(ABC):
     def _get_contour_name(self, level_str, conc_unit):
         return "Contour Level: {} {}".format(level_str, conc_unit)
 
-    def write(self, x, g, contour_set, lower_vert_level, upper_vert_level,
+    def write(self, doc, g, contour_set, lower_vert_level, upper_vert_level,
               suffix, distinguishable_vert_level=True):
         self.frame_count += 1
 
         begin_ts, end_ts = self._get_begin_end_timestamps(g)
 
-        doc = x.find('Document')
         folder = ET.SubElement(doc, 'Folder')
         ET.SubElement(folder, 'name').text = '<![CDATA[{}]]>'.format(self._get_name_cdata(g.ending_datetime))
 
@@ -934,6 +928,7 @@ Valid:{}</pre>""".format(lower_vert_level,
     def _write_placemark_visibility(self, x):
         if self.frame_count > 1:
             ET.SubElement(x, 'visibility').text = '0'
+
 
 class KMLTimeOfArrivalWriter(AbstractKMLContourWriter):
 
