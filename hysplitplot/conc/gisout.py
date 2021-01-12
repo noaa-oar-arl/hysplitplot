@@ -313,11 +313,11 @@ class KMLWriter(AbstractWriter):
                 self._write_overlays(self.xml_root)
 
         if g.vert_level == 0 and self.deposition_contour_writer is not None:
-            self.deposition_contour_writer.write(self.kml_file, g, contour_set,
+            self.deposition_contour_writer.write(self.xml_root, g, contour_set,
                                       lower_vert_level, upper_vert_level,
                                       self.output_suffix)
         else:
-            self.contour_writer.write(self.kml_file, g, contour_set,
+            self.contour_writer.write(self.xml_root, g, contour_set,
                                       lower_vert_level, upper_vert_level,
                                       self.output_suffix)
 
@@ -561,11 +561,11 @@ class PartialKMLWriter(KMLWriter):
             doc = ET.SubElement(self.xml_root, 'Document')
 
         if g.vert_level == 0 and self.deposition_contour_writer is not None:
-            self.deposition_contour_writer.write(self.kml_file, g, contour_set,
+            self.deposition_contour_writer.write(self.xml_root, g, contour_set,
                                       lower_vert_level, upper_vert_level,
                                       self.output_suffix)
         else:
-            self.contour_writer.write(self.kml_file, g, contour_set,
+            self.contour_writer.write(self.xml_root, g, contour_set,
                                       lower_vert_level, upper_vert_level,
                                       self.output_suffix)
 
