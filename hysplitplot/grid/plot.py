@@ -25,6 +25,7 @@ from hysplitdata.const import HeightUnit
 from hysplitplot import cmdline, const, mapbox, mapproj, \
                         plotbase, smooth, streetmap, timezone, util
 from hysplitplot.conc import helper, cntr, gisout
+from hysplitplot.conc.plot import ColorTableFactory
 
 
 logger = logging.getLogger(__name__)
@@ -89,6 +90,7 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
         self.source_label_color = "k"       # black
         self.source_label_font_size = 12    # font size
         self.user_color = True
+        self.user_colors = None             # list of (r, g, b) tuples
         self.user_label = False
         self.contour_levels = None
         self.contour_level_count = 12
@@ -165,16 +167,6 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
             return const.GISOutput.GENERATE_POINTS
         return gisopt
 
-    @staticmethod
-    def parse_source_label(str):
-        c = int(str)
-        if c == 72:
-            return "*"
-        elif c == 73:
-            return "\u2606"    # open star
-        else:
-            return chr(c)
-
     def parse_time_indices(self, str):
         if str.count(":") > 0:
             divider = str.index(":")
@@ -187,84 +179,6 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
             if self.last_time_index < 0:
                 self.time_index_step = abs(self.last_time_index)
                 self.last_time_index = 9999
-
-    def parse_contour_levels(self, str):
-        if str.count(":") > 0:
-            self.contour_levels, self.user_color = \
-                self.parse_labeled_contour_levels(str)
-            self.user_label = True
-        else:
-            levels = self.parse_simple_contour_levels(str)
-            self.contour_levels = [LabelledContourLevel(v) for v in levels]
-
-        self.contour_level_count = len(self.contour_levels)
-
-        # sort by contour level
-        self.contour_levels = sorted(self.contour_levels,
-                                     key=lambda o: o.level)
-        logger.debug("sorted contour levels: %s", self.contour_levels)
-
-    @staticmethod
-    def parse_simple_contour_levels(str):
-        """Parse a string that contains floating-point values separated
-        by '+' and return the values
-
-        For example, an input of '1E+3+100+10' returns [1000.0, 100.0, 10.0].
-        """
-        f = []
-
-        tokens = str.split("+")
-
-        k = 0
-        while k < len(tokens):
-            if tokens[k][-1].upper() == "E":
-                t = tokens[k] + tokens[k+1]
-                k += 1
-            else:
-                t = tokens[k]
-            f.append(float(t))
-            k += 1
-
-        return f
-
-    @staticmethod
-    def parse_labeled_contour_levels(str):
-        """Parse a string that contains contour levels, colors, and labels
-        and return a list of ContourLevel objects.
-
-        For example, an input of '10E+2:USER1:100050200+10E+3:USER2:100070200'
-        returns two ContourLevel objects with respective contour levels 1000.0
-        and 10000.0.
-        """
-        list = []
-        color_set = True
-
-        tokens = str.split("+")
-
-        k = 0
-        while k < len(tokens):
-            if tokens[k][-1].upper() == "E":
-                s = tokens[k] + tokens[k+1]
-                k += 1
-            else:
-                s = tokens[k]
-
-            a = s.split(":")
-
-            o = LabelledContourLevel()
-            o.level = float(a[0])
-            o.label = a[1]
-            if len(a) > 2:
-                o.r = int(a[2][0:3]) / 255.0
-                o.g = int(a[2][3:6]) / 255.0
-                o.b = int(a[2][6:9]) / 255.0
-            else:
-                color_set = False
-
-            list.append(o)
-            k += 1
-
-        return list, color_set
 
     def get_reader(self):
         return GridPlotSettingsReader(self)
@@ -1123,20 +1037,18 @@ class GridPlot(plotbase.AbstractPlot):
         if not self.settings.interactive_mode:
             plt.ioff()
 
-        level_generator = GridLevelGeneratorFactory.create_instance(
+        level_generator = ContourLevelGeneratorFactory.create_instance(
             self.settings.NSCALE,
             self.settings.MINCON)
 
         # Create a color table.
         self.settings.contour_levels = []
+        self.settings.user_colors = \
+                [(0.0, 0.0, 1.0), (0.5, 0.0, 1.0), (0.0, 0.5 , 1.0),
+                (0.0, 1.0, 1.0), (0.0, 1.0, 0.5), (0.0, 0.5 , 0.0),
+                (0.5, 1.0, 0.0), (1.0, 1.0, 0.0), (1.0, 0.75, 0.0),
+                (1.0, 0.5, 0.0), (1.0, 0.3, 0.0), (1.0, 0.0 , 0.0)]
         self.user_label = False
-        for rgb in [(0.0, 0.0, 1.0), (0.5, 0.0, 1.0), (0.0, 0.5 , 1.0),
-                    (0.0, 1.0, 1.0), (0.0, 1.0, 0.5), (0.0, 0.5 , 0.0),
-                    (0.5, 1.0, 0.0), (1.0, 1.0, 0.0), (1.0, 0.75, 0.0),
-                    (1.0, 0.5, 0.0), (1.0, 0.3, 0.0), (1.0, 0.0 , 0.0)]:
-            r, g, b = rgb
-            o = LabelledContourLevel(r=r, g=g, b=b)
-            self.settings.contour_levels.append(o)
         color_table = ColorTableFactory.create_instance(self.settings)
 
         gis_writer = gisout.GISFileWriterFactory.create_instance(
@@ -1204,23 +1116,7 @@ class GridPlot(plotbase.AbstractPlot):
         return s
 
 
-class LabelledContourLevel:
-
-    def __init__(self, level=0.0, label="", r=1.0, g=1.0, b=1.0,
-                 alpha=1.0):
-        self.level = level
-        self.label = label
-        self.r = r
-        self.g = g
-        self.b = b
-        self.alpha = alpha
-
-    def __repr__(self):
-        return "LabelledContourLevel({0}, {1}, r{2}, g{3}, b{4})".format(
-            self.label, self.level, self.r, self.g, self.b)
-
-
-class GridLevelGeneratorFactory:
+class ContourLevelGeneratorFactory:
 
     LINEAR = 0
     LOGARITHMIC = 1
@@ -1228,12 +1124,12 @@ class GridLevelGeneratorFactory:
 
     @staticmethod
     def create_instance(scale, dynamic):
-        if scale == GridLevelGeneratorFactory.LINEAR:
+        if scale == ContourLevelGeneratorFactory.LINEAR:
             if dynamic:
                 return LinearDynamicLevelGenerator()
             else:
                 return LinearFixedLevelGenerator()
-        elif scale == GridLevelGeneratorFactory.LOGARITHMIC:
+        elif scale == ContourLevelGeneratorFactory.LOGARITHMIC:
             if dynamic:
                 return ExponentialDynamicLevelGenerator()
             else:
@@ -1359,237 +1255,3 @@ class LinearFixedLevelGenerator(LinearDynamicLevelGenerator):
         logger.debug("contour levels: %s using min %g, levels %d",
                      levels, min_conc, max_levels)
         return levels
-
-
-class ColorTableFactory:
-
-    COLOR_TABLE_FILE_NAMES = ["CLRTBL.CFG", "../graphics/CLRTBL.CFG"]
-
-    @staticmethod
-    def create_instance(settings):
-        ncolors = settings.contour_level_count
-        logger.debug("ColorTableFactory::create_instance: color count %d",
-                     ncolors)
-
-        skip_std_colors = False
-        if settings.contour_level_generator == \
-                const.ContourLevelGenerator.USER_SPECIFIED:
-            skip_std_colors = True
-        elif settings.contour_level_generator == \
-                const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC \
-                and settings.IDYNC != 0:
-            skip_std_colors = True
-
-        if settings.KMAP == const.ConcentrationMapType.THRESHOLD_LEVELS \
-                and settings.KHEMIN == 1:
-            ct = DefaultChemicalThresholdColorTable(ncolors, skip_std_colors)
-        elif settings.user_color:
-            ct = UserColorTable(settings.contour_levels)
-        else:
-            ct = DefaultColorTable(ncolors, skip_std_colors)
-            f = ColorTableFactory._get_color_table_filename()
-            if f is not None:
-                ct.get_reader().read(f)
-                if settings.contour_level_generator == \
-                        const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC \
-                        and settings.IDYNC != 0:
-                    for k in range(5):
-                        ct.set_rgb(k, (1.0, 1.0, 1.0))
-
-        if settings.IDYNC == 1:
-            ct.enable_offset(True)
-
-        if settings.color == const.ConcentrationPlotColor.BLACK_AND_WHITE \
-                or settings.color == const.ConcentrationPlotColor.BW_NO_LINES:
-            ct.change_to_grayscale()
-
-        logger.debug("using color table: %s", ct)
-        return ct
-
-    @staticmethod
-    def _get_color_table_filename():
-        for s in ColorTableFactory.COLOR_TABLE_FILE_NAMES:
-            if os.path.exists(s):
-                return s
-
-        return None
-
-
-class AbstractColorTable(ABC):
-
-    def __init__(self, ncolors):
-        self.rgbs = []
-        self.ncolors = ncolors
-        self.offset = 0
-        self.use_offset = False
-        return
-
-    def get_reader(self):
-        return ColorTableReader(self)
-
-    def set_rgb(self, k, rgb):
-        self.rgbs[k] = rgb
-
-    def change_to_grayscale(self):
-        for k, rgb in enumerate(self.rgbs):
-            lum = self.get_luminance(rgb)
-            self.rgbs[k] = (lum, lum, lum)
-
-    @staticmethod
-    def get_luminance(rgb):
-        if len(rgb) == 4:
-            r, g, b, _ = rgb
-        else:
-            r, g, b = rgb
-        return 0.299*r + 0.587*g + 0.114*b
-
-    @staticmethod
-    def create_plot_colors(rgbs):
-        if len(rgbs[0]) == 4:
-            return [util.make_color(o[0], o[1], o[2], o[3]) for o in rgbs]
-        else:
-            return [util.make_color(o[0], o[1], o[2]) for o in rgbs]
-
-    @property
-    @abstractmethod
-    def raw_colors(self):
-        pass
-
-    @property
-    @abstractmethod
-    def colors(self):
-        pass
-
-    def set_offset(self, offset):
-        self.offset = offset if self.use_offset else 0
-
-    def enable_offset(self, flag=True):
-        self.use_offset = flag
-
-
-class DefaultColorTable(AbstractColorTable):
-
-    def __init__(self, ncolors, skip_std_colors):
-        super(DefaultColorTable, self).__init__(ncolors)
-        self.skip_std_colors = skip_std_colors
-        self.__colors = None
-        self.__raw_colors = None
-        self.__current_offset = 0
-        self.rgbs = [
-            (1.0, 1.0, 1.0), (1.0, 1.0, 0.0), (0.0, 0.0, 1.0), (0.0, 1.0, 0.0),
-            (0.0, 1.0, 1.0), (1.0, 0.0, 0.0), (1.0, 0.6, 0.0), (1.0, 1.0, 0.0),
-            (0.8, 1.0, 0.0), (0.0, 0.6, 0.0), (0.0, 1.0, 0.4), (0.0, 1.0, 1.0),
-            (0.0, 0.4, 1.0), (0.2, 0.0, 1.0), (0.6, 0.0, 1.0), (0.8, 0.0, 1.0),
-            (0.4, 0.0, 0.4), (0.6, 0.0, 0.4), (0.4, 0.0, 0.2), (0.2, 0.0, 0.2),
-            (0.6, 0.0, 0.0), (1.0, 0.8, 1.0), (0.4, 0.4, 1.0), (1.0, 1.0, 1.0),
-            (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
-            (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0)]
-
-    @property
-    def raw_colors(self):
-        if self.__raw_colors is None or self.__current_offset != self.offset:
-            if self.skip_std_colors:
-                self.__raw_colors = self.rgbs[4 + self.offset + self.ncolors:
-                                              self.offset + 4: -1]
-            else:
-                self.__raw_colors = self.rgbs[self.offset + self.ncolors:
-                                              self.offset: -1]
-
-            self.__current_offset = self.offset
-
-        return self.__raw_colors
-
-    @property
-    def colors(self):
-        if self.__colors is None or self.__current_offset != self.offset:
-            self.__colors = self.create_plot_colors(self.raw_colors)
-
-        return self.__colors
-
-
-class DefaultChemicalThresholdColorTable(AbstractColorTable):
-
-    def __init__(self, ncolors, skip_std_colors):
-        super(DefaultChemicalThresholdColorTable, self).__init__(ncolors)
-        self.skip_std_colors = skip_std_colors
-        self.__colors = None
-        self.__raw_colors = None
-        self.__current_offset = 0
-        self.rgbs = [
-            (1.0, 1.0, 1.0), (0.8, 0.8, 0.8), (1.0, 1.0, 0.0), (1.0, 0.5, 0.0),
-            (1.0, 0.0, 0.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
-            (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
-            (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
-            (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
-            (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
-            (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
-            (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0)]
-
-    @property
-    def raw_colors(self):
-        if self.__raw_colors is None or self.__current_offset != self.offset:
-            if self.skip_std_colors:
-                self.__raw_colors = self.rgbs[5 + self.offset:
-                                              5 + self.offset + self.ncolors]
-            else:
-                self.__raw_colors = self.rgbs[1 + self.offset:
-                                              1 + self.offset + self.ncolors]
-
-            self.__current_offset = self.offset
-
-        return self.__raw_colors
-
-    @property
-    def colors(self):
-        if self.__colors is None or self.__current_offset != self.offset:
-            self.__colors = self.create_plot_colors(self.raw_colors)
-
-        return self.__colors
-
-
-class UserColorTable(AbstractColorTable):
-
-    def __init__(self, contour_levels):
-        super(UserColorTable, self).__init__(len(contour_levels))
-        self.rgbs = [(o.r, o.g, o.b, o.alpha) for o in contour_levels]
-        self.__colors = None
-
-    @property
-    def raw_colors(self):
-        return self.rgbs
-
-    @property
-    def colors(self):
-        if self.__colors is None:
-            self.__colors = self.create_plot_colors(self.raw_colors)
-
-        return self.__colors
-
-
-class ColorTableReader(io.FormattedTextFileReader):
-
-    def __init__(self, color_table):
-        super(ColorTableReader, self).__init__()
-        self.color_table = color_table
-
-    def read(self, filename):
-        self.open(filename)
-
-        # skip two header lines
-        self.fetch_line()
-        self.fetch_line()
-
-        w = 1.0 / 255.0
-        rgbs = []
-        k = 0
-        while self.has_next() and k < 32:
-            v = self.parse_line("A15,I3,4X,I3,4X,I3")
-            logger.debug("color [%s], r %d, g %d, b %d",
-                         v[0], v[1], v[2], v[3])
-            rgbs.append((v[1]*w, v[2]*w, v[3]*w))
-            k += 1
-
-        self.color_table.rgbs = rgbs
-        self.close()
-
-        return self.color_table
