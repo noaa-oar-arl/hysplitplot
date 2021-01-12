@@ -22,7 +22,7 @@ import sys
 from hysplitdata import io
 from hysplitdata.conc import model
 from hysplitdata.const import HeightUnit
-from hysplitplot import cmdline, const, datem, mapbox, mapproj, \
+from hysplitplot import cmdline, const, mapbox, mapproj, \
                         plotbase, smooth, streetmap, timezone, util
 from hysplitplot.conc import helper, cntr, gisout
 
@@ -49,9 +49,7 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
         self.time_index_step = 1
         self.contour_level_generator = \
             const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC
-        self.QFILE = None
         self.source_label = "\u2606"    # open star
-        self.this_is_test = 0
         self.LEVEL1 = 0  # bottom display level defaults to deposition surface
         self.LEVEL2 = 99999  # top level defaults to whole model atmosphere
         self.exposure_unit = const.ExposureUnit.CONCENTRATION  # KEXP; -e
@@ -61,11 +59,8 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
         self.show_max_conc = 1
         self.mass_unit = "mass"
         self.mass_unit_by_user = False
-        self.smoothing_distance = 0
         self.CFACT = 1.0   # conc unit conversion multiplication factor
         self.DEPADJ = 1.0   # deposition unit conversion multiplication factor
-        self.UCMIN = 0.0    # min conc value
-        self.UDMIN = 0.0    # min deposition value
         self.IDYNC = 0      # allow colors to change for dyn contours?
         self.KHEMIN = 0     # plot below threshold contour for chemical output
         self.IZRO = 0       # create map(s) even if all values are zero
@@ -99,9 +94,6 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
         self.contour_level_count = 12
         self.pollutant = ""         # name of the selected pollutant
         self.SCALE = 1.0
-        self.station_marker = "o"
-        self.station_marker_color = "k"     # black
-        self.station_marker_size = 6*6
         self.max_contour_legend_count = 25
 
     def dump(self, stream):
@@ -124,14 +116,8 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
         self._process_cmdline_args(args0)
 
         self.NSCALE = args.get_integer_value(["-a", "-A"], self.NSCALE)
-
         self.CFACT = args.get_float_value(["-c", "-C"], self.CFACT)
-
         self.DELTA = args.get_float_value(["-d", "-D"], self.DELTA)
-
-# #         self.contour_level_generator = \
-# #             args.get_integer_value(["-c", "-C"], self.contour_level_generator)
-# 
         self.frames_per_file = args.get_integer_value(["-m", "-M"],
                                                       self.frames_per_file)
 
@@ -140,25 +126,6 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
 
         self.hlevel = args.get_integer_value(["-h", "-H"], self.hlevel)
 
-#         if args.has_arg(["-g", "-G"]):
-#             self.ring = True
-#             str = args.get_value(["-g", "-G"])
-#             if str.count(":") > 0:
-#                 self.ring_number, self.ring_distance = \
-#                     self.parse_ring_option(str)
-#             elif str == "":
-#                 self.ring_number = 4
-#             else:
-#                 self.ring_number = args.get_integer_value(["-g", "-G"],
-#                                                           self.ring_number)
-# 
-#         if args.has_arg(["-h", "-H"]):
-#             str = args.get_value(["-h", "-H"])
-#             if str.count(":") > 0:
-#                 self.center_loc = self.parse_map_center(str)
-#                 if self.ring_number < 0:
-#                     self.ring_number = 0
-# 
         self.input_file = \
             args.get_string_value(["-i", "-I"], self.input_file)
         if len(args.unprocessed_args) > 0:
@@ -168,41 +135,12 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
         if self.CVAL1 == -1.0:
             self.MINCON = True
 
-#         if args.has_arg("-l"):
-#             self.source_label = self.parse_source_label(args.get_value("-l"))
-#             self.label_source = True
-#         if args.has_arg("-L"):
-#             str = args.get_value("-L")
-#             if str.count(":") > 0:
-#                 self.lat_lon_label_interval = \
-#                     self.parse_lat_lon_label_interval(str)
-#                 self.lat_lon_label_interval_option = const.LatLonLabel.SET
-#             else:
-#                 self.lat_lon_label_interval_option = \
-#                     args.get_integer_value("-L",
-#                                            self.lat_lon_label_interval_option)
-#                 self.lat_lon_label_interval_option = \
-#                     max(0, min(1, self.lat_lon_label_interval_option))
-# 
-#         self.map_projection = args.get_integer_value(["-m", "-M"],
-#                                                      self.map_projection)
-
-#         if args.has_arg(["-k", "-K"]):
-#             self.color = args.get_integer_value(["-k", "-K"], self.color)
-#             self.color = max(0, min(3, self.color))
-
         self.kml_option = args.get_integer_value(["-k", "-K"], self.kml_option)
         
-#         if args.has_arg("+l"):
-#             self.this_is_test = args.get_integer_value("+l", self.this_is_test)
-#             self.this_is_test = max(0, min(1, self.this_is_test))
- 
         if args.has_arg(["-n", "-N"]):
             self.parse_time_indices(args.get_value(["-n", "-N"]))
         self.first_time_index -= 1      # to 0-based indices
         self.last_time_index -= 1
-# 
-#         self.QFILE = args.get_string_value(["-q", "-Q"], self.QFILE)
 
         self.NDEP = args.get_integer_value(["-r", "-R"], self.NDEP)
         self.NDEP = max(0, min(3, self.NDEP))
@@ -211,56 +149,14 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
                                                       self.pollutant_index)
         self.pollutant_index -= 1       # to 0-based index
  
-#         self.LEVEL1 = args.get_integer_value(["-b", "-B"], self.LEVEL1)
-#         self.LEVEL1 = max(0, self.LEVEL1)
-# 
-#         self.LEVEL2 = args.get_integer_value(["-t", "-T"], self.LEVEL2)
-#         self.LEVEL2 = max(0, self.LEVEL2)
-# 
-#         if self.LEVEL1 > self.LEVEL2:
-#             self.LEVEL1, self.LEVEL2 = self.LEVEL2, self.LEVEL1
-# 
-#         self.exposure_unit = args.get_integer_value(["-e", "-E"],
-#                                                     self.exposure_unit)
-#         self.exposure_unit = max(0, min(4, self.exposure_unit))
-# 
-#         self.KAVG = args.get_integer_value(["-d", "-D"], self.KAVG)
-#         self.KAVG = max(1, min(2, self.KAVG))
-# 
-
-# 
-#         self.show_max_conc = args.get_integer_value(["+m", "+M"],
-#                                                     self.show_max_conc)
-#         self.show_max_conc = max(0, min(3, self.show_max_conc))
-# 
         if args.has_arg(["-u", "-U"]):
             self.mass_unit = args.get_value(["-u", "-U"])
             self.mass_unit_by_user = True
-# 
-#         self.smoothing_distance = \
-#             args.get_integer_value(["-w", "-W"], self.smoothing_distance)
-#         self.smoothing_distance = max(0, min(99, self.smoothing_distance))
 
         self.center_loc[0] = args.get_float_value(["-x", "-X"], self.center_loc[0])
         self.center_loc[1] = args.get_float_value(["-y", "-Y"], self.center_loc[1])
         if args.has_arg(["-x", "-X", "-y", "-Y"]):
             self.center_loc_specified = True
-#         self.DEPADJ = args.get_float_value(["-y", "-Y"], self.DEPADJ)
-#         self.UCMIN = args.get_float_value("-1", self.UCMIN)
-#         self.UDMIN = args.get_float_value("-2", self.UDMIN)
-#         self.IDYNC = args.get_integer_value("-3", self.IDYNC)
-#         self.KHEMIN = args.get_integer_value("-4", self.KHEMIN)
-#         self.IZRO = args.get_integer_value("-8", self.IZRO)
-#         self.NSSLBL = args.get_integer_value("-9", self.NSSLBL)
-# 
-#         if args.has_arg("-v"):
-#             self.parse_contour_levels(args.get_value("-v"))
-#             self.contour_level_generator = \
-#                 const.ContourLevelGenerator.USER_SPECIFIED
-# 
-#         self.gis_alt_mode = args.get_integer_value(["+a", "+A"],
-#                                                    self.gis_alt_mode)
-#         self.KMLOUT = args.get_integer_value(["-5"], self.KMLOUT)
 
     @staticmethod
     def normalize_gis_output_option(gisopt):  # TODO: add unit test
@@ -423,10 +319,8 @@ class GridPlot(plotbase.AbstractPlot):
         self.time_selector = None
         self.level_selector = None
         self.pollutant_selector = None
-#         self.smoothing_kernel = None
         self.conc_type = None
         self.conc_map = None
-        self.depo_map = None
         self.prev_forecast_time = None
         self.length_factory = None
 
@@ -437,12 +331,10 @@ class GridPlot(plotbase.AbstractPlot):
         self.text_axes = None
         self.plot_saver_list = None
 
-#         self.TFACT = 1.0
         self.initial_time = None
         self.contour_labels = None
         self.current_frame = 1
         self.time_period_count = 0
-        self.datem = None
 
     def merge_plot_settings(self, filename, args):
         if filename is not None:
@@ -502,21 +394,8 @@ class GridPlot(plotbase.AbstractPlot):
         if self.settings.hlevel == 0:
             self.settings.KMAP = const.ConcentrationMapType.DEPOSITION
 
-        # if only one non-depositing level, change -d2 to -d1.
-#         if self.settings.KAVG == const.ConcentrationType.VERTICAL_AVERAGE:
-#             if len(cdump.release_heights) == 1 \
-#                     or (len(cdump.release_heights) == 2
-#                         and cdump.release_heights[0] == 0):
-#                 logger.warning("Changing -d2 to -d1 since single layer")
-#                 self.settings.KAVG = const.ConcentrationType.EACH_LEVEL
-
         self.conc_type = helper.ConcentrationTypeFactory.create_instance(
             self.settings.KAVG)
-#         if self.settings.KAVG == 1:
-#             # for the above-ground concentration plots
-#             self.conc_type.set_alt_KAVG(3)
-#         if self.labels.has("LAYER"):
-#             self.conc_type.set_custom_layer_str(self.labels.get("LAYER"))
 
         self.plot_saver_list = self._create_plot_saver_list(self.settings)
 
@@ -524,20 +403,12 @@ class GridPlot(plotbase.AbstractPlot):
 
         self.conc_map = helper.ConcentrationMapFactory.create_instance(
             self.settings.KMAP, self.settings.KHEMIN)
-#         self.depo_map = helper.DepositionMapFactory.create_instance(
-#             self.settings.KMAP, self.settings.KHEMIN)
+
         if self.labels.has("MAPID"):
             self.conc_map.map_id = self.labels.get("MAPID")
-#             self.depo_map.map_id = self.labels.get("MAPID")
 
         self.depo_sum = helper.DepositSumFactory.create_instance(
             self.settings.NDEP, self.cdump.has_ground_level_grid())
-
-#         if self.settings.smoothing_distance > 0:
-#             self.smoothing_kernel = \
-#                 smooth.SmoothingKernelFactory.create_instance(
-#                     const.SmoothingKernel.SIMPLE,
-#                     self.settings.smoothing_distance)
 
         time_zone_helper = timezone.TimeZoneHelper()
         if self.settings.time_zone_str is not None:
@@ -546,11 +417,6 @@ class GridPlot(plotbase.AbstractPlot):
             self.time_zone = time_zone_helper.get_time_zone_at(self.cdump.release_locs[0])
         elif self.labels.has("TZONE"):
             self.time_zone = time_zone_helper.lookup_time_zone(self.labels.get("TZONE"))
-
-        if self.settings.QFILE is not None:
-            if os.path.exists(self.settings.QFILE):
-                self.datem = datem.Datem().get_reader() \
-                    .read(self.settings.QFILE)
 
     def _adjust_vertical_level(self, cdump, level):
         if level in cdump.vert_levels:
@@ -593,11 +459,6 @@ class GridPlot(plotbase.AbstractPlot):
         if s.LEVEL2 > cdump.vert_levels[-1]:
             s.LEVEL2 = cdump.vert_levels[-1]
         logger.debug("normalized LEVELs to %f, %f", s.LEVEL1, s.LEVEL2)
-
-        if s.contour_level_generator > \
-                const.ContourLevelGenerator.EXPONENTIAL_FIXED:
-            s.UCMIN = 0.0
-            s.UDMIN = 0.0
 
         if s.exposure_unit == const.ExposureUnit.CHEMICAL_THRESHOLDS:
             s.KMAP = const.ConcentrationMapType.THRESHOLD_LEVELS
@@ -965,48 +826,11 @@ class GridPlot(plotbase.AbstractPlot):
                         rectangles.set_transform(self.data_crs)
                         rectangles.set_color(clr)
                         axes.add_collection(rectangles)
-#                 if self.settings.color != \
-#                         const.ConcentrationPlotColor.COLOR_NO_LINES \
-#                         and self.settings.color != \
-#                         const.ConcentrationPlotColor.BW_NO_LINES:
-#                     # draw contour lines
-#                     line_colors = ["k"] * len(fill_colors)
-#                     axes.contour(conc_grid.longitudes,
-#                                  conc_grid.latitudes,
-#                                  scaled_conc,
-#                                  contour_levels,
-#                                  colors=line_colors,
-#                                  linewidths=0.25,
-#                                  transform=self.data_crs)
             except ValueError as ex:
                 logger.error("cannot generate contours: {}".format(str(ex)))
 
-#         if self.settings.show_max_conc == 1 \
-#                 or self.settings.show_max_conc == 3:
-#             clr = self._fix_map_color(conc_map.get_color_at_max(),
-#                                       self.settings.color)
-#             conc_grid.extension.max_locs = helper.find_max_locs(conc_grid)
-#             dx = conc_grid.parent.grid_deltas[0]
-#             dy = conc_grid.parent.grid_deltas[1]
-#             hx = 0.5 * dx
-#             hy = 0.5 * dy
-#             for loc in conc_grid.extension.max_locs:
-#                 x, y = loc
-#                 r = matplotlib.patches.Rectangle((x-hx, y-hy), dx, dy,
-#                                                  color=clr,
-#                                                  transform=self.data_crs)
-#                 axes.add_patch(r)
-
         # place station locations
         self._draw_stations_if_exists(axes, self.settings)
-
-        # draw DATEM data
-        if self.datem is not None:
-            self._draw_datem(axes,
-                             self.settings,
-                             self.datem,
-                             conc_grid.starting_datetime,
-                             conc_grid.ending_datetime)
 
         return rect_list
 
@@ -1155,27 +979,6 @@ class GridPlot(plotbase.AbstractPlot):
                                            small_line_skip,
                                            labels)
 
-        if self.settings.this_is_test:
-            y -= small_line_skip * 1.5
-            axes.hlines(y-small_line_skip * 0.5, 0.05, 0.95,
-                        color="k",
-                        linewidth=0.125,
-                        transform=axes.transAxes)
-
-            y -= small_line_skip
-            axes.text(0.5, y, "THIS IS A TEST",
-                      color="r",
-                      fontsize=small_font_sz,
-                      horizontalalignment="center",
-                      verticalalignment="top",
-                      clip_on=True,
-                      transform=axes.transAxes)
-
-            axes.hlines(y-small_line_skip, 0.05, 0.95,
-                        color="k",
-                        linewidth=0.125,
-                        transform=axes.transAxes)
-
     def draw_bottom_text(self):
         self._turn_off_ticks(self.text_axes)
 
@@ -1247,33 +1050,19 @@ class GridPlot(plotbase.AbstractPlot):
         level1 = self.length_factory.create_instance(LEVEL0)
         level2 = self.length_factory.create_instance(LEVEL2)
 
-        # Scaling should be done prior to determining the min and max
-        # concentration values.
-#         f = float(g.vert_level - LEVEL0)
-#         conc_scaling_factor = self.conc_map.scale_exposure(self.TFACT,
-#                                                            self.conc_type, f)
         conc_scaling_factor = self.settings.CFACT
 
         min_conc, max_conc = self.conc_type.get_plot_conc_range(
             g, conc_scaling_factor)
-#         level_generator.set_global_min_max(self.conc_type.contour_min_conc,
-#                                            self.conc_type.contour_max_conc)
-        # Use 1.0e-36 in place of min_conc to be compatible with Fortran GRIDPLOT?
+
+        # Use 1.0e-36 in place of min_conc to be compatible with Fortran GRIDPLOT.
         contour_levels = level_generator.make_levels(
             1.0e-36, max_conc, self.settings.contour_level_count, self.settings.DELTA)
         logger.debug('conc levels {}'.format(contour_levels))
-#         color_offset = level_generator.compute_color_table_offset(
-#             contour_levels)
-#         color_offset = 0
-#         color_table.set_offset(color_offset)
 
         scaled_conc = numpy.copy(g.conc)
         if conc_scaling_factor != 1.0:
             scaled_conc *= conc_scaling_factor
-
-#         if self.smoothing_kernel is not None:
-#             scaled_conc = \
-#                 self.smoothing_kernel.smooth_with_max_preserved(scaled_conc)
 
         # plot title
         title = self.make_plot_title(g, self.conc_map, level1, level2,
@@ -1319,8 +1108,6 @@ class GridPlot(plotbase.AbstractPlot):
                                quad_contour_set, contour_levels,
                                color_table, conc_scaling_factor)
 
-#         self.conc_map.undo_scale_exposure(self.conc_type)
-
         self.fig.canvas.draw()  # to get the plot spines right.
         self.on_update_plot_extent()
         for plot_saver in self.plot_saver_list:
@@ -1332,71 +1119,6 @@ class GridPlot(plotbase.AbstractPlot):
         plt.close(self.fig)
         self.current_frame += 1
 
-#     def draw_conc_on_ground(self, g, event_handlers, level_generator,
-#                             color_table, gis_writer=None, *args, **kwargs):
-# 
-#         self.layout(g, event_handlers)
-# 
-#         self._turn_off_spines(self.conc_outer)
-#         self._turn_off_ticks(self.conc_outer)
-# 
-#         level1 = self.length_factory.create_instance(0)
-#         level2 = self.length_factory.create_instance(0)
-# 
-#         conc_scaling_factor = self.settings.DEPADJ
-#         min_conc, max_conc = self.conc_type.get_plot_conc_range(
-#             g, conc_scaling_factor)
-#         level_generator.set_global_min_max(self.conc_type.ground_min_conc,
-#                                            self.conc_type.ground_max_conc)
-#         contour_levels = level_generator.make_levels(
-#             min_conc,
-#             max_conc,
-#             self.settings.contour_level_count)
-# 
-#         color_offset = level_generator.compute_color_table_offset(
-#             contour_levels)
-#         color_table.set_offset(color_offset)
-# 
-#         scaled_conc = numpy.copy(g.conc)
-#         if self.settings.DEPADJ != 1.0:
-#             scaled_conc *= self.settings.DEPADJ
-# 
-# #         if self.smoothing_kernel is not None:
-# #             scaled_conc = \
-# #                 self.smoothing_kernel.smooth_with_max_preserved(scaled_conc)
-# 
-#         # plot title
-#         title = self.make_plot_title(g, self.depo_map, level1, level2,
-#                                      self.depo_sum.summation_from_datetime)
-#         self.conc_outer.set_title(title)
-#         self.conc_outer.set_xlabel(self.make_xlabel(g))
-# 
-#         contour_set = self.draw_concentration_plot(g,
-#                                                    scaled_conc,
-#                                                    self.depo_map,
-#                                                    contour_levels,
-#                                                    color_table.colors)
-#         self.draw_contour_legends(g, self.depo_map, self.contour_labels,
-#                                   contour_levels, color_table.colors,
-#                                   conc_scaling_factor)
-#         self.draw_bottom_text()
-# 
-#         if gis_writer is not None:
-#             self._write_gisout(gis_writer, g, level1, level2,
-#                                contour_set, contour_levels, color_table,
-#                                conc_scaling_factor)
-# 
-#         self.fig.canvas.draw()  # to get the plot spines right.
-#         self.on_update_plot_extent()
-#         for plot_saver in self.plot_saver_list:
-#             plot_saver.save(self.fig, self.current_frame)
-# 
-#         if self.settings.interactive_mode:
-#             plt.show(*args, **kwargs)
-# 
-#         plt.close(self.fig)
-#         self.current_frame += 1
-
     def draw(self, ev_handlers=None, *args, **kwargs):
         if not self.settings.interactive_mode:
             plt.ioff()
@@ -1404,11 +1126,7 @@ class GridPlot(plotbase.AbstractPlot):
         level_generator = GridLevelGeneratorFactory.create_instance(
             self.settings.NSCALE,
             self.settings.MINCON)
-#         level_gen_depo = GridLevelGeneratorFactory.create_instance(
-#             self.settings.contour_level_generator,
-#             self.settings.contour_levels,
-#             self.settings.UDMIN,
-#             self.settings.user_color)
+
         # Create a color table.
         self.settings.contour_levels = []
         self.user_label = False
@@ -1450,18 +1168,6 @@ class GridPlot(plotbase.AbstractPlot):
                          len(grids_above_ground), len(grids_on_ground))
 
             self.depo_sum.add(grids_on_ground, initial_timeQ)
-
-            # concentration unit conversion factor
-#             self.TFACT = self.settings.CFACT
-
-#             if self.conc_map.need_time_scaling():
-#                 f = abs(grids_above_ground[0].get_duration_in_sec())
-#                 self.TFACT = self.conc_map.scale_time(self.TFACT,
-#                                                       self.conc_type,
-#                                                       f,
-#                                                       initial_timeQ)
-#             logger.debug("CFACT %g, TFACT %g",
-#                          self.settings.CFACT, self.TFACT)
 
             if self.settings.hlevel == 0 and self.settings.NDEP == const.DepositionType.SUM:
                 # draw total deposition using the grid on the ground
