@@ -281,6 +281,55 @@ class VerticalAverageCalculator:
         return (avg * self.inverse_weight)
 
 
+class AbstractGisOutputFilename(ABC):
+
+    def __init__(self):
+        pass
+
+    @abstractmethod
+    def get_basename(self, time_index, output_suffix, level1=0, level2=99999):
+        pass
+
+
+class GisOutputFilenameForVerticalAverageConc(AbstractGisOutputFilename):
+
+    def __init__(self):
+        super(GisOutputFilenameForVerticalAverageConc, self).__init__()
+
+    def get_basename(self, time_index, output_suffix, level1=0, level2=99999):
+        return "GIS_{0:05d}-{1:05d}_{2}_{3:02d}".format(
+            int(level1), int(level2), output_suffix, time_index)
+
+
+class GisOutputFilenameForLevelConc(AbstractGisOutputFilename):
+
+    def __init__(self):
+        super(GisOutputFilenameForLevelConc, self).__init__()
+
+    def get_basename(self, time_index, output_suffix, level1=0, level2=99999):
+        return "GIS_{0:05d}_{1}_{2:02d}".format(
+            int(level1), output_suffix, time_index)
+
+
+class GisOutputFilenameForDeposit(AbstractGisOutputFilename):
+
+    def __init__(self):
+        super(GisOutputFilenameForDeposit, self).__init__()
+
+    def get_basename(self, time_index, output_suffix, level1=0, level2=99999):
+        return "GIS_DEP_{0}_{1:02d}".format(output_suffix, time_index)
+
+
+class KmlOutputFilename(AbstractGisOutputFilename):
+
+    def __init__(self, output_basename="HYSPLIT"):
+        super(KmlOutputFilename, self).__init__()
+        self.output_basename = output_basename
+
+    def get_basename(self, time_index, output_suffix, level1=0, level2=99999):
+        return "{}_{}".format(self.output_basename, output_suffix)
+
+
 class ConcentrationTypeFactory:
 
     @staticmethod
@@ -300,6 +349,8 @@ class ConcentrationType(ABC):
         self.level_selector = None
         self.pollutant_selector = None
         self.custom_layer_str = None
+        self.gis_filename_maker = None
+        self.kml_filename_maker = None
 
     def initialize(self, cdump, level_selector, pollutant_selector):
         self.cdump = cdump
@@ -364,10 +415,12 @@ class ConcentrationType(ABC):
         else:
             return 0.0
 
-    @staticmethod
-    @abstractmethod
-    def make_gis_basename(time_index, output_suffix, level1, level2):
-        pass
+    def make_gis_basename(self, time_index, output_suffix, level1, level2):
+        return self.gis_filename_maker.get_basename(time_index, output_suffix,
+                                                    level1, level2)
+
+    def make_kml_basename(self, time_index, output_suffix, level1, level2):
+        return self.kml_filename_maker.get_basename(time_index, output_suffix)
 
 
 class VerticalAverageConcentration(ConcentrationType):
@@ -379,6 +432,8 @@ class VerticalAverageConcentration(ConcentrationType):
         self.max_average = 0.0
         self.__min_average_stashed = self.min_average
         self.__max_average_stashed = self.max_average
+        self.gis_filename_maker = GisOutputFilenameForVerticalAverageConc()
+        self.kml_filename_maker = KmlOutputFilename()
 
     def initialize(self, cdump, level_selector, pollutant_selector):
         super(VerticalAverageConcentration, self).initialize(
@@ -486,11 +541,6 @@ class VerticalAverageConcentration(ConcentrationType):
     def get_upper_level(self, grid_level, settings_level):
         return settings_level
 
-    @staticmethod
-    def make_gis_basename(time_index, output_suffix, level1, level2):
-        return "GIS_{0:05d}-{1:05d}_{2}_{3:02d}".format(
-            int(level1), int(level2), output_suffix, time_index)
-
 
 class LevelConcentration(ConcentrationType):
 
@@ -504,6 +554,8 @@ class LevelConcentration(ConcentrationType):
         self.KAVG = 1
         self.alt_KAVG = 1
         self.ground_index = None
+        self.gis_filename_maker = GisOutputFilenameForLevelConc()
+        self.kml_filename_maker = KmlOutputFilename()
 
     def set_alt_KAVG(self, KAVG):
         self.alt_KAVG = KAVG
@@ -656,11 +708,6 @@ class LevelConcentration(ConcentrationType):
 
     def get_upper_level(self, grid_level, settings_level):
         return grid_level
-
-    @staticmethod
-    def make_gis_basename(time_index, output_suffix, level1, level2):
-        return "GIS_{0:05d}_{1}_{2:02d}".format(
-            int(level1), output_suffix, time_index)
 
 
 class ConcentrationMapFactory:
@@ -1076,11 +1123,11 @@ class DepositSumFactory:
         raise Exception("unknown deposition type {0}".format(type))
 
 
-class NullDeposit:
+class NullDeposit(ABC):
 
     def __init__(self):
         self.summation_from_datetime = None
-        return
+        self.gis_filename_maker = GisOutputFilenameForDeposit()
 
     def initialize(self, grids, time_selector, pollutant_selector):
         if len(grids) > 0:
@@ -1093,8 +1140,7 @@ class NullDeposit:
     def get_grids_to_plot(self, grids_on_ground, last_timeQ=False):
         return []
 
-    @staticmethod
-    def make_gis_basename(time_index, output_suffix):
+    def make_gis_basename(self, time_index, output_suffix):
         return None
 
 
@@ -1102,19 +1148,20 @@ class TimeDeposit(NullDeposit):
 
     def __init__(self):
         super(TimeDeposit, self).__init__()
+        self.gis_filename_maker = GisOutputFilenameForDeposit()
 
     def get_grids_to_plot(self, grids_on_ground, last_timeQ=False):
         return grids_on_ground
 
-    @staticmethod
-    def make_gis_basename(time_index, output_suffix):
-        return "GIS_DEP_{0}_{1:02d}".format(output_suffix, time_index)
+    def make_gis_basename(self, time_index, output_suffix):
+        return self.gis_filename_maker.get_basename(time_index, output_suffix)
 
 
 class SumDeposit(NullDeposit):
 
     def __init__(self):
         super(SumDeposit, self).__init__()
+        self.gis_filename_maker = GisOutputFilenameForDeposit()
         self.summation_grid = None
 
     def initialize(self, grids, time_selector, pollutant_selector):
@@ -1172,15 +1219,15 @@ class SumDeposit(NullDeposit):
             if s.extension is not None:
                 s.extension.update(s.conc)
 
-    @staticmethod
-    def make_gis_basename(time_index, output_suffix):
-        return "GIS_DEP_{0}_{1:02d}".format(output_suffix, time_index)
+    def make_gis_basename(self, time_index, output_suffix):
+        return self.gis_filename_maker.get_basename(time_index, output_suffix)
 
 
 class TotalDeposit(SumDeposit):
 
     def __init__(self):
         super(TotalDeposit, self).__init__()
+        self.gis_filename_maker = GisOutputFilenameForDeposit()
 
     def get_grids_to_plot(self, grids_on_ground, last_timeQ=False):
         if last_timeQ:
@@ -1189,6 +1236,5 @@ class TotalDeposit(SumDeposit):
 
         return []
 
-    @staticmethod
-    def make_gis_basename(time_index, output_suffix):
-        return "GIS_DEP_{0}_{1:02d}".format(output_suffix, time_index)
+    def make_gis_basename(self, time_index, output_suffix):
+        return self.gis_filename_maker.get_basename(time_index, output_suffix)

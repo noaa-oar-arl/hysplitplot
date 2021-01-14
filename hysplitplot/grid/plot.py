@@ -26,6 +26,8 @@ from hysplitplot import cmdline, const, mapbox, mapproj, \
                         plotbase, smooth, streetmap, timezone, util
 from hysplitplot.conc import helper, cntr, gisout
 from hysplitplot.conc.plot import ColorTableFactory
+from hysplitplot.grid.helper import GisOutputFilenameForGridPlot, \
+                                    KmlOutputFilenameForGridPlot
 
 
 logger = logging.getLogger(__name__)
@@ -68,7 +70,6 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
         self.NSSLBL = 0     # force sample start time label to start of release
         self.color = const.ConcentrationPlotColor.COLOR  # KOLOR
         self.gis_alt_mode = const.GISOutputAltitude.CLAMPED_TO_GROUND
-        self.KMLOUT = 0
         self.ring = False
         self.ring_number = -1
         # ring_number values:
@@ -310,6 +311,8 @@ class GridPlot(plotbase.AbstractPlot):
 
         self.conc_type = helper.ConcentrationTypeFactory.create_instance(
             self.settings.KAVG)
+        self.conc_type.gis_filename_maker = GisOutputFilenameForGridPlot()
+        self.conc_type.kml_filename_maker = KmlOutputFilenameForGridPlot()
 
         self.plot_saver_list = self._create_plot_saver_list(self.settings)
 
@@ -939,9 +942,6 @@ class GridPlot(plotbase.AbstractPlot):
             g,
             self.conc_type,
             self.depo_sum,
-            self.settings.output_basename,
-            self.settings.output_suffix,
-            self.settings.KMLOUT,
             upper_vert_level)
 
         gis_writer.write(basename, g, contour_set,
@@ -1057,7 +1057,7 @@ class GridPlot(plotbase.AbstractPlot):
             self.time_zone)
 
         gis_writer.initialize(self.settings.gis_alt_mode,
-                              self.settings.KMLOUT,
+                              self.settings.output_basename,
                               self.settings.output_suffix,
                               self.settings.KMAP,
                               self.settings.NSSLBL,

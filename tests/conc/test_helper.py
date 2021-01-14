@@ -70,10 +70,6 @@ class ConcentrationTypeTest(helper.ConcentrationType):
     
     def get_upper_level(self, grid_level, settings_level):
         pass
-        
-    @staticmethod
-    def make_gis_basename(time_index, output_suffix, level1, level2):
-        pass
 
 
 def test_sum_over_pollutants_per_level(cdump2):
@@ -464,7 +460,35 @@ def test_VerticalAverageCalculator_average(cdump2):
     assert result.shape == (601, 601)
     assert result[300, 300] * 1.e+13 == pytest.approx(8.047535/3.0 + 7.963810*2.0/3.0 )
     assert result[300, 300] * 1.e+13 == pytest.approx(7.9917182)
-    
+
+
+def test_GisOutputFilenameForVerticalAverageConc_get_basename():
+    o = helper.GisOutputFilenameForVerticalAverageConc()
+    assert o.get_basename(1, 'ps') == 'GIS_00000-99999_ps_01'
+    assert o.get_basename(2, 'jobid', 50, 100) == 'GIS_00050-00100_jobid_02'
+
+
+def test_GisOutputFilenameForLevelConc_get_basename():
+    o = helper.GisOutputFilenameForLevelConc()
+    assert o.get_basename(1, 'ps') == 'GIS_00000_ps_01'
+    assert o.get_basename(2, 'jobid', 50) == 'GIS_00050_jobid_02'
+
+
+def test_GisOutputFilenameForDeposit_get_basename():
+    o = helper.GisOutputFilenameForDeposit()
+    assert o.get_basename(1, 'ps') == 'GIS_DEP_ps_01'
+    assert o.get_basename(2, 'jobid', 50) == 'GIS_DEP_jobid_02'
+
+
+def test_KmlOutputFilename_get_basename():
+    o = helper.KmlOutputFilename()
+    assert o.get_basename(1, 'ps') == 'HYSPLIT_ps'
+    assert o.get_basename(2, 'jobid', 50) == 'HYSPLIT_jobid'
+    # with the output_basename set
+    o = helper.KmlOutputFilename('plot')
+    assert o.get_basename(1, 'ps') == 'plot_ps'
+    assert o.get_basename(2, 'jobid', 50) == 'plot_jobid'
+
 
 def test_ConcentrationTypeFactory_create_instance():
     p = helper.ConcentrationTypeFactory.create_instance(const.ConcentrationType.EACH_LEVEL)
@@ -487,7 +511,9 @@ def test_ConcentrationType___init__():
     assert hasattr(p, "level_selector")
     assert hasattr(p, "pollutant_selector")
     assert hasattr(p, "custom_layer_str") and p.custom_layer_str == None
-       
+    assert hasattr(p, "gis_filename_maker")
+    assert hasattr(p, "kml_filename_maker")
+
 
 def test_ConcentrationType_initialize():
     p = ConcentrationTypeTest()
@@ -523,16 +549,30 @@ def test_ConcentrationType_get_lower_level():
     assert p.get_lower_level(100.0, [0.0, 100.0, 300.0]) == 0.0
     
     
+def test_ConcentrationType_make_gis_basename():
+    # use a concrete class object
+    o = helper.VerticalAverageConcentration()
+    assert o.make_gis_basename(2, "ps", 100.0, 5000.0) == "GIS_00100-05000_ps_02"
+
+
+def test_ConcentrationType_make_kml_basename():
+    # use a concrete class object
+    o = helper.VerticalAverageConcentration()
+    assert o.make_kml_basename(2, "ps", 100.0, 5000.0) == "HYSPLIT_ps"
+
+
 def test_VerticalAverageConcentration___init__():
     p = helper.VerticalAverageConcentration()
-    
+    # member variables declared in the super class.
     assert p.cdump is None
     assert p.level_selector is None
     assert p.pollutant_selector is None
-    
+    #
     assert p.average_calc is None
     assert p.min_average == 1.0e+25
     assert p.max_average == 0.0
+    assert p.gis_filename_maker is not None
+    assert p.kml_filename_maker is not None
 
 
 def test_VerticalAverageConcentration_initialize(cdump2):
@@ -740,25 +780,22 @@ def test_VerticalAverageConcentration_get_upper_level():
     assert p.get_upper_level(grid_level, settings_level) == pytest.approx(500.0)
     
     
-def test_VerticalAverageConcentration_make_gis_basename():
-    assert helper.VerticalAverageConcentration.make_gis_basename(2, "ps", 100.0, 5000.0) \
-        == "GIS_00100-05000_ps_02"
-    
-    
 def test_LevelConcentration___init__():
     p = helper.LevelConcentration()
-    
+    # those declared in the super class.
     assert p.cdump is None
     assert p.level_selector is None
     assert p.pollutant_selector is None
-    
+    #
     assert p.min_concs is None
     assert p.max_concs is None
     assert p.KAVG == 1
     assert p.alt_KAVG == 1
     assert p.ground_index is None
+    assert p.gis_filename_maker is not None
+    assert p.kml_filename_maker is not None
 
-    
+
 def test_LevelConcentration_set_alt_KAVG():
     p = helper.LevelConcentration()
     p.set_alt_KAVG(13)
@@ -979,7 +1016,7 @@ def test_LevelConcentration_get_plot_conc_range():
     
     assert p.get_plot_conc_range(g, 2.0) == pytest.approx((0.26, 0.28))
 
-     
+
 def test_LevelConcentration_get_level_range_str():
     p = helper.LevelConcentration()
     level1 = util.LengthInMeters(1.0)
@@ -996,8 +1033,8 @@ def test_LevelConcentration_get_level_range_str():
     
     p.set_custom_layer_str("BETWEEN")
     assert p.get_level_range_str(level1, level2) == "BETWEEN 1 m and 2 m"
-    
-    
+
+
 def test_LevelConcentration_get_upper_level():
     p = helper.LevelConcentration()
 
@@ -1005,11 +1042,11 @@ def test_LevelConcentration_get_upper_level():
     grid_level = 100.0
     settings_level = 500.0    
     assert p.get_upper_level(grid_level, settings_level) == pytest.approx(100.0)
-    
-    
+
+
 def test_LevelConcentration_make_gis_basename():
-    assert helper.LevelConcentration.make_gis_basename(2, "ps", 100.0, 5000.0) \
-        == "GIS_00100_ps_02"
+    o = helper.LevelConcentration()
+    assert o.make_gis_basename(2, "ps", 100.0, 5000.0) == "GIS_00100_ps_02"
 
 
 def test_ConcentrationMapFactory_create_instance():
@@ -1511,7 +1548,8 @@ def test_NullDeposit___init__():
     o = helper.NullDeposit()
     assert o is not None
     assert o.summation_from_datetime == None
-    
+    assert o.gis_filename_maker is not None
+
 
 def test_NullDeposit_initialize(cdump3):
     o = helper.NullDeposit()
@@ -1549,13 +1587,15 @@ def test_NullDeposit_get_grids_to_plot(cdump2):
 
 
 def test_NullDeposit_make_gis_basename():
-    assert helper.NullDeposit.make_gis_basename(2, "ps") == None
-    
+    o = helper.NullDeposit()
+    assert o.make_gis_basename(2, "ps") == None
+
 
 def test_TimeDeposit___init__():
     o = helper.TimeDeposit()
     assert o is not None
-    
+    assert o.gis_filename_maker is not None
+
 
 def test_TimeDeposit_get_grids_to_plot(cdump2):
     o = helper.TimeDeposit()
@@ -1565,16 +1605,18 @@ def test_TimeDeposit_get_grids_to_plot(cdump2):
     
     a = o.get_grids_to_plot(cdump2.grids)
     assert len(a) == 4
-        
+
 
 def test_TimeDeposit_make_gis_basename():
-    assert helper.TimeDeposit.make_gis_basename(2, "ps") == "GIS_DEP_ps_02"
-    
-       
+    o = helper.TimeDeposit()
+    assert o.make_gis_basename(2, "ps") == "GIS_DEP_ps_02"
+
+
 def test_SumDeposit___init__():
     o = helper.SumDeposit()
+    assert o.gis_filename_maker is not None
     assert o.summation_grid is None
-    
+
 
 def test_SumDeposit_initialize(cdump3):
     o = helper.SumDeposit()
@@ -1668,33 +1710,35 @@ def test_SumDeposit__update_properties(cdump3):
     
 
 def test_SumDeposit_make_gis_basename():
-    assert helper.SumDeposit.make_gis_basename(2, "ps") == "GIS_DEP_ps_02"
+    o = helper.SumDeposit()
+    assert o.make_gis_basename(2, "ps") == "GIS_DEP_ps_02"
 
 
 def test_TotalDeposit___init__():
     o = helper.TotalDeposit()
     assert isinstance(o, helper.TotalDeposit)
-    
-    
+    assert o.gis_filename_maker is not None
+
+
 def test_TotalDeposit_get_grids_to_plot(cdump3):
     o = helper.TotalDeposit()
     ts = helper.TimeIndexSelector(1, 99999)
     ps = helper.PollutantSelector()
     utc = pytz.utc
-    
+
     # initialize with grids at time index at 0.
     o.initialize(cdump3.grids, ts, ps)
     
     # find grids
     t_grids = list(filter(lambda g: g.vert_level == 0 and g.time_index >= 1, cdump3.grids))
     o.add(t_grids)
-        
+
     # test with the last_timeQ set to False
     last = [ t_grids[-1] ]
     grids = o.get_grids_to_plot(last, False)
-    
+
     assert len(grids) == 0
-    
+
     # test with the last_timeQ set to True
     grids = o.get_grids_to_plot(last, True)
     
@@ -1708,6 +1752,6 @@ def test_TotalDeposit_get_grids_to_plot(cdump3):
 
 
 def test_TotalDeposit_make_gis_basename():
-    assert helper.TotalDeposit.make_gis_basename(2, "ps") == "GIS_DEP_ps_02"
+    o = helper.TotalDeposit()
+    assert o.make_gis_basename(2, "ps") == "GIS_DEP_ps_02"
 
-    

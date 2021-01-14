@@ -56,18 +56,21 @@ class AbstractWriter(ABC):
 
     def __init__(self, time_zone=None):
         self.alt_mode_str = "clampedToGround"
-        self.KMLOUT = 0
+        self.output_basename = "plot"
         self.output_suffix = "ps"
         self.KMAP = const.ConcentrationMapType.CONCENTRATION
+        self.NSSLBL = 0
+        self.show_max_conc = 1
+        self.NDEP = const.DepositionType.TIME
         self.time_zone = time_zone
 
-    def initialize(self, gis_alt_mode, KMLOUT, output_suffix, KMAP, NSSLBL,
-                   show_max_conc, NDEP):
+    def initialize(self, gis_alt_mode, output_basename, output_suffix,
+                   KMAP, NSSLBL, show_max_conc, NDEP):
         if gis_alt_mode == const.GISOutputAltitude.RELATIVE_TO_GROUND:
             self.alt_mode_str = "relativeToGround"
         else:
             self.alt_mode_str = "clampedToGround"
-        self.KMLOUT = KMLOUT
+        self.output_basename = output_basename
         self.output_suffix = output_suffix
         self.KMAP = KMAP
         self.NSSLBL = NSSLBL
@@ -83,8 +86,7 @@ class AbstractWriter(ABC):
         pass
 
     @abstractmethod
-    def make_output_basename(self, g, conc_type, depo_sum, output_basename,
-                             output_suffix, KMLOUT, upper_vert_level):
+    def make_output_basename(self, g, conc_type, depo_sum, upper_vert_level):
         pass
 
     @staticmethod
@@ -104,8 +106,7 @@ class NullWriter(AbstractWriter):
               upper_vert_level, distinguishable_vert_level=True):
         pass
 
-    def make_output_basename(self, g, conc_type, depo_sum, output_basename,
-                             output_suffix, KMLOUT, upper_vert_level):
+    def make_output_basename(self, g, conc_type, depo_sum, upper_vert_level):
         pass
 
 
@@ -115,13 +116,13 @@ class PointsGenerateFileWriter(AbstractWriter):
         super(PointsGenerateFileWriter, self).__init__(time_zone)
         self.formatter = formatter
 
-    def make_output_basename(self, g, conc_type, depo_sum, output_basename,
-                             output_suffix, KMLOUT, upper_vert_level):
+    def make_output_basename(self, g, conc_type, depo_sum, upper_vert_level):
         if g.vert_level == 0 and depo_sum is not None:
-            basename = depo_sum.make_gis_basename(g.time_index + 1, output_suffix)
+            basename = depo_sum.make_gis_basename(g.time_index + 1,
+                                                  self.output_suffix)
         else:
             basename = conc_type.make_gis_basename(g.time_index + 1,
-                                                   output_suffix,
+                                                   self.output_suffix,
                                                    g.vert_level,
                                                    upper_vert_level)
         return basename
@@ -260,15 +261,17 @@ class KMLWriter(AbstractWriter):
         self.xml_root = None
         self.kml_filename = None
 
-    def make_output_basename(self, g, conc_type, depo_sum, output_basename,
-                             output_suffix, KMLOUT, upper_vert_level):
-        s = "HYSPLIT" if KMLOUT == 0 else output_basename
-        return "{}_{}".format(s, output_suffix)
+    def make_output_basename(self, g, conc_type, depo_sum, upper_vert_level):
+        return conc_type.make_kml_basename(g.time_index + 1,
+                                           self.output_suffix,
+                                           g.vert_level,
+                                           upper_vert_level)
 
-    def initialize(self, gis_alt_mode, KMLOUT, output_suffix, KMAP, NSSLBL,
-                   show_max_conc, NDEP):
-        super(KMLWriter, self).initialize(gis_alt_mode, KMLOUT, output_suffix,
-                                          KMAP, NSSLBL, show_max_conc, NDEP)
+    def initialize(self, gis_alt_mode, output_basename, output_suffix,
+                   KMAP, NSSLBL, show_max_conc, NDEP):
+        super(KMLWriter, self).initialize(gis_alt_mode, output_basename,
+                                          output_suffix, KMAP, NSSLBL,
+                                          show_max_conc, NDEP)
         self.contour_writer = KMLContourWriterFactory.create_instance(
                 self.KMAP, self.alt_mode_str, self.time_zone)
         self.contour_writer.set_show_max_conc(show_max_conc)

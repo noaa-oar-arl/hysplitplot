@@ -36,7 +36,7 @@ class AbstractWriterTest(gisout.AbstractWriter):
     def write(self, basename, g, contour_set, lower_vert_level, upper_vert_level, distinguishable_vert_level):
         pass
     
-    def make_output_basename(self, g, conc_type, depo_sum, output_basename, output_suffix, KMLOUT, upper_vert_level):
+    def make_output_basename(self, g, conc_type, depo_sum, upper_vert_level):
         pass
    
     
@@ -118,14 +118,17 @@ def test_GISFileWriterFactory_create_instance__without_time_zone():
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.NONE, kml_option)
     assert isinstance(w, gisout.NullWriter)
     assert w.time_zone is None
-    
+
 
 def test_AbstractWriter___init__():
     o = AbstractWriterTest()
-    assert o.alt_mode_str == "clampedToGround"
-    assert o.KMLOUT == 0
-    assert o.output_suffix == "ps"
-    assert o.KMAP == const.ConcentrationMapType.CONCENTRATION
+    assert hasattr(o, 'alt_mode_str')
+    assert hasattr(o, 'output_basename')
+    assert hasattr(o, 'output_suffix')
+    assert hasattr(o, 'KMAP')
+    assert hasattr(o, 'NSSLBL')
+    assert hasattr(o, 'show_max_conc')
+    assert hasattr(o, 'NDEP')
     assert o.time_zone is None
 
     tz = pytz.timezone("America/New_York")
@@ -135,9 +138,9 @@ def test_AbstractWriter___init__():
 
 def test_AbstractWriter_initialize():
     o = AbstractWriterTest()
-    o.initialize(0, 2, "3", 5, 6, 7, 8)
+    o.initialize(0, "2", "3", 5, 6, 7, 8)
     assert o.alt_mode_str == "clampedToGround"
-    assert o.KMLOUT == 2
+    assert o.output_basename == "2"
     assert o.output_suffix == "3"
     assert o.KMAP == 5
     assert o.NSSLBL == 6
@@ -167,7 +170,7 @@ def test_AbstractWriter_make_output_basename():
     o = AbstractWriterTest()
     try:
         # a silly test
-        o.make_output_basename(1, 2, 3, 4, 5, 6, 7)
+        o.make_output_basename(1, 2, 3, 4)
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
 
@@ -187,7 +190,7 @@ def test_NullWriter_make_output_basename():
     o = gisout.NullWriter()
     try:
         # a silly test
-        o.make_output_basename(1, 2, 3, 4, 5, 6, 7)
+        o.make_output_basename(1, 2, 3, 4)
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
         
@@ -214,19 +217,19 @@ def test_PointsGenerateFileWriter_make_output_basename(cdump_two_pollutants):
     # Choose a concentration grid at 100 m.
     g = cdump_two_pollutants.grids[0]
     assert g.vert_level == 100
-    basename = o.make_output_basename(g, conc_type, depo_sum, "output", "ps", s.KMLOUT, 500)
+    basename = o.make_output_basename(g, conc_type, depo_sum, 500)
     assert basename == "GIS_00100_ps_01"
     # Choose a concentration grid at 300 m
     g = cdump_two_pollutants.grids[1]
     assert g.vert_level == 300
-    basename = o.make_output_basename(g, conc_type, depo_sum, "output", "ps", s.KMLOUT, 500)
+    basename = o.make_output_basename(g, conc_type, depo_sum, 500)
     assert basename == "GIS_00300_ps_01"
     # Recreate depo_sum with the flag for ground-level grid set to True.
     depo_sum = helper.DepositSumFactory.create_instance(s.NDEP,
                                                         True)
     # Change the height of the grid to zero.
     g.vert_level = 0
-    basename = o.make_output_basename(g, conc_type, depo_sum, "output", "ps", s.KMLOUT, 500)
+    basename = o.make_output_basename(g, conc_type, depo_sum, 500)
     assert basename == "GIS_DEP_ps_01"
 
 
@@ -447,13 +450,13 @@ def test_KMLWriter___init__():
 
 def test_KMLWriter_make_output_basename(cdump_two_pollutants):
     s = plot.ConcentrationPlotSettings()
-    conc_type = helper.ConcentrationTypeFactory.create_instance( s.KAVG )
-    depo_sum = helper.DepositSumFactory.create_instance(s.NDEP,
-                                                     cdump_two_pollutants.has_ground_level_grid())
-    
+    conc_type = helper.ConcentrationTypeFactory.create_instance(s.KAVG)
+    depo_sum = helper.DepositSumFactory.create_instance(
+            s.NDEP, cdump_two_pollutants.has_ground_level_grid())
+
     o = gisout.KMLWriter(s.kml_option)
     g = cdump_two_pollutants.grids[0]
-    basename = o.make_output_basename(g, conc_type, depo_sum, "output", "ps", s.KMLOUT, 500)
+    basename = o.make_output_basename(g, conc_type, depo_sum, 500)
     assert basename == "HYSPLIT_ps" and s.KMLOUT == 0
 
 
@@ -463,7 +466,7 @@ def test_KMLWriter_initialize(cdump_two_pollutants):
 
     assert s.show_max_conc != 0
     o.initialize(s.gis_alt_mode,
-                 s.KMLOUT,
+                 s.output_basename,
                  s.output_suffix,
                  s.KMAP,
                  s.NSSLBL,
@@ -480,7 +483,7 @@ def test_KMLWriter_initialize(cdump_two_pollutants):
     s.show_max_conc = 0
     
     o.initialize(s.gis_alt_mode,
-                 s.KMLOUT,
+                 s.output_basename,
                  s.output_suffix,
                  s.KMAP,
                  s.NSSLBL,
@@ -506,7 +509,7 @@ def test_KMLWriter_write(cdump_two_pollutants):
     g.extension.max_locs = helper.find_max_locs(g)
     
     o.initialize(s.gis_alt_mode,
-                 s.KMLOUT,
+                 s.output_basename,
                  s.output_suffix,
                  s.KMAP,
                  s.NSSLBL,
@@ -583,7 +586,7 @@ def test_KMLWriter__write_attributes(cdump_two_pollutants):
     g.extension.max_locs = helper.find_max_locs(g)
     
     o.initialize(s.gis_alt_mode,
-                 s.KMLOUT,
+                 s.output_basename,
                  s.output_suffix,
                  s.KMAP,
                  s.NSSLBL,
@@ -646,7 +649,7 @@ def test_KMLWriter__write_attributes_case2(cdump_two_pollutants):
     g.extension.max_locs = helper.find_max_locs(g)
     
     o.initialize(s.gis_alt_mode,
-                 s.KMLOUT,
+                 s.output_basename,
                  s.output_suffix,
                  const.ConcentrationMapType.THRESHOLD_LEVELS,
                  s.NSSLBL,
@@ -728,7 +731,7 @@ def test_PartialKMLWriter_write(cdump_two_pollutants):
     g.extension.max_locs = helper.find_max_locs(g)
     
     o.initialize(s.gis_alt_mode,
-                 s.KMLOUT,
+                 s.output_basename,
                  s.output_suffix,
                  s.KMAP,
                  s.NSSLBL,
@@ -786,7 +789,7 @@ def test_PartialKMLWriter__write_attributes(cdump_two_pollutants):
     g.extension.max_locs = helper.find_max_locs(g)
     
     o.initialize(s.gis_alt_mode,
-                 s.KMLOUT,
+                 s.output_basename,
                  s.output_suffix,
                  s.KMAP,
                  s.NSSLBL,

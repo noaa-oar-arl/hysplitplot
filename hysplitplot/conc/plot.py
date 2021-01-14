@@ -515,6 +515,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             self.conc_type.set_alt_KAVG(3)
         if self.labels.has("LAYER"):
             self.conc_type.set_custom_layer_str(self.labels.get("LAYER"))
+        if self.settings.KMLOUT != 0:
+            # Use -o prefix name for output kml file. Otherwise, 'HYSPLIT' will be used.
+            self.conc_type.kml_filename_maker.output_basename = self.settings.output_basename
 
         self.color_table = ColorTableFactory.create_instance(self.settings,
                                                              color_opacity=self.color_opacity)
@@ -1151,9 +1154,6 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                     g,
                     self.conc_type,
                     self.depo_sum,
-                    self.settings.output_basename,
-                    self.settings.output_suffix,
-                    self.settings.KMLOUT,
                     upper_vert_level)
             w.write(basename, g, contour_set,
                     lower_vert_level, upper_vert_level)
@@ -1319,7 +1319,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         
         for w in gis_writer_list:
             w.initialize(settings.gis_alt_mode,
-                         settings.KMLOUT,
+                         settings.output_basename,
                          settings.output_suffix,
                          settings.KMAP,
                          settings.NSSLBL,

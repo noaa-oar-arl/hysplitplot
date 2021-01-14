@@ -498,6 +498,9 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
             self.conc_type.set_alt_KAVG(3)
         if self.labels.has("LAYER"):
             self.conc_type.set_custom_layer_str(self.labels.get("LAYER"))
+        if self.settings.KMLOUT != 0:
+            # Use -o prefix name for output kml file. Otherwise, 'HYSPLIT' will be used.
+            self.conc_type.kml_filename_maker.output_basename = self.settings.output_basename
 
         self.plot_saver_list = self._create_plot_saver_list(self.settings)
 
@@ -1031,9 +1034,6 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
             g,
             self.conc_type,
             self.depo_sum,
-            self.settings.output_basename,
-            self.settings.output_suffix,
-            self.settings.KMLOUT,
             upper_vert_level)
 
         gis_writer.write(basename, g, contour_set,
@@ -1141,7 +1141,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
             self.time_zone)
 
         gis_writer.initialize(self.settings.gis_alt_mode,
-                              self.settings.KMLOUT,
+                              self.settings.output_basename,
                               self.settings.output_suffix,
                               self.settings.KMAP,
                               self.settings.NSSLBL,
