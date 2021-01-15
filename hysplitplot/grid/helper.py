@@ -32,3 +32,25 @@ class KmlOutputFilenameForGridPlot(AbstractGisOutputFilename):
     def get_basename(self, time_index, output_suffix, level1=0, level2=99999):
         return "plot.ps"
 
+
+class TextOutputForGridPlot:
+
+    def __init__(self):
+        self.fp = None
+        self.frame_no = -1
+
+    def open(self, time_index):
+        self.frame_no = time_index + 1
+        fn = "plot_{:03d}.txt".format(self.frame_no)
+        self.fp = open(fn, "w")
+        logger.info("Writing to %s", fn)
+
+    def close(self):
+        if self.fp is not None:
+            self.fp.close()
+            self.fp = None
+    
+    def write(self, i, j, c):
+        if self.fp is not None:
+            self.fp.write("{:10d}{:10d}{:10d}{:15.6E}\n".format(self.frame_no,
+                                                          i + 1, j + 1, c))

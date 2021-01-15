@@ -27,7 +27,8 @@ from hysplitplot import cmdline, const, mapbox, mapproj, \
 from hysplitplot.conc import helper, cntr, gisout
 from hysplitplot.conc.plot import ColorTableFactory
 from hysplitplot.grid.helper import GisOutputFilenameForGridPlot, \
-                                    KmlOutputFilenameForGridPlot
+                                    KmlOutputFilenameForGridPlot, \
+                                    TextOutputForGridPlot
 
 
 logger = logging.getLogger(__name__)
@@ -85,6 +86,7 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
         self.DELTA = 1000.0  # DELTA contour value
         self.MINCON = False  # min conc. 
         self.NSCALE = 1  # logarithmic. 0 is for linear.
+        self.output_values = False  # for the -f option.
 
         # internally defined
         self.label_source = True
@@ -123,6 +125,8 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
         self.DELTA = args.get_float_value(["-d", "-D"], self.DELTA)
         self.frames_per_file = args.get_integer_value(["-m", "-M"],
                                                       self.frames_per_file)
+        self.output_values = args.get_boolean_value(["-f", "-F"],
+                                                    self.output_values)
 
         self.gis_output = args.get_integer_value(["-g", "-G"], self.gis_output)
         self.gis_output = self.normalize_gis_output_option(self.gis_output)
@@ -236,6 +240,7 @@ class GridPlot(plotbase.AbstractPlot):
         self.pollutant_selector = None
         self.conc_type = None
         self.conc_map = None
+        self.value_output_writer = None
         self.prev_forecast_time = None
         self.length_factory = None
 
@@ -327,6 +332,9 @@ class GridPlot(plotbase.AbstractPlot):
         self.depo_sum = helper.DepositSumFactory.create_instance(
             self.settings.NDEP, self.cdump.has_ground_level_grid())
 
+        if self.settings.output_values:
+            self.value_output_writer = TextOutputForGridPlot()
+ 
         time_zone_helper = timezone.TimeZoneHelper()
         if self.settings.time_zone_str is not None:
             self.time_zone = time_zone_helper.lookup_time_zone(self.settings.time_zone_str)
@@ -718,8 +726,8 @@ class GridPlot(plotbase.AbstractPlot):
                 dy = conc_grid.parent.grid_deltas[1]
                 hx = 0.5 * dx
                 hy = 0.5 * dy
-                for i, lon in enumerate(conc_grid.longitudes):
-                    for j, lng in enumerate(conc_grid.latitudes):
+                for j, lng in enumerate(conc_grid.latitudes):
+                    for i, lon in enumerate(conc_grid.longitudes):
                         c = scaled_conc[j, i]
                         if c > 0:
                             if c >= contour_levels[-1]:
@@ -731,6 +739,8 @@ class GridPlot(plotbase.AbstractPlot):
                                         r = matplotlib.patches.Rectangle((lon-hx, lng-hy), dx, dy)
                                         rect_list[k].append(r)
                                         break
+                            if self.value_output_writer is not None:
+                                self.value_output_writer.write(i, j, c)
                 for k, rects in enumerate(rect_list):
                     if len(rects) > 0:
                         if color_skip > 1:
@@ -1081,6 +1091,9 @@ class GridPlot(plotbase.AbstractPlot):
 
             self.depo_sum.add(grids_on_ground, initial_timeQ)
 
+            if self.value_output_writer is not None:
+                self.value_output_writer.open(t_index)
+
             if self.settings.hlevel == 0 and self.settings.NDEP == const.DepositionType.SUM:
                 # draw total deposition using the grid on the ground
                 grids = self.depo_sum.get_grids_to_plot(grids_on_ground,
@@ -1096,6 +1109,9 @@ class GridPlot(plotbase.AbstractPlot):
                         self.draw_conc_grid(g, ev_handlers, level_generator,
                                             color_table, gis_writer,
                                             *args, **kwargs)
+
+            if self.value_output_writer is not None:
+                self.value_output_writer.close()
 
             self.time_period_count += 1
 
