@@ -656,7 +656,59 @@ class GridPlot(plotbase.AbstractPlot):
 
         return mbox
 
-    def draw_concentration_plot(self, conc_grid, scaled_conc, conc_map,
+    def _build_grid_rect_list(self,
+                              conc : numpy.ndarray,
+                              longitudes : [float],
+                              latitudes : [float],
+                              dx : float,
+                              dy : float,
+                              contour_levels : []) -> [] :
+        ncol = len(longitudes)
+        contour_levels_len = len(contour_levels)
+        rect_list = [[] for _ in range(contour_levels_len)]
+
+        # create a composite list where each element is
+        # a pair of array index and concentration value.
+        flat_conc = numpy.reshape(conc, -1, order='C')
+        comp_list = list(zip(range(len(flat_conc)), flat_conc))
+
+        # find non-zero concentrations
+        selected = list(filter(lambda x: x[1] > 0, comp_list))
+
+        if self.value_output_writer is not None:
+            if len(selected) > 0:
+                for v in selected:
+                    j = int(v[0] / ncol)
+                    i = v[0] - j * ncol
+                    self.value_output_writer.write(i, j, v[1])
+
+        hx = 0.5 * dx
+        hy = 0.5 * dy
+        # The following loop works when the contour level increases at each step.
+        for k, level in enumerate(contour_levels):
+            if level > 0:
+                # collect data points whose concentration is greater than
+                # or equal to the current contour level.
+                selected = list(filter(lambda x: x[1] >= level, selected))
+                # filter data points for plotting
+                if k < contour_levels_len - 1:
+                    next_level = contour_levels[k + 1]
+                    pts = list(filter(lambda x: x[1] < next_level, selected))
+                else:
+                    pts = selected
+
+                if len(pts) > 0:
+                    for v in pts:
+                        j = int(v[0] / ncol)
+                        i = v[0] - j * ncol
+                        lat = latitudes[j]
+                        lon = longitudes[i]
+                        r = matplotlib.patches.Rectangle((lon-hx, lat-hy), dx, dy)
+                        rect_list[k].append(r)
+
+        return rect_list
+
+    def draw_concentration_plot(self, conc_grid, scaled_conc : numpy.ndarray, conc_map,
                                 contour_levels, fill_colors, color_skip=1):
         """
         Draws a concentration grid plot and returns collections of rectangles.
@@ -720,27 +772,15 @@ class GridPlot(plotbase.AbstractPlot):
         if conc_grid.nonzero_conc_count > 0 and contour_levels_len > 1:
             # draw filled contours
             # TODO: delete patches of previous drawing?
-            rect_list = [[] for _ in range(contour_levels_len)]
+            
             try:
                 dx = conc_grid.parent.grid_deltas[0]
                 dy = conc_grid.parent.grid_deltas[1]
-                hx = 0.5 * dx
-                hy = 0.5 * dy
-                for j, lng in enumerate(conc_grid.latitudes):
-                    for i, lon in enumerate(conc_grid.longitudes):
-                        c = scaled_conc[j, i]
-                        if c > 0:
-                            if c >= contour_levels[-1]:
-                                r = matplotlib.patches.Rectangle((lon-hx, lng-hy), dx, dy)
-                                rect_list[-1].append(r)
-                            else:
-                                for k in range(contour_levels_len - 1):
-                                    if contour_levels[k] > 0 and c >= contour_levels[k] and c < contour_levels[k+1]:
-                                        r = matplotlib.patches.Rectangle((lon-hx, lng-hy), dx, dy)
-                                        rect_list[k].append(r)
-                                        break
-                            if self.value_output_writer is not None:
-                                self.value_output_writer.write(i, j, c)
+                rect_list = self._build_grid_rect_list(scaled_conc,
+                                                       conc_grid.longitudes,
+                                                       conc_grid.latitudes,
+                                                       dx, dy,
+                                                       contour_levels)
                 for k, rects in enumerate(rect_list):
                     if len(rects) > 0:
                         if color_skip > 1:
