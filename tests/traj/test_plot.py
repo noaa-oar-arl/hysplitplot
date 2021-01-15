@@ -818,6 +818,9 @@ def test_TrajectoryPlot_draw():
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
 
+    assert os.path.exists("trajplot.ps")
+    os.remove("trajplot.ps")
+    
     # Save to a file
     p.settings.interactive_mode = False
     plot_saver = multipage.PlotFileWriterFactory.create_instance(p.settings.frames_per_file,
