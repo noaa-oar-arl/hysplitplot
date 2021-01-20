@@ -398,7 +398,19 @@ def test_GridProperties_update():
     assert p.min_conc == 1.0
     assert p.max_conc == 10.0
     
+    # Test with a concentration grid with zero values.
+    c = numpy.zeros((3, 2))
+    p.update(c)
+    assert p.min_conc == 0.0
+    assert p.max_conc == 0.0
     
+    # Another test.
+    c[0, 1] = 10.0
+    p.update(c)
+    assert p.min_conc == 10.0  # because zeros are ignored.
+    assert p.max_conc == 10.0
+
+
 def test_VerticalAverageCalculator___init__():
     cdump = model.ConcentrationDump()
     ls = helper.VerticalLevelSelector()

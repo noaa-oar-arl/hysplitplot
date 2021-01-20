@@ -461,6 +461,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                             .format(self.settings.input_file))
 
         # read only one file.
+        logger.debug("Reading %s", self.settings.input_file)
         self.cdump = cdump = model.ConcentrationDump().get_reader() \
             .read(self.settings.input_file)
 
@@ -568,8 +569,12 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                 cdump.grids,
                 helper.TimeIndexSelector(t_index, t_index))
             self.conc_type.update_min_max(t_grids)
-
         self.conc_type.normalize_min_max()
+
+        if logger.isEnabledFor(logging.DEBUG):
+            for g in cdump.grids:
+                logger.debug("grid: time {}, vert_level {}, pollutant {}, {}".format(
+                             g.time_index, g.vert_level, g.pollutant, g.extension))
 
         self.conc_type.scale_conc(self.settings.CONADJ,
                                   self.settings.DEPADJ)
@@ -1381,10 +1386,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                             self.color_table, gis_writers,
                                             *args, **kwargs)
 
-            grids = self.depo_sum.get_grids_to_plot(
-                grids_on_ground,
-                t_index == self.time_selector.last)
+            grids = self.depo_sum.get_grids_to_plot(grids_on_ground,
+                                                    t_index == self.time_selector.last)
             for g in grids:
+                logger.debug("grid: time {}, vert_level {}, pollutant {}, {}".format(
+                             g.time_index, g.vert_level, g.pollutant, g.extension))
                 self.draw_conc_on_ground(g, ev_handlers, level_gen_depo,
                                          self.color_table, gis_writers,
                                          *args, **kwargs)

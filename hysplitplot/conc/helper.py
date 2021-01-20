@@ -221,11 +221,20 @@ class GridProperties:
         self.max_locs = None  # locations of the max conc.
 
     def clone(self):
-        o = copy.copy(self)  # shallow copy since there is no objects
+        o = copy.copy(self)  # shallow copy because none of the members are an object.
         return o
 
     def update(self, conc):
-        self.min_conc, self.max_conc = find_nonzero_min_max(conc)
+        vmin, self.max_conc = find_nonzero_min_max(conc)
+        self.min_conc = vmin if vmin is not None else 0.0
+ 
+    def __repr__(self) -> str:
+        return "GridProperties[min {}, max {}, avg min {}, avg max {}," \
+               " max locs {}]".format(self.min_conc,
+                                     self.max_conc,
+                                     self.min_vert_avg_conc,
+                                     self.max_vert_avg_conc,
+                                     self.max_locs)
 
 
 class VerticalAverageCalculator:
