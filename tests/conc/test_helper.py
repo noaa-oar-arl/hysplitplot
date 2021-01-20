@@ -1137,6 +1137,9 @@ def test_AbstractConcentrationMap_guess_volume_unit():
    
 def test_AbstractConcentrationMap_format_conc():
     p = helper.AbstractConcentrationMap(2, 4)
+    assert p.format_conc(None) == " "
+    assert p.format_conc(False) == " "
+    assert p.format_conc('abc') == " "
     assert p.format_conc(2.56789e+5) == "2.6e+05"
     assert p.format_conc(2.56789e+4) == "25678"
     assert p.format_conc(2.56789e+3) == "2567"

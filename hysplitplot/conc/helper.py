@@ -772,6 +772,9 @@ class AbstractConcentrationMap:
         return ""
 
     def format_conc(self, v):
+        if type(v) != int and type(v) != float:
+            return " "
+
         if v >= 100000.0:
             f = "{:.1e}".format(v)
         elif v >= 10000.0:
