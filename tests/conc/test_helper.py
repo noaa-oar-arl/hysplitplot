@@ -1140,6 +1140,9 @@ def test_AbstractConcentrationMap_format_conc():
     assert p.format_conc(None) == " "
     assert p.format_conc(False) == " "
     assert p.format_conc('abc') == " "
+    # integer
+    assert p.format_conc(int(2)) == "2"
+    # floating-point number
     assert p.format_conc(2.56789e+5) == "2.6e+05"
     assert p.format_conc(2.56789e+4) == "25678"
     assert p.format_conc(2.56789e+3) == "2567"
@@ -1152,8 +1155,11 @@ def test_AbstractConcentrationMap_format_conc():
     assert p.format_conc(0.000256789) == "2.6e-04"
     assert p.format_conc(0.0) == " "
     assert p.format_conc(-0.1) == " "
+    # test with numpy data types.
+    assert p.format_conc(numpy.float64(2.56789)) == "2"
+    #assert p.format_conc(numpy.float32(2.56789)) == "2"
 
-    
+
 def test_AbstractConcentrationMap_draw_explanation_text():
     p = helper.AbstractConcentrationMap(2, 4)
     assert p.draw_explanation_text(None, 0, 1.25, None, None, None) == 1.25
