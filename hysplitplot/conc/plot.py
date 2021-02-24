@@ -220,8 +220,9 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
 
         if args.has_arg("-v"):
             self.parse_contour_levels(args.get_value("-v"))
-            self.contour_level_generator = \
-                const.ContourLevelGenerator.USER_SPECIFIED
+            if self.validate_contour_levels(self.contour_levels):
+                self.contour_level_generator = \
+                    const.ContourLevelGenerator.USER_SPECIFIED
 
         self.smoothing_distance = \
             args.get_integer_value(["-w", "-W"], self.smoothing_distance)
@@ -236,12 +237,6 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.KMLOUT = args.get_integer_value(["-5"], self.KMLOUT)
         self.IZRO = args.get_integer_value("-8", self.IZRO)
         self.NSSLBL = args.get_integer_value("-9", self.NSSLBL)
-
-        if args.has_arg("-v"):
-            self.parse_contour_levels(args.get_value("-v"))
-            if self.validate_contour_levels(self.contour_levels):
-                self.contour_level_generator = \
-                    const.ContourLevelGenerator.USER_SPECIFIED
 
     @staticmethod
     def parse_source_label(str):
@@ -352,11 +347,12 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
             a = s.split(":")
 
             o = LabelledContourLevel()
-            try:
-                o.level = float(a[0])
-            except ValueError as ex:
-                logger.error(ex)
-                o.level = None
+            o.level = None
+            if len(a[0]) > 0:
+                try:
+                    o.level = float(a[0])
+                except ValueError as ex:
+                    logger.info('%s in %s - %s', a[0], s, str(ex))
             o.label = a[1]
             if len(a) > 2:
                 r = int(a[2][0:3]) / 255.0
