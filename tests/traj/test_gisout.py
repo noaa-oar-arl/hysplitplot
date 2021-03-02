@@ -156,6 +156,7 @@ def test_GenerateAttributeFileWriter_write(plotData):
 def test_PointsGenerateFileWriter___init__():
     w = gisout.PointsGenerateFileWriter()
     assert w.time_zone is None
+    assert w.att_writer is not None 
     
     tz = pytz.timezone("EST")      
     w = gisout.PointsGenerateFileWriter( tz )
@@ -176,6 +177,7 @@ def test_PointsGenerateFileWriter_write(plotData):
 def test_LinesGenerateFileWriter___init__():
     w = gisout.LinesGenerateFileWriter()
     assert w.time_zone is None
+    assert w.att_writer is not None 
 
     tz = pytz.timezone("EST")
     w = gisout.LinesGenerateFileWriter(tz)

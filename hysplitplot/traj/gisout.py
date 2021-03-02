@@ -84,8 +84,12 @@ class GenerateAttributeFileWriter:
 
 class PointsGenerateFileWriter(AbstractGISFileWriter):
 
-    def __init__(self, time_zone=None):
+    def __init__(self, time_zone=None, att_writer=None):
         super(PointsGenerateFileWriter, self).__init__(time_zone)
+        if att_writer is not None:
+            self.att_writer = att_writer
+        else:
+            self.att_writer = GenerateAttributeFileWriter()
 
     def write(self, file_no, plot_data):
         gisout = "GIS_traj_{0}_{1:02d}.txt".format(self.output_suffix, file_no)
@@ -101,13 +105,17 @@ class PointsGenerateFileWriter(AbstractGISFileWriter):
             f.write("END\n")
 
         gisatt = "GIS_traj_{0}_{1:02d}.att".format(self.output_suffix, file_no)
-        GenerateAttributeFileWriter.write(gisatt, plot_data, self.time_zone)
+        self.att_writer.write(gisatt, plot_data, self.time_zone)
 
 
 class LinesGenerateFileWriter(AbstractGISFileWriter):
 
-    def __init__(self, time_zone=None):
+    def __init__(self, time_zone=None, att_writer=None):
         super(LinesGenerateFileWriter, self).__init__(time_zone)
+        if att_writer is not None:
+            self.att_writer = att_writer
+        else:
+            self.att_writer = GenerateAttributeFileWriter()
 
     def write(self, file_no, plot_data):
         gisout = "GIS_traj_{0}_{1:02d}.txt".format(self.output_suffix, file_no)
@@ -126,7 +134,7 @@ class LinesGenerateFileWriter(AbstractGISFileWriter):
             f.write("END\n")
 
         gisatt = "GIS_traj_{0}_{1:02d}.att".format(self.output_suffix, file_no)
-        GenerateAttributeFileWriter.write(gisatt, plot_data, self.time_zone)
+        self.att_writer.write(gisatt, plot_data, self.time_zone)
 
 
 class KMLWriter(AbstractGISFileWriter):
