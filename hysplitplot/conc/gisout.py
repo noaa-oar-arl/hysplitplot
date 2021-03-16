@@ -368,7 +368,7 @@ class KMLWriter(AbstractWriter):
             if len(contour_set.levels) < 4:
                 additional_levels = 4 - len(contour_set.levels)
 
-        if self.show_max_conc == 1 or self.show_max_conc == 2:
+        if self.show_max_conc == const.ShowMaxSquare.BOTH or self.show_max_conc == const.ShowMaxSquare.VALUE:
             f.write("{:7s} {:7s} {:2d}\n".format(contour_set.max_concentration_str,
                                         contour_set.min_concentration_str,
                                         len(contour_set.levels) + additional_levels))
@@ -620,10 +620,13 @@ class AbstractKMLContourWriter(ABC):
         self.frame_count = 0
         self.alt_mode_str = alt_mode_str
         self.time_zone = time_zone
-        self.show_max_conc = True
+        self.draw_max_conc_sqs = True
 
     def set_show_max_conc(self, show_max_conc):
-        self.show_max_conc = True if show_max_conc != 0 else False
+        if show_max_conc == const.ShowMaxSquare.BOTH or show_max_conc == const.ShowMaxSquare.SQUARE:
+            self.draw_max_conc_sqs = True
+        else:
+            self.draw_max_conc_sqs = False
 
     def _get_begin_end_timestamps(self, g):
         if g.ending_datetime < g.starting_datetime:
@@ -695,8 +698,8 @@ class AbstractKMLContourWriter(ABC):
         self._write_contour(folder, g, contour_set, upper_vert_level,
                             distinguishable_vert_level)
 
-        if self.show_max_conc:
-            self._write_max_location(folder, g, contour_set.max_concentration_str,
+        if self.draw_max_conc_sqs:
+            self._draw_max_locations(folder, g, contour_set.max_concentration_str,
                                      upper_vert_level, contour_set.labels[-1])
 
     def _get_contour_height_at(self, k, vert_level):
@@ -772,7 +775,7 @@ class AbstractKMLContourWriter(ABC):
     def _get_max_location_text(self):
         pass
 
-    def _write_max_location(self, x, g, max_conc_str, vert_level,
+    def _draw_max_locations(self, x, g, max_conc_str, vert_level,
                             contour_label):
         if g.extension is None or len(g.extension.max_locs) == 0:
             logger.warning("No max location is found: "

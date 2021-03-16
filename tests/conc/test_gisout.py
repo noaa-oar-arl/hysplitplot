@@ -464,7 +464,7 @@ def test_KMLWriter_initialize(cdump_two_pollutants):
     s = plot.ConcentrationPlotSettings()
     o = gisout.KMLWriter(s.kml_option)
 
-    assert s.show_max_conc != 0
+    assert s.show_max_conc != 0 and s.show_max_conc != 2
     o.initialize(s.gis_alt_mode,
                  s.output_basename,
                  s.output_suffix,
@@ -474,9 +474,9 @@ def test_KMLWriter_initialize(cdump_two_pollutants):
                  s.NDEP)
 
     assert isinstance(o.contour_writer, gisout.AbstractKMLContourWriter)
-    assert o.contour_writer.show_max_conc == True
+    assert o.contour_writer.draw_max_conc_sqs == True
     assert isinstance(o.deposition_contour_writer, gisout.AbstractKMLContourWriter)
-    assert o.deposition_contour_writer.show_max_conc == True
+    assert o.deposition_contour_writer.draw_max_conc_sqs == True
 
     # test initialize() again with s.show_max_conc = 0.
 
@@ -491,8 +491,9 @@ def test_KMLWriter_initialize(cdump_two_pollutants):
                  const.DepositionType.NONE)
     
     assert isinstance(o.contour_writer, gisout.AbstractKMLContourWriter)
-    assert o.contour_writer.show_max_conc == False
+    assert o.contour_writer.draw_max_conc_sqs == False
     assert o.deposition_contour_writer is None
+
 
 def test_KMLWriter_write(cdump_two_pollutants):
     # delete files we are about to create
@@ -897,7 +898,7 @@ def test_AbstractKMLContourWriter___init__():
     assert o.frame_count == 0
     assert o.alt_mode_str == "relativeToGround"
     assert o.time_zone is None
-    assert o.show_max_conc == True
+    assert o.draw_max_conc_sqs == True
 
     tz = pytz.timezone("America/New_York")
     o = AbstractKMLContourWriterTest("relativeToGround", tz)
@@ -908,10 +909,16 @@ def test_AbstractKMLContourWriter_set_show_max_conc():
     o = AbstractKMLContourWriterTest("relativeToGround")
     
     o.set_show_max_conc( 0 )
-    assert o.show_max_conc == False
+    assert o.draw_max_conc_sqs == False
     
     o.set_show_max_conc( 1 )
-    assert o.show_max_conc == True
+    assert o.draw_max_conc_sqs == True
+    
+    o.set_show_max_conc( 2 )
+    assert o.draw_max_conc_sqs == False
+        
+    o.set_show_max_conc( 3 )
+    assert o.draw_max_conc_sqs == True
 
 
 def test_AbstractKMLContourWriter__get_begin_end_timestamps(cdump_two_pollutants):
@@ -1083,7 +1090,7 @@ def test_AbstractKMLContourWriter__write_boundary(cdump_two_pollutants):
         pytest.fail("unexpected exception: {}".format(ex))
 
 
-def test_AbstractKMLContourWriter__write_max_location(cdump_two_pollutants):
+def test_AbstractKMLContourWriter__draw_max_locations(cdump_two_pollutants):
     o = AbstractKMLContourWriterTest("relativeToGround")
     
     g = cdump_two_pollutants.grids[0]
@@ -1096,7 +1103,7 @@ def test_AbstractKMLContourWriter__write_max_location(cdump_two_pollutants):
     
     # just see if there is any exception
     try:
-        o._write_max_location(xml_root, g, 8.0e-12, 300, cntr_labels[0])
+        o._draw_max_locations(xml_root, g, 8.0e-12, 300, cntr_labels[0])
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
 

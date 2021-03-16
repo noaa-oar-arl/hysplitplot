@@ -117,3 +117,10 @@ class SmoothingKernel:
 class StreetMap:
     STAMEN_TERRAIN = 0
     STAMEN_TONER = 1
+
+
+class ShowMaxSquare:  # for the +m option of concplot.
+    NONE = 0
+    BOTH = 1
+    VALUE = 2
+    SQUARE = 3
