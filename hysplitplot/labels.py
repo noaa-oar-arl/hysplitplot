@@ -49,7 +49,6 @@ class LabelsConfigReader():
         with open(filename, "rt") as f:
             for ln in f:
                 k, v = self.parse_line(ln.rstrip("\n"))
-                v = self.escape(v)
                 if k == "TXBOXL":
                     if k in self.obj.cfg:
                         self.obj.cfg[k].append(v)
@@ -59,10 +58,6 @@ class LabelsConfigReader():
                     self.obj.cfg[k] = v
 
         return self.obj
-
-    def escape(self, v):
-        # replace % with \% for matplotlib.
-        return v.replace('%', '\%')
 
     def check_consistency(self, filename):
         with open(filename, "rt") as f:

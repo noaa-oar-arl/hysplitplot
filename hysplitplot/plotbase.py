@@ -269,6 +269,10 @@ class AbstractPlot(ABC):
             self.labels.get_reader().read(filename)
             self.labels.after_reading_file(self.settings)
 
+    def _escape_str_for_matplotlib(self, v):
+        # replace % with \% for matplotlib.
+        return v.replace('%', '\%')
+
     def update_height_unit(self, labels):
         # default values from labels.cfg
         if labels.has("ALTTD"):

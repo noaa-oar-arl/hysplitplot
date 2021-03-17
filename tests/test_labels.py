@@ -92,7 +92,7 @@ def test_LabelsConfigReader_read():
 def test_LabelsConfigReader_check_consistency():
     r = labels.LabelsConfig().get_reader()
     assert r.escape('meter&') == 'meter&'
-    assert r.escape(' %&') == ' \%&'
+    assert r.escape(' %&') == ' %&'
 
 
 def test_LabelsConfigReader_check_consistency():

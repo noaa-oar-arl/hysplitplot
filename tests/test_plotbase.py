@@ -363,7 +363,13 @@ def test_AbstractPlot_read_custom_labels_if_exists():
 
     p.read_custom_labels_if_exists("data/LABELS.CFG")
     assert p.labels.get("TITLE") == "Sagebrush Exp #5"
-  
+
+
+def test_AbstractPlot__escape_str_for_matplotlib():
+    p = plot.TrajectoryPlot() # need a concrete class
+    assert p._escape_str_for_matplotlib("%") == "\%"
+    assert p._escape_str_for_matplotlib("mass/cm^3") == "mass/cm^3"
+
 
 def test_AbstractPlot_update_height_unit():
     p = AbstractPlotTest()

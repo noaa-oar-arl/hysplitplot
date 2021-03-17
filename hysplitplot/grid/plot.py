@@ -447,7 +447,7 @@ class GridPlot(plotbase.AbstractPlot):
 
         fig_title = self.labels.get("TITLE")
 
-        conc_unit = self.get_conc_unit(conc_map, s)
+        conc_unit = self.get_conc_unit_escaped(conc_map, s)
         fig_title += "\n"
         fig_title += conc_map.get_map_id_line(self.conc_type,
                                               conc_unit,
@@ -816,6 +816,9 @@ class GridPlot(plotbase.AbstractPlot):
 
         return "{0}{1}".format(mass_unit, volume_unit)
 
+    def get_conc_unit_escaped(self, conc_map, settings):
+        return self._escape_str_for_matplotlib(self.get_conc_unit(conc_map, settings))
+
     def _limit_contour_levels_for_legends(self, contour_levels,
                                           max_legend_count=25):
         if len(contour_levels) > max_legend_count:
@@ -847,7 +850,7 @@ class GridPlot(plotbase.AbstractPlot):
         x = 0.05
         y = 1.0 - small_line_skip * 0.5
 
-        conc_unit = self.get_conc_unit(conc_map, s)
+        conc_unit = self.get_conc_unit_escaped(conc_map, s)
 
         if conc_map.has_banner():
             str = conc_map.get_banner()

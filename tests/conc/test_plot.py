@@ -1038,8 +1038,45 @@ def test_ConcentrationPlot_get_conc_unit():
     s.mass_unit = "ppm"
     s.mass_unit_by_user = False
     assert p.get_conc_unit(p.conc_map, s) == "ppm"
+
+    p.labels.cfg.clear()
+    p.labels.cfg["UNITS"] = "%"
+    p.labels.cfg["VOLUM"] = ""
+    s.mass_unit_by_user = False
+    assert p.get_conc_unit(p.conc_map, s) == "%"
+
+
+def test_ConcentrationPlot_get_conc_unit_escaped():
+    p = plot.ConcentrationPlot()
+    p.labels = labels.LabelsConfig()
+    p.conc_map = helper.ThresholdLevelsMap(1)
+    s = p.settings
     
+    # when both mass units and volume are specified in the labels.cfg
+    p.labels.cfg["UNITS"] = "pg"
+    p.labels.cfg["VOLUM"] = "/cm^3"
+    s.mass_unit_by_user = False
+    assert p.get_conc_unit_escaped(p.conc_map, s) == "pg/cm^3"
     
+    # when the mass unit is specified by the user
+    s.mass_unit = "kg"
+    s.mass_unit_by_user = True
+    assert p.get_conc_unit_escaped(p.conc_map, s) == "kg/cm^3"
+    
+    # no labels params.
+    p.labels.cfg.clear()
+    s.mass_unit = "ppm"
+    s.mass_unit_by_user = False
+    assert p.get_conc_unit_escaped(p.conc_map, s) == "ppm"
+
+    # percentage
+    p.labels.cfg.clear()
+    p.labels.cfg["UNITS"] = "%"
+    p.labels.cfg["VOLUM"] = ""
+    s.mass_unit_by_user = False
+    assert p.get_conc_unit_escaped(p.conc_map, s) == "\%"
+
+
 def test_ConcentrationPlot__limit_contour_levels_for_legends():
     p = plot.ConcentrationPlot()
     c = [0, 1, 3, 4, 5] # any list will do
