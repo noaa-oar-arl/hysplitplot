@@ -750,7 +750,13 @@ class AbstractKMLContourWriter(ABC):
             polygon_node = ET.SubElement(x, 'Polygon')
             ET.SubElement(polygon_node, 'extrude').text = '1'
             ET.SubElement(polygon_node, 'altitudeMode').text = self.alt_mode_str
-            for boundary in polygon.boundaries:
+            for k, boundary in enumerate(polygon.boundaries):
+                if k > 0 and not boundary.hole:
+                    # A Polygon node can have only one outerBoundaryIs node.
+                    # Start a new Polygon node for the second outerBoundaryIs node and after.
+                    polygon_node = ET.SubElement(x, 'Polygon')
+                    ET.SubElement(polygon_node, 'extrude').text = '1'
+                    ET.SubElement(polygon_node, 'altitudeMode').text = self.alt_mode_str
                 self._write_boundary(polygon_node, boundary, vert_level)
 
     def _write_boundary(self, x, boundary, vert_level):
