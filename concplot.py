@@ -77,6 +77,8 @@ def print_usage():
    --interactive                show an interactive plot
    --more-formats=f1[,f2,...]   specify one or more additional output format(s)
                                 where f1 = jpg, pdf, png, tif, etc.
+   --more-gis-options=o1[,o2,...] specify additional GIS output format(s)
+                                where o1 = 1, 3, 4, or 5. Refer to the -a option.
    --source-time-zone           show local time at the source location
    --street-map[=n]             show street map in the background; n = 0 or 1.
    --time-zone=tz               show local time at a time zone; tz = US/Eastern, US/Central, etc.
