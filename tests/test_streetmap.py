@@ -60,10 +60,10 @@ class AbstractStreetMapTest(streetmap.AbstractStreetMap):
     @property
     def max_zoom(self):
         return 15
-    
+
     @property
-    def tile_url(self):
-        return contextily.sources.ST_TERRAIN
+    def tile_provider(self):
+        return contextily.providers.Stamen.Terrain
     
     @property
     def attribution(self):
@@ -78,16 +78,16 @@ def test_MapBackgroundFactory_create_instance(web_merc_proj):
     
     o = streetmap.MapBackgroundFactory.create_instance(web_merc_proj, True, const.StreetMap.STAMEN_TERRAIN)
     assert isinstance(o, streetmap.StamenStreetMap)
-    assert o.tile_url == contextily.sources.ST_TERRAIN
+    assert o.tile_provider.url == contextily.providers.Stamen.Terrain.url
         
     o = streetmap.MapBackgroundFactory.create_instance(web_merc_proj, True, const.StreetMap.STAMEN_TONER)
     assert isinstance(o, streetmap.StamenStreetMap)
-    assert o.tile_url == contextily.sources.ST_TONER_LITE
+    assert o.tile_provider.url == contextily.providers.Stamen.TonerLite.url
     
     # when an invalid street map type is used.
     o = streetmap.MapBackgroundFactory.create_instance(web_merc_proj, True, 999999)
     assert isinstance(o, streetmap.StamenStreetMap)
-    assert o.tile_url == contextily.sources.ST_TERRAIN
+    assert o.tile_provider.url == contextily.providers.Stamen.Terrain.url
 
     # when a non-WEB-MERCATOR projection is used.
     m = mapproj.PolarProjection(const.MapProjection.POLAR, 0.5, [-125.0, 85.0], 1.3, [1.0, 1.0])
@@ -488,19 +488,19 @@ def test_StamenStreetMap___init__(web_merc_proj):
     o = streetmap.StamenStreetMap(web_merc_proj, "TERRAIN")
     assert o.min_zoom == 0
     assert o.max_zoom == 15
-    assert o.tile_url == contextily.sources.ST_TERRAIN
+    assert o.tile_provider.url == contextily.providers.Stamen.Terrain.url
     assert o.attribution.startswith("Map tiles by Stamen Design,")
 
     o = streetmap.StamenStreetMap(web_merc_proj, "TONER")
     assert o.min_zoom == 0
     assert o.max_zoom == 15
-    assert o.tile_url == contextily.sources.ST_TONER_LITE
+    assert o.tile_provider.url == contextily.providers.Stamen.TonerLite.url
     assert o.attribution.startswith("Map tiles by Stamen Design,")
 
     o = streetmap.StamenStreetMap(web_merc_proj, "UNKNOWN")
     assert o.min_zoom == 0
     assert o.max_zoom == 15
-    assert o.tile_url == contextily.sources.ST_TERRAIN
+    assert o.tile_provider.url == contextily.providers.Stamen.Terrain.url
     assert o.attribution.startswith("Map tiles by Stamen Design,")  
  
 
@@ -514,7 +514,7 @@ def test_StamenStreetMap_max_zoom():
     pass
  
 
-def test_StamenStreetMap_tile_url():
+def test_StamenStreetMap_tile_provider():
     # Tested by test_StamenStreetMap___init__.
     pass
  

@@ -255,7 +255,7 @@ class ShapeFileConverter:
     @staticmethod
     def convert(shapefile):
         map = geopandas.read_file(shapefile.filename)
-        if len(map.crs) == 0:
+        if map.crs is None or len(map.crs) == 0:
             map.crs = mapproj.AbstractMapProjection._WGS84
         o = DrawableBackgroundMap(map,
                                   util.make_color(shapefile.red,

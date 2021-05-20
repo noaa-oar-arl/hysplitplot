@@ -439,7 +439,7 @@ class AbstractStreetMap(AbstractMapBackground):
 
     @property
     @abstractmethod
-    def tile_url(self):
+    def tile_provider(self):
         pass
 
     @property
@@ -523,20 +523,20 @@ class AbstractStreetMap(AbstractMapBackground):
             basemap1, extent1 = contextily.bounds2img(lonl, latb,
                                                       180.0-eps, latt,
                                                       zoom=zoom, ll=True,
-                                                      url=self.tile_url)
+                                                      source=self.tile_provider)
             extent1 = self._reproject_extent(extent1)
             tiles.append([basemap1, extent1])
 
             basemap2, extent2 = contextily.bounds2img(-180.0+eps, latb,
                                                       lonr, latt,
                                                       zoom=zoom, ll=True,
-                                                      url=self.tile_url)
+                                                      source=self.tile_provider)
             extent2 = self._reproject_extent(extent2)
             tiles.append([basemap2, extent2])
         else:
             basemap, extent = contextily.bounds2img(lonl, latb, lonr, latt,
                                                     zoom=zoom, ll=True,
-                                                    url=self.tile_url)
+                                                    source=self.tile_provider)
             extent = self._reproject_extent(extent)
             tiles.append([basemap, extent])
         logger.debug("Fetched tiles for extent(s) %s",
@@ -596,16 +596,16 @@ class AbstractStreetMap(AbstractMapBackground):
 
 class StamenStreetMap(AbstractStreetMap):
 
-    urls = {"TERRAIN": contextily.sources.ST_TERRAIN,
-            "TONER": contextily.sources.ST_TONER_LITE}
+    providers = {"TERRAIN": contextily.providers.Stamen.Terrain,
+            "TONER": contextily.providers.Stamen.TonerLite}
 
     def __init__(self, projection, stamen_type):
         super(StamenStreetMap, self).__init__(projection)
-        if stamen_type not in StamenStreetMap.urls:
+        if stamen_type not in StamenStreetMap.providers:
             logger.warning("Change unknown type '%s' to 'TERRAIN'",
                            stamen_type)
             stamen_type = "TERRAIN"
-        self.__tile_url = StamenStreetMap.urls.get(stamen_type)
+        self.__tile_provider = StamenStreetMap.providers.get(stamen_type)
         self.__attribution = "Map tiles by Stamen Design, under CC BY 3.0. " \
                              "Data by OpenStreetMap, under ODbL."
 
@@ -620,8 +620,8 @@ class StamenStreetMap(AbstractStreetMap):
         return 15
 
     @property
-    def tile_url(self):
-        return self.__tile_url
+    def tile_provider(self):
+        return self.__tile_provider
 
     @property
     def attribution(self):

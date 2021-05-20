@@ -198,7 +198,7 @@ def test_ShapeFileConverter_convert():
     m = mapfile.ShapeFileConverter.convert(s)
     assert isinstance(m, mapfile.DrawableBackgroundMap)
     assert isinstance(m.map, geopandas.geodataframe.GeoDataFrame)
-    assert len(m.map.crs) > 0 # must have initialized the CRS field.
+    assert m.map.crs is not None or len(m.map.crs) > 0 # must have initialized the CRS field.
     assert m.linestyle == (0, (4.5, 4.5))
     assert m.linewidth == pytest.approx(0.75*50)
     assert m.linecolor == "#6699cc"
