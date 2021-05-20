@@ -40,6 +40,7 @@ class AbstractPlotSettings(ABC):
         self.gis_output = const.GISOutput.NONE
         self.kml_option = const.KMLOption.NONE
         self.additional_gis_outputs = []
+        self.drawLogoInColor = True
 
         # internally defined
         self.lat_lon_label_interval_option = const.LatLonLabel.AUTO
@@ -254,7 +255,7 @@ class AbstractPlot(ABC):
         self.update_plot_extents(ax)
         self.street_map.update_extent(ax, self.data_crs)
         if self.settings.noaa_logo:
-            self._draw_noaa_logo(ax)
+            self._draw_noaa_logo(ax, self.settings.drawLogoInColor)
 
     def _make_labels_filename(self, output_suffix):
         if not self.settings.process_id_set:
@@ -374,7 +375,7 @@ class AbstractPlot(ABC):
             axes.text(lon, lat - radius, str, clip_on=True,
                       transform=self.data_crs)
 
-    def _draw_noaa_logo(self, axes):
+    def _draw_noaa_logo(self, axes, useColor=True):
         # position of the right bottom corner in the display coordinate
         pt_dis = axes.transAxes.transform((1, 0))
 
@@ -391,7 +392,7 @@ class AbstractPlot(ABC):
         box_axes = axes.transAxes.inverted().transform(box_dis)
 
         if self.logo_drawer is None:
-            self.logo_drawer = logo.NOAALogoDrawer()
+            self.logo_drawer = logo.NOAALogoDrawer(useColor)
         else:
             self.logo_drawer.clear()
         self.logo_drawer.draw(axes, box_axes)

@@ -23,7 +23,11 @@ def test_NOAALogoDrawer___init__():
     assert hasattr(d, "font_sz1")
     assert hasattr(d, "font_sz2")
     assert hasattr(d, "plot_objs") and len(d.plot_objs) == 0
+    assert d.useColor is True
     
+    d = logo.NOAALogoDrawer(False)
+    assert d.useColor is False
+
 
 def test_NOAALogoDrawer_clear():
     d = logo.NOAALogoDrawer()

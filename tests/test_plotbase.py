@@ -54,6 +54,10 @@ def test_AbstractPlotSettings___init__():
     assert s.use_street_map == False
     assert s.street_map_type == 0
     assert s.map_projection == 0
+    assert s.gis_output == 0
+    assert s.kml_option == 0
+    assert len(s.additional_gis_outputs) == 0
+    assert s.drawLogoInColor is True
 
     assert s.lat_lon_label_interval_option == 1
     assert s.lat_lon_label_interval == 1.0
@@ -517,8 +521,16 @@ def test_AbstractPlot__draw_noaa_logo():
     p = AbstractPlotTest()
     axes = plt.axes()
     
+    # draw the logo in color
     try:
         p._draw_noaa_logo(axes)
+        plt.close(axes.figure)
+    except Exception as ex:
+        raise pytest.fail("unexpected exception: {0}".format(ex))
+    
+    # draw the logo in grayscale
+    try:
+        p._draw_noaa_logo(axes, False)
         plt.close(axes.figure)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))

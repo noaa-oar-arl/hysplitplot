@@ -70,6 +70,7 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.IZRO = 0       # create map(s) even if all values are zero
         self.NSSLBL = 0     # force sample start time label to start of release
         self.color = const.ConcentrationPlotColor.COLOR  # KOLOR
+        self.drawLogoInColor = True
         self.gis_alt_mode = const.GISOutputAltitude.CLAMPED_TO_GROUND
         self.KMLOUT = 0
         self.ring = False
@@ -169,6 +170,10 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         if args.has_arg(["-k", "-K"]):
             self.color = args.get_integer_value(["-k", "-K"], self.color)
             self.color = max(0, min(3, self.color))
+            if self.color == const.ConcentrationPlotColor.COLOR or self.color == const.ConcentrationPlotColor.COLOR_NO_LINES:
+                self.drawLogoInColor = True
+            else:
+                self.drawLogoInColor = False
 
         if args.has_arg("-l"):
             self.source_label = self.parse_source_label(args.get_value("-l"))

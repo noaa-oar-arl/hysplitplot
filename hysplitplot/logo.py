@@ -66,7 +66,7 @@ class NOAALogoDrawer:
       384., 361.3609, 390., 365.8111, 394., 368.0629]
     _DEG2RAD = math.pi / 180.0
 
-    def __init__(self):
+    def __init__(self, useColor=True):
         # logo size and center position
         self.logo_width = 480.0
         self.logo_height = 480.0
@@ -77,6 +77,7 @@ class NOAALogoDrawer:
         self.font_sz1 = 2.5*12.0   # to be computed
         self.font_sz2 = 1.1*12.0   # to be computed
         self.plot_objs = []
+        self.useColor = useColor
 
     def clear(self):
         for t in self.plot_objs:
@@ -102,7 +103,10 @@ class NOAALogoDrawer:
         logger.debug("base font size %f pt", self.base_font_sz)
 
         # above the seagull
-        clr = util.make_color(0.0, 0.0, 0.7)
+        if self.useColor:
+            clr = util.make_color(0.0, 0.0, 0.7)
+        else:
+            clr = util.make_color(0.08, 0.08, 0.08)
         pts = numpy.zeros((107+55, 2))
         for k in range(40, 147):
             pts[k - 40, 0] = self.R*math.cos(k*self._DEG2RAD) + self.cx
@@ -116,7 +120,10 @@ class NOAALogoDrawer:
         self.plot_objs.append(sg1)
 
         # below the seagull
-        clr = util.make_color(0.0, 0.6, 1.0)
+        if self.useColor:
+            clr = util.make_color(0.0, 0.6, 1.0)
+        else:
+            clr = util.make_color(0.47, 0.47, 0.47)
         pts = numpy.zeros((215+98, 2))
         for k in range(18, -198, -1):
             pts[18 - k, 0] = self.R*math.cos(k*self._DEG2RAD) + self.cx
