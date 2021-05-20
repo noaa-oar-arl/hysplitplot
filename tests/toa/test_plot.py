@@ -206,11 +206,18 @@ def test_TimeOfArrivalPlotSettings_process_command_line_arguments():
 
     # test -k or -K
     s.color = 0
+
+    s.process_command_line_arguments(["-k0"])
+    assert s.color == 0
+    assert s.drawLogoInColor is False
+
     s.process_command_line_arguments(["-k1"])
     assert s.color == 1
-    
+    assert s.drawLogoInColor is True
+
     s.process_command_line_arguments(["-K2"])
     assert s.color == 2
+    assert s.drawLogoInColor is True
     
     # test -l
     s.source_label = None

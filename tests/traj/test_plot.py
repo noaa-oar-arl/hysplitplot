@@ -208,19 +208,24 @@ def test_TrajectoryPlotSettings_process_command_line_arguments():
 
     s.process_command_line_arguments(["-k1"])
     assert s.color == 1
+    assert s.drawLogoInColor is True
 
     s.process_command_line_arguments(["-K0"])
     assert s.color == 0
+    assert s.drawLogoInColor is False
 
     s.process_command_line_arguments(["-k2"])
     assert s.color == 1
+    assert s.drawLogoInColor is True
 
     s.process_command_line_arguments(["-K-1"])
     assert s.color == 0
+    assert s.drawLogoInColor is False
 
     s.process_command_line_arguments(["-k3:123"])
     assert s.color_codes == ["1", "2", "3"]
     assert s.color == 2
+    assert s.drawLogoInColor is True
 
     # test -l
     s.time_label_interval = 10

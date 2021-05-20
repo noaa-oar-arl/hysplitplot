@@ -161,6 +161,10 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         if args.has_arg(["-k", "-K"]):
             self.color = args.get_integer_value(["-k", "-K"], self.color)
             self.color = max(0, min(3, self.color))
+            if self.color == const.ConcentrationPlotColor.COLOR or self.color == const.ConcentrationPlotColor.COLOR_NO_LINES:
+                self.drawLogoInColor = True
+            else:
+                self.drawLogoInColor = False
 
         if args.has_arg("-l"):
             self.source_label = self.parse_source_label(args.get_value("-l"))

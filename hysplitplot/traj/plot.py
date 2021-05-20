@@ -140,6 +140,11 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
             else:
                 self.color = args.get_integer_value(["-k", "-K"], self.color)
                 self.color = max(0, min(1, self.color))
+            #
+            if self.color == const.Color.COLOR or self.color == const.Color.ITEMIZED:
+                self.drawLogoInColor = True
+            else:
+                self.drawLogoInColor = False
 
         self.time_label_interval = args.get_integer_value(
             "-l", self.time_label_interval)

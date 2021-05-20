@@ -128,7 +128,6 @@ def test_ConcentrationPlotSettings___init__():
     assert s.IZRO == 0
     assert s.NSSLBL == 0
     assert s.color == const.ConcentrationPlotColor.COLOR
-    assert s.drawLogoInColor is True
     assert s.gis_alt_mode == const.GISOutputAltitude.CLAMPED_TO_GROUND
     assert s.KMLOUT == 0
     assert s.ring == False

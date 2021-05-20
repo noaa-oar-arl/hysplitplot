@@ -70,7 +70,6 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.IZRO = 0       # create map(s) even if all values are zero
         self.NSSLBL = 0     # force sample start time label to start of release
         self.color = const.ConcentrationPlotColor.COLOR  # KOLOR
-        self.drawLogoInColor = True
         self.gis_alt_mode = const.GISOutputAltitude.CLAMPED_TO_GROUND
         self.KMLOUT = 0
         self.ring = False
