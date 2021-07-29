@@ -11,19 +11,16 @@
 # ---------------------------------------------------------------------------
 
 from setuptools import setup
-
-meta = {}
-with open("hysplitplot/meta.py") as f:
-    exec(f.read(), meta)
+from hysplitplot import meta
 
 setup(
     name="hysplitplot",
-    version=meta["__version__"],
+    version=meta.__version__,
     description="HYSPLIT Graphics",
-    author=meta["__author__"],
-    author_email=meta["__email__"],
+    author=meta.__author__,
+    author_email=meta.__email__,
     packages=["hysplitplot", "hysplitplot.traj", "hysplitplot.conc",
-              "hysplitplot.grid", "hysplitplot.toa"],
+              "hysplitplot.toa"],
     python_requires="==3.7",
     install_requires=[
         "hysplitdata==0.0.*",  # omit the patch level

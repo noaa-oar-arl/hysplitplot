@@ -28,8 +28,8 @@ class TimeZoneHelper:
                     sgn = time_zone_name[3]
                     offset = int(time_zone_name[4:6])
                     return "Etc/GMT" if offset == 0 else "Etc/GMT{}{:d}".format(sgn, offset)                
-            except ValueError:
-                pass
+            except ValueError as ex:
+                logger.error("parsing time zone {} failed".format(time_zone_name))
         return time_zone_name
 
     def lookup_time_zone(self, time_zone_name):
@@ -60,6 +60,5 @@ class TimeZoneHelper:
         except ValueError as ex:
             logger.error("cannot find time zone for "
                          "lon {}, lat {}: {}".format(lon, lat, ex))
-            pass
 
         return pytz.utc if time_zone is None else time_zone
