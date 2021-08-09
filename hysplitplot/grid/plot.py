@@ -709,7 +709,7 @@ class GridPlot(plotbase.AbstractPlot):
         return rect_list
 
     def draw_concentration_plot(self, conc_grid, scaled_conc : numpy.ndarray, conc_map,
-                                contour_levels, fill_colors, color_skip=1):
+                                contour_levels, fill_colors, min_conc, color_skip=1):
         """
         Draws a concentration grid plot and returns collections of rectangles.
         """
@@ -750,6 +750,13 @@ class GridPlot(plotbase.AbstractPlot):
         logger.debug("Drawing contour at levels %s using colors %s",
                      contour_levels, fill_colors)
 
+        updated_contour_levels = []
+        for v in contour_levels:
+            if v == -1.0:
+                v = min_conc
+                logger.debug("Change contour value -1.0 to min conc %g", v)
+            updated_contour_levels.append(v)
+
         # draw a source marker
         if self.settings.label_source:
             x = []
@@ -768,7 +775,7 @@ class GridPlot(plotbase.AbstractPlot):
                           clip_on=True,
                           transform=self.data_crs)
 
-        contour_levels_len = len(contour_levels)
+        contour_levels_len = len(updated_contour_levels)
         if conc_grid.nonzero_conc_count > 0 and contour_levels_len > 1:
             # draw filled contours
             # TODO: delete patches of previous drawing?
@@ -780,7 +787,7 @@ class GridPlot(plotbase.AbstractPlot):
                                                        conc_grid.longitudes,
                                                        conc_grid.latitudes,
                                                        dx, dy,
-                                                       contour_levels)
+                                                       updated_contour_levels)
                 for k, rects in enumerate(rect_list):
                     if len(rects) > 0:
                         if color_skip > 1:
@@ -1060,6 +1067,7 @@ class GridPlot(plotbase.AbstractPlot):
                                                         self.conc_map,
                                                         contour_levels,
                                                         color_table.colors,
+                                                        min_conc,
                                                         color_skip=color_skip)
         self.draw_contour_legends(g,
                                   self.conc_map,

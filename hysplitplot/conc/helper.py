@@ -774,6 +774,8 @@ class AbstractConcentrationMap:
     def format_conc(self, v):
         if not isinstance(v, int) and not isinstance(v, float):
             return " "
+        elif isinstance(v, bool):
+            return " "
 
         if v >= 100000.0:
             f = "{:.1e}".format(v)
@@ -793,8 +795,8 @@ class AbstractConcentrationMap:
             f = "{:4.2f}".format(v)
         elif v >= 0.001:
             f = "{:5.3f}".format(v)
-        elif v <= 0.0:
-            f = " "
+        elif v < 0.0:
+            f = "{:4.1f}".format(v)
         else:
             f = "{:7.1e}".format(v)
 
@@ -922,6 +924,11 @@ class ThresholdLevelsMap(AbstractConcentrationMap):
                 conc_type.get_level_range_str(level1, level2))
 
     def format_conc(self, v):
+        if not isinstance(v, int) and not isinstance(v, float):
+            return " "
+        elif isinstance(v, bool):
+            return " "
+
         if v >= 100000.0:
             f = "{:.1e}".format(v)
         elif v >= 10000.0:
@@ -940,8 +947,8 @@ class ThresholdLevelsMap(AbstractConcentrationMap):
             f = "{:4.2f}".format(v)
         elif v >= 0.001:
             f = "{:5.3f}".format(v)
-        elif v <= 0.0:
-            f = " "
+        elif v < 0.0:
+            f = "{:4.1f}".format(v)
         else:
             f = "{:7.1e}".format(v)
 

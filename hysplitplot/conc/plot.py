@@ -840,7 +840,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         return mbox
 
     def draw_concentration_plot(self, conc_grid, scaled_conc, conc_map,
-                                contour_levels, fill_colors):
+                                contour_levels, fill_colors, min_conc):
         """
         Draws a concentration contour plot and returns the contour data points.
         """
@@ -881,6 +881,13 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         logger.debug("Drawing contour at levels %s using colors %s",
                      contour_levels, fill_colors)
 
+        updated_contour_levels = []
+        for v in contour_levels:
+            if v == -1.0:
+                v = min_conc
+                logger.debug("Change contour value -1.0 to min conc %g", v)
+            updated_contour_levels.append(v)
+
         # draw a source marker
         if self.settings.label_source:
             x = []
@@ -899,13 +906,13 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                           clip_on=True,
                           transform=self.data_crs)
 
-        if conc_grid.nonzero_conc_count > 0 and len(contour_levels) > 1:
+        if conc_grid.nonzero_conc_count > 0 and len(updated_contour_levels) > 1:
             # draw filled contours
             try:
                 contour_set = axes.contourf(conc_grid.longitudes,
                                             conc_grid.latitudes,
                                             scaled_conc,
-                                            contour_levels,
+                                            updated_contour_levels,
                                             colors=fill_colors,
                                             extend="max",
                                             transform=self.data_crs)
@@ -918,7 +925,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                     axes.contour(conc_grid.longitudes,
                                  conc_grid.latitudes,
                                  scaled_conc,
-                                 contour_levels,
+                                 updated_contour_levels,
                                  colors=line_colors,
                                  linewidths=0.25,
                                  transform=self.data_crs)
@@ -1044,7 +1051,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             axes.add_patch(box)
 
             if k < len(labels):
-                label = "NR" if level == -1.0 else labels[k]
+                label = labels[k]
                 axes.text(x+0.5*dx, y-0.5*dy, label,
                           color="k",
                           fontsize=font_sz,
@@ -1053,8 +1060,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                           clip_on=True,
                           transform=axes.transAxes)
 
-            v = conc_map.format_conc(level)
-            str = ">{0} ${1}$".format(v, conc_unit)
+            if level == -1.0:
+                str = "NR"
+            else:
+                v = conc_map.format_conc(level)
+                str = ">{0} ${1}$".format(v, conc_unit)
             axes.text(x + dx + x, y-0.5*dy, str,
                       color="k",
                       fontsize=font_sz,
@@ -1217,7 +1227,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                                         scaled_conc,
                                                         self.conc_map,
                                                         contour_levels,
-                                                        color_table.colors)
+                                                        color_table.colors,
+                                                        min_conc)
         self.draw_contour_legends(g,
                                   self.conc_map,
                                   self.contour_labels,
@@ -1287,7 +1298,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                                    scaled_conc,
                                                    self.depo_map,
                                                    contour_levels,
-                                                   color_table.colors)
+                                                   color_table.colors,
+                                                   min_conc)
         self.draw_contour_legends(g, self.depo_map, self.contour_labels,
                                   contour_levels, color_table.colors,
                                   conc_scaling_factor)

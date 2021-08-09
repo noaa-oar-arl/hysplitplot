@@ -373,7 +373,7 @@ class KMLWriter(AbstractWriter):
                                         contour_set.min_concentration_str,
                                         len(contour_set.levels) + additional_levels))
         else:
-            f.write("NOMAXNM NOMAXNM {:2d}\n".format(len(contour_set.levels)
+            f.write("NOMAXMN NOMAXMN {:2d}\n".format(len(contour_set.levels)
                                                      + additional_levels))
 
         for k in range(additional_levels):

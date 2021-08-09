@@ -1008,7 +1008,8 @@ def test_ConcentrationPlot_draw_concentration_plot():
                                                 p.cdump.grids[0].conc,
                                                 p.conc_map,
                                                 [1.0e-16, 1.0e-15, 1.0e-14],
-                                                ["g", "b", "r"])
+                                                ["g", "b", "r"],
+                                                1.0e-18)
         assert isinstance(contour_set, QuadContourSet)
         
         # no contour levels
@@ -1016,7 +1017,8 @@ def test_ConcentrationPlot_draw_concentration_plot():
                                                 p.cdump.grids[0].conc,
                                                 p.conc_map,
                                                 [],
-                                                [])
+                                                [],
+                                                1.0e-18)
                 
         cleanup_plot(p)
     except Exception as ex:

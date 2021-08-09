@@ -1153,8 +1153,8 @@ def test_AbstractConcentrationMap_format_conc():
     assert p.format_conc(0.0256789) == "0.03"
     assert p.format_conc(0.00256789) == "0.003"
     assert p.format_conc(0.000256789) == "2.6e-04"
-    assert p.format_conc(0.0) == " "
-    assert p.format_conc(-0.1) == " "
+    assert p.format_conc(0.0) == "0.0e+00"
+    assert p.format_conc(-0.1) == "-0.1"
     # test with numpy data types.
     assert p.format_conc(numpy.float64(2.56789)) == "2"
     #assert p.format_conc(numpy.float32(2.56789)) == "2"
@@ -1342,8 +1342,8 @@ def test_ThresholdLevelsMap_format_conc():
     assert p.format_conc(0.0256789) == "0.03"
     assert p.format_conc(0.00256789) == "0.003"
     assert p.format_conc(0.000256789) == "2.6e-04"
-    assert p.format_conc(0.0) == " "
-    assert p.format_conc(-0.1) == " "
+    assert p.format_conc(0.0) == "0.0e+00"
+    assert p.format_conc(-0.1) == "-0.1"
 
     
 def test_ThresholdLevelsMap_draw_explanation_text():
