@@ -20,7 +20,7 @@ setup(
     author=meta.__author__,
     author_email=meta.__email__,
     packages=["hysplitplot", "hysplitplot.traj", "hysplitplot.conc",
-              "hysplitplot.toa"],
+              "hysplitplot.toa", "hysplitplot.grid"],
     python_requires="==3.7",
     install_requires=[
         "hysplitdata==0.0.*",  # omit the patch level
