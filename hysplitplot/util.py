@@ -10,6 +10,7 @@ import abc
 import datetime
 import logging
 import math
+import matplotlib
 import numpy
 import os
 import sys
@@ -63,6 +64,11 @@ def run(mainFunction, programName, **kwargs):
         else:
             c = c.parent
 
+    # disable matplotlib.font_manager messages
+    c = logging.getLogger('matplotlib.font_manager')
+    c.setLevel(logging.CRITICAL)
+    c.disabled = True
+    
     logging.info("This is %s.", programName)
 
     exitCode = mainFunction()
