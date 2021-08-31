@@ -179,11 +179,15 @@ class AbstractMapProjection(ABC):
             delx = 0.5 * (y2-y1) * aspect_ratio
             x1 = xc - delx
             x2 = xc + delx
+            logger.debug("aspect_ratio %f, x-expansion %f",
+                         aspect_ratio, delx)
         else:
             # expand in y-direction
             dely = 0.5 * (x2-x1) / aspect_ratio
             y1 = yc - dely
             y2 = yc + dely
+            logger.debug("aspect_ratio %f, y-expansion %f",
+                         aspect_ratio, dely)
         logger.debug("X, Y Asp: %f %f %f %f", x1, y1, x2, y2)
 
         return (x1, x2, y1, y2)
@@ -216,6 +220,7 @@ class AbstractMapProjection(ABC):
         dely = abs(y2-y1)
         x_margin = util.sign(zoom_factor * delx * 0.5, x2 - x1)
         y_margin = util.sign(zoom_factor * dely * 0.5, y2 - y1)
+        logger.debug("zoom %f, margins %f %f", zoom_factor, x_margin, y_margin)
         x1 = x1 - x_margin
         x2 = x2 + x_margin
         y1 = y1 - y_margin

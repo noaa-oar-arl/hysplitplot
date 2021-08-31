@@ -90,8 +90,8 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.user_label = False
         self.contour_levels = None
         self.contour_level_count = 4
-        self.pollutant = ""         # name of the selected pollutant
-        self.SCALE = 1.0
+        self.pollutant = ""                 # name of the selected pollutant
+        self.SCALE = 0.7784433              # aspect ratio of the main plot box
         self.station_marker = "o"
         self.station_marker_color = "k"     # black
         self.station_marker_size = 6*6

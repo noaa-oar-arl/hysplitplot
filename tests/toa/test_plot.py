@@ -91,7 +91,7 @@ def test_TimeOfArrivalPlotSettings___init__():
     assert s.contour_levels is None
     assert s.contour_level_count == 4
     assert s.pollutant == ""
-    assert s.SCALE == 1.0
+    assert s.SCALE == pytest.approx(0.7784433)
     assert s.station_marker is not None
     assert s.station_marker_color != None
     assert s.station_marker_size > 0
@@ -794,8 +794,8 @@ def test_TimeOfArrivalPlot__initialize_map_projection():
     assert p.settings.center_loc == pytest.approx((150.98, -34.05))
     assert isinstance(p.street_map, streetmap.AbstractMapBackground)
     assert p.street_map.fix_map_color_fn is not None
-    assert p.initial_corners_xy == pytest.approx((-754041.0, 3502343.0, -3111461.0, 1144922.0))
-    assert p.initial_corners_lonlat == pytest.approx((138.7327, -176.2121, -60.67622, -18.70194))
+    assert p.initial_corners_xy == pytest.approx((-754041.0, 3502343.0, -3717177.0, 1750638.0))
+    assert p.initial_corners_lonlat == pytest.approx((137.4368, -177.8864, -65.31159, -13.70414))
     
 
 def test_TimeOfArrivalPlot__create_map_box_instance():
