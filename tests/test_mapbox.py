@@ -25,10 +25,10 @@ def test_MapBox___init__():
     assert mb._i == 0
     assert mb._j == 0
 
-    mb = mapbox.MapBox(grid_corner=[-84.0, 23.0], grid_size=[10.0, 5.0], grid_delta=0.5)
+    mb = mapbox.MapBox(grid_corner=[-84.0, -23.0], grid_size=[10.0, 5.0], grid_delta=0.5)
     assert mb.sz == [20, 10]
     assert mb.grid_delta == 0.5
-    assert mb.grid_corner == [-84.0, 23.0]
+    assert mb.grid_corner == [276, -23.0]
     
     
 def test_MapBox_allocate():
@@ -121,16 +121,27 @@ def test_MapBox_set_ring_extent():
     mb.plume_sz = [40.0, 10.0]
     s = plot.TrajectoryPlotSettings()
     s.center_loc = (-120.3, 45.3)
-    s.ring_number = 4
+    s.ring_number = 2
     s.ring_distance = 101.0
 
     mb.set_ring_extent(s)
 
     assert s.ring_distance == 100.0
+    
+    assert mb.hit_count == 11
+    
     assert mb.hit_map[240, 138] == 0
     assert mb.hit_map[240, 137] == 1
     assert mb.hit_map[240, 136] == 1
-    assert mb.hit_map[240, 135] == 2
+    assert mb.hit_map[240, 135] == 3
     assert mb.hit_map[240, 134] == 1
     assert mb.hit_map[240, 133] == 1
     assert mb.hit_map[240, 132] == 0
+    
+    assert mb.hit_map[237, 135] == 0
+    assert mb.hit_map[238, 135] == 1
+    assert mb.hit_map[239, 135] == 1
+    assert mb.hit_map[240, 135] == 3
+    assert mb.hit_map[241, 135] == 1
+    assert mb.hit_map[242, 135] == 1
+    assert mb.hit_map[243, 135] == 0

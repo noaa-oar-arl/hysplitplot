@@ -944,7 +944,7 @@ def test_ConcentrationPlot__create_map_box_instance():
     cdump.grid_deltas = [0.05, 0.05]
     mb = p._create_map_box_instance(cdump);
     assert mb.grid_delta == 0.1
-    assert mb.grid_corner == [-84.0, 34.0]
+    assert mb.grid_corner == [276.0, 34.0]
     assert mb.sz == [5, 3]
     
     # case 2 - 4 degrees x 3 degrees
@@ -952,7 +952,7 @@ def test_ConcentrationPlot__create_map_box_instance():
     cdump.grid_deltas = [0.5, 0.5]
     mb = p._create_map_box_instance(cdump);
     assert mb.grid_delta == 0.2
-    assert mb.grid_corner == [-84.0, 34.0]
+    assert mb.grid_corner == [276.0, 34.0]
     assert mb.sz == [20, 15]
 
     # case 3 - 25 degrees x 20 degrees
