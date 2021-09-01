@@ -169,6 +169,23 @@ def test_calc_ring_distance():
     assert kspan == 5
     assert ring_distance == 100.0
 
+    # repeat with ring distance of zero.
+    kspan, ring_distance = util.calc_ring_distance((40.0, 10.0),
+                                                   2.0,
+                                                   (0, 0),
+                                                   5,
+                                                   0.0)
+    assert kspan == 21
+    assert ring_distance == 900.0
+
+
+def test_deg_to_km():
+    assert util.deg_to_km(1.0) == pytest.approx(111.0)
+
+
+def test_km_to_deg():
+    assert util.km_to_deg(111.0) == pytest.approx(1.0)
+
 
 def test_nonzero_min():
     a = numpy.zeros((3, 3))

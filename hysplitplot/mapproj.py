@@ -23,7 +23,7 @@ class MapProjectionFactory:
 
     @staticmethod
     def create_instance(map_proj, zoom_factor, center_loc, scale, grid_deltas,
-                        map_box):
+                        map_box, fixed_center_loc=False):
         obj = None
 
         kproj = AbstractMapProjection.determine_projection(map_proj,
@@ -48,13 +48,13 @@ class MapProjectionFactory:
         else:
             raise Exception("unknown map projection {0}".format(kproj))
 
-        obj.do_initial_estimates(map_box, center_loc)
+        obj.do_initial_estimates(map_box, center_loc, fixed_center_loc)
 
         # Mercator/Lambert grids not permitted to encompass the poles
         if not obj.sanity_check():
             proj = obj.create_sane_projection(kproj, zoom_factor, center_loc,
                                               scale, grid_deltas)
-            proj.do_initial_estimates(map_box, center_loc)
+            proj.do_initial_estimates(map_box, center_loc, fixed_center_loc)
             return proj
 
         return obj
@@ -276,7 +276,7 @@ class AbstractMapProjection(ABC):
 
         return (x1, x2, y1, y2), (alonl, alonr, alatb, alatt)
 
-    def do_initial_estimates(self, map_box, center_loc):
+    def do_initial_estimates(self, map_box, center_loc, fixed_center_loc=False):
 
         # the coordinate reference system must have been set up.
         logger.debug("Map Prj: %d", self.proj_type)
@@ -305,18 +305,14 @@ class AbstractMapProjection(ABC):
         logger.debug("1st guess center : %f %f",
                      self.center_loc[1], self.center_loc[0])
 
-        for j in range(map_box.sz[1]):
-            for i in range(map_box.sz[0]):
-                if map_box.hit_map[i, j] > 0:
-                    plon = i * map_box.grid_delta + map_box.grid_corner[0]
-                    plat = j * map_box.grid_delta + map_box.grid_corner[1]
-                    if plon > 180.0:
-                        plon -= 360.0
-                    xc, yc = self.calc_xy(plon, plat)
-                    x1 = min(x1, xc)
-                    y1 = min(y1, yc)
-                    x2 = max(x2, xc)
-                    y2 = max(y2, yc)
+        if fixed_center_loc:
+            x1, x2, y1, y2 = self._estimate_plot_extent_with_center_fixed(
+                    x1, x2, y1, y2,
+                    map_box.get_bounding_box_corners())
+        else:
+            x1, x2, y1, y2 = self._estimate_plot_extent(
+                    x1, x2, y1, y2,
+                    map_box.get_bounding_box_corners())
         logger.debug("X, Y Ini: %f %f %f %f", x1, y1, x2, y2)
         self.corners_xy = (x1, x2, y1, y2)
 
@@ -332,6 +328,34 @@ class AbstractMapProjection(ABC):
         alonr, alatt = self.calc_lonlat(x2, y2)
         self.corners_lonlat = (alonl, alonr, alatb, alatt)
         logger.debug("Corners: %f %f %f %f", alonl, alonr, alatb, alatt)
+
+    def _estimate_plot_extent_with_center_fixed(self, x1, x2, y1, y2, lonlat_pts):
+        xc = 0.5*(x1 + x2)
+        yc = 0.5*(y1 + y2)
+        dx = abs(x2 - xc)
+        dy = abs(y2 - yc)
+        for plon, plat in lonlat_pts:
+            if plon > 180.0:
+                plon -= 360.0
+            xn, yn = self.calc_xy(plon, plat)
+            dx = max(dx, abs(xn - xc))
+            dy = max(dy, abs(yn - yc))
+        x1 = xc - dx
+        x2 = xc + dx
+        y1 = yc - dy
+        y2 = yc + dy
+        return (x1, x2, y1, y2)
+    
+    def _estimate_plot_extent(self, x1, x2, y1, y2, lonlat_pts):
+        for plon, plat in lonlat_pts:
+            if plon > 180.0:
+                plon -= 360.0
+            xc, yc = self.calc_xy(plon, plat)
+            x1 = min(x1, xc)
+            y1 = min(y1, yc)
+            x2 = max(x2, xc)
+            y2 = max(y2, yc)
+        return (x1, x2, y1, y2)
 
     def sanity_check(self):
         # A child class may override this.

@@ -214,14 +214,16 @@ def calc_ring_distance(ext_sz, grid_delta, center_loc, ring_number,
         # max radius extent adjusted for latitude
         logger.debug("QLON %f, HLAT %f", ext_lon, center_loc[1])
         ext_lon = ext_lon * math.cos(center_loc[1] / 57.3)
-        kspan = nearest_int(math.sqrt(ext_lon*ext_lon + ext_lat*ext_lat))
+        kspan = nearest_int(math.sqrt(ext_lon*ext_lon + ext_lat*ext_lat) / grid_delta)
         # circle distance interval in km
-        ring_distance = 111.0 * grid_delta * kspan / max(ring_number, 1)
+        ring_distance = deg_to_km(grid_delta) * kspan / max(ring_number, 1)
     else:
         kspan = nearest_int(
-            ring_distance * max(ring_number, 1) / (111.0 * grid_delta))
+            ring_distance * max(ring_number, 1) / deg_to_km(grid_delta))
     logger.debug("lon %f, lat %f, delta %f, kspan %d",
                  ext_lon, ext_lat, grid_delta, kspan)
+    logger.debug("ring_distance ini %f, ring num %d",
+                 ring_distance, ring_number)
 
     if ring_distance <= 10.0:
         ring_distance = int(ring_distance) * 1.0
@@ -231,6 +233,14 @@ def calc_ring_distance(ext_sz, grid_delta, center_loc, ring_number,
         ring_distance = int(ring_distance/100.0) * 100.0
 
     return kspan, ring_distance
+
+
+def deg_to_km(a):
+    return a * 111
+
+
+def km_to_deg(a):
+    return a / 111
 
 
 def nonzero_min(a):

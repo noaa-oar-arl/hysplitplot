@@ -549,7 +549,6 @@ class GridPlot(plotbase.AbstractPlot):
         map_box = self._determine_map_limits(cdump, map_opt_passes)
 
         if self.settings.ring and self.settings.ring_number >= 0:
-            map_box.determine_plume_extent()
             map_box.clear_hit_map()
             map_box.set_ring_extent(self.settings)
 
@@ -559,7 +558,8 @@ class GridPlot(plotbase.AbstractPlot):
             self.settings.center_loc,
             self.settings.SCALE,
             self.cdump.grid_deltas,
-            map_box)
+            map_box,
+            self.settings.center_loc_fixed)
         self.projection.refine_corners(self.settings.center_loc)
 
         # The map projection might have changed to avoid singularities.
@@ -635,10 +635,7 @@ class GridPlot(plotbase.AbstractPlot):
             # find trajectory hits
             mbox.hit_count = 0
             if conc is not None:
-                for j in range(len(cdump.latitudes)):
-                    for i in range(len(cdump.longitudes)):
-                        if conc[j, i] > 0:
-                            mbox.add((cdump.longitudes[i], cdump.latitudes[j]))
+                mbox.add_conc(conc, cdump.longitudes, cdump.latitudes)
 
             if mbox.hit_count == 0:
                 if self.settings.IZRO == 0:
@@ -654,6 +651,8 @@ class GridPlot(plotbase.AbstractPlot):
                 else:
                     break
 
+        mbox.determine_plume_extent()
+        
         return mbox
 
     def _build_grid_rect_list(self,

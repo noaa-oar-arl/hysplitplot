@@ -32,8 +32,8 @@ def create_map_box(s):
         lats = t.latitudes
         for k in range(len(lons)):
             map_box.add((lons[k], lats[k]))
+    map_box.determine_plume_extent()
     if s.ring_number >= 0:
-        map_box.determine_plume_extent()
         map_box.clear_hit_map()
         map_box.set_ring_extent(s)
     return map_box
@@ -202,63 +202,84 @@ def test_AbstractMapProjection_determine_projection():
 def test_AbstractMapProjection_refine_corners__lambert():
     s = plot.TrajectoryPlotSettings()
     s.map_projection = const.MapProjection.LAMBERT
-    s.center_loc = [-125.0, 45.0]
+    s.center_loc = [-90.0, 40.0]
     s.ring_number = 4
     s.ring_distance = 0.0
     testMapBox = create_map_box(s)
     
-    m = mapproj.MapProjectionFactory.create_instance(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0], testMapBox)
+    m = mapproj.MapProjectionFactory.create_instance(const.MapProjection.LAMBERT,
+                                                     0.0,
+                                                     [-90.0, 40.0],
+                                                     1.0,
+                                                     [1.0, 1.0],
+                                                     testMapBox,
+                                                     True)
 
-    m.refine_corners([-125.0, 45.0])
+    m.refine_corners([-90.0, 40.0])
 
-    assert m.corners_xy == pytest.approx((-1294498.0, 1296498.0, -995220.0, 997854.0))
-    assert m.corners_lonlat == pytest.approx((-139.1324, -105.7689, 35.00142, 52.59201))
+    assert m.corners_lonlat == pytest.approx((-94.99433, -84.38310, 35.81816, 43.93930))
+    assert m.corners_xy == pytest.approx((-448858.0, 450238.0, -448427.0, 450669.0))
 
 
 def test_AbstractMapProjection_refine_corners__polar():
     s = plot.TrajectoryPlotSettings()
     s.map_projection = const.MapProjection.POLAR
-    s.center_loc = [-125.0, 85.0]
+    s.center_loc = [-90.0, 85.0]
     s.ring_number = 4
     s.ring_distance = 0.0
     testMapBox = create_map_box(s)
     
-    m = mapproj.MapProjectionFactory.create_instance(const.MapProjection.POLAR, 0.5, [-125.0, 85.0], 1.3, [1.0, 1.0], testMapBox)
+    m = mapproj.MapProjectionFactory.create_instance(const.MapProjection.POLAR,
+                                                     0.0,
+                                                     [-90.0, 85.0],
+                                                     1.0,
+                                                     [1.0, 1.0],
+                                                     testMapBox)
 
-    m.refine_corners([-125.0, 85.0])
+    m.refine_corners([-90.0, 85.0])
 
-    assert m.corners_xy == pytest.approx((-873149.0, 873150.0, -1231119.0, 112188.0))
-    assert m.corners_lonlat == pytest.approx((-160.345486, -27.678380, 76.546672, 82.130290))
+    assert m.corners_lonlat == pytest.approx((-115.44766, -2.74007, 31.20445, 61.47956))
+    assert m.corners_xy == pytest.approx((-3088585.0, 3246636.0, -6490604.0, -155383.0))
 
 
 def test_AbstractMapProjection_refine_corners__mercator():
     s = plot.TrajectoryPlotSettings()
     s.map_projection = const.MapProjection.MERCATOR
-    s.center_loc = [-125.0, 45.0]
+    s.center_loc = [-90.0, 40.0]
     s.ring_number = 4
     s.ring_distance = 0.0
     testMapBox = create_map_box(s)
-    m = mapproj.MapProjectionFactory.create_instance(const.MapProjection.MERCATOR, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0], testMapBox)
+    m = mapproj.MapProjectionFactory.create_instance(const.MapProjection.MERCATOR,
+                                                     0.0,
+                                                     [-90.0, 40.0],
+                                                     1.0,
+                                                     [1.0, 1.0],
+                                                     testMapBox)
 
-    m.refine_corners([-125.0, 45.0])
+    m.refine_corners([-90.0, 40.0])
 
-    assert m.corners_xy == pytest.approx((-1844957.0, 1846957.0, 4222455.0, 7062389.0))
-    assert m.corners_lonlat == pytest.approx((-141.5825, -108.4175, 35.60446, 53.60558))
+    assert m.corners_lonlat == pytest.approx((-94.23947, -84.36412, 36.0, 43.60360))
+    assert m.corners_xy == pytest.approx((-470936.0, 628383.0, 4276505.0, 5375824.0))
 
 
 def test_AbstractMapProjection_refine_corners__cylequ():
     s = plot.TrajectoryPlotSettings()
     s.map_projection = const.MapProjection.CYL_EQU
-    s.center_loc = [-125.0, 5.0]
+    s.center_loc = [-90.0, 5.0]
     s.ring_number = 4
     s.ring_distance = 0.0
     testMapBox = create_map_box(s)
-    m = mapproj.MapProjectionFactory.create_instance(const.MapProjection.CYL_EQU, 0.5, [-125.0, 5.0], 1.3, [1.0, 1.0], testMapBox)
+    m = mapproj.MapProjectionFactory.create_instance(const.MapProjection.CYL_EQU,
+                                                     0.0,
+                                                     [-90.0, 5.0],
+                                                     1.0,
+                                                     [1.0, 1.0],
+                                                     testMapBox)
 
-    m.refine_corners([-125.0, 5.0])
+    m.refine_corners([-90.0, 5.0])
 
-    assert m.corners_xy == pytest.approx((-13.0, 39.0, -5.0, 15.0))
-    assert m.corners_lonlat == pytest.approx((-138.0000, -86.0000, -5.040021, 15.2767793))
+    assert m.corners_lonlat == pytest.approx((-107.0, -35.0, 1.00679, 40.45883))
+    assert m.corners_xy == pytest.approx((-17.0, 55.0, 1.0, 37.0))
 
 
 def test_AbstractMapProjection_validate_corners(lambert_proj):
@@ -333,28 +354,36 @@ def test_AbstractMapProjection_exclude_pole(lambert_proj):
 def test_AbstractMapProjection_do_initial_estimates():
     s = plot.TrajectoryPlotSettings()
     s.map_projection = const.MapProjection.LAMBERT
-    s.center_loc = [-125.0, 45.0]
+    s.center_loc = [-90.0, 40.0]
     s.ring_number = 4
-    s.ring_distance = 0.0
+    s.ring_distance = 111.0 / 2.0  # half degrees
     map_box = create_map_box(s)
-    proj = mapproj.LambertProjection(s.map_projection, s.zoom_factor, s.center_loc, 1.3, [1.0, 1.0])
 
-    proj.do_initial_estimates(map_box, [-125.0,  45.0])
-    assert proj.corners_xy == pytest.approx((-469064.315, 471064.315, -663041.019, 665675.111))
-    assert proj.corners_lonlat == pytest.approx((-130.4182, -118.3189, 38.85813, 50.82535))
-    assert proj.center_loc == pytest.approx((-125.00000, 45.00287))
-    
-    proj.do_initial_estimates(map_box, [-125.0,  91.0])
-    assert proj.corners_xy == pytest.approx((-469064.315, 471064.315, -663041.019, 6090755.246))
-    assert proj.corners_lonlat == pytest.approx((-130.418220, -37.803605, 38.858132, 88.561446))
-    assert proj.center_loc == pytest.approx((-125.00000, 68.69484))
-    
-    s.center_loc = [-125.0, -45.0]
+    proj = mapproj.LambertProjection(s.map_projection,
+                                     0.0,
+                                     s.center_loc,
+                                     1.0,
+                                     [1.0, 1.0])
+
+    # Test cases with fixed_center_loc = False
+
+    proj.do_initial_estimates(map_box, [-90.0, 40.0])
+    assert proj.corners_lonlat == pytest.approx((-91.80180, -84.56542, 36.0, 41.78271))
+    assert proj.center_loc == pytest.approx((-88.33421, 38.94797))
+
+    s.center_loc = [-85.0, 35.0]
     map_box = create_map_box(s)
-    proj.do_initial_estimates(map_box, [-125.0, -91.0])
-    assert proj.corners_xy == pytest.approx((-2087174.5, 3413163.2, -331425723.2, -14186160.2))
-    assert proj.corners_lonlat == pytest.approx((-125.5000, -111.6791, -89.00000, -41.82955))
-    assert proj.center_loc == pytest.approx((-124.70114, -87.55256))
+    proj.do_initial_estimates(map_box, [-85.0, 35.0])
+    assert proj.corners_lonlat == pytest.approx((-90.0, -82.41352, 33.19820, 40.95181))
+    assert proj.center_loc == pytest.approx((-86.41330, 37.13416))
+
+    # A test case with fixed_center_loc = True
+
+    s.center_loc = [-90.0, 40.0]
+    map_box = create_map_box(s)
+    proj.do_initial_estimates(map_box, [-90.0, 40.0], True)
+    assert proj.corners_lonlat == pytest.approx((-95.0, -84.39029, 35.90054, 43.85705))
+    assert proj.center_loc == pytest.approx((-90.00365, 40.00110))
 
 
 def test_AbstractMapProjection_sanity_check():

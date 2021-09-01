@@ -61,6 +61,7 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
         #        n      scale square map for n circles
         self.ring_distance = 0.0
         self.center_loc = [0.0, 0.0]    # lon, lat
+        self.center_loc_fixed = False
 
         # internally defined
         self.marker_cycle = ["^", "s", "o"]   # triangle, square, circle
@@ -112,6 +113,7 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
 
         if args.has_arg(["-g", "-G"]):
             self.ring = True
+            self.center_loc_fixed = True
             str = args.get_value(["-g", "-G"])
             if str.count(":") > 0:
                 self.ring_number, self.ring_distance = \
@@ -126,6 +128,7 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
             str = args.get_value(["-h", "-H"])
             if str.count(":") > 0:
                 self.center_loc = self.parse_map_center(str)
+                self.center_loc_fixed = True
                 if self.ring_number < 0:
                     self.ring_number = 0
 
@@ -343,7 +346,6 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                 data_list[0].trajectories[0].starting_loc
 
         if self.settings.ring and self.settings.ring_number >= 0:
-            map_box.determine_plume_extent()
             map_box.clear_hit_map()
             map_box.set_ring_extent(self.settings)
 
@@ -353,7 +355,8 @@ class TrajectoryPlot(plotbase.AbstractPlot):
             self.settings.center_loc,
             1.3,
             (map_box.grid_delta, map_box.grid_delta),
-            map_box)
+            map_box,
+            self.settings.center_loc_fixed)
         self.projection.refine_corners(self.settings.center_loc)
 
         # The map projection might have changed to avoid singularities.
@@ -397,6 +400,8 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                 else:
                     break
 
+        mb.determine_plume_extent()
+        
         return mb
 
     def _determine_vertical_limit(self, plot_data, vertical_coordinate):

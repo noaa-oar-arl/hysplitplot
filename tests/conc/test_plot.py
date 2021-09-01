@@ -134,6 +134,7 @@ def test_ConcentrationPlotSettings___init__():
     assert s.ring_number == -1
     assert s.ring_distance == 0.0
     assert s.center_loc == [0.0, 0.0]
+    assert s.center_loc_fixed == False
     assert s.gis_output == const.GISOutput.NONE
     assert s.kml_option == const.KMLOption.NONE
 
@@ -228,10 +229,14 @@ def test_ConcentrationPlotSettings_process_command_line_arguments():
     assert s.frames_per_file == 5
 
     # test -g or -G
+    s.ring = False
+    s.center_loc_fixed = False
     s.ring_number = 0
     s.ring_distance = 0.0
 
     s.process_command_line_arguments(["-g"])
+    assert s.ring == True
+    assert s.center_loc_fixed == True
     assert s.ring_number == 4
     assert s.ring_distance == 0.0
 
@@ -244,12 +249,15 @@ def test_ConcentrationPlotSettings_process_command_line_arguments():
     assert s.ring_distance == 5.5
 
     # test -h or -H
+    s.center_loc_fixed = False
     s.center_loc = [0.0, 0.0]
 
     s.process_command_line_arguments(["-h"])
+    assert s.center_loc_fixed == False
     assert s.center_loc == [0.0, 0.0]
 
     s.process_command_line_arguments(["-H12.3:45.6"])
+    assert s.center_loc_fixed == True
     assert s.center_loc == [45.6, 12.3]
 
     s.process_command_line_arguments(["-h-112.3:-195.6"])
@@ -930,9 +938,9 @@ def test_ConcentrationPlot__initialize_map_projection():
     assert p.settings.center_loc == pytest.approx((-84.22, 39.90))
     assert isinstance(p.street_map, streetmap.AbstractMapBackground)
     assert p.street_map.fix_map_color_fn is not None
-    assert p.initial_corners_xy == pytest.approx((-122626.0, 347221.0, -154687.0, 448885.0))
-    assert p.initial_corners_lonlat == pytest.approx((-85.64418, -79.89713, 38.48119, 43.87554))
-    
+    assert p.initial_corners_lonlat == pytest.approx((-86.20034, -78.26379, 37.26423, 44.64719))
+    assert p.initial_corners_xy == pytest.approx((-173882.0, 472159.0, -288162.0, 541751.0))
+
 
 def test_ConcentrationPlot__create_map_box_instance():
     p = plot.ConcentrationPlot()
@@ -944,7 +952,7 @@ def test_ConcentrationPlot__create_map_box_instance():
     cdump.grid_deltas = [0.05, 0.05]
     mb = p._create_map_box_instance(cdump);
     assert mb.grid_delta == 0.1
-    assert mb.grid_corner == [276.0, 34.0]
+    assert mb.grid_corner == [-84.0, 34.0]
     assert mb.sz == [5, 3]
     
     # case 2 - 4 degrees x 3 degrees
@@ -952,7 +960,7 @@ def test_ConcentrationPlot__create_map_box_instance():
     cdump.grid_deltas = [0.5, 0.5]
     mb = p._create_map_box_instance(cdump);
     assert mb.grid_delta == 0.2
-    assert mb.grid_corner == [276.0, 34.0]
+    assert mb.grid_corner == [-84.0, 34.0]
     assert mb.sz == [20, 15]
 
     # case 3 - 25 degrees x 20 degrees
@@ -960,7 +968,7 @@ def test_ConcentrationPlot__create_map_box_instance():
     cdump.grid_deltas = [0.5, 0.5]
     mb = p._create_map_box_instance(cdump);
     assert mb.grid_delta == 1.0
-    assert mb.grid_corner == [0.0, -90.0]
+    assert mb.grid_corner == [-180.0, -90.0]
     assert mb.sz == [360, 181]
     
 
@@ -972,11 +980,11 @@ def test_ConcentrationPlot__determine_map_limits(cdump):
     
     mb = p._determine_map_limits(cdump, 2)
 
-    assert mb.grid_corner== [0.0, -90.0]
+    assert mb.grid_corner== [-180.0, -90.0]
     assert mb.grid_delta == 1.0
     assert mb.sz == [360, 181]
-    assert mb.plume_sz == [4.0, 4.0]
-    assert mb.plume_loc == [276, 130]
+    assert mb.plume_sz == [5.0, 4.0]
+    assert mb.plume_loc == [95, 129]
 
     nil_plot_data = model.ConcentrationDump()
     nil_plot_data.grid_deltas = (1.0, 1.0)

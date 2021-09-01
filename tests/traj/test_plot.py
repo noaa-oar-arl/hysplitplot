@@ -90,6 +90,7 @@ def test_TrajectoryPlotSettings___init__():
     assert s.ring_number == -1
     assert s.ring_distance == 0.0
     assert s.center_loc == [0.0, 0.0]
+    assert s.center_loc_fixed == False
     assert s.gis_output == const.GISOutput.NONE
     assert s.kml_option == const.KMLOption.NONE
 
@@ -165,10 +166,14 @@ def test_TrajectoryPlotSettings_process_command_line_arguments():
     assert s.frames_per_file == 5
 
     # test -g or -G
+    s.ring = False
+    s.center_loc_fixed = False
     s.ring_number = 0
     s.ring_distance = 0.0
 
     s.process_command_line_arguments(["-g"])
+    assert s.ring == True
+    assert s.center_loc_fixed == True
     assert s.ring_number == 4
     assert s.ring_distance == 0.0
 
@@ -181,12 +186,15 @@ def test_TrajectoryPlotSettings_process_command_line_arguments():
     assert s.ring_distance == 5.5
 
     # test -h or -H
+    s.center_loc_fixed = False
     s.center_loc = [0.0, 0.0]
 
     s.process_command_line_arguments(["-h"])
+    assert s.center_loc_fixed == False
     assert s.center_loc == [0.0, 0.0]
 
     s.process_command_line_arguments(["-H12.3:45.6"])
+    assert s.center_loc_fixed == True
     assert s.center_loc == [45.6, 12.3]
 
     s.process_command_line_arguments(["-h-112.3:-195.6"])
@@ -496,8 +504,8 @@ def test_TrajectoryPlot__initialize_map_projection():
     assert isinstance(p.projection, mapproj.AbstractMapProjection)
     assert isinstance(p.street_map, streetmap.AbstractMapBackground)
     assert p.street_map.fix_map_color_fn is None
-    assert p.initial_corners_xy == pytest.approx((-171532.0, 573785.0, -421432.0, 151889.0))
-    assert p.initial_corners_lonlat == pytest.approx((-91.92366, -83.13186, 36.15948, 41.16591))
+    assert p.initial_corners_lonlat == pytest.approx((-93.78870, -80.84286, 34.65945, 42.03164))
+    assert p.initial_corners_xy == pytest.approx((-345800.0, 754263.0, -581972.0, 264230.0))
 
 
 def test_TrajectoryPlot__determine_map_limits(plotData):
@@ -505,11 +513,11 @@ def test_TrajectoryPlot__determine_map_limits(plotData):
 
     mb = p._determine_map_limits(plotData, 2)
 
-    assert mb.grid_corner == [0.0, -90.0]
+    assert mb.grid_corner == [-180.0, -90.0]
     assert mb.grid_delta == 1.0
     assert mb.sz == [360, 181]
-    assert mb.plume_sz == [6.0, 4.0]
-    assert mb.plume_loc == [270, 127]
+    assert mb.plume_sz == [5.0, 5.0]
+    assert mb.plume_loc == [90, 126]
 
     nil_plot_data = model.TrajectoryDump()
 

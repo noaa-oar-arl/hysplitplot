@@ -79,6 +79,7 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         #        n      scale square map for n circles
         self.ring_distance = 0.0
         self.center_loc = [0.0, 0.0]    # lon, lat
+        self.center_loc_fixed = False
 
         # internally defined
         self.label_source = True
@@ -137,6 +138,7 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
 
         if args.has_arg(["-g", "-G"]):
             self.ring = True
+            self.center_loc_fixed = True
             str = args.get_value(["-g", "-G"])
             if str.count(":") > 0:
                 self.ring_number, self.ring_distance = \
@@ -151,6 +153,7 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
             str = args.get_value(["-h", "-H"])
             if str.count(":") > 0:
                 self.center_loc = self.parse_map_center(str)
+                self.center_loc_fixed = True
                 if self.ring_number < 0:
                     self.ring_number = 0
 
@@ -699,7 +702,6 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
             self.settings.center_loc = self.cdump.release_locs[0]
 
         if self.settings.ring and self.settings.ring_number >= 0:
-            map_box.determine_plume_extent()
             map_box.clear_hit_map()
             map_box.set_ring_extent(self.settings)
 
@@ -709,7 +711,8 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
             self.settings.center_loc,
             self.settings.SCALE,
             self.cdump.grid_deltas,
-            map_box)
+            map_box,
+            self.settings.center_loc_fixed)
         self.projection.refine_corners(self.settings.center_loc)
 
         # The map projection might have changed to avoid singularities.
@@ -765,10 +768,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
             # find trajectory hits
             mbox.hit_count = 0
             if conc is not None:
-                for j in range(len(cdump.latitudes)):
-                    for i in range(len(cdump.longitudes)):
-                        if conc[j, i] > 0:
-                            mbox.add((cdump.longitudes[i], cdump.latitudes[j]))
+                mbox.add_conc(conc, cdump.longitudes, cdump.latitudes)
 
             if mbox.hit_count == 0:
                 if self.settings.IZRO == 0:
@@ -783,6 +783,8 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
                     mbox.refine_grid()
                 else:
                     break
+
+        mbox.determine_plume_extent()
 
         return mbox
 
