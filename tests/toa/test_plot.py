@@ -793,17 +793,16 @@ def test_TimeOfArrivalPlot__initialize_map_projection():
     p = plot.TimeOfArrivalPlot()
     p.merge_plot_settings(None, ["-idata/rsmc.cdump2"])
     p.read_data_files()
-
     assert p.street_map is None
-    
+
     p._initialize_map_projection( p.cdump )
 
     assert isinstance(p.projection, mapproj.AbstractMapProjection)
     assert p.settings.center_loc == pytest.approx((150.98, -34.05))
     assert isinstance(p.street_map, streetmap.AbstractMapBackground)
     assert p.street_map.fix_map_color_fn is not None
-    assert p.initial_corners_lonlat == pytest.approx((137.34443, -177.80128, -66.12150, -15.30944))
-    assert p.initial_corners_xy == pytest.approx((-744659.0, 3455435.0, -3825842.0, 1569661.0))
+    assert p.initial_corners_lonlat == pytest.approx((134.5755, -176.1306, -67.06064, -10.51006))
+    assert p.initial_corners_xy == pytest.approx((-874405.0, 3812358.0, -3974490.0, 2046197.0))
 
 
 def test_TimeOfArrivalPlot__create_map_box_instance():

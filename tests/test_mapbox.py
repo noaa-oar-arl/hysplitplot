@@ -16,15 +16,14 @@ from hysplitplot.traj import plot
 def test_MapBox___init__():
     mb = mapbox.MapBox()
 
-    assert mb.hit_map is None
+    assert mb._lon_hit_map is None
+    assert mb._lat_hit_map is None
     assert mb.sz == [360, 181]
     assert mb.grid_delta == 1.0
     assert mb.grid_corner == [-180.0, -90.0]
     assert mb.plume_sz == [0.0, 0.0]
     assert mb.plume_loc == [0, 0]
     assert mb.hit_count == 0
-    assert mb._i == 0
-    assert mb._j == 0
     assert mb.bounding_box is None
 
     mb = mapbox.MapBox(grid_corner=[-84.0, -23.0], grid_size=[10.0, 5.0], grid_delta=0.5)
@@ -53,8 +52,10 @@ def test_MapBox_allocate():
     mb.hit_count = 1
     mb.allocate()
 
-    assert mb.hit_map is not None
-    assert mb.hit_map.shape == (360, 181)
+    assert mb._lon_hit_map is not None
+    assert mb._lat_hit_map is not None
+    assert mb._lon_hit_map.shape == (360,)
+    assert mb._lat_hit_map.shape == (181,)
     assert mb.hit_count == 0
 
 
@@ -63,22 +64,19 @@ def test_MapBox_add():
     mb.allocate()
 
     mb.add((-120.3, 45.3))
-    assert mb._i == 59
-    assert mb._j == 135
-    assert mb.hit_map[59, 135] == 1
+    assert mb._lon_hit_map[59] == 1
+    assert mb._lat_hit_map[135] == 1
     assert mb.hit_count == 1
 
     mb.add((-120.9, 45.8))
-    assert mb._i == 59
-    assert mb._j == 135
-    assert mb.hit_map[59, 135] == 2
+    assert mb._lon_hit_map[59] == 2
+    assert mb._lat_hit_map[135] == 2
     assert mb.hit_count == 2
 
     # Test a point near the longitude maximum.
     mb.add((359.696, 45.3))
-    assert mb._i == 179
-    assert mb._j == 135
-    assert mb.hit_map[179, 135] == 1
+    assert mb._lon_hit_map[179] == 1
+    assert mb._lat_hit_map[135] == 3
     assert mb.hit_count == 3
 
 
@@ -96,11 +94,10 @@ def test_MapBox_add_conc():
     lons = [-90.0, -89.5, -89.0, -88.5, -88.0]
     mb.add_conc(conc, lons, lats)
 
-    assert mb._i == 91
-    assert mb._j == 126
-    assert mb.hit_map[91, 126] == 3
-    assert mb.hit_map[91, 125] == 2
-    assert mb.hit_map[90, 125] == 1
+    assert mb._lon_hit_map[91] == 5
+    assert mb._lon_hit_map[90] == 1
+    assert mb._lat_hit_map[126] == 3
+    assert mb._lat_hit_map[125] == 3
     assert mb.hit_count == 6
 
 
@@ -114,6 +111,34 @@ def test_MapBox_determine_plume_extent():
     assert mb.plume_sz == [1.0, 1.0]
     assert mb.plume_loc == [59, 135]
     assert mb.bounding_box == pytest.approx((-121.0, -120.0, 45.0, 46.0))
+
+
+def test_MapBox_determine_plume_extent_case2():
+    """
+    Test with a plume crossing the grid domain
+    """
+    mb = mapbox.MapBox()
+    mb.allocate()
+
+    conc = numpy.array([
+        [1, 1],
+        [1, 1],
+        [1, 1],
+        [1, 1],
+        [1, 1]])
+    lats_left = [35.0, 36.0, 37.0, 38.0, 39.0]
+    lons_left = [-180.0, -179.0]
+    mb.add_conc(conc, lons_left, lats_left)
+
+    lats_right = [37.0, 38.0, 39.0, 40.0, 41.0]
+    lons_right = [178.0, 179.0]
+    mb.add_conc(conc, lons_right, lats_right)
+
+    mb.determine_plume_extent()
+
+    assert mb.plume_sz == [4.0, 7.0]
+    assert mb.plume_loc == [358, 125]
+    assert mb.bounding_box == pytest.approx((178.0, -178.0, 35.0, 42.0))
 
 
 def test_MapBox_need_to_refine_grid():
@@ -140,19 +165,62 @@ def test_MapBox_refine_grid():
     assert mb.grid_corner == [-121.0, 45.0]
     assert mb.grid_delta == 0.10
     assert mb.sz == [10, 10]
-    assert mb.hit_map is None
+    assert mb._lon_hit_map is None
+    assert mb._lat_hit_map is None
+
+
+def test_MapBox_refine_grid_case2():
+    """
+    Test with a plume crossing the grid domain
+    """
+    mb = mapbox.MapBox()
+    mb.allocate()
+    conc = numpy.array([
+        [1, 1],
+        [1, 1],
+        [1, 1],
+        [1, 1],
+        [1, 1]])
+    lats_left = [35.0, 36.0, 37.0, 38.0, 39.0]
+    lons_left = [-180.0, -179.0]
+    mb.add_conc(conc, lons_left, lats_left)
+    lats_right = [37.0, 38.0, 39.0, 40.0, 41.0]
+    lons_right = [178.0, 179.0]
+    mb.add_conc(conc, lons_right, lats_right)
+    mb.determine_plume_extent()
+    assert mb.bounding_box == pytest.approx((178.0, -178.0, 35.0, 42.0))
+    
+    mb.refine_grid()
+
+    assert mb.grid_corner == [178.0, 35.0]
+    assert mb.grid_delta == 0.10
+    assert mb.sz == [40, 70]
+    assert mb._lon_hit_map is None
+    assert mb._lat_hit_map is None
+
+    # Repeat with the same conc array
+
+    mb.allocate()
+    mb.add_conc(conc, lons_left, lats_left)
+    mb.add_conc(conc, lons_right, lats_right)
+    mb.determine_plume_extent()
+    assert mb.plume_sz == pytest.approx([3.1, 6.1])
+    assert mb.plume_loc == [0, 0]
+    assert mb.bounding_box == pytest.approx((178.0, -178.9, 35.0, 41.1))
 
 
 def test_MapBox_clear_hit_map():
     mb = mapbox.MapBox()
     mb.allocate()
     mb.add((-120.3, 45.3))
-    assert mb.hit_map[59, 135] == 1
+    assert mb._lon_hit_map[59] == 1
+    assert mb._lat_hit_map[135] == 1
     assert mb.hit_count == 1
 
     mb.clear_hit_map()
 
-    assert mb.hit_map[59, 135] == 0
+    assert mb._lon_hit_map[59] == 0
+    assert mb._lat_hit_map[135] == 0
     assert mb.hit_count == 0
 
 

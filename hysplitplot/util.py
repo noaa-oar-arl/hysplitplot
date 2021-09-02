@@ -250,8 +250,91 @@ def nonzero_min(a):
     return numpy.min(numpy.ma.masked_where(a == 0, a))
 
 
+def calc_lon_average(lons, weights):
+    """
+    Compute the weighted average of longitudes in the range [-180, 180).
+    Return None for empty data.
+    """
+    sum_pos = sum_neg = 0.0
+    sum_w_pos = sum_w_neg = 0.0
+    n_pos = n_neg = 0
+    for k, lon in enumerate(lons):
+        w = weights[k]
+        if lon >= 0:
+            sum_pos += w * lon
+            sum_w_pos += w
+            n_pos += 1
+        else:
+            sum_neg += w * lon
+            sum_w_neg += w
+            n_neg += 1
+
+    if n_neg == 0 and n_pos == 0:
+        return None
+    
+    if n_pos == 0:
+        avg = sum_neg / sum_w_neg
+    elif n_neg == 0:
+        avg = sum_pos / sum_w_pos
+    else:
+        avg_neg = sum_neg / sum_w_neg
+        avg_pos = sum_pos / sum_w_pos
+        delta_cw = avg_pos - avg_neg
+        delta_ccw = 360.0 + avg_neg - avg_pos
+        if delta_cw <= delta_ccw:
+            avg = (sum_neg + sum_pos) / (sum_w_neg + sum_w_pos)
+        else:
+            avg = (sum_neg + 360.0*sum_w_neg + sum_pos) / (sum_w_neg + sum_w_pos)
+
+    return avg
+
+
 def is_crossing_date_line(west, east):
     return True if (west > 0 and east < 0) else False
+
+
+def normalize_lon(x):
+    """
+    Normalize a longitude value to [-180, 180).
+    """
+    if x < -180.0:
+        return x + 360.0
+    elif x >= 180.0:
+        return x - 360.0
+    return x
+
+
+def union_lonlat_bounding_boxes(box1, box2):
+    l1, r1, b1, t1 = box1
+    l2, r2, b2, t2 = box2
+    # normalize longitudes
+    l1 = normalize_lon(l1)
+    r1 = normalize_lon(r1)
+    l2 = normalize_lon(l2)
+    r2 = normalize_lon(r2)
+    # find left and right limits
+    lons = [l1, r1, l2, r2]
+    w = [1, 1, 1, 1]
+    avg = calc_lon_average(lons, w)
+    l = r = avg
+    delta_min = delta_max = 0.0
+    for k, lon in enumerate(lons):
+        delta = lon - avg
+        if delta < -180.0:
+            delta += 360.0
+        elif delta >= 180.0:
+            delta -= 360.0
+
+        if delta < delta_min:
+            delta_min = delta
+            l = lon
+        elif delta > delta_max:
+            delta_max = delta
+            r = lon
+    # union
+    l = normalize_lon(l)
+    r = normalize_lon(r)
+    return [l, r, min(b1, b2), max(t1, t2)]
 
 
 class AbstractLengthFactory():

@@ -195,9 +195,57 @@ def test_nonzero_min():
     assert util.nonzero_min(a) == 1.0
 
 
+def test_calc_lon_average():
+    lon = (-90.0, -91.0, -92.0, -93.0)
+    w = (1, 1, 1, 1)
+    assert util.calc_lon_average(lon, w) == pytest.approx(-91.5)
+
+    lon = (90.0, 91.0, 92.0, 93.0)
+    assert util.calc_lon_average(lon, w) == pytest.approx( 91.5)
+
+    lon = (178.0, 179.0, -180.0, -179.0)
+    assert util.calc_lon_average(lon, w) == pytest.approx(179.5)
+
+    lon = (-2.0, -1.0, 1.0, 2.0)
+    assert util.calc_lon_average(lon, w) == pytest.approx(0.0)
+
+    lon = tuple()
+    assert util.calc_lon_average(lon, w) is None
+
+
 def test_is_crossing_date_line():
     assert util.is_crossing_date_line(150.0, -170.0) == True
     assert util.is_crossing_date_line(-10.0,   10.0) == False
+
+
+def test_normalize_lon():
+    assert util.normalize_lon(   0.0) == 0
+    assert util.normalize_lon( 179.9) == pytest.approx( 179.9)
+    assert util.normalize_lon( 180.0) == pytest.approx(-180.0)
+    assert util.normalize_lon( 181.0) == pytest.approx(-179.0)
+    assert util.normalize_lon(-179.0) == pytest.approx(-179.0)
+    assert util.normalize_lon(-180.0) == pytest.approx(-180.0)
+    assert util.normalize_lon(-181.0) == pytest.approx( 179.0)
+
+
+def test_union_lonlat_bounding_boxes():
+    box1 = (40.0, 50.0, -10.0, 10.0)
+    box2 = (45.0, 48.0,  -8.0,  8.0)
+    assert util.union_lonlat_bounding_boxes(box1, box2) == pytest.approx((40.0, 50.0, -10.0, 10.0))
+
+    box2 = (45.0, 55.0,  -5.0, 15.0)
+    assert util.union_lonlat_bounding_boxes(box1, box2) == pytest.approx((40.0, 55.0, -10.0, 15.0))
+
+    # test with boxes one of which crosses the date-line
+    box1 = (170.0, -170.0, -10.0, 10.0)
+    box2 = (180.0, -165.0,  -5.0, 15.0)
+    assert util.union_lonlat_bounding_boxes(box1, box2) == pytest.approx((170.0, -165.0, -10.0, 15.0))
+
+    box2 = (160.0,  165.0,  -5.0, 15.0)
+    assert util.union_lonlat_bounding_boxes(box1, box2) == pytest.approx((160.0, -170.0, -10.0, 15.0))
+
+    box2 = (-175.0, -165.0,  -5.0, 15.0)
+    assert util.union_lonlat_bounding_boxes(box1, box2) == pytest.approx((170.0, -165.0, -10.0, 15.0))
 
 
 def test_AbstractLengthFactory_create_factory():

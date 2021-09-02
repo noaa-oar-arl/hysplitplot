@@ -21,7 +21,8 @@ class MapBox:
     # respectively.
 
     def __init__(self, **kwargs):
-        self.hit_map = None
+        self._lon_hit_map = None
+        self._lat_hit_map = None
         self.grid_delta = kwargs.get("grid_delta", 1.0)
         self.grid_corner = kwargs.get("grid_corner", [-180.0, -90.0])  # (lon,lat)
         if type(self.grid_corner) is tuple:
@@ -33,8 +34,6 @@ class MapBox:
         self.plume_sz = [0.0, 0.0]      # (lon, lat)
         self.plume_loc = [0, 0]         # lon-, lat-indices
         self.hit_count = 0
-        self._i = 0
-        self._j = 0
         self.__bbox = None              # bounding box [l, r, b, t] in degrees.
 
     @property
@@ -42,13 +41,14 @@ class MapBox:
         return self.__bbox
 
     def _normalize_lon(self, lon):
-        # Normalize longitude to [-180, 180).
-        if lon < -180.0:
+        # Normalize longitude to start from the minimum longitude value.
+        dlon = lon - self.grid_corner[0]
+        if dlon < 0:
             return lon + 360.0
-        elif lon >= 180.0:
+        elif dlon >= 360.0:
             return lon - 360.0
         return lon
-    
+
     def _normalize_lat(self, lat):
         # Normalize latitude to [-90, 90].
         if lat < -90.0:
@@ -61,27 +61,28 @@ class MapBox:
         stream.write("MapBox: grid delta {0}, sz {1}, corner {2}\n"
                      .format(self.grid_delta, self.sz, self.grid_corner))
         for j in range(self.sz[1]):
-            for i in range(self.sz[0]):
-                if self.hit_map[i, j] != 0:
-                    stream.write("hit_map[{0},{1}] = {2}\n"
-                                 .format(i, j, self.hit_map[i, j]))
+            if self._lat_hit_map[j] != 0:
+                    stream.write("lat_hit_map[{0}] = {1}\n"
+                                 .format(j, self._lat_hit_map[j]))
+        for i in range(self.sz[0]):
+            if self._lon_hit_map[i] != 0:
+                    stream.write("lon_hit_map[{0}] = {1}\n"
+                                 .format(i, self._lon_hit_map[i]))
 
     def allocate(self):
-        self.hit_map = numpy.zeros(self.sz, dtype=int)
+        self._lon_hit_map = numpy.zeros(self.sz[0], dtype=int)
+        self._lat_hit_map = numpy.zeros(self.sz[1], dtype=int)
         self.hit_count = 0
 
     def add(self, lonlat):
         lon, lat = lonlat
         lon = self._normalize_lon(lon)
         try:
-            i = min(self.sz[0] - 1,
-                    int((lon - self.grid_corner[0]) / self.grid_delta))
-            j = min(self.sz[1] - 1,
-                    int((lat - self.grid_corner[1]) / self.grid_delta))
+            i = int((lon - self.grid_corner[0]) / self.grid_delta) % self.sz[0]
+            j = int((lat - self.grid_corner[1]) / self.grid_delta) % self.sz[1]
             # count hits
-            self.hit_map[i, j] += 1
-            self._i = i
-            self._j = j
+            self._lon_hit_map[i] += 1
+            self._lat_hit_map[j] += 1
             self.hit_count += 1
         except IndexError:
             logger.error("out-of-bound mapbox index: lonlat ({:f}, {:f})"
@@ -91,8 +92,8 @@ class MapBox:
     def add_conc(self, conc, lons0, lats):
         lons = [self._normalize_lon(x) for x in lons0]
         inv_delta = 1.0 / self.grid_delta
-        i_precomputed = [min(self.sz[0] - 1, int((x - self.grid_corner[0]) * inv_delta)) for x in lons]
-        j_precomputed = [min(self.sz[1] - 1, int((y - self.grid_corner[1]) * inv_delta)) for y in lats]
+        i_precomputed = [int((x - self.grid_corner[0]) * inv_delta) % self.sz[0] for x in lons]
+        j_precomputed = [int((y - self.grid_corner[1]) * inv_delta) % self.sz[1] for y in lats]
         for lat_index in range(len(lats)):
             lon_indices = numpy.where(conc[lat_index] > 0)[0]
             if len(lon_indices) > 0:
@@ -100,72 +101,66 @@ class MapBox:
                 i_array = operator.itemgetter(*lon_indices)(i_precomputed)
                 if isinstance(i_array, tuple):
                     for i in i_array:
-                        self.hit_map[i, j] += 1
-                        self._i = i
-                        self._j = j
+                        self._lon_hit_map[i] += 1
+                        self._lat_hit_map[j] += 1
                         self.hit_count += 1
                 else:
                     i = i_array
-                    self.hit_map[i, j] += 1
-                    self._i = i
-                    self._j = j
+                    self._lon_hit_map[i] += 1
+                    self._lat_hit_map[j] += 1
                     self.hit_count += 1
 
     def determine_plume_extent(self):
-        bottom = 0
-        done = False
-        for j in range(self.sz[1]):
-            for i in range(self.sz[0]):
-                if self.hit_map[i, j] > 0:
-                    bottom = j
-                    done = True
-                    break
-            if done:
-                break
-
-        top = self.sz[1] - 1
-        done = False
-        for j in range(self.sz[1] - 1, bottom - 1, -1):
-            for i in range(self.sz[0]):
-                if self.hit_map[i, j] > 0:
-                    top = j
-                    done = True
-                    break
-            if done:
-                break
-            
         left = 0
-        done = False
-        for i in range(self.sz[0]):
-            for j in range(self.sz[1]):
-                if self.hit_map[i, j] > 0:
-                    left = i
-                    done = True
-                    break
-            if done:
-                break
-            
-        right = self.sz[0] - 1
-        done = False
-        for i in range(self.sz[0] - 1, left - 1, -1):
-            for j in range(self.sz[1]):
-                if self.hit_map[i, j] > 0:
-                    right = i
-                    done = True
-                    break
-            if done:
-                break
+        right = self.sz[0]
+        bottom = 0
+        top = self.sz[1]
 
-        self.plume_sz[0] = self.grid_delta * (right - left + 1)
+        lat_indices = numpy.where(self._lat_hit_map > 0)[0]
+        if len(lat_indices) > 0:
+            bottom = min(lat_indices)
+            top = max(lat_indices)
+
+        lon_indices = numpy.where(self._lon_hit_map > 0)[0]
+        if len(lon_indices) > 0:
+            lons = [self.grid_corner[0] + i * self.grid_delta for i in lon_indices]
+            weights = operator.itemgetter(*lon_indices)(self._lon_hit_map)
+            if len(lon_indices) == 1:
+                weights = [weights]
+            avg = util.calc_lon_average(lons, weights)
+            # search the min and the max of longitude deltas
+            delta_min = delta_max = 0.0
+            left = right = int((avg - self.grid_corner[0]) / self.grid_delta) % self.sz[0]
+            for k, lon in enumerate(lons):
+                delta = lon - avg
+                if delta < -180.0:
+                    delta += 360.0
+                elif delta >= 180.0:
+                    delta -= 360.0
+
+                if delta < delta_min:
+                    delta_min = delta
+                    left = lon_indices[k]
+                elif delta > delta_max:
+                    delta_max = delta
+                    right = lon_indices[k]
+
+        if right >= left:
+            self.plume_sz[0] = self.grid_delta * (right - left + 1)
+        else:
+            self.plume_sz[0] = self.grid_delta * (right + 1 + self.sz[0] - left)
         self.plume_sz[1] = self.grid_delta * (top - bottom + 1)
         self.plume_loc[0] = left
         self.plume_loc[1] = bottom
 
-        self.__bbox = [self.grid_corner[0] + self.grid_delta * left,
-                       self.grid_corner[0] + self.grid_delta * (right + 1),
-                       self.grid_corner[1] + self.grid_delta * bottom,
-                       self.grid_corner[1] + self.grid_delta * (top + 1)]
-        
+        l = self.grid_corner[0] + self.grid_delta * left
+        r = self.grid_corner[0] + self.grid_delta * (right + 1)
+        b = self.grid_corner[1] + self.grid_delta * bottom
+        t = self.grid_corner[1] + self.grid_delta * (top + 1)
+        l = util.normalize_lon(l)
+        r = util.normalize_lon(r)
+        self.__bbox = [l, r, b, t]
+
         logger.debug("plume location: index (%d, %d), lonlat (%f, %f)",
                      self.plume_loc[0], self.plume_loc[1],
                      self.grid_corner[0] + self.plume_loc[0] * self.grid_delta,
@@ -189,12 +184,14 @@ class MapBox:
         self.grid_delta = 0.10
         self.sz[1] = int(self.plume_sz[1] / self.grid_delta)
         self.sz[0] = int(self.plume_sz[0] / self.grid_delta)
-        self.hit_map = None
+        self._lon_hit_map = None
+        self._lat_hit_map = None
         logger.debug("refined: grid delta {0}, sz {1}, corner {2}"
                      .format(self.grid_delta, self.sz, self.grid_corner))
 
     def clear_hit_map(self):
-        self.hit_map.fill(0)
+        self._lon_hit_map.fill(0)
+        self._lat_hit_map.fill(0)
         self.hit_count = 0
 
     def set_ring_extent(self, settings):
@@ -215,18 +212,22 @@ class MapBox:
         b = self._normalize_lat(settings.center_loc[1] - radius_deg)
         t = self._normalize_lat(settings.center_loc[1] + radius_deg)
         logger.debug("ring bbox: %f %f %f %f", l, r, b, t)
-        
-        if self.__bbox is not None:
-            self.__bbox[0] = min(self.__bbox[0], l)
-            self.__bbox[1] = max(self.__bbox[1], r)
-            self.__bbox[2] = min(self.__bbox[2], b)
-            self.__bbox[3] = max(self.__bbox[3], t)
-        else:
+
+        if self.__bbox is None:
+            l = util.normalize_lon(l)
+            r = util.normalize_lon(r)
             self.__bbox = [l, r, b, t]
+        else:
+            self.__bbox = util.union_lonlat_bounding_boxes(self.__bbox, [l, r, b, t])
+
         logger.debug("plume+ring bbox: {}".format(self.__bbox))
 
     def get_bounding_box_corners(self):
+        """
+        Note that if the plume crosses the date-line, l > r.
+        """
         if self.__bbox is not None:
             l, r, b, t = self.__bbox
             return ((l, b), (r, b), (r, t), (l, t))
+
         return tuple()
