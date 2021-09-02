@@ -8,6 +8,7 @@
 
 import logging
 import numpy
+import operator
 
 from hysplitplot import util
 
@@ -90,16 +91,24 @@ class MapBox:
     def add_conc(self, conc, lons0, lats):
         lons = [self._normalize_lon(x) for x in lons0]
         inv_delta = 1.0 / self.grid_delta
-        iarr = [min(self.sz[0] - 1, int((x - self.grid_corner[0]) * inv_delta)) for x in lons]
-        jarr = [min(self.sz[1] - 1, int((y - self.grid_corner[1]) * inv_delta)) for y in lats]
-        for j in range(len(lats)):
-            for i in range(len(lons)):
-                if conc[j, i] > 0:
-                    j2 = jarr[j]
-                    i2 = iarr[i]
-                    self.hit_map[i2, j2] += 1
-                    self._i = i2
-                    self._j = j2
+        i_precomputed = [min(self.sz[0] - 1, int((x - self.grid_corner[0]) * inv_delta)) for x in lons]
+        j_precomputed = [min(self.sz[1] - 1, int((y - self.grid_corner[1]) * inv_delta)) for y in lats]
+        for lat_index in range(len(lats)):
+            lon_indices = numpy.where(conc[lat_index] > 0)[0]
+            if len(lon_indices) > 0:
+                j = j_precomputed[lat_index]
+                i_array = operator.itemgetter(*lon_indices)(i_precomputed)
+                if isinstance(i_array, tuple):
+                    for i in i_array:
+                        self.hit_map[i, j] += 1
+                        self._i = i
+                        self._j = j
+                        self.hit_count += 1
+                else:
+                    i = i_array
+                    self.hit_map[i, j] += 1
+                    self._i = i
+                    self._j = j
                     self.hit_count += 1
 
     def determine_plume_extent(self):
