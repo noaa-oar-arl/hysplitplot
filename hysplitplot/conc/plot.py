@@ -923,14 +923,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                         and self.settings.color != \
                         const.ConcentrationPlotColor.BW_NO_LINES:
                     # draw contour lines
-                    line_colors = ["k"] * len(fill_colors)
-                    axes.contour(conc_grid.longitudes,
-                                 conc_grid.latitudes,
-                                 scaled_conc,
-                                 updated_contour_levels,
-                                 colors=line_colors,
-                                 linewidths=0.25,
-                                 transform=self.data_crs)
+                    for c in contour_set.collections:
+                        c.set_edgecolor('k')
+                        c.set_linewidth(0.25)
             except ValueError as ex:
                 logger.error("cannot generate contours")
 
