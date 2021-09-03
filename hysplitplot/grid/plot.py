@@ -550,7 +550,8 @@ class GridPlot(plotbase.AbstractPlot):
 
         if self.settings.ring and self.settings.ring_number >= 0:
             map_box.clear_hit_map()
-            map_box.set_ring_extent(self.settings)
+            map_box.set_ring_extent(self.settings,
+                                    self.cdump.release_locs[0])
 
         self.projection = mapproj.MapProjectionFactory.create_instance(
             self.settings.map_projection,

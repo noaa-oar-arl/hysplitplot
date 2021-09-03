@@ -194,10 +194,10 @@ class MapBox:
         self._lat_hit_map.fill(0)
         self.hit_count = 0
 
-    def set_ring_extent(self, settings):
+    def set_ring_extent(self, settings, ring_loc):
         kspan, ring_distance = util.calc_ring_distance(self.plume_sz,
                                                        self.grid_delta,
-                                                       settings.center_loc,
+                                                       ring_loc,
                                                        settings.ring_number,
                                                        settings.ring_distance)
         settings.ring_distance = ring_distance
@@ -207,20 +207,16 @@ class MapBox:
         # plots should be centered about the specified center location.
         # assume that the bounding box is already computed using the plume extent.
         radius_deg = util.km_to_deg(ring_distance * settings.ring_number)
-        l = self._normalize_lon(settings.center_loc[0] - radius_deg)
-        r = self._normalize_lon(settings.center_loc[0] + radius_deg)
-        b = self._normalize_lat(settings.center_loc[1] - radius_deg)
-        t = self._normalize_lat(settings.center_loc[1] + radius_deg)
+        l = self._normalize_lon(ring_loc[0] - radius_deg)
+        r = self._normalize_lon(ring_loc[0] + radius_deg)
+        b = self._normalize_lat(ring_loc[1] - radius_deg)
+        t = self._normalize_lat(ring_loc[1] + radius_deg)
         logger.debug("ring bbox: %f %f %f %f", l, r, b, t)
 
-        if self.__bbox is None:
-            l = util.normalize_lon(l)
-            r = util.normalize_lon(r)
-            self.__bbox = [l, r, b, t]
-        else:
-            self.__bbox = util.union_lonlat_bounding_boxes(self.__bbox, [l, r, b, t])
-
-        logger.debug("plume+ring bbox: {}".format(self.__bbox))
+        l = util.normalize_lon(l)
+        r = util.normalize_lon(r)
+        self.__bbox = [l, r, b, t]
+        logger.debug("final bbox: {}".format(self.__bbox))
 
     def get_bounding_box_corners(self):
         """

@@ -347,7 +347,8 @@ class TrajectoryPlot(plotbase.AbstractPlot):
 
         if self.settings.ring and self.settings.ring_number >= 0:
             map_box.clear_hit_map()
-            map_box.set_ring_extent(self.settings)
+            map_box.set_ring_extent(self.settings,
+                                    data_list[0].trajectories[0].starting_loc)
 
         self.projection = mapproj.MapProjectionFactory.create_instance(
             self.settings.map_projection,

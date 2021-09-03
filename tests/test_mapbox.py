@@ -233,7 +233,7 @@ def test_MapBox_set_ring_extent():
     s.ring_number = 2
     s.ring_distance = 101.0
 
-    mb.set_ring_extent(s)
+    mb.set_ring_extent(s, (-120.3, 45.3))
 
     assert s.ring_distance == 100.0
     assert mb.bounding_box == pytest.approx((-122.1018, -118.4982, 43.49820, 47.10180))
@@ -251,7 +251,7 @@ def test_MapBox_get_bounding_box_corners():
     s.center_loc = (-120.3, 45.3)
     s.ring_number = 2
     s.ring_distance = 101.0
-    mb.set_ring_extent(s)
+    mb.set_ring_extent(s, (-120.3, 45.3))
 
     corners = mb.get_bounding_box_corners()
     assert len(corners) == 4
