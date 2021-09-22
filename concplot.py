@@ -37,6 +37,7 @@ def print_usage():
    -A[KML options: 0-none 1-KML with no extra overlays]
    -b[Bottom display level: (0) m]
    -c[Contours: (0)-dyn/exp 1-fix/exp 2-dyn/lin 3-fix/lin 4-set 50-0,interval 10 51-1,interval 10]
+   +c[Write contour values to text output file CONTUR: (0)-no 1-yes]
    -d[Display: (1)-by level, 2-levels averaged]
    -e[Exposure units flag: (0)-concentrations, 1-exposure, 2-chemical threshold,
                                  3-hypothetical volcanic ash, 4-mass loading]

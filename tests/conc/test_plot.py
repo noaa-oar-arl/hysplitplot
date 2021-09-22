@@ -135,6 +135,7 @@ def test_ConcentrationPlotSettings___init__():
     assert s.ring_distance == 0.0
     assert s.center_loc == [0.0, 0.0]
     assert s.center_loc_fixed == False
+    assert s.write_contour_levels_only == 0
     assert s.gis_output == const.GISOutput.NONE
     assert s.kml_option == const.KMLOption.NONE
 
@@ -203,6 +204,15 @@ def test_ConcentrationPlotSettings_process_command_line_arguments():
     
     s.process_command_line_arguments(["-C2"])
     assert s.contour_level_generator == 2
+
+    # test +c or +C
+    s.write_contour_levels_only = 0
+    s.process_command_line_arguments(["+c1"])
+    assert s.write_contour_levels_only == 1
+
+    s.write_contour_levels_only = 0
+    s.process_command_line_arguments(["+C1"])
+    assert s.write_contour_levels_only == 1
 
     # test -d or -D
     s.KAVG = None
@@ -1137,6 +1147,29 @@ def test_ConcentrationPlot_draw_bottom_text():
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
+
+
+def test_ConcentrationPlot_create_contour_levels_file():
+    p = plot.ConcentrationPlot()
+    levels = [1.0e-15, 1.0e-14, 1.0e-13, 1.0e-12]
+
+    p.create_contour_levels_file(levels, 'contur.txt')
+
+    # no change in the listing order
+    assert levels == pytest.approx([1.0e-15, 1.0e-14, 1.0e-13, 1.0e-12])
+    # check the file content
+    lines = []
+    try:
+        with open('contur.txt') as f:
+            lines = f.readlines()
+    except Exception as ex:
+        raise pytest.fail("unexpected exception: {0}".format(ex))
+    assert lines[0] == ' 1.0e-12\n'
+    assert lines[1] == ' 1.0e-13\n'
+    assert lines[2] == ' 1.0e-14\n'
+    assert lines[3] == ' 1.0e-15\n'
+
+    os.remove('contur.txt')
 
 
 def test_ConcentrationPlot__write_gisout():

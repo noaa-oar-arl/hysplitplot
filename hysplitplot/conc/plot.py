@@ -81,6 +81,7 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.ring_distance = 0.0
         self.center_loc = [0.0, 0.0]    # lon, lat
         self.center_loc_fixed = False
+        self.write_contour_levels_only = 0
 
         # internally defined
         self.label_source = True
@@ -132,6 +133,9 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
 
         self.contour_level_generator = \
             args.get_integer_value(["-c", "-C"], self.contour_level_generator)
+
+        self.write_contour_levels_only = \
+            args.get_integer_value(["+c", "+C"], self.write_contour_levels_only)
 
         self.KAVG = args.get_integer_value(["-d", "-D"], self.KAVG)
         self.KAVG = max(1, min(2, self.KAVG))
@@ -1142,6 +1146,12 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         else:
             self._turn_off_spines(self.text_axes)
 
+    def create_contour_levels_file(self, contour_levels, file_name = 'CONTUR'):
+        with open(file_name, 'wt') as f:
+            high_to_low = contour_levels[::-1]
+            for v in high_to_low:
+                f.write('{:8.1e}\n'.format(v))
+
     def _write_gisout(self, gis_writers, g, lower_vert_level, upper_vert_level,
                       quad_contour_set, contour_levels, color_table,
                       scaling_factor):
@@ -1202,6 +1212,10 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                            self.conc_type.contour_max_conc)
         contour_levels = level_generator.make_levels(
             min_conc, max_conc, self.settings.contour_level_count)
+
+        if self.settings.write_contour_levels_only != 0:
+            self.create_contour_levels_file(contour_levels, 'CONTUR')
+            sys.exit(0)
 
         color_offset = level_generator.compute_color_table_offset(
             contour_levels)
@@ -1273,6 +1287,10 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             min_conc,
             max_conc,
             self.settings.contour_level_count)
+
+        if self.settings.write_contour_levels_only != 0:
+            self.create_contour_levels_file(contour_levels, 'CONTUR')
+            sys.exit(0)
 
         color_offset = level_generator.compute_color_table_offset(
             contour_levels)
