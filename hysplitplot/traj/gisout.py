@@ -58,7 +58,15 @@ class NullGISFileWriter(AbstractGISFileWriter):
         pass
 
 
-class GenerateAttributeFileWriter:
+class AbstractAttributeFileWriter(ABC):
+
+    @staticmethod
+    @abstractmethod
+    def write(filename, plot_data, time_zone=None):
+        pass
+
+
+class PointsAttributeFileWriter(AbstractAttributeFileWriter):
 
     @staticmethod
     def write(filename, plot_data, time_zone=None):
@@ -82,6 +90,37 @@ class GenerateAttributeFileWriter:
                                 int(t.heights[j])))
 
 
+class LinesAttributeFileWriter(AbstractAttributeFileWriter):
+
+    @staticmethod
+    def write(filename, plot_data, time_zone=None):
+        logger.info("Creating file %s", filename)
+        with open(filename, "wt") as f:
+            f.write("#TRAJNUM,YYYYMMDD,TIME,LEVEL\n")
+            for k, t in enumerate(plot_data.trajectories):
+                if time_zone is None:
+                    dt = t.starting_datetime
+                else:
+                    dt = t.starting_datetime.astimezone(time_zone)
+                f.write("{0:6d},{1:4d}{2:02d}{3:02d},{4:02d}{5:02d},"
+                        "{6:8d}.\n".format(
+                            (k+1),
+                            dt.year,
+                            dt.month,
+                            dt.day,
+                            dt.hour,
+                            dt.minute,
+                            int(t.starting_level)))
+
+
+class GenerateAttributeFileWriter(PointsAttributeFileWriter):
+    """Same as PointsAttributeFileWriter. Kept for backward compatibility"""
+
+    @staticmethod
+    def write(filename, plot_data, time_zone=None):
+        PointsAttributeFileWriter.write(filename, plot_data, time_zone)
+
+
 class PointsGenerateFileWriter(AbstractGISFileWriter):
 
     def __init__(self, time_zone=None, att_writer=None):
@@ -89,7 +128,7 @@ class PointsGenerateFileWriter(AbstractGISFileWriter):
         if att_writer is not None:
             self.att_writer = att_writer
         else:
-            self.att_writer = GenerateAttributeFileWriter()
+            self.att_writer = PointsAttributeFileWriter()
 
     def write(self, file_no, plot_data):
         gisout = "GIS_traj_{0}_{1:02d}.txt".format(self.output_suffix, file_no)
@@ -115,7 +154,7 @@ class LinesGenerateFileWriter(AbstractGISFileWriter):
         if att_writer is not None:
             self.att_writer = att_writer
         else:
-            self.att_writer = GenerateAttributeFileWriter()
+            self.att_writer = LinesAttributeFileWriter()
 
     def write(self, file_no, plot_data):
         gisout = "GIS_traj_{0}_{1:02d}.txt".format(self.output_suffix, file_no)

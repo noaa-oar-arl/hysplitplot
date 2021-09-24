@@ -140,6 +140,38 @@ def test_NullGISFileWriter_write(plotData):
         pytest.fail("unexpected exception: {0}".format(ex))    
 
 
+def test_PointsAttributeFileWriter_write(plotData):
+    # just check the number of lines.
+    line_count = 0
+    try:
+        gisout.GenerateAttributeFileWriter.write("__gis.att", plotData)
+        os.remove("__gis.att")
+
+        tz = pytz.timezone("EST")        
+        gisout.PointsAttributeFileWriter.write("__gis.att", plotData, tz)
+        line_count = len(open("__gis.att").readlines())
+        os.remove("__gis.att")
+    except Exception as ex:
+        pytest.fail("unexpected exception: {0}".format(ex))
+    assert line_count == 40
+
+
+def test_LinesAttributeFileWriter_write(plotData):
+    # just check the number of lines.
+    line_count = 0
+    try:
+        gisout.GenerateAttributeFileWriter.write("__gis.att", plotData)
+        os.remove("__gis.att")
+
+        tz = pytz.timezone("EST")        
+        gisout.LinesAttributeFileWriter.write("__gis.att", plotData, tz)
+        line_count = len(open("__gis.att").readlines())
+        os.remove("__gis.att")
+    except Exception as ex:
+        pytest.fail("unexpected exception: {0}".format(ex))
+    assert line_count == 4
+
+
 def test_GenerateAttributeFileWriter_write(plotData):
     # just see if no error occurs
     try:
@@ -148,11 +180,13 @@ def test_GenerateAttributeFileWriter_write(plotData):
 
         tz = pytz.timezone("EST")        
         gisout.GenerateAttributeFileWriter.write("__gis.att", plotData, tz)
+        line_count = len(open("__gis.att").readlines())
         os.remove("__gis.att")
     except Exception as ex:
         pytest.fail("unexpected exception: {0}".format(ex))
+    assert line_count == 40
 
-    
+
 def test_PointsGenerateFileWriter___init__():
     w = gisout.PointsGenerateFileWriter()
     assert w.time_zone is None
