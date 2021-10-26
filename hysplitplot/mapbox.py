@@ -206,7 +206,7 @@ class MapBox:
 
         # plots should be centered about the specified center location.
         # assume that the bounding box is already computed using the plume extent.
-        radius_deg = util.km_to_deg(ring_distance * settings.ring_number)
+        radius_deg = util.km_to_deg(ring_distance * max(settings.ring_number, 1))
         l = self._normalize_lon(ring_loc[0] - radius_deg)
         r = self._normalize_lon(ring_loc[0] + radius_deg)
         b = self._normalize_lat(ring_loc[1] - radius_deg)

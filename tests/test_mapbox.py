@@ -239,6 +239,24 @@ def test_MapBox_set_ring_extent():
     assert mb.bounding_box == pytest.approx((-122.1018, -118.4982, 43.49820, 47.10180))
 
 
+def test_MapBox_set_ring_extent_case2():
+    """
+    Test ring_number = 0
+    """
+    mb = mapbox.MapBox()
+    mb.allocate()
+    mb.plume_sz = [40.0, 10.0]
+    s = plot.TrajectoryPlotSettings()
+    s.center_loc = (-120.3, 45.3)
+    s.ring_number = 0
+    s.ring_distance = 202.0
+
+    mb.set_ring_extent(s, (-120.3, 45.3))
+
+    assert s.ring_distance == 200.0
+    assert mb.bounding_box == pytest.approx((-122.1018, -118.4982, 43.49820, 47.10180))
+
+
 def test_MapBox_get_bounding_box_corners():
     mb = mapbox.MapBox()
     mb.allocate()
