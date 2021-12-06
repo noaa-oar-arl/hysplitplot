@@ -9,6 +9,7 @@
 from abc import ABC, abstractmethod
 import logging
 import math
+import xml.etree.ElementTree as ET
 
 from hysplitdata.const import HeightUnit, VerticalCoordinate
 from hysplitdata.traj import model
@@ -46,6 +47,9 @@ class AbstractGISFileWriter(ABC):
 
     @abstractmethod
     def write(self, file_no, plot_data):
+        pass
+
+    def finalize(self):
         pass
 
 
@@ -181,6 +185,9 @@ class KMLWriter(AbstractGISFileWriter):
     def __init__(self, height_unit=HeightUnit.METERS, time_zone=None):
         super(KMLWriter, self).__init__(time_zone)
         self.height_unit = height_unit
+        self.create_kml_per_write = True  # for backward compatibility
+        self.xml_root = None
+        self.kml_filename = None
 
     @staticmethod
     def make_filename(output_name, output_suffix, file_no):
@@ -213,200 +220,147 @@ class KMLWriter(AbstractGISFileWriter):
             return "AMSL" if t.has_terrain_profile() else "AGL"
 
     def write(self, file_no, plot_data):
-        file_name = self.make_filename(self.output_name,
-                                       self.output_suffix,
-                                       file_no)
+        if self.xml_root is None:
+            self.kml_filename = self.make_filename(self.output_name,
+                                                   self.output_suffix,
+                                                   file_no)
 
-        logger.info("Creating file %s", file_name)
-        with open(file_name, "wt") as f:
-            self._write_preamble(f, plot_data)
+            self.xml_root = ET.Element('kml',
+                    attrib={'xmlns':'http://www.opengis.net/kml/2.2',
+                            'xmlns:gx':'http://www.google.com/kml/ext/2.2'})
+            doc = ET.SubElement(self.xml_root, 'Document')
+            self._write_preamble(doc, plot_data)
 
             if self.kml_option != const.KMLOption.NO_EXTRA_OVERLAYS \
                     and self.kml_option != const.KMLOption.BOTH_1_AND_2:
-                self._write_overlay(f)
+                self._write_overlay(doc)
+        else:
+            doc = self.xml_root.find("Document")
 
-            for t_idx, t in enumerate(plot_data.trajectories):
-                self._write_trajectory(f, t, t_idx)
+        for t_idx, t in enumerate(plot_data.trajectories):
+            self._write_trajectory(doc, t, t_idx)
 
-            self._write_postamble(f)
+        if self.create_kml_per_write:
+            self.finalize()
 
-    def _write_preamble(self, f, plot_data):
+    def finalize(self):
+        if self.kml_filename is not None and self.xml_root is not None:
+            doc = self.xml_root.find("Document")
+            self._write_postamble(doc)
+
+            logger.info("Creating file %s", self.kml_filename)
+            tree = ET.ElementTree(self.xml_root)
+            tree.write(self.kml_filename, encoding='UTF-8',
+                       xml_declaration=True,
+                       short_empty_elements=False)
+
+        self.xml_root = None
+
+    def _write_preamble(self, doc, plot_data):
         t = plot_data.trajectories[0]
         starting_loc = t.starting_loc
         starting_datetime = t.starting_datetime
         timestamp_str = util.get_iso_8601_str(starting_datetime,
                                               self.time_zone)
 
-        f.write("""\
-<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
-  <Document>
-    <name>NOAA HYSPLIT Trajectory {0}</name>
-    <open>1</open>
-    <LookAt>
-      <longitude>{1:.4f}</longitude>
-      <latitude>{2:.4f}</latitude>
-      <altitude>{3}</altitude>
-      <tilt>0</tilt>
-      <range>13700</range>
-      <gx:TimeStamp>
-        <when>{4}</when>
-      </gx:TimeStamp>
-      <gx:altitudeMode>{5}</gx:altitudeMode>
-    </LookAt>
-    <Style id="traj1">
-      <LineStyle>
-        <color>ff0000ff</color>
-        <width>4</width>
-      </LineStyle>
-      <PolyStyle>
-        <color>7f0000ff</color>
-      </PolyStyle>
-      <IconStyle>
-        <scale>0.6</scale>
-        <Icon>
-          <href>redball.png</href>
-        </Icon>
-      </IconStyle>
-    </Style>
-    <Style id="traj1a">
-      <LineStyle>
-        <color>ff0000ff</color>
-        <width>1.25</width>
-      </LineStyle>
-      <PolyStyle>
-        <color>7f0000ff</color>
-      </PolyStyle>
-      <IconStyle>
-        <scale>0.6</scale>
-        <Icon>
-          <href>redball.png</href>
-        </Icon>
-      </IconStyle>
-    </Style>
-    <Style id="traj2">
-      <LineStyle>
-        <color>ffff0000</color>
-        <width>4</width>
-      </LineStyle>
-      <PolyStyle>
-        <color>7fff0000</color>
-      </PolyStyle>
-      <IconStyle>
-        <scale>0.6</scale>
-        <Icon>
-          <href>blueball.png</href>
-        </Icon>
-      </IconStyle>
-    </Style>
-    <Style id="traj2a">
-      <LineStyle>
-        <color>ffff0000</color>
-        <width>1.25</width>
-      </LineStyle>
-      <PolyStyle>
-        <color>7fff0000</color>
-      </PolyStyle>
-      <IconStyle>
-        <scale>0.6</scale>
-        <Icon>
-          <href>blueball.png</href>
-        </Icon>
-      </IconStyle>
-    </Style>
-    <Style id="traj3">
-      <LineStyle>
-        <color>ff00ff00</color>
-        <width>4</width>
-      </LineStyle>
-      <PolyStyle>
-        <color>7f00ff00</color>
-      </PolyStyle>
-      <IconStyle>
-        <scale>0.6</scale>
-        <Icon>
-          <href>greenball.png</href>
-        </Icon>
-      </IconStyle>
-    </Style>
-    <Style id="traj3a">
-      <LineStyle>
-        <color>ff00ff00</color>
-        <width>1.25</width>
-      </LineStyle>
-      <PolyStyle>
-        <color>7f00ff00</color>
-      </PolyStyle>
-      <IconStyle>
-        <scale>0.6</scale>
-        <Icon>
-          <href>greenball.png</href>
-        </Icon>
-      </IconStyle>
-    </Style>\n""".format(
-            self.output_suffix,
-            starting_loc[0],
-            starting_loc[1],
-            0,
-            timestamp_str,
-            "relativeToSeaFloor"))
+        ET.SubElement(doc, 'name').text = f'NOAA HYSPLIT Trajectory {self.output_suffix}'
+        ET.SubElement(doc, 'open').text = '1'
+        lookAt = ET.SubElement(doc, 'LookAt')
+        ET.SubElement(lookAt, 'longitude').text = f'{starting_loc[0]:.4f}'
+        ET.SubElement(lookAt, 'latitude').text = f'{starting_loc[1]:.4f}'
+        ET.SubElement(lookAt, 'altitude').text = '0'
+        ET.SubElement(lookAt, 'tilt').text = '0'
+        ET.SubElement(lookAt, 'range').text = '13700'
+        timestamp = ET.SubElement(lookAt, 'gx:TimeStamp')
+        ET.SubElement(timestamp, 'when').text = timestamp_str
+        ET.SubElement(lookAt, 'gx:altitudeMode').text = 'relativeToSeaFloor'
+        
+        styles = [
+            {'id': 'traj1', 'linecolor': 'ff0000ff', 'linewidth':'4',
+             'polycolor': '7f0000ff', 'iconhref':'redball.png'},
+            {'id': 'traj1a', 'linecolor': 'ff0000ff', 'linewidth':'1.25',
+             'polycolor': '7f0000ff', 'iconhref':'redball.png'},
+            {'id': 'traj2', 'linecolor': 'ffff0000', 'linewidth':'4',
+             'polycolor': '7fff0000', 'iconhref':'blueball.png'},
+            {'id': 'traj2a', 'linecolor': 'ffff0000', 'linewidth':'1.25',
+             'polycolor': '7fff0000', 'iconhref':'blueball.png'},
+            {'id': 'traj3', 'linecolor': 'ff00ff00', 'linewidth':'4',
+             'polycolor': '7f00ff00', 'iconhref':'greenball.png'},
+            {'id': 'traj3a', 'linecolor': 'ff00ff00', 'linewidth':'1.25',
+             'polycolor': '7f00ff00', 'iconhref':'greenball.png'}
+        ]
+        for s in styles:
+            style = ET.SubElement(doc, 'Style', attrib={'id': s['id']})
+            linestyle = ET.SubElement(style, 'LineStyle')
+            ET.SubElement(linestyle, 'color').text = s['linecolor']
+            ET.SubElement(linestyle, 'width').text = s['linewidth']
+            polystyle = ET.SubElement(style, 'PolyStyle')
+            ET.SubElement(polystyle, 'color').text = s['polycolor']
+            iconstyle = ET.SubElement(style, 'IconStyle')
+            ET.SubElement(iconstyle, 'scale').text = '0.6'
+            icon = ET.SubElement(iconstyle, 'Icon')
+            ET.SubElement(icon, 'href').text = s['iconhref']
 
-    def _write_postamble(self, f):
-        f.write("""\
-  </Document>
-</kml>\n""")
+    def _write_postamble(self, doc):
+        pass
 
-    def _write_overlay(self, f):
-        f.write("""\
-    <ScreenOverlay>
-      <name>HYSPLIT Information</name>
-      <description>NOAA ARL HYSPLIT Model  http://www.arl.noaa.gov/HYSPLIT_info.php</description>
-      <Icon>
-        <href>logocon.gif</href>
-      </Icon>
-      <overlayXY x="1" y="1" xunits="fraction" yunits="fraction"/>
-      <screenXY x="1" y="1" xunits="fraction" yunits="fraction"/>
-      <rotationXY x="0" y="0" xunits="fraction" yunits="fraction"/>
-      <size x="0" y="0" xunits="pixels" yunits="pixels"/>
-    </ScreenOverlay>
-    <ScreenOverlay>
-      <name>NOAA</name>
-      <Snippet maxLines="0"></Snippet>
-      <description>National Oceanic and Atmospheric Administration  http://www.noaa.gov</description>
-      <Icon>
-        <href>noaa_google.gif</href>
-      </Icon>
-      <overlayXY x="0" y="1" xunits="fraction" yunits="fraction"/>
-      <screenXY x="0" y="1" xunits="fraction" yunits="fraction"/>
-      <rotationXY x="0" y="0" xunits="fraction" yunits="fraction"/>
-      <size x="0" y="0" xunits="pixels" yunits="pixels"/>
-    </ScreenOverlay>\n""")
+    def _write_overlay(self, doc):
+        screenoverlay = ET.SubElement(doc, 'ScreenOverlay')
+        ET.SubElement(screenoverlay, 'name').text = 'HYSPLIT Information'
+        ET.SubElement(screenoverlay, 'description').text = 'NOAA ARL HYSPLIT Model  http://www.arl.noaa.gov/HYSPLIT_info.php'
+        icon = ET.SubElement(screenoverlay, 'Icon')
+        ET.SubElement(icon, 'href').text = 'logocon.gif'
+        ET.SubElement(screenoverlay, 'overlayXY',
+                      attrib={'x': '1', 'y': '1',
+                              'xunits': 'fraction', 'yunits': 'fraction'})
+        ET.SubElement(screenoverlay, 'screenXY',
+                      attrib={'x': '1', 'y': '1',
+                              'xunits': 'fraction', 'yunits': 'fraction'})
+        ET.SubElement(screenoverlay, 'rotationXY',
+                      attrib={'x': '0', 'y': '0',
+                              'xunits': 'fraction', 'yunits': 'fraction'})
+        ET.SubElement(screenoverlay, 'size',
+                      attrib={'x': '0', 'y': '0',
+                              'xunits': 'pixels', 'yunits': 'pixels'})
+
+        screenoverlay = ET.SubElement(doc, 'ScreenOverlay')
+        ET.SubElement(screenoverlay, 'name').text = 'NOAA'
+        ET.SubElement(screenoverlay, 'Snippet', attrib={'maxLines': '0'})
+        ET.SubElement(screenoverlay, 'description').text = 'National Oceanic and Atmospheric Administration  http://www.noaa.gov'
+        icon = ET.SubElement(screenoverlay, 'Icon')
+        ET.SubElement(icon, 'href').text = 'noaa_google.gif'
+        ET.SubElement(screenoverlay, 'overlayXY',
+                      attrib={'x': '0', 'y': '1',
+                              'xunits': 'fraction', 'yunits': 'fraction'})
+        ET.SubElement(screenoverlay, 'screenXY',
+                      attrib={'x': '0', 'y': '1',
+                              'xunits': 'fraction', 'yunits': 'fraction'})
+        ET.SubElement(screenoverlay, 'rotationXY',
+                      attrib={'x': '0', 'y': '0',
+                              'xunits': 'fraction', 'yunits': 'fraction'})
+        ET.SubElement(screenoverlay, 'size',
+                      attrib={'x': '0', 'y': '0',
+                              'xunits': 'pixels', 'yunits': 'pixels'})
 
         # add a link to NOAA NWS kml weather data overlays
-        f.write("""\
-    <Folder>
-      <name>NOAA NWS kml Weather Data</name>
-      <visibility>0</visibility>
-      <description>http://weather.gov/gis/  Click on the link to access weather related overlays from the National Weather Service.</description>
-    </Folder>\n""")
+        folder = ET.SubElement(doc, 'Folder')
+        ET.SubElement(folder, 'name').text = 'NOAA NWS kml Weather Data'
+        ET.SubElement(folder, 'visibility').text = '0'
+        ET.SubElement(folder, 'description').text = 'http://weather.gov/gis/  Click on the link to access weather related overlays from the National Weather Service.'
 
         # add a link to NOAA NESDIS kml smoke/fire data overlays
-        f.write("""\
-    <Folder>
-      <name>NOAA NESDIS kml Smoke/Fire Data</name>
-      <visibility>0</visibility>
-      <description>http://www.ssd.noaa.gov/PS/FIRE/hms.html  Click on the link to access wildfire smoke overlays from NOAA NESDIS.</description>
-    </Folder>\n""")
+        folder = ET.SubElement(doc, 'Folder')
+        ET.SubElement(folder, 'name').text = 'NOAA NESDIS kml Smoke/Fire Data'
+        ET.SubElement(folder, 'visibility').text = '0'
+        ET.SubElement(folder, 'description').text = 'http://www.ssd.noaa.gov/PS/FIRE/hms.html  Click on the link to access wildfire smoke overlays from NOAA NESDIS.'
 
         # add a link to EPA AIRnow kml Air Quality Index (AQI)
-        f.write("""\
-    <Folder>
-      <name>EPA AIRNow Air Quality Index (AQI)</name>
-      <visibility>0</visibility>
-      <description>http://www.epa.gov/airnow/today/airnow.kml  Click on the link to access AQI data from EPA. The results will appear in the list below.</description>
-    </Folder>\n""")
+        folder = ET.SubElement(doc, 'Folder')
+        ET.SubElement(folder, 'name').text = 'EPA AIRNow Air Quality Index (AQI)'
+        ET.SubElement(folder, 'visibility').text = '0'
+        ET.SubElement(folder, 'description').text = 'http://www.epa.gov/airnow/today/airnow.kml  Click on the link to access AQI data from EPA. The results will appear in the list below.'
 
-    def _write_trajectory(self, f, t, t_index):
+    def _write_trajectory(self, doc, t, t_index):
         vc = model.VerticalCoordinateFactory.create_instance(
             VerticalCoordinate.ABOVE_GROUND_LEVEL, self.height_unit, t)
         vc.make_vertical_coordinates()
@@ -414,250 +368,158 @@ class KMLWriter(AbstractGISFileWriter):
             logger.info("skip writing an empty trajectory")
             return
 
-        f.write("""\
-    <Folder>
-      <name>{0:.1f} {1} Trajectory</name>
-      <open>1</open>
-      <Placemark>
-        <LookAt>
-          <longitude>{2:.4f}</longitude>
-          <latitude>{3:.4f}</latitude>\n""".format(
-            t.starting_level,
-            self._get_level_type(t),
-            t.starting_loc[0],
-            t.starting_loc[1]))
+        folder = ET.SubElement(doc, 'Folder')
+        ET.SubElement(folder, 'name').text = f'{t.starting_level:.1f} {self._get_level_type(t)} Trajectory'
+        ET.SubElement(folder, 'open').text = '1'
+        
+        placemark = ET.SubElement(folder, 'Placemark')
+        lookAt = ET.SubElement(placemark, 'LookAt')
+        ET.SubElement(lookAt, 'longitude').text = f'{t.starting_loc[0]:.4f}'
+        ET.SubElement(lookAt, 'latitude').text = f'{t.starting_loc[1]:.4f}'
+        ET.SubElement(lookAt, 'range').text = '2000000.0'
+        ET.SubElement(lookAt, 'tilt').text = '0.0'
+        ET.SubElement(lookAt, 'heading').text = '0.0'
+        timestamp = ET.SubElement(lookAt, 'gx:TimeStamp')
+        ET.SubElement(timestamp, 'when').text = util.get_iso_8601_str(t.starting_datetime,
+                                                                      self.time_zone)
+        ET.SubElement(lookAt, 'gx:altitudeMode').text = 'relativeToSeaFloor'
 
-        timestamp_str = util.get_iso_8601_str(t.starting_datetime,
-                                              self.time_zone)
-
-        f.write("""\
-          <range>2000000.0</range>
-          <tilt>0.0</tilt>
-          <heading>0.0</heading>
-          <gx:TimeStamp>
-            <when>{0}</when>
-          </gx:TimeStamp>
-          <gx:altitudeMode>{1}</gx:altitudeMode>
-        </LookAt>\n""".format(
-            timestamp_str,
-            "relativeToSeaFloor"))
-
-        f.write("""\
-        <name>{0:.1f} {1} Trajectory</name>
-        <styleUrl>#traj{2:1d}</styleUrl>
-        <LineString>
-          <extrude>1</extrude>
-          <altitudeMode>{3}</altitudeMode>
-          <coordinates>\n""".format(
-            t.starting_level,
-            self._get_level_type(t),
-            (t_index % 3) + 1,
-            self._get_alt_mode(t)))
-
+        ET.SubElement(placemark, 'name').text = f'{t.starting_level:.1f} {self._get_level_type(t)} Trajectory'
+        ET.SubElement(placemark, 'styleUrl').text = f'#traj{(t_index % 3) + 1:1d}'
+        lineString = ET.SubElement(placemark, 'LineString')
+        ET.SubElement(lineString, 'extrude').text = '1'
+        ET.SubElement(lineString, 'altitudeMode').text = self._get_alt_mode(t)
+        
+        buffer = '\n'
         for k in range(len(t.longitudes)):
-            f.write("""\
-            {0:.4f},{1:.4f},{2:.1f}\n""".format(
-                t.longitudes[k],
-                t.latitudes[k],
-                vc.values[k]))
-
+            buffer += f'{t.longitudes[k]:.4f},{t.latitudes[k]:.4f},{vc.values[k]:.1f}\n'
+        ET.SubElement(lineString, 'coordinates').text = buffer
+        
         starttime_str = self._get_timestamp_str(t.starting_datetime,
                                                 self.time_zone)
 
-        f.write("""\
-          </coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <visibility>0</visibility>
-        <name></name>
-        <visibility>1</visibility>
-        <description><![CDATA[<pre>Start Time
+        placemark = ET.SubElement(folder, 'Placemark')
+        ET.SubElement(placemark, 'name').text = ''
+        ET.SubElement(placemark, 'visibility').text = '1'
+        ET.SubElement(placemark, 'description').text = """\
+<![CDATA[<pre>Start Time
 {0}
 LAT: {1:.4f} LON: {2:.4f} Hght({3}): {4:.1f}
-</pre>]]></description>
-        <styleUrl>#traj{5:1d}</styleUrl>
-        <Point>
-          <altitudeMode>{6}</altitudeMode>
-          <coordinates>{7:.4f},{8:.4f},{9:.1f}</coordinates>
-        </Point>
-      </Placemark>\n""".format(
-            starttime_str,
-            t.starting_loc[1],
-            t.starting_loc[0],
-            self._get_level_type(t),
-            t.starting_level,
-            (t_index % 3) + 1,
-            self._get_alt_mode(t),
-            t.starting_loc[0],
-            t.starting_loc[1],
-            t.starting_level))
+</pre>]]>""".format(starttime_str,
+                    t.starting_loc[1],
+                    t.starting_loc[0],
+                    self._get_level_type(t),
+                    t.starting_level)
+        ET.SubElement(placemark, 'styleUrl').text = f'#traj{(t_index % 3) + 1:1d}'
+        point = ET.SubElement(placemark, 'Point')
+        ET.SubElement(point, 'altitudeMode').text = self._get_alt_mode(t)
+        ET.SubElement(point, 'coordinates').text = f'{t.starting_loc[0]:.4f},{t.starting_loc[1]:.4f},{t.starting_level:.1f}'
 
         if t.has_trajectory_stddevs():
-            self._write_ellipses_of_uncertainty(f, t, t_index, vc)
+            self._write_ellipses_of_uncertainty(folder, t, t_index, vc)
 
         if self.kml_option != const.KMLOption.NO_ENDPOINTS \
                 and self.kml_option != const.KMLOption.BOTH_1_AND_2:
-            self._write_endpts(f, t, t_index, vc)
+            self._write_endpts(folder, t, t_index, vc)
 
-        f.write("""\
-    </Folder>\n""")
-
-    def _write_ellipses_of_uncertainty(self, f, t, t_index, vc):
+    def _write_ellipses_of_uncertainty(self, doc, t, t_index, vc):
         is_backward = False if t.parent.is_forward_calculation() else True
         npts_ellipse = 64
         delta_theta = 2*math.pi / npts_ellipse
 
-        f.write("""\
-      <Folder>
-        <name>Ellipses of uncertainty for center-of-mass trajectory</name>
-        <visibility>0</visibility>\n""")
-
+        folder = ET.SubElement(doc, 'Folder')
+        ET.SubElement(folder, 'name').text = 'Ellipses of uncertainty for center-of-mass trajectory'
+        ET.SubElement(folder, 'visibility').text = '0'
         for k in range(len(t.longitudes)):
             if k == 0:
                 continue
 
-            f.write("""\
-        <Placemark>
-          <name>{0}</name>
-          <visibility>1</visibility>
-          <LookAt>
-            <longitude>{1:.4f}</longitude>
-            <latitude>{2:.4f}</latitude>
-            <range>20000.0</range>
-            <tilt>60.0</tilt>
-            <heading>0.0</heading>
-          </LookAt>
-          <Snippet maxLines="0"/>
-          <TimeSpan>\n""".format(
-                self._get_timestamp_str(t.datetimes[k], self.time_zone),
-                t.longitudes[k],
-                t.latitudes[k]))
-
+            placemark = ET.SubElement(folder, 'Placemark')
+            ET.SubElement(folder, 'name').text = self._get_timestamp_str(t.datetimes[k], self.time_zone)
+            ET.SubElement(folder, 'visibility').text = '1'
+            lookAt = ET.SubElement(placemark, 'LookAt')
+            ET.SubElement(lookAt, 'longitude').text = f'{t.longitudes[k]:.4f}'
+            ET.SubElement(lookAt, 'latitude').text = f'{t.latitudes[k]:.4f}'
+            ET.SubElement(lookAt, 'range').text = '20000.0'
+            ET.SubElement(lookAt, 'tilt').text = '60.0'
+            ET.SubElement(lookAt, 'heading').text = '0.0'
+            ET.SubElement(placemark, 'Snippet', attrib={'maxLines': '0'})
+            timeSpan = ET.SubElement(placemark, 'TimeSpan')
             # Use the entire time period so that the ellipse would be
             # initially visible with Google Earth.
             if is_backward:
-                f.write("""\
-            <end>{0}</end>
-            <begin>{1}</begin>\n""".format(
-                    util.get_iso_8601_str(t.datetimes[-1], self.time_zone),
-                    util.get_iso_8601_str(t.datetimes[0], self.time_zone)))
+                ET.SubElement(timeSpan, 'end').text = util.get_iso_8601_str(t.datetimes[-1], self.time_zone)
+                ET.SubElement(timeSpan, 'begin').text = util.get_iso_8601_str(t.datetimes[0], self.time_zone)
             else:
-                f.write("""\
-            <begin>{0}</begin>
-            <end>{1}</end>\n""".format(
-                    util.get_iso_8601_str(t.datetimes[0], self.time_zone),
-                    util.get_iso_8601_str(t.datetimes[-1], self.time_zone)))
-
-            f.write("""\
-          </TimeSpan>
-          <description><![CDATA[<pre>HYSPLIT {0:4.0f}. hour ellipse of uncertainty
+                ET.SubElement(timeSpan, 'begin').text = util.get_iso_8601_str(t.datetimes[0], self.time_zone)
+                ET.SubElement(timeSpan, 'end').text = util.get_iso_8601_str(t.datetimes[-1], self.time_zone)
+            ET.SubElement(placemark, 'description').text = """\
+<![CDATA[<pre>HYSPLIT {0:4.0f}. hour ellipse of uncertainty
 
 {1}
 LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
-</pre>]]></description>
-          <styleUrl>#traj{6:1d}a</styleUrl>
-          <LineString>
-            <extrude>1</extrude>
-            <altitudeMode>{7}</altitudeMode>
-            <coordinates>\n""".format(
-                t.ages[k],
-                self._get_timestamp_str(t.datetimes[k], self.time_zone),
-                t.latitudes[k],
-                t.longitudes[k],
-                self._get_level_type(t),
-                vc.values[k],
-                (t_index % 3) + 1,
-                self._get_alt_mode(t)))
-
+</pre>]]>""".format(t.ages[k],
+                    self._get_timestamp_str(t.datetimes[k], self.time_zone),
+                    t.latitudes[k],
+                    t.longitudes[k],
+                    self._get_level_type(t),
+                    vc.values[k])
+            ET.SubElement(placemark, 'styleUrl').text = f'#traj{(t_index % 3) + 1:1d}a'
+            lineString = ET.SubElement(placemark, 'LineString')
+            ET.SubElement(placemark, 'extrude').text = '1'
+            ET.SubElement(placemark, 'altitudeMode').text = self._get_alt_mode(t)
+            
+            buffer = '\n'
             slon, slat = t.trajectory_stddevs[k]
             for j in range(npts_ellipse + 1):
                 theta = j * delta_theta if j < npts_ellipse else 0
                 y = t.latitudes[k] + slat * math.sin(theta)
                 x = t.longitudes[k] + slon * math.cos(theta)
-                f.write("""\
-              {0:.4f},{1:.4f},{2:.1f}\n""".format(
-                    x,
-                    y,
-                    vc.values[k]))
+                buffer += f'{x:.4f},{y:.4f},{vc.values[k]:.1f}\n'
+            ET.SubElement(lineString, 'coordinates').text = buffer
 
-            f.write("""\
-            </coordinates>
-          </LineString>
-        </Placemark>\n""")
-
-        f.write("""\
-      </Folder>\n""")
-
-    def _write_endpts(self, f, t, t_index, vc):
+    def _write_endpts(self, doc, t, t_index, vc):
         is_backward = False if t.parent.is_forward_calculation() else True
 
-        f.write("""\
-      <Folder>
-        <name>Trajectory Endpoints</name>
-        <visibility>0</visibility>\n""")
+        folder = ET.SubElement(doc, 'Folder')
+        ET.SubElement(folder, 'name').text = 'Trajectory Endpoints'
+        ET.SubElement(folder, 'visibility').text = '0'
 
         for k in range(len(t.longitudes)):
             if k == 0:
                 continue
-
-            f.write("""\
-        <Placemark>
-          <name>{0}</name>
-          <visibility>1</visibility>
-          <LookAt>
-            <longitude>{1:.4f}</longitude>
-            <latitude>{2:.4f}</latitude>
-            <range>20000.0</range>
-            <tilt>60.0</tilt>
-            <heading>0.0</heading>
-          </LookAt>
-          <Snippet maxLines="0"/>
-          <TimeSpan>\n""".format(
-                self._get_timestamp_str(t.datetimes[k], self.time_zone),
-                t.longitudes[k],
-                t.latitudes[k]))
-
+            placemark = ET.SubElement(folder, 'Placemark')
+            ET.SubElement(placemark, 'name').text = self._get_timestamp_str(t.datetimes[k], self.time_zone)
+            ET.SubElement(placemark, 'visibility').text = '1'
+            lookAt = ET.SubElement(placemark, 'LookAt')
+            ET.SubElement(lookAt, 'longitude').text = f'{t.longitudes[k]:.4f}'
+            ET.SubElement(lookAt, 'latitude').text = f'{t.latitudes[k]:.4f}'
+            ET.SubElement(lookAt, 'range').text = '20000.0'
+            ET.SubElement(lookAt, 'tilt').text = '60.0'
+            ET.SubElement(lookAt, 'heading').text = '0.0'
+            ET.SubElement(placemark, 'Snippet', attrib={'maxLines': '0'})
+            timeSpan = ET.SubElement(placemark, 'TimeSpan')
             if is_backward:
-                f.write("""\
-            <end>{0}</end>
-            <begin>{1}</begin>\n""".format(
-                    util.get_iso_8601_str(t.datetimes[k-1], self.time_zone),
-                    util.get_iso_8601_str(t.datetimes[k], self.time_zone)))
+                ET.SubElement(timeSpan, 'end').text = util.get_iso_8601_str(t.datetimes[k-1], self.time_zone)
+                ET.SubElement(timeSpan, 'begin').text = util.get_iso_8601_str(t.datetimes[k], self.time_zone)
             else:
-                f.write("""\
-            <begin>{0}</begin>
-            <end>{1}</end>\n""".format(
-                    util.get_iso_8601_str(t.datetimes[k-1], self.time_zone),
-                    util.get_iso_8601_str(t.datetimes[k], self.time_zone)))
-
-            f.write("""\
-          </TimeSpan>
-          <description><![CDATA[<pre>HYSPLIT {0:4.0f}. hour endpoint
+                ET.SubElement(timeSpan, 'begin').text = util.get_iso_8601_str(t.datetimes[k-1], self.time_zone)
+                ET.SubElement(timeSpan, 'end').text = util.get_iso_8601_str(t.datetimes[k], self.time_zone)
+            ET.SubElement(placemark, 'description').text = """\
+<![CDATA[<pre>HYSPLIT {0:4.0f}. hour endpoint
 
 {1}
 LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
-</pre>]]></description>
-          <styleUrl>#traj{6:1d}</styleUrl>
-          <Point>
-            <altitudeMode>{7}</altitudeMode>
-            <coordinates>{8:.4f},{9:.4f},{10:.1f}</coordinates>
-          </Point>
-        </Placemark>\n""".format(
-                t.ages[k],
-                self._get_timestamp_str(t.datetimes[k], self.time_zone),
-                t.latitudes[k],
-                t.longitudes[k],
-                self._get_level_type(t),
-                vc.values[k],
-                (t_index % 3) + 1,
-                self._get_alt_mode(t),
-                t.longitudes[k],
-                t.latitudes[k],
-                vc.values[k]))
-
-        f.write("""\
-      </Folder>\n""")
+</pre>]]>""".format(t.ages[k],
+                    self._get_timestamp_str(t.datetimes[k], self.time_zone),
+                    t.latitudes[k],
+                    t.longitudes[k],
+                    self._get_level_type(t),
+                    vc.values[k])
+            ET.SubElement(placemark, 'styleUrl').text = f'#traj{(t_index % 3) + 1:1d}'
+            point = ET.SubElement(placemark, 'Point')
+            ET.SubElement(point, 'altitudeMode').text = self._get_alt_mode(t)
+            ET.SubElement(point, 'coordinates').text = f'{t.longitudes[k]:.4f},{t.latitudes[k]:.4f},{vc.values[k]:.1f}'
 
 
 class PartialKMLWriter(KMLWriter):
@@ -679,11 +541,32 @@ class PartialKMLWriter(KMLWriter):
             return "{0}_{1:02d}.txt".format(name, file_no)
 
     def write(self, file_no, plot_data):
-        file_name = self.make_filename(self.output_name,
-                                       self.output_suffix,
-                                       file_no)
+        if self.xml_root is None:
+            self.kml_filename = self.make_filename(self.output_name,
+                                                   self.output_suffix,
+                                                   file_no)
+ 
+            self.xml_root = ET.Element('kml',
+                    attrib={'xmlns':'http://www.opengis.net/kml/2.2',
+                            'xmlns:gx':'http://www.google.com/kml/ext/2.2'})
+            doc = ET.SubElement(self.xml_root, 'Document')
+        else:
+            doc = self.xml_root.find("Document")
 
-        logger.info("Creating file %s", file_name)
-        with open(file_name, "wt") as f:
-            for t_idx, t in enumerate(plot_data.trajectories):
-                self._write_trajectory(f, t, t_idx)
+        for t_idx, t in enumerate(plot_data.trajectories):
+            self._write_trajectory(doc, t, t_idx)
+
+        if self.create_kml_per_write:
+            self.finalize()
+
+    def finalize(self):
+        if self.kml_filename is not None and self.xml_root is not None:
+            folder = self.xml_root.find('Document/Folder')
+            tree = ET.ElementTree(folder)
+
+            logger.info("Creating file %s", self.kml_filename)
+            tree.write(self.kml_filename, encoding='UTF-8',
+                       xml_declaration=False,
+                       short_empty_elements=False)
+
+        self.xml_root = None

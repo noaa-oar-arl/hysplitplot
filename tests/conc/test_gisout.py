@@ -558,6 +558,8 @@ def test_KMLWriter_finalize():
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
 
+    assert o.xml_root is None
+
 
 def test_KMLWriter__get_att_datetime_str():
     s = plot.ConcentrationPlotSettings()
@@ -779,6 +781,8 @@ def test_PartialKMLWriter_finalize():
         o.finalize()
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
+
+    assert o.xml_root is None
 
 
 def test_PartialKMLWriter__write_attributes(cdump_two_pollutants):

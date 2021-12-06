@@ -234,6 +234,9 @@ def test_KMLWriter___init__():
         w = gisout.KMLWriter()
         assert w.height_unit == HeightUnit.METERS
         assert w.time_zone is None
+        assert w.create_kml_per_write is True
+        assert w.xml_root is None
+        assert w.kml_filename is None
         
         w = gisout.KMLWriter(HeightUnit.FEET)
         assert w.height_unit == HeightUnit.FEET
@@ -326,13 +329,36 @@ def test_KMLWriter_write(plotData):
     except Exception as ex:
         pytest.fail("unexpected exception: {0}".format(ex))
 
+
+def test_KMLWriter_finalize(plotData):
+    w = gisout.KMLWriter()
+
+    w.create_kml_per_write = False  # write() should not call finalize().
+    w.kml_option = const.KMLOption.NONE
+    w.write(1, plotData)
+
+    # The KML file should not be created yet.
+    assert w.xml_root is not None
+    assert os.path.exists("HYSPLITtraj_ps_01.kml") is False
+
+    try:
+        w.finalize()
+        os.remove("HYSPLITtraj_ps_01.kml")
+    except Exception as ex:
+        pytest.fail("unexpected exception: {0}".format(ex))
+
+    assert w.xml_root is None
+
     
 def test_PartialKMLWriter___init__():
     try:
         w = gisout.PartialKMLWriter()
         assert w.height_unit == HeightUnit.METERS
         assert w.time_zone is None
-        
+        assert w.create_kml_per_write is True
+        assert w.xml_root is None
+        assert w.kml_filename is None
+
         w = gisout.PartialKMLWriter(HeightUnit.FEET)
         assert w.height_unit == HeightUnit.FEET
         assert w.time_zone is None
@@ -387,3 +413,24 @@ def test_PartialKMLWriter_write(plotData):
         os.remove("HYSPLITtraj_ps_01.txt")
     except Exception as ex:
         pytest.fail("unexpected exception: {0}".format(ex))
+
+
+def test_PartialKMLWriter_finalize(plotData):
+    w = gisout.PartialKMLWriter()
+
+    w.create_kml_per_write = False  # write() should not call finalize().
+    w.kml_option = const.KMLOption.NONE
+    w.write(1, plotData)
+
+    # The KML file should not be created yet.
+    assert w.xml_root is not None
+    assert os.path.exists("HYSPLITtraj_ps_01.txt") is False
+
+    try:
+        w.finalize()
+        os.remove("HYSPLITtraj_ps_01.txt")
+    except Exception as ex:
+        pytest.fail("unexpected exception: {0}".format(ex))
+
+    assert w.xml_root is None
+

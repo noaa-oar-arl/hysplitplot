@@ -345,6 +345,8 @@ class KMLWriter(AbstractWriter):
         if self.att_file is not None:
             self.att_file.close()
 
+        self.xml_root = None
+
     def _get_att_datetime_str(self, dt):
         t = dt if self.time_zone is None else dt.astimezone(self.time_zone)
         return t.strftime("%H%M %Z %b %d %Y&")
@@ -588,6 +590,7 @@ class PartialKMLWriter(KMLWriter):
                        xml_declaration=False,
                        short_empty_elements=False)
 
+        self.xml_root = None
         if self.att_file is not None:
             self.att_file.close()
 
