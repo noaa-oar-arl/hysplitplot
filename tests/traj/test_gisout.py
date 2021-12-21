@@ -11,6 +11,7 @@ import numpy
 import os
 import pytest
 import pytz
+import xml.etree.ElementTree as ET
 
 from hysplitdata.const import HeightUnit
 from hysplitdata.traj import model
@@ -100,12 +101,50 @@ def test_GISFileWriterFactory_create_instance__without_time_zone():
     assert w.time_zone is None
 
 
+def test_IndexBasedTrajectoryStyle___init__():
+    o = gisout.IndexBasedTrajectoryStyle()
+    assert o is not None
+
+
+def test_IndexBasedTrajectoryStyle_write_styles():
+    o = gisout.IndexBasedTrajectoryStyle()
+    xml_root = ET.Element('kml',
+                          attrib={'xmlns':'http://www.opengis.net/kml/2.2',
+                                  'xmlns:gx':'http://www.google.com/kml/ext/2.2'})
+    doc = ET.SubElement(xml_root, 'Document')
+    #
+    o.write_styles(doc)
+    #
+    styles = doc.findall('Style')
+    assert len(styles) == 6
+
+
+def test_IndexBasedTrajectoryStyle_get_id():
+    # mock a trajectory object
+    from unittest.mock import Mock
+    Foo = type("Foo", (object, ), {})
+    t = Foo()
+
+    o = gisout.IndexBasedTrajectoryStyle()
+
+    assert o.get_id(t, 0) == '#traj1'
+    assert o.get_id(t, 1) == '#traj2'
+    assert o.get_id(t, 2) == '#traj3'
+    assert o.get_id(t, 3) == '#traj1'
+
+    assert o.get_id(t, 0, thinner=True) == '#traj1a'
+    assert o.get_id(t, 1, thinner=True) == '#traj2a'
+    assert o.get_id(t, 2, thinner=True) == '#traj3a'
+    assert o.get_id(t, 3, thinner=True) == '#traj1a'
+
+
 def test_AbstractGISFileWriter___init__():
     w = AbstractGISFileWriterTest()
     
     assert w.output_suffix == "ps"
     assert w.output_name == "trajplot.ps"
     assert w.kml_option == const.KMLOption.NONE
+    assert w.kml_trajectory_style is not None
     assert w.time_zone is None
 
     tz = pytz.utc

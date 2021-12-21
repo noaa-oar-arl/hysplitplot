@@ -37,12 +37,66 @@ class GISFileWriterFactory:
         return NullGISFileWriter(time_zone)
 
 
+class AbstractTrajectoryStyle(ABC):
+
+    @abstractmethod
+    def write_styles(self, doc: ET.SubElement) -> None:
+        pass
+
+    @abstractmethod
+    def get_id(self, t: model.Trajectory, t_index: int, thinner: bool = False) -> str:
+        return None
+
+
+class IndexBasedTrajectoryStyle(AbstractTrajectoryStyle):
+
+    def __init__(self):
+        super(IndexBasedTrajectoryStyle, self).__init__()
+
+    def write_styles(self, doc: ET.SubElement) -> None:
+        styles = [
+            {'id': 'traj1', 'linecolor': 'ff0000ff', 'linewidth':'4',
+             'polycolor': '7f0000ff', 'iconhref':'redball.png'},
+            {'id': 'traj1a', 'linecolor': 'ff0000ff', 'linewidth':'1.25',
+             'polycolor': '7f0000ff', 'iconhref':'redball.png'},
+            {'id': 'traj2', 'linecolor': 'ffff0000', 'linewidth':'4',
+             'polycolor': '7fff0000', 'iconhref':'blueball.png'},
+            {'id': 'traj2a', 'linecolor': 'ffff0000', 'linewidth':'1.25',
+             'polycolor': '7fff0000', 'iconhref':'blueball.png'},
+            {'id': 'traj3', 'linecolor': 'ff00ff00', 'linewidth':'4',
+             'polycolor': '7f00ff00', 'iconhref':'greenball.png'},
+            {'id': 'traj3a', 'linecolor': 'ff00ff00', 'linewidth':'1.25',
+             'polycolor': '7f00ff00', 'iconhref':'greenball.png'}
+        ]
+        for s in styles:
+            style = ET.SubElement(doc, 'Style', attrib={'id': s['id']})
+            linestyle = ET.SubElement(style, 'LineStyle')
+            ET.SubElement(linestyle, 'color').text = s['linecolor']
+            ET.SubElement(linestyle, 'width').text = s['linewidth']
+            polystyle = ET.SubElement(style, 'PolyStyle')
+            ET.SubElement(polystyle, 'color').text = s['polycolor']
+            iconstyle = ET.SubElement(style, 'IconStyle')
+            ET.SubElement(iconstyle, 'scale').text = '0.6'
+            icon = ET.SubElement(iconstyle, 'Icon')
+            ET.SubElement(icon, 'href').text = s['iconhref']
+
+    def get_id(self, t: model.Trajectory, t_index: int, thinner: bool = False) -> str:
+        '''
+        Return a style ID based on the trajectory index.
+        '''
+        k = (t_index % 3) + 1  # only three colors are defined.
+        if thinner:
+            return f'#traj{k:1d}a'
+        return f'#traj{k:1d}'
+
+
 class AbstractGISFileWriter(ABC):
 
     def __init__(self, time_zone=None):
         self.output_suffix = "ps"           # for backward compatibility
         self.output_name = "trajplot.ps"    # for backward compatibility
         self.kml_option = const.KMLOption.NONE
+        self.kml_trajectory_style = IndexBasedTrajectoryStyle()
         self.time_zone = time_zone
 
     @abstractmethod
@@ -275,31 +329,7 @@ class KMLWriter(AbstractGISFileWriter):
         ET.SubElement(timestamp, 'when').text = timestamp_str
         ET.SubElement(lookAt, 'gx:altitudeMode').text = 'relativeToSeaFloor'
         
-        styles = [
-            {'id': 'traj1', 'linecolor': 'ff0000ff', 'linewidth':'4',
-             'polycolor': '7f0000ff', 'iconhref':'redball.png'},
-            {'id': 'traj1a', 'linecolor': 'ff0000ff', 'linewidth':'1.25',
-             'polycolor': '7f0000ff', 'iconhref':'redball.png'},
-            {'id': 'traj2', 'linecolor': 'ffff0000', 'linewidth':'4',
-             'polycolor': '7fff0000', 'iconhref':'blueball.png'},
-            {'id': 'traj2a', 'linecolor': 'ffff0000', 'linewidth':'1.25',
-             'polycolor': '7fff0000', 'iconhref':'blueball.png'},
-            {'id': 'traj3', 'linecolor': 'ff00ff00', 'linewidth':'4',
-             'polycolor': '7f00ff00', 'iconhref':'greenball.png'},
-            {'id': 'traj3a', 'linecolor': 'ff00ff00', 'linewidth':'1.25',
-             'polycolor': '7f00ff00', 'iconhref':'greenball.png'}
-        ]
-        for s in styles:
-            style = ET.SubElement(doc, 'Style', attrib={'id': s['id']})
-            linestyle = ET.SubElement(style, 'LineStyle')
-            ET.SubElement(linestyle, 'color').text = s['linecolor']
-            ET.SubElement(linestyle, 'width').text = s['linewidth']
-            polystyle = ET.SubElement(style, 'PolyStyle')
-            ET.SubElement(polystyle, 'color').text = s['polycolor']
-            iconstyle = ET.SubElement(style, 'IconStyle')
-            ET.SubElement(iconstyle, 'scale').text = '0.6'
-            icon = ET.SubElement(iconstyle, 'Icon')
-            ET.SubElement(icon, 'href').text = s['iconhref']
+        self.kml_trajectory_style.write_styles(doc)
 
     def _write_postamble(self, doc):
         pass
@@ -385,7 +415,7 @@ class KMLWriter(AbstractGISFileWriter):
         ET.SubElement(lookAt, 'gx:altitudeMode').text = 'relativeToSeaFloor'
 
         ET.SubElement(placemark, 'name').text = f'{t.starting_level:.1f} {self._get_level_type(t)} Trajectory'
-        ET.SubElement(placemark, 'styleUrl').text = f'#traj{(t_index % 3) + 1:1d}'
+        ET.SubElement(placemark, 'styleUrl').text = self.kml_trajectory_style.get_id(t, t_index)
         lineString = ET.SubElement(placemark, 'LineString')
         ET.SubElement(lineString, 'extrude').text = '1'
         ET.SubElement(lineString, 'altitudeMode').text = self._get_alt_mode(t)
@@ -410,7 +440,7 @@ LAT: {1:.4f} LON: {2:.4f} Hght({3}): {4:.1f}
                     t.starting_loc[0],
                     self._get_level_type(t),
                     t.starting_level)
-        ET.SubElement(placemark, 'styleUrl').text = f'#traj{(t_index % 3) + 1:1d}'
+        ET.SubElement(placemark, 'styleUrl').text = self.kml_trajectory_style.get_id(t, t_index)
         point = ET.SubElement(placemark, 'Point')
         ET.SubElement(point, 'altitudeMode').text = self._get_alt_mode(t)
         ET.SubElement(point, 'coordinates').text = f'{t.starting_loc[0]:.4f},{t.starting_loc[1]:.4f},{t.starting_level:.1f}'
@@ -464,7 +494,8 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
                     t.longitudes[k],
                     self._get_level_type(t),
                     vc.values[k])
-            ET.SubElement(placemark, 'styleUrl').text = f'#traj{(t_index % 3) + 1:1d}a'
+            ET.SubElement(placemark, 'styleUrl').text = \
+                    self.kml_trajectory_style.get_id(t, t_index, thinner=True)
             lineString = ET.SubElement(placemark, 'LineString')
             ET.SubElement(placemark, 'extrude').text = '1'
             ET.SubElement(placemark, 'altitudeMode').text = self._get_alt_mode(t)
@@ -516,7 +547,7 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
                     t.longitudes[k],
                     self._get_level_type(t),
                     vc.values[k])
-            ET.SubElement(placemark, 'styleUrl').text = f'#traj{(t_index % 3) + 1:1d}'
+            ET.SubElement(placemark, 'styleUrl').text = self.kml_trajectory_style.get_id(t, t_index)
             point = ET.SubElement(placemark, 'Point')
             ET.SubElement(point, 'altitudeMode').text = self._get_alt_mode(t)
             ET.SubElement(point, 'coordinates').text = f'{t.longitudes[k]:.4f},{t.latitudes[k]:.4f},{vc.values[k]:.1f}'
