@@ -44,6 +44,7 @@ def test_TextOutputForGridPlot_open():
     assert o.fp is not None
     assert os.path.exists(fn)
     
+    o.close()
     os.remove(fn)
 
 
