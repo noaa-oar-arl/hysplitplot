@@ -50,6 +50,7 @@ def sum_over_pollutants_per_level(grids, level_selector, pollutant_selector):
             g.repair_pollutant(pollutant_selector.index)
             for b in a[1:]:
                 g.conc += b.conc
+            g.nonzero_conc_count = numpy.count_nonzero(g.conc)
             if g.extension is not None:
                 # update the min and max concentration values
                 g.extension.update(g.conc)
