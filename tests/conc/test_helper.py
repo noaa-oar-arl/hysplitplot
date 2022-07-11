@@ -101,6 +101,8 @@ def test_sum_over_pollutants_per_level(cdump2):
     assert v_grids[0].extension.max_conc * 1.e+13 == pytest.approx(8.047535)
     assert v_grids[1].extension.min_conc * 1.e+13 == pytest.approx(0.009363178)
     assert v_grids[1].extension.max_conc * 1.e+13 == pytest.approx(7.963810)
+    assert v_grids[0].nonzero_conc_count == 854
+    assert v_grids[1].nonzero_conc_count == 1067
     
     # pollutant 1, all levels
     ls = helper.VerticalLevelSelector(0, 10000)
@@ -114,7 +116,9 @@ def test_sum_over_pollutants_per_level(cdump2):
     assert v_grids[0].extension.max_conc * 1.e+13 == pytest.approx(8.173024)
     assert v_grids[1].extension.min_conc * 1.e+13 == pytest.approx(0.00935228)
     assert v_grids[1].extension.max_conc * 1.e+13 == pytest.approx(7.608169)
-#        
+    assert v_grids[0].nonzero_conc_count == 920
+    assert v_grids[1].nonzero_conc_count == 1143
+
     # pollutant sums, all levels
     ls = helper.VerticalLevelSelector(0, 10000)
     ps = helper.PollutantSelector()
@@ -131,6 +135,8 @@ def test_sum_over_pollutants_per_level(cdump2):
     assert v_grids[0].extension.max_conc * 1.e+13 == pytest.approx(16.22056)
     assert v_grids[1].extension.min_conc * 1.e+13 == pytest.approx( 0.009353077)
     assert v_grids[1].extension.max_conc * 1.e+13 == pytest.approx(15.57198)
+    assert v_grids[0].nonzero_conc_count == 1082
+    assert v_grids[1].nonzero_conc_count == 1305
 
 
 def test_sum_conc_grids_of_interest(cdump2):

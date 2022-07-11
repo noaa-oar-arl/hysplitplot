@@ -819,6 +819,8 @@ class TrajectoryPlot(plotbase.AbstractPlot):
     
                 for k, plot_data in enumerate(self.data_list):
                     w.write(k + 1, plot_data)
+                
+                w.finalize()
 
     def _create_gis_writer_list(self, settings, time_zone):
         gis_writer_list = []
@@ -835,6 +837,11 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                     settings.height_unit,
                     time_zone)
             gis_writer_list.append(o)
+
+        # Create one kml file from two or more tdump files.
+        for o in gis_writer_list:
+            if hasattr(o, 'create_kml_per_write'):
+                o.create_kml_per_write = False
 
         return gis_writer_list
 
