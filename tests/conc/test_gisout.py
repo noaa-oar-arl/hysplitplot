@@ -432,6 +432,26 @@ def test_StringFormWriter_write_attributes(cdump_two_pollutants):
     os.remove("__stringFormWriter.txt")
 
 
+def test_FrameCounter___init__():
+    o = gisout.FrameCounter()
+    assert o.frame_count == 0
+
+
+def test_FrameCounter_get():
+    o = gisout.FrameCounter()
+    assert o.get() == 0
+
+
+def test_FrameCounter_increase():
+    o = gisout.FrameCounter()
+    
+    o.increase()
+    assert o.get() == 1
+    
+    o.increase(2)
+    assert o.get() == 3
+
+
 def test_KMLWriter___init__():
     kml_option = 1
     o = gisout.KMLWriter(kml_option)
@@ -441,6 +461,7 @@ def test_KMLWriter___init__():
     assert hasattr(o, 'contour_writer')
     assert hasattr(o, 'xml_root')
     assert hasattr(o, 'kml_filename')
+    assert hasattr(o, 'frame_counter')
 
     
     tz = pytz.timezone("America/New_York")
@@ -834,72 +855,92 @@ def test_PartialKMLWriter__write_attributes(cdump_two_pollutants):
    
 def test_KMLContourWriterFactory_create_instance():
     gis_alt_mode = 0
+    fc = gisout.FrameCounter()
     tz = pytz.timezone("America/New_York")
     
-    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.CONCENTRATION, gis_alt_mode, tz)
+    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.CONCENTRATION, gis_alt_mode, tz, fc)
     assert isinstance(w, gisout.KMLConcentrationWriter)
     assert w.time_zone is tz
+    assert w.frame_counter is fc
     
-    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.EXPOSURE, gis_alt_mode, tz)
+    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.EXPOSURE, gis_alt_mode, tz, fc)
     assert isinstance(w, gisout.KMLConcentrationWriter)
     assert w.time_zone is tz
+    assert w.frame_counter is fc
     
-    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.DEPOSITION, gis_alt_mode, tz)
+    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.DEPOSITION, gis_alt_mode, tz, fc)
     assert isinstance(w, gisout.KMLDepositionWriter)
     assert w.time_zone is tz
+    assert w.frame_counter is fc
     
-    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.THRESHOLD_LEVELS, gis_alt_mode, tz)
+    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.THRESHOLD_LEVELS, gis_alt_mode, tz, fc)
     assert isinstance(w, gisout.KMLChemicalThresholdWriter)
     assert w.time_zone is tz
+    assert w.frame_counter is fc
     
-    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.VOLCANIC_ERUPTION, gis_alt_mode, tz)
+    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.VOLCANIC_ERUPTION, gis_alt_mode, tz, fc)
     assert isinstance(w, gisout.KMLDepositionWriter)
     assert w.time_zone is tz
+    assert w.frame_counter is fc
     
-    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.DEPOSITION_6, gis_alt_mode, tz)
+    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.DEPOSITION_6, gis_alt_mode, tz, fc)
     assert isinstance(w, gisout.KMLDepositionWriter)
     assert w.time_zone is tz
+    assert w.frame_counter is fc
     
-    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.MASS_LOADING, gis_alt_mode, tz)
+    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.MASS_LOADING, gis_alt_mode, tz, fc)
     assert isinstance(w, gisout.KMLMassLoadingWriter)
     assert w.time_zone is tz
+    assert w.frame_counter is fc
     
-    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.TIME_OF_ARRIVAL, gis_alt_mode, tz)
+    w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.TIME_OF_ARRIVAL, gis_alt_mode, tz, fc)
     assert isinstance(w, gisout.KMLTimeOfArrivalWriter)
     assert w.time_zone is tz
+    assert w.frame_counter is fc
         
    
 def test_KMLContourWriterFactory_create_instance__without_time_zone():
+    """
+    Also without a FrameCounter object. In this case, a FrameCounter object will be automatically created.
+    """
     gis_alt_mode = 0
     
     w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.CONCENTRATION, gis_alt_mode)
     assert isinstance(w, gisout.KMLConcentrationWriter)
+    assert w.frame_counter is not None
     
     w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.EXPOSURE, gis_alt_mode)
     assert isinstance(w, gisout.KMLConcentrationWriter)
+    assert w.frame_counter is not None
     
     w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.DEPOSITION, gis_alt_mode)
     assert isinstance(w, gisout.KMLDepositionWriter)
+    assert w.frame_counter is not None
     
     w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.THRESHOLD_LEVELS, gis_alt_mode)
     assert isinstance(w, gisout.KMLChemicalThresholdWriter)
+    assert w.frame_counter is not None
     
     w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.VOLCANIC_ERUPTION, gis_alt_mode)
     assert isinstance(w, gisout.KMLDepositionWriter)
+    assert w.frame_counter is not None
     
     w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.DEPOSITION_6, gis_alt_mode)
     assert isinstance(w, gisout.KMLDepositionWriter)
+    assert w.frame_counter is not None
     
     w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.MASS_LOADING, gis_alt_mode)
     assert isinstance(w, gisout.KMLMassLoadingWriter)
+    assert w.frame_counter is not None
     
     w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.TIME_OF_ARRIVAL, gis_alt_mode)
     assert isinstance(w, gisout.KMLTimeOfArrivalWriter)
-        
+    assert w.frame_counter is not None
+    
     
 def test_AbstractKMLContourWriter___init__():
     o = AbstractKMLContourWriterTest("relativeToGround")
-    assert o.frame_count == 0
+    assert o.frame_counter is not None
     assert o.alt_mode_str == "relativeToGround"
     assert o.time_zone is None
     assert o.draw_max_conc_sqs == True
@@ -907,6 +948,11 @@ def test_AbstractKMLContourWriter___init__():
     tz = pytz.timezone("America/New_York")
     o = AbstractKMLContourWriterTest("relativeToGround", tz)
     assert o.time_zone is tz
+
+    # with a frame counter object passed
+    fc = gisout.FrameCounter()
+    o2 = AbstractKMLContourWriterTest("relativeToGround", frame_counter=fc)
+    assert o2.frame_counter is fc
 
 
 def test_AbstractKMLContourWriter_set_show_max_conc():
@@ -978,7 +1024,7 @@ def test_AbstractKMLContourWriter_write(cdump_two_pollutants):
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
 
-    assert o.frame_count == 1
+    assert o.frame_counter.get() == 1
 
 
 def test_AbstractKMLContourWriter__get_contour_height_at():
@@ -1128,6 +1174,7 @@ def test_KMLConcentrationWriter___init__():
 
     assert o.alt_mode_str == "relativeToGround"
     assert o.time_zone is None
+    assert o.frame_counter is not None
     
     tz = pytz.timezone("America/New_York")
     o = gisout.KMLConcentrationWriter("relativeToGround", tz)
@@ -1168,6 +1215,7 @@ def test_KMLChemicalThresholdWriter___init__():
 
     assert o.alt_mode_str == "relativeToGround"
     assert o.time_zone is None
+    assert o.frame_counter is not None
     
     tz = pytz.timezone("America/New_York")
     o = gisout.KMLChemicalThresholdWriter("relativeToGround", tz)
@@ -1189,6 +1237,7 @@ def test_KMLDepositionWriter___init__():
 
     assert o.alt_mode_str == "relativeToGround"
     assert o.time_zone is None
+    assert o.frame_counter is not None
     
     tz = pytz.timezone("America/New_York")
     o = gisout.KMLDepositionWriter("relativeToGround", tz)
@@ -1225,7 +1274,7 @@ def test_KMLDepositionWriter__write_placemark_visibility():
     o = gisout.KMLDepositionWriter("relativeToGround")
     
     xml_root = ET.Element('kml')
-    o.frame_count = 2
+    o.frame_counter.increase(2)
     o._write_placemark_visibility(xml_root)
     tree = ET.ElementTree(xml_root)
     tree.write("__KMLDepositionWriter.txt")
@@ -1244,6 +1293,7 @@ def test_KMLMassLoadingWriter___init__():
 
     assert o.alt_mode_str == "relativeToGround"
     assert o.time_zone is None
+    assert o.frame_counter is not None
     
     tz = pytz.timezone("America/New_York")
     o = gisout.KMLMassLoadingWriter("relativeToGround", tz)
@@ -1283,7 +1333,7 @@ def test_KMLMassLoadingWriter__write_placemark_visibility():
     o = gisout.KMLMassLoadingWriter("relativeToGround")
     
     xml_root = ET.Element('kml');
-    o.frame_count = 2
+    o.frame_counter.increase(2)
     o._write_placemark_visibility(xml_root)
     tree = ET.ElementTree(xml_root)
     tree.write("__KMLMassLoadingWriter.txt")
@@ -1302,6 +1352,7 @@ def test_KMLTimeOfArrivalWriter___init__():
 
     assert o.alt_mode_str == "relativeToGround"
     assert o.time_zone is None
+    assert o.frame_counter is not None
     
     tz = pytz.timezone("America/New_York")
     o = gisout.KMLTimeOfArrivalWriter("relativeToGround", tz)

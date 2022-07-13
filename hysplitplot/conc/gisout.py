@@ -251,6 +251,22 @@ class PointsGenerateFileWriter(AbstractWriter):
                                              color))
 
 
+class FrameCounter:
+    """
+    An instance of FrameCounter is declared in a KMLWriter object
+    and it is shared with a contour writer class object.
+    """
+    def __init__(self):
+        self.frame_count = 0
+
+    def get(self):
+        return self.frame_count
+    
+    def increase(self, step=1):
+        self.frame_count += step
+        return self.frame_count
+
+
 class KMLWriter(AbstractWriter):
 
     def __init__(self, kml_option, time_zone=None):
@@ -260,6 +276,7 @@ class KMLWriter(AbstractWriter):
         self.contour_writer = None
         self.xml_root = None
         self.kml_filename = None
+        self.frame_counter = FrameCounter()
 
     def make_output_basename(self, g, conc_type, depo_sum, upper_vert_level):
         return conc_type.make_kml_basename(g.time_index + 1,
@@ -273,7 +290,8 @@ class KMLWriter(AbstractWriter):
                                           output_suffix, KMAP, NSSLBL,
                                           show_max_conc, NDEP)
         self.contour_writer = KMLContourWriterFactory.create_instance(
-                self.KMAP, self.alt_mode_str, self.time_zone)
+                self.KMAP, self.alt_mode_str, self.time_zone,
+                self.frame_counter)
         self.contour_writer.set_show_max_conc(show_max_conc)
         self.deposition_contour_writer = self.create_deposition_contour_writer(
                 KMAP, self.alt_mode_str, self.time_zone, NDEP, show_max_conc)
@@ -289,7 +307,8 @@ class KMLWriter(AbstractWriter):
             deposition_kmap = const.ConcentrationMapType.DEPOSITION_6
 
         w = KMLContourWriterFactory.create_instance(
-                    deposition_kmap, self.alt_mode_str, self.time_zone)
+                    deposition_kmap, self.alt_mode_str, self.time_zone,
+                    self.frame_counter)
         w.set_show_max_conc(show_max_conc)
         return w
 
@@ -598,29 +617,29 @@ class PartialKMLWriter(KMLWriter):
 class KMLContourWriterFactory:
 
     @staticmethod
-    def create_instance(KMAP, alt_mode_str, time_zone=None):
+    def create_instance(KMAP, alt_mode_str, time_zone=None, frame_counter=None):
         if KMAP == const.ConcentrationMapType.CONCENTRATION:
-            return KMLConcentrationWriter(alt_mode_str, time_zone)
+            return KMLConcentrationWriter(alt_mode_str, time_zone, frame_counter)
         elif KMAP == const.ConcentrationMapType.EXPOSURE:
-            return KMLConcentrationWriter(alt_mode_str, time_zone)
+            return KMLConcentrationWriter(alt_mode_str, time_zone, frame_counter)
         elif KMAP == const.ConcentrationMapType.DEPOSITION:
-            return KMLDepositionWriter(alt_mode_str, time_zone)
+            return KMLDepositionWriter(alt_mode_str, time_zone, frame_counter)
         elif KMAP == const.ConcentrationMapType.THRESHOLD_LEVELS:
-            return KMLChemicalThresholdWriter(alt_mode_str, time_zone)
+            return KMLChemicalThresholdWriter(alt_mode_str, time_zone, frame_counter)
         elif KMAP == const.ConcentrationMapType.VOLCANIC_ERUPTION:
-            return KMLDepositionWriter(alt_mode_str, time_zone)
+            return KMLDepositionWriter(alt_mode_str, time_zone, frame_counter)
         elif KMAP == const.ConcentrationMapType.DEPOSITION_6:
-            return KMLDepositionWriter(alt_mode_str, time_zone)
+            return KMLDepositionWriter(alt_mode_str, time_zone, frame_counter)
         elif KMAP == const.ConcentrationMapType.MASS_LOADING:
-            return KMLMassLoadingWriter(alt_mode_str, time_zone)
+            return KMLMassLoadingWriter(alt_mode_str, time_zone, frame_counter)
         elif KMAP == const.ConcentrationMapType.TIME_OF_ARRIVAL:
-            return KMLTimeOfArrivalWriter(alt_mode_str, time_zone)
+            return KMLTimeOfArrivalWriter(alt_mode_str, time_zone, frame_counter)
 
 
 class AbstractKMLContourWriter(ABC):
 
-    def __init__(self, alt_mode_str, time_zone=None):
-        self.frame_count = 0
+    def __init__(self, alt_mode_str, time_zone=None, frame_counter=None):
+        self.frame_counter = frame_counter if frame_counter is not None else FrameCounter()
         self.alt_mode_str = alt_mode_str
         self.time_zone = time_zone
         self.draw_max_conc_sqs = True
@@ -657,7 +676,7 @@ class AbstractKMLContourWriter(ABC):
 
     def write(self, doc, g, contour_set, lower_vert_level, upper_vert_level,
               suffix, distinguishable_vert_level=True):
-        self.frame_count += 1
+        self.frame_counter.increase()
 
         begin_ts, end_ts = self._get_begin_end_timestamps(g)
 
@@ -666,7 +685,7 @@ class AbstractKMLContourWriter(ABC):
 
         # when not all of the concentration values are a zero
         if contour_set is not None and len(contour_set.contours) > 0:
-            if self.frame_count == 1:
+            if self.frame_counter.get() == 1:
                 ET.SubElement(folder, 'visibility').text = '1'
                 ET.SubElement(folder, 'open').text = '1'
             else:
@@ -684,7 +703,7 @@ class AbstractKMLContourWriter(ABC):
         ET.SubElement(timespan, 'begin').text = begin_ts
         ET.SubElement(timespan, 'end').text = end_ts
         icon = ET.SubElement(screenoverlay, 'Icon')
-        ET.SubElement(icon, 'href').text = 'GELABEL_{:02d}_{}.gif'.format(self.frame_count, suffix)
+        ET.SubElement(icon, 'href').text = 'GELABEL_{:02d}_{}.gif'.format(self.frame_counter.get(), suffix)
         ET.SubElement(screenoverlay, 'overlayXY',
                       attrib={'x': '0', 'y': '1',
                               'xunits': 'fraction', 'yunits': 'fraction'})
@@ -860,8 +879,10 @@ Value: {}
 
 class KMLConcentrationWriter(AbstractKMLContourWriter):
 
-    def __init__(self, alt_mode_str, time_zone=None):
-        super(KMLConcentrationWriter, self).__init__(alt_mode_str, time_zone)
+    def __init__(self, alt_mode_str, time_zone=None, frame_counter=None):
+        super(KMLConcentrationWriter, self).__init__(alt_mode_str,
+                                                     time_zone,
+                                                     frame_counter)
 
     def _get_name_cdata(self, dt):
         return """<pre>Concentration
@@ -884,9 +905,10 @@ Valid:{}</pre>""".format(lower_vert_level,
 
 class KMLChemicalThresholdWriter(KMLConcentrationWriter):
 
-    def __init__(self, alt_mode_str, time_zone=None):
+    def __init__(self, alt_mode_str, time_zone=None, frame_counter=None):
         super(KMLChemicalThresholdWriter, self).__init__(alt_mode_str,
-                                                         time_zone)
+                                                         time_zone,
+                                                         frame_counter)
 
     def _get_contour_height_at(self, k, vert_level):
         return int(vert_level) if k == 1 else int(vert_level) + (200 * k)
@@ -894,8 +916,10 @@ class KMLChemicalThresholdWriter(KMLConcentrationWriter):
 
 class KMLDepositionWriter(AbstractKMLContourWriter):
 
-    def __init__(self, alt_mode_str, time_zone=None):
-        super(KMLDepositionWriter, self).__init__(alt_mode_str, time_zone)
+    def __init__(self, alt_mode_str, time_zone=None, frame_counter=None):
+        super(KMLDepositionWriter, self).__init__(alt_mode_str,
+                                                  time_zone,
+                                                  frame_counter)
 
     def _get_name_cdata(self, dt):
         return """<pre>Deposition
@@ -913,14 +937,16 @@ Valid:{}</pre>""".format(self._get_timestamp_str(dt))
       deposition grid cell size."""
 
     def _write_placemark_visibility(self, x):
-        if self.frame_count > 1:
+        if self.frame_counter.get() > 1:
             ET.SubElement(x, 'visibility').text = '0'
 
 
 class KMLMassLoadingWriter(AbstractKMLContourWriter):
 
-    def __init__(self, alt_mode_str, time_zone=None):
-        super(KMLMassLoadingWriter, self).__init__(alt_mode_str, time_zone)
+    def __init__(self, alt_mode_str, time_zone=None, frame_counter=None):
+        super(KMLMassLoadingWriter, self).__init__(alt_mode_str,
+                                                   time_zone,
+                                                   frame_counter)
 
     def _get_name_cdata(self, dt):
         return """<pre>Mass_loading
@@ -941,14 +967,16 @@ Valid:{}</pre>""".format(lower_vert_level,
       deposition grid cell size."""
 
     def _write_placemark_visibility(self, x):
-        if self.frame_count > 1:
+        if self.frame_counter.get() > 1:
             ET.SubElement(x, 'visibility').text = '0'
 
 
 class KMLTimeOfArrivalWriter(AbstractKMLContourWriter):
 
-    def __init__(self, alt_mode_str, time_zone=None):
-        super(KMLTimeOfArrivalWriter, self).__init__(alt_mode_str, time_zone)
+    def __init__(self, alt_mode_str, time_zone=None, frame_counter=None):
+        super(KMLTimeOfArrivalWriter, self).__init__(alt_mode_str,
+                                                     time_zone,
+                                                     frame_counter)
 
     def _get_name_cdata(self, dt):
         return """<pre>Time of arrival (h)
