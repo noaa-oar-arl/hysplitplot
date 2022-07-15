@@ -276,6 +276,7 @@ def test_KMLWriter___init__():
         assert w.create_kml_per_write is True
         assert w.xml_root is None
         assert w.kml_filename is None
+        assert w.next_trajectory_index == 0
         
         w = gisout.KMLWriter(HeightUnit.FEET)
         assert w.height_unit == HeightUnit.FEET
@@ -343,7 +344,9 @@ def test_KMLWriter_write(plotData):
         os.remove("HYSPLITtraj_ps_01.kml")
     except Exception as ex:
         pytest.fail("unexpected exception: {0}".format(ex))
-        
+  
+    assert w.next_trajectory_index == 3  # 3 trajectories in the test tdump file.
+  
     # KML option - NO_EXTRA_OVERLAYS (1)
     try:
         w.kml_option = const.KMLOption.NO_EXTRA_OVERLAYS
@@ -351,7 +354,9 @@ def test_KMLWriter_write(plotData):
         os.remove("HYSPLITtraj_ps_01.kml")
     except Exception as ex:
         pytest.fail("unexpected exception: {0}".format(ex))
-        
+
+    assert w.next_trajectory_index == 6
+
     # KML option - NO_ENDPOINTS (2)
     try:
         w.kml_option = const.KMLOption.NO_ENDPOINTS
@@ -359,7 +364,9 @@ def test_KMLWriter_write(plotData):
         os.remove("HYSPLITtraj_ps_01.kml")
     except Exception as ex:
         pytest.fail("unexpected exception: {0}".format(ex))
-        
+
+    assert w.next_trajectory_index == 9
+  
     # KML option - BOTH_1_AND_2 (3)
     try:
         w.kml_option = const.KMLOption.BOTH_1_AND_2
@@ -367,6 +374,8 @@ def test_KMLWriter_write(plotData):
         os.remove("HYSPLITtraj_ps_01.kml")
     except Exception as ex:
         pytest.fail("unexpected exception: {0}".format(ex))
+
+    assert w.next_trajectory_index == 12
 
 
 def test_KMLWriter_finalize(plotData):

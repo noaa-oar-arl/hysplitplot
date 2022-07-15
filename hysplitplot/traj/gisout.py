@@ -242,6 +242,7 @@ class KMLWriter(AbstractGISFileWriter):
         self.create_kml_per_write = True  # for backward compatibility
         self.xml_root = None
         self.kml_filename = None
+        self.next_trajectory_index = 0
 
     @staticmethod
     def make_filename(output_name, output_suffix, file_no):
@@ -291,8 +292,9 @@ class KMLWriter(AbstractGISFileWriter):
         else:
             doc = self.xml_root.find("Document")
 
-        for t_idx, t in enumerate(plot_data.trajectories):
-            self._write_trajectory(doc, t, t_idx)
+        for t in plot_data.trajectories:
+            self._write_trajectory(doc, t, self.next_trajectory_index)
+            self.next_trajectory_index += 1
 
         if self.create_kml_per_write:
             self.finalize()
