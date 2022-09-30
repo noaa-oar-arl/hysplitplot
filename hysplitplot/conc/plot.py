@@ -760,8 +760,14 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         if self.settings.ring and self.settings.ring_number >= 0:
             map_box.clear_hit_map()
-            map_box.set_ring_extent(self.settings,
-                                    self.cdump.release_locs[0])
+            if self.settings.center_loc_fixed is False or self.settings.ring_number > 0:
+               # concentric circles are placed at the 1st source location
+               map_box.set_ring_extent(self.settings,
+                                       self.cdump.release_locs[0])
+            else:
+               # invisible circle is placed at the map-hold position
+               map_box.set_ring_extent(self.settings,
+                                       self.settings.center_loc)
 
         self.projection = mapproj.MapProjectionFactory.create_instance(
             self.settings.map_projection,
