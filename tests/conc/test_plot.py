@@ -1013,6 +1013,19 @@ def test_ConcentrationPlot__determine_map_limits(cdump):
         assert str(ex) == "ALL concentrations are ZERO - no maps"
 
 
+def test_ConcentrationPlot__normalize_contour_levels():
+    p = plot.ConcentrationPlot()
+    
+    # See if -1.0 is replaced with min conc.
+    min_conc = 5.0
+    levels = p._normalize_contour_levels([10.0, 8.0, -1.0], min_conc)
+    assert levels == pytest.approx([10.0, 8.0, 5.0])
+
+    # See if duplicate levels are removed.
+    levels = p._normalize_contour_levels([17000., 2900., 2900.], min_conc)
+    assert levels == pytest.approx([17000., 2900.])
+
+
 def test_ConcentrationPlot_draw_concentration_plot():
     p = plot.ConcentrationPlot()
     p.merge_plot_settings(None, ["-idata/cdump", "-jdata/arlmap_truncated"])

@@ -852,6 +852,16 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         return mbox
 
+    def _normalize_contour_levels(self, contour_levels, min_conc):
+        updated_contour_levels = []
+        for v in contour_levels:
+            if v == -1.0:
+                v = min_conc
+                logger.debug("Change contour value -1.0 to min conc %g", v)
+            if v not in updated_contour_levels:
+                updated_contour_levels.append(v)
+        return updated_contour_levels
+
     def draw_concentration_plot(self, conc_grid, scaled_conc, conc_map,
                                 contour_levels, fill_colors, min_conc):
         """
@@ -894,12 +904,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         logger.debug("Drawing contour at levels %s using colors %s",
                      contour_levels, fill_colors)
 
-        updated_contour_levels = []
-        for v in contour_levels:
-            if v == -1.0:
-                v = min_conc
-                logger.debug("Change contour value -1.0 to min conc %g", v)
-            updated_contour_levels.append(v)
+        updated_contour_levels = self._normalize_contour_levels(contour_levels,
+                                                                min_conc)
 
         # draw a source marker
         if self.settings.label_source:
