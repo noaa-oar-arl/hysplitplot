@@ -561,6 +561,14 @@ def test_ConcentrationPlotSettings_sort_contour_levels_and_colors():
     assert s.contour_levels[0].level == 10
     assert s.contour_levels[1].level == 100
     assert s.contour_levels[2].level == 1000
+    # when two levels have the same value
+    s.parse_contour_levels("17000:PAC-3+2900:PAC-2+2900:PAC-1")
+    assert s.contour_levels[2].level == 17000
+    assert s.contour_levels[1].level ==  2900
+    assert s.contour_levels[0].level ==  2900
+    assert s.contour_levels[2].label == "PAC-3"
+    assert s.contour_levels[1].label == "PAC-2"
+    assert s.contour_levels[0].label == "PAC-1"
 
 
 def test_ConcentrationPlotSettings_validate_contour_levels():
@@ -1018,12 +1026,14 @@ def test_ConcentrationPlot__normalize_contour_levels():
     
     # See if -1.0 is replaced with min conc.
     min_conc = 5.0
-    levels = p._normalize_contour_levels([10.0, 8.0, -1.0], min_conc)
-    assert levels == pytest.approx([10.0, 8.0, 5.0])
+    levels, colors = p._normalize_contour_levels([-1., 8., 10.], ['r', 'g', 'b'], min_conc)
+    assert levels == pytest.approx([5., 8., 10.])
+    assert colors == ['r', 'g', 'b']
 
     # See if duplicate levels are removed.
-    levels = p._normalize_contour_levels([17000., 2900., 2900.], min_conc)
-    assert levels == pytest.approx([17000., 2900.])
+    levels, colors = p._normalize_contour_levels([2900., 2900., 17000.], ['r', 'g', 'b'], min_conc)
+    assert levels == pytest.approx([2900., 17000.])
+    assert colors == ['g', 'b']
 
 
 def test_ConcentrationPlot_draw_concentration_plot():
@@ -1392,6 +1402,15 @@ def test_LabelledContourLevel___init__():
 def test_LabelledContourLevel___repr__():
     o = plot.LabelledContourLevel(10.0, "USER1")
     assert str(o) == "LabelledContourLevel(USER1, 10.0)"
+
+
+def test_LabelledContourLevel___lt__():
+    o1 = plot.LabelledContourLevel(10.0, "USER1")
+    o2 = plot.LabelledContourLevel(15.0, "USER1")
+    assert o1 < o2
+
+    o3 = plot.LabelledContourLevel(15.0, "USER2")
+    assert o2 < o3
 
 
 def test_ContourLevelGeneratorFactory_create_instance(contourLevels):

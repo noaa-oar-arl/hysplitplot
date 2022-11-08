@@ -294,11 +294,10 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
     def sort_contour_levels_and_colors(self):
         if not self.user_color:
             # sort the contour levels only
-            self.contour_levels = sorted(self.contour_levels,
-                                         key=lambda o: o.level)
+            self.contour_levels = sorted(self.contour_levels)
         else:
             a = list(zip(self.contour_levels, self.user_colors))
-            s = sorted(a, key=lambda t: t[0].level)
+            s = sorted(a, key=lambda t: t[0])
             self.contour_levels = [it[0] for it in s]
             self.user_colors = [it[1] for it in s]
 
@@ -852,15 +851,26 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         return mbox
 
-    def _normalize_contour_levels(self, contour_levels, min_conc):
+    def _normalize_contour_levels(self, contour_levels, fill_colors, min_conc):
         updated_contour_levels = []
-        for v in contour_levels:
+        updated_fill_colors = []
+
+        for k, v in enumerate(contour_levels):
             if v == -1.0:
                 v = min_conc
                 logger.debug("Change contour value -1.0 to min conc %g", v)
-            if v not in updated_contour_levels:
+            if v in updated_contour_levels:
+                # Contour levels are ordered from low to high.
+                # When two adjacent levels are the same, pick the color
+                # for higher level of concern. For example, if PAC-1 and PAC-2
+                # concentrations are the same, use the color for PAC-2.
+                j = updated_contour_levels.index(v)
+                updated_fill_colors[j] = fill_colors[k]
+            else:
                 updated_contour_levels.append(v)
-        return updated_contour_levels
+                updated_fill_colors.append(fill_colors[k])
+
+        return (updated_contour_levels, updated_fill_colors)
 
     def draw_concentration_plot(self, conc_grid, scaled_conc, conc_map,
                                 contour_levels, fill_colors, min_conc):
@@ -901,11 +911,12 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                           self.settings.ring_number,
                                           self.settings.ring_distance)
 
-        logger.debug("Drawing contour at levels %s using colors %s",
-                     contour_levels, fill_colors)
-
-        updated_contour_levels = self._normalize_contour_levels(contour_levels,
-                                                                min_conc)
+        updated_contour_levels, updated_fill_colors = \
+            self._normalize_contour_levels(contour_levels,
+                                           fill_colors,
+                                           min_conc)
+        logger.info("Drawing contour at levels %s using colors %s",
+                    updated_contour_levels, updated_fill_colors)
 
         # draw a source marker
         if self.settings.label_source:
@@ -932,7 +943,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                             conc_grid.latitudes,
                                             scaled_conc,
                                             updated_contour_levels,
-                                            colors=fill_colors,
+                                            colors=updated_fill_colors,
                                             extend="max",
                                             transform=self.data_crs)
                 if self.settings.color != \
@@ -1465,6 +1476,11 @@ class LabelledContourLevel:
 
     def __repr__(self):
         return "LabelledContourLevel({0}, {1})".format(self.label, self.level)
+
+    def __lt__(self, x):
+        if self.level == x.level:
+            return self.label < x.label
+        return self.level < x.level
 
 
 class ContourLevelGeneratorFactory:
