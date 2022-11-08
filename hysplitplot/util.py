@@ -113,6 +113,23 @@ def make_color(r, g, b, x=1.0):
         return "#{:02x}{:02x}{:02x}{:02x}".format(ir, ig, ib, ix)
 
 
+def decompose_color(s):
+    if len(s) == 7:
+        # Turn '#RRGGBB' to (r, g, b, 1.0)
+        r = int(s[1:3], 16) / 255.
+        g = int(s[3:5], 16) / 255.
+        b = int(s[5:7], 16) / 255.
+        return (r, g, b, 1.)
+    elif len(s) == 9:
+        # Turn '#RRGGBBXX' to (r, g, b, x)
+        r = int(s[1:3], 16) / 255.
+        g = int(s[3:5], 16) / 255.
+        b = int(s[5:7], 16) / 255.
+        x = int(s[7:9], 16) / 255.
+        return (r, g, b, x)
+    return (None, None, None, None)
+
+
 def make_int_if_same(a):
     ia = int(a)
     return ia if float(ia) == a else a

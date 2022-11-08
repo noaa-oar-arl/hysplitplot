@@ -56,6 +56,12 @@ def test_make_color():
     assert util.make_color(0.4, 0.6, 0.8, 0.5) == "#6699cc80"
 
 
+def test_decompose_color():
+    # abs=0.01 to ignore difference smaller than 0.01
+    assert util.decompose_color("#6699cc") == pytest.approx((0.4, 0.6, 0.8, 1.0,), abs=0.01) 
+    assert util.decompose_color("#6699cc80") == pytest.approx((0.4, 0.6, 0.8, 0.5,), abs=0.01)
+
+
 def test_make_int_if_same():
     assert util.make_int_if_same(1.3) == 1.3
     assert util.make_int_if_same(1.0) == 1

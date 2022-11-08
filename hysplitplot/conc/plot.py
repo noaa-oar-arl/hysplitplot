@@ -436,6 +436,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.depo_map = None
         self.prev_forecast_time = None
         self.length_factory = None
+        self.__actual_contour_levels = None
+        self.__actual_fill_colors = None
 
         self.fig = None
         self.conc_outer = None
@@ -984,6 +986,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                              conc_grid.starting_datetime,
                              conc_grid.ending_datetime)
 
+        self.__actual_contour_levels = updated_contour_levels
+        self.__actual_fill_colors = updated_fill_colors
         return contour_set
 
     def get_conc_unit(self, conc_map, settings):
@@ -1178,6 +1182,12 @@ class ConcentrationPlot(plotbase.AbstractPlot):
     def _write_gisout(self, gis_writers, g, lower_vert_level, upper_vert_level,
                       quad_contour_set, contour_levels, color_table,
                       scaling_factor):
+        # For backward compatibility
+        if self.__actual_contour_levels is None:
+            self.__actual_contour_levels = contour_levels
+        if self.__actual_fill_colors is None:
+            self.__actual_fill_colors = color_table.colors
+
         if g.extension.max_locs is None:
             g.extension.max_locs = helper.find_max_locs(g)
 
@@ -1185,11 +1195,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                                                 scaling_factor)
 
         contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
-        contour_set.raw_colors = color_table.raw_colors
-        contour_set.colors = color_table.colors
-        contour_set.levels = contour_levels
+        contour_set.raw_colors = [util.decompose_color(x) for x in self.__actual_fill_colors]
+        contour_set.colors = self.__actual_fill_colors
+        contour_set.levels = self.__actual_contour_levels
         contour_set.levels_str = [self.conc_map.format_conc(level)
-                                  for level in contour_levels]
+                                  for level in self.__actual_contour_levels]
         contour_set.labels = self.contour_labels
         contour_set.concentration_unit = self.get_conc_unit(self.conc_map,
                                                             self.settings)

@@ -699,6 +699,8 @@ def test_ConcentrationPlot___init__():
     assert hasattr(p, "depo_map")
     assert hasattr(p, "prev_forecast_time")
     assert hasattr(p, "length_factory")
+    #assert hasattr(p, "__actual_contour_levels")
+    #assert hasattr(p, "__actual_fill_colors")
 
     assert hasattr(p, "fig")
     assert hasattr(p, "conc_outer")
@@ -1020,7 +1022,7 @@ def test_ConcentrationPlot__determine_map_limits(cdump):
     except Exception as ex:
         assert str(ex) == "ALL concentrations are ZERO - no maps"
 
-
+        
 def test_ConcentrationPlot__normalize_contour_levels():
     p = plot.ConcentrationPlot()
     
@@ -1051,6 +1053,8 @@ def test_ConcentrationPlot_draw_concentration_plot():
                                                 [1.0e-16, 1.0e-15, 1.0e-14],
                                                 ["g", "b", "r"],
                                                 1.0e-18)
+        #assert p.__actual_contour_levels == pytest.approx([1.0e-16, 1.0e-15, 1.0e-14])
+        #assert p.__actual_fill_colors == ["g", "b", "r"]
         assert isinstance(contour_set, QuadContourSet)
         
         # no contour levels
@@ -1060,7 +1064,8 @@ def test_ConcentrationPlot_draw_concentration_plot():
                                                 [],
                                                 [],
                                                 1.0e-18)
-                
+        #assert len(p.__actual_contour_levels) == 0
+        #assert len(p.__actual_fill_colors) == 0
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
@@ -1217,7 +1222,7 @@ def test_ConcentrationPlot__write_gisout():
     lower_vert_level = util.LengthInMeters(0)
     upper_vert_level = util.LengthInMeters(100)
     contour_levels = [1.0e-15, 1.0e-14, 1.0e-13, 1.0e-12]
-    fill_colors = ["b", "g", "y", "r"]
+    fill_colors = ["#0000FF", "#00FF00", "#FFFF00", "#FF0000"]  # blue, green, yellow, red
     scaling_factor = 1.0
     quad_contour_set = axes.contourf(g.longitudes, g.latitudes, g.conc,
                                      contour_levels,
