@@ -436,8 +436,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.depo_map = None
         self.prev_forecast_time = None
         self.length_factory = None
-        self.__actual_contour_levels = None
-        self.__actual_fill_colors = None
+        self.__actual_contour_levels = None  # None: no duplicate contour levels
+        self.__actual_fill_colors = None     # None: no duplicate contour levels
 
         self.fig = None
         self.conc_outer = None
@@ -853,26 +853,32 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         return mbox
 
-    def _normalize_contour_levels(self, contour_levels, fill_colors, min_conc):
-        updated_contour_levels = []
-        updated_fill_colors = []
+    def _normalize_contour_levels(self,
+                                  contour_levels: list,
+                                  fill_colors: list,
+                                  min_conc: float) -> tuple:
+        """
+        Remove duplicate contour levels and their corresponding fill colors.
+        """
+        actual_contour_levels = []
+        actual_fill_colors = []
 
         for k, v in enumerate(contour_levels):
             if v == -1.0:
                 v = min_conc
                 logger.debug("Change contour value -1.0 to min conc %g", v)
-            if v in updated_contour_levels:
+            if v in actual_contour_levels:
                 # Contour levels are ordered from low to high.
                 # When two adjacent levels are the same, pick the color
                 # for higher level of concern. For example, if PAC-1 and PAC-2
                 # concentrations are the same, use the color for PAC-2.
-                j = updated_contour_levels.index(v)
-                updated_fill_colors[j] = fill_colors[k]
+                j = actual_contour_levels.index(v)
+                actual_fill_colors[j] = fill_colors[k]
             else:
-                updated_contour_levels.append(v)
-                updated_fill_colors.append(fill_colors[k])
+                actual_contour_levels.append(v)
+                actual_fill_colors.append(fill_colors[k])
 
-        return (updated_contour_levels, updated_fill_colors)
+        return (actual_contour_levels, actual_fill_colors)
 
     def draw_concentration_plot(self, conc_grid, scaled_conc, conc_map,
                                 contour_levels, fill_colors, min_conc):
@@ -913,12 +919,15 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                           self.settings.ring_number,
                                           self.settings.ring_distance)
 
-        updated_contour_levels, updated_fill_colors = \
+        # remove duplicate contour levels 
+        self.__actual_contour_levels = None
+        self.__actual_fill_colors = None
+        actual_contour_levels, actual_fill_colors = \
             self._normalize_contour_levels(contour_levels,
                                            fill_colors,
                                            min_conc)
-        logger.info("Drawing contour at levels %s using colors %s",
-                    updated_contour_levels, updated_fill_colors)
+        logger.debug("Drawing contours at %s using colors %s",
+                     actual_contour_levels, actual_fill_colors)
 
         # draw a source marker
         if self.settings.label_source:
@@ -938,14 +947,14 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                           clip_on=True,
                           transform=self.data_crs)
 
-        if conc_grid.nonzero_conc_count > 0 and len(updated_contour_levels) > 1:
+        if conc_grid.nonzero_conc_count > 0 and len(actual_contour_levels) > 1:
             # draw filled contours
             try:
                 contour_set = axes.contourf(conc_grid.longitudes,
                                             conc_grid.latitudes,
                                             scaled_conc,
-                                            updated_contour_levels,
-                                            colors=updated_fill_colors,
+                                            actual_contour_levels,
+                                            colors=actual_fill_colors,
                                             extend="max",
                                             transform=self.data_crs)
                 if self.settings.color != \
@@ -986,8 +995,10 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                              conc_grid.starting_datetime,
                              conc_grid.ending_datetime)
 
-        self.__actual_contour_levels = updated_contour_levels
-        self.__actual_fill_colors = updated_fill_colors
+        if len(actual_contour_levels) != len(contour_levels):
+            self.__actual_contour_levels = actual_contour_levels
+            self.__actual_fill_colors = actual_fill_colors
+
         return contour_set
 
     def get_conc_unit(self, conc_map, settings):
@@ -1182,12 +1193,9 @@ class ConcentrationPlot(plotbase.AbstractPlot):
     def _write_gisout(self, gis_writers, g, lower_vert_level, upper_vert_level,
                       quad_contour_set, contour_levels, color_table,
                       scaling_factor):
-        # For backward compatibility
-        if self.__actual_contour_levels is None:
-            self.__actual_contour_levels = contour_levels
-        if self.__actual_fill_colors is None:
-            self.__actual_fill_colors = color_table.colors
-
+        """
+        Create GIS output files in as many formats as requested.
+        """
         if g.extension.max_locs is None:
             g.extension.max_locs = helper.find_max_locs(g)
 
@@ -1195,11 +1203,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                                                 scaling_factor)
 
         contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
-        contour_set.raw_colors = [util.decompose_color(x) for x in self.__actual_fill_colors]
-        contour_set.colors = self.__actual_fill_colors
-        contour_set.levels = self.__actual_contour_levels
+        contour_set.raw_colors = color_table.raw_colors
+        contour_set.colors = color_table.colors
+        contour_set.levels = contour_levels
         contour_set.levels_str = [self.conc_map.format_conc(level)
-                                  for level in self.__actual_contour_levels]
+                                  for level in contour_levels]
         contour_set.labels = self.contour_labels
         contour_set.concentration_unit = self.get_conc_unit(self.conc_map,
                                                             self.settings)
@@ -1207,6 +1215,11 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         contour_set.max_concentration = max_conc
         contour_set.min_concentration_str = self.conc_map.format_conc(min_conc)
         contour_set.max_concentration_str = self.conc_map.format_conc(max_conc)
+
+        if self.__actual_contour_levels is not None:
+            # copy one or more contours to match the number of contour levels.
+            self._insert_contours(contour_set, contour_levels,
+                                  self.__actual_contour_levels)
 
         for w in gis_writers:
             basename = w.make_output_basename(
@@ -1216,6 +1229,33 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                     upper_vert_level)
             w.write(basename, g, contour_set,
                     lower_vert_level, upper_vert_level)
+
+    def _insert_contours(self,
+                         contour_set: cntr.ContourSet,
+                         contour_levels: list,
+                         actual_contour_levels: list) -> None:
+        if len(contour_levels) == len(actual_contour_levels):
+            return
+        
+        # Recall contour_levels and actual_contour_levels are ordered lists.
+        # contour_levels has one or more duplicate elements.
+        # actual_contour_levels has no duplicate elements.
+        j = 0
+        for k, c in enumerate(contour_levels):
+            if j < len(actual_contour_levels) and c == actual_contour_levels[j]:
+                j += 1
+            else:
+                # insert the contour level, c.
+                i = actual_contour_levels.index(c)
+                contour = contour_set.contours[i]
+                contour_set.contours.insert(i, contour)
+                contour_order = contour_set.contour_orders[i]
+                contour_set.contour_orders.insert(i, contour_order)
+                # normalize contour orders
+                i += 1
+                while i < len(contour_set.contour_orders):
+                    contour_set.contour_orders[i] += 1
+                    i += 1
 
     def draw_conc_above_ground(self, g, event_handlers, level_generator,
                                color_table, gis_writers=None, *args, **kwargs):

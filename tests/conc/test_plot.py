@@ -18,7 +18,7 @@ import xml.etree.ElementTree as ElementTree
 from hysplitdata.const import HeightUnit
 from hysplitdata.conc import model
 from hysplitplot import const, labels, mapfile, mapproj, multipage, smooth, streetmap, util
-from hysplitplot.conc import gisout, helper, plot
+from hysplitplot.conc import gisout, helper, plot, cntr
 
 
 @pytest.fixture
@@ -1253,6 +1253,39 @@ def test_ConcentrationPlot__write_gisout():
     
     os.remove("HYSPLIT_ps.kml")
     os.remove("GELABEL_ps.txt")
+
+
+def test_ConcentrationPlot__insert_contours():
+    p = plot.ConcentrationPlot()
+    contour_set = cntr.ContourSet()
+
+    # The contours list should contain Contour objects.
+    # For unit tests, use integers.
+    contour_set.contours = [1, 2]
+    contour_set.contour_orders = [1, 2]
+    contour_levels = [2900., 2900., 17000.]
+    actual_contour_levels = [2900., 17000.]
+    p._insert_contours(contour_set, contour_levels, actual_contour_levels)
+    assert contour_set.contours == [1, 1, 2]
+    assert contour_set.contour_orders == [1, 2, 3]
+
+    # When the duplicate contour level is in the middle of the list.
+    contour_set.contours = [1, 2, 3]
+    contour_set.contour_orders = [1, 2, 3]
+    contour_levels = [100., 200., 200., 300.]
+    actual_contour_levels = [100., 200., 300.]
+    p._insert_contours(contour_set, contour_levels, actual_contour_levels)
+    assert contour_set.contours == [1, 2, 2, 3]
+    assert contour_set.contour_orders == [1, 2, 3, 4]
+    
+    # When the duplicate contour level is at right.
+    contour_set.contours = [1, 2, 3]
+    contour_set.contour_orders = [1, 2, 3]
+    contour_levels = [100., 200., 300., 300.]
+    actual_contour_levels = [100., 200., 300.]
+    p._insert_contours(contour_set, contour_levels, actual_contour_levels)
+    assert contour_set.contours == [1, 2, 3, 3]
+    assert contour_set.contour_orders == [1, 2, 3, 4]
 
 
 def test_ConcentrationPlot_draw_conc_above_ground():
