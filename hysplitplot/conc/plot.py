@@ -1236,7 +1236,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                          actual_contour_levels: list) -> None:
         if len(contour_levels) == len(actual_contour_levels):
             return
-        
+
         # Recall contour_levels and actual_contour_levels are ordered lists.
         # contour_levels has one or more duplicate elements.
         # actual_contour_levels has no duplicate elements.
@@ -1245,17 +1245,20 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             if j < len(actual_contour_levels) and c == actual_contour_levels[j]:
                 j += 1
             else:
-                # insert the contour level, c.
-                i = actual_contour_levels.index(c)
-                contour = contour_set.contours[i]
-                contour_set.contours.insert(i, contour)
-                contour_order = contour_set.contour_orders[i]
-                contour_set.contour_orders.insert(i, contour_order)
-                # normalize contour orders
-                i += 1
-                while i < len(contour_set.contour_orders):
-                    contour_set.contour_orders[i] += 1
+                try:
+                    # insert the contour level, c.
+                    i = actual_contour_levels.index(c)
+                    contour = contour_set.contours[i]
+                    contour_order = contour_set.contour_orders[i]
+                    contour_set.contours.insert(i, contour)
+                    contour_set.contour_orders.insert(i, contour_order)
+                    # normalize contour orders
                     i += 1
+                    while i < len(contour_set.contour_orders):
+                        contour_set.contour_orders[i] += 1
+                        i += 1
+                except IndexError as ex:
+                    logger.info(f'No contour found at level {c}')
 
     def draw_conc_above_ground(self, g, event_handlers, level_generator,
                                color_table, gis_writers=None, *args, **kwargs):

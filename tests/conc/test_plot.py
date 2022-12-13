@@ -1286,6 +1286,15 @@ def test_ConcentrationPlot__insert_contours():
     p._insert_contours(contour_set, contour_levels, actual_contour_levels)
     assert contour_set.contours == [1, 2, 3, 3]
     assert contour_set.contour_orders == [1, 2, 3, 4]
+    
+    # When no conours are present
+    contour_set.contours = []
+    contour_set.contour_orders = []
+    contour_levels = [2900.0, 2900.0, 17000.0]
+    actual_contour_levels = [2900.0, 17000.0]
+    p._insert_contours(contour_set, contour_levels, actual_contour_levels)
+    assert contour_set.contours == []
+    assert contour_set.contour_orders == []
 
 
 def test_ConcentrationPlot_draw_conc_above_ground():
