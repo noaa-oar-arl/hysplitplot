@@ -132,20 +132,19 @@ class PointsGenerateFileWriter(AbstractWriter):
         filename = basename + ".txt"
         logger.info("Creating file %s", filename)
         with open(filename, "wt") as f:
-            for k, contour in enumerate(contour_set.contours):
-                level = contour_set.levels[k]
+            for contour in contour_set.contours:
                 for polygon in contour.polygons:
                     for boundary in polygon.boundaries:
-                        self.formatter.write_boundary(f, boundary, level)
+                        self.formatter.write_boundary(f, boundary, contour.level)
             f.write("END\n")
 
         filename = basename + ".att"
         logger.info("Creating file %s", filename)
         with open(filename, "wt") as f:
             f.write("#CONC,NAME,DATE,TIME,LLEVEL,HLEVEL,COLOR\n")
-            for k, contour in enumerate(contour_set.contours):
-                level = contour_set.levels[k]
-                clr = self._reformat_color(contour_set.colors[k])
+            for contour in contour_set.contours:
+                level = contour.level
+                clr = self._reformat_color(contour.color)
                 for polygon in contour.polygons:
                     self.formatter.write_attributes(f, g,
                                                     lower_vert_level,
@@ -326,7 +325,8 @@ class KMLWriter(AbstractWriter):
             self._write_preamble(doc, g)
 
             if contour_set is not None:
-                self._write_colors(doc, contour_set.colors)
+                colors = [c.color for c in contour_set.contours]
+                self._write_colors(doc, colors)
 
             self._write_source_locs(doc, g)
 
@@ -386,48 +386,48 @@ class KMLWriter(AbstractWriter):
         # Always use 4 levels for chemical thresholds
         additional_levels = 0
         if self.KMAP == const.ConcentrationMapType.THRESHOLD_LEVELS:
-            if len(contour_set.levels) < 4:
-                additional_levels = 4 - len(contour_set.levels)
+            if len(contour_set.contours) < 4:
+                additional_levels = 4 - len(contour_set.contours)
 
         if self.show_max_conc == const.ShowMaxSquare.BOTH or self.show_max_conc == const.ShowMaxSquare.VALUE:
             f.write("{:7s} {:7s} {:2d}\n".format(contour_set.max_concentration_str,
                                         contour_set.min_concentration_str,
-                                        len(contour_set.levels) + additional_levels))
+                                        len(contour_set.contours) + additional_levels))
         else:
-            f.write("NOMAXMN NOMAXMN {:2d}\n".format(len(contour_set.levels)
+            f.write("NOMAXMN NOMAXMN {:2d}\n".format(len(contour_set.contours)
                                                      + additional_levels))
 
         for k in range(additional_levels):
             f.write("{:8s}".format(str(0)))
-        for level in contour_set.levels_str:
-            f.write("{:8s}".format(self._quote_if_space_present(level)))
+        for c in contour_set.contours:
+            f.write("{:8s}".format(self._quote_if_space_present(c.level_str)))
         f.write("\n")
 
         f.write("{:5.2f}".format(1.0))
         for k in range(additional_levels):
             f.write("{:5.2f}".format(1.0))
-        for c in contour_set.raw_colors:
-            f.write("{:5.2f}".format(c[0]))
+        for c in contour_set.contours:
+            f.write("{:5.2f}".format(c.raw_color[0]))
         f.write("\n")
 
         f.write("{:5.2f}".format(1.0))
         for k in range(additional_levels):
             f.write("{:5.2f}".format(1.0))
-        for c in contour_set.raw_colors:
-            f.write("{:5.2f}".format(c[1]))
+        for c in contour_set.contours:
+            f.write("{:5.2f}".format(c.raw_color[1]))
         f.write("\n")
 
         f.write("{:5.2f}".format(1.0))
         for k in range(additional_levels):
             f.write("{:5.2f}".format(1.0))
-        for c in contour_set.raw_colors:
-            f.write("{:5.2f}".format(c[2]))
+        for c in contour_set.contours:
+            f.write("{:5.2f}".format(c.raw_color[2]))
         f.write("\n")
 
-        contour_set.labels.reverse()
-        for label in contour_set.labels:
+        labels = [c.label for c in contour_set.contours]
+        labels.reverse()
+        for label in labels:
             f.write("{:8s} ".format(self._quote_if_space_present(label)))
-        contour_set.labels.reverse()
         for k in range(additional_levels):
             f.write("{:8s} ".format(" "))
         f.write("\n")
@@ -720,9 +720,9 @@ class AbstractKMLContourWriter(ABC):
         self._write_contour(folder, g, contour_set, upper_vert_level,
                             distinguishable_vert_level)
 
-        if self.draw_max_conc_sqs:
+        if self.draw_max_conc_sqs and len(contour_set.contours) > 0:
             self._draw_max_locations(folder, g, contour_set.max_concentration_str,
-                                     upper_vert_level, contour_set.labels[-1])
+                                     upper_vert_level, contour_set.contours[-1].label)
 
     def _get_contour_height_at(self, k, vert_level):
         return int(vert_level) + (200 * k)
@@ -738,6 +738,8 @@ class AbstractKMLContourWriter(ABC):
         for i in range(len(contour_set.contours)):
             k = contour_set.contour_orders.index(i)
             contour = contour_set.contours[k]
+            if len(contour.polygons) == 0:
+                continue
 
             if distinguishable_vert_level:
                 # arbitrary height above ground in order of
@@ -747,11 +749,11 @@ class AbstractKMLContourWriter(ABC):
             placemark = ET.SubElement(x, 'Placemark')
             
             contour_name = self._get_contour_name(
-                                    contour_set.levels_str[k],
+                                    contour.level_str,
                                     contour_set.concentration_unit)
 
-            if len(contour_set.labels[k]) > 0:
-                ET.SubElement(placemark, 'name', attrib={'LOC': contour_set.labels[k]}).text = contour_name
+            if len(contour.label) > 0:
+                ET.SubElement(placemark, 'name', attrib={'LOC': contour.label}).text = contour_name
             else:
                 ET.SubElement(placemark, 'name').text = contour_name
 

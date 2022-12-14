@@ -699,8 +699,6 @@ def test_ConcentrationPlot___init__():
     assert hasattr(p, "depo_map")
     assert hasattr(p, "prev_forecast_time")
     assert hasattr(p, "length_factory")
-    #assert hasattr(p, "__actual_contour_levels")
-    #assert hasattr(p, "__actual_fill_colors")
 
     assert hasattr(p, "fig")
     assert hasattr(p, "conc_outer")
@@ -1053,8 +1051,6 @@ def test_ConcentrationPlot_draw_concentration_plot():
                                                 [1.0e-16, 1.0e-15, 1.0e-14],
                                                 ["g", "b", "r"],
                                                 1.0e-18)
-        #assert p.__actual_contour_levels == pytest.approx([1.0e-16, 1.0e-15, 1.0e-14])
-        #assert p.__actual_fill_colors == ["g", "b", "r"]
         assert isinstance(contour_set, QuadContourSet)
         
         # no contour levels
@@ -1064,8 +1060,6 @@ def test_ConcentrationPlot_draw_concentration_plot():
                                                 [],
                                                 [],
                                                 1.0e-18)
-        #assert len(p.__actual_contour_levels) == 0
-        #assert len(p.__actual_fill_colors) == 0
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
@@ -1255,46 +1249,56 @@ def test_ConcentrationPlot__write_gisout():
     os.remove("GELABEL_ps.txt")
 
 
-def test_ConcentrationPlot__insert_contours():
+def test_ConcentrationPlot__match_contour_count():
     p = plot.ConcentrationPlot()
     contour_set = cntr.ContourSet()
 
     # The contours list should contain Contour objects.
     # For unit tests, use integers.
-    contour_set.contours = [1, 2]
-    contour_set.contour_orders = [1, 2]
+    c0 = cntr.Contour(contour_set)
+    c0.level = 2900.
+    c1 = cntr.Contour(contour_set)
+    c1.level = 17000.
+    contour_set.contours = [c0, c1]
+    contour_set.contour_orders = [0, 1]
     contour_levels = [2900., 2900., 17000.]
-    actual_contour_levels = [2900., 17000.]
-    p._insert_contours(contour_set, contour_levels, actual_contour_levels)
-    assert contour_set.contours == [1, 1, 2]
-    assert contour_set.contour_orders == [1, 2, 3]
+    p._match_contour_count(contour_set, contour_levels)
+    print(f'DEBUG: levels {[c.level for c in contour_set.contours]}')
+    assert contour_set.contours == [c0, c0, c1]
+    assert contour_set.contour_orders == [0, 1, 2]
 
     # When the duplicate contour level is in the middle of the list.
-    contour_set.contours = [1, 2, 3]
-    contour_set.contour_orders = [1, 2, 3]
+    c0 = cntr.Contour(contour_set)
+    c0.level = 100.
+    c1 = cntr.Contour(contour_set)
+    c1.level = 200.
+    c2 = cntr.Contour(contour_set)
+    c2.level = 300.
+    contour_set.contours = [c0, c1, c2]
+    contour_set.contour_orders = [0, 1, 2]
     contour_levels = [100., 200., 200., 300.]
-    actual_contour_levels = [100., 200., 300.]
-    p._insert_contours(contour_set, contour_levels, actual_contour_levels)
-    assert contour_set.contours == [1, 2, 2, 3]
-    assert contour_set.contour_orders == [1, 2, 3, 4]
+    p._match_contour_count(contour_set, contour_levels)
+    assert contour_set.contours == [c0, c1, c1, c2]
+    assert contour_set.contour_orders == [0, 1, 2, 3]
     
     # When the duplicate contour level is at right.
-    contour_set.contours = [1, 2, 3]
-    contour_set.contour_orders = [1, 2, 3]
+    contour_set.contours = [c0, c1, c2]
+    contour_set.contour_orders = [0, 1, 2]
     contour_levels = [100., 200., 300., 300.]
-    actual_contour_levels = [100., 200., 300.]
-    p._insert_contours(contour_set, contour_levels, actual_contour_levels)
-    assert contour_set.contours == [1, 2, 3, 3]
-    assert contour_set.contour_orders == [1, 2, 3, 4]
+    p._match_contour_count(contour_set, contour_levels)
+    assert contour_set.contours == [c0, c1, c2, c2]
+    assert contour_set.contour_orders == [0, 1, 2, 3]
     
-    # When no conours are present
+    # When no contours are present
     contour_set.contours = []
     contour_set.contour_orders = []
     contour_levels = [2900.0, 2900.0, 17000.0]
-    actual_contour_levels = [2900.0, 17000.0]
-    p._insert_contours(contour_set, contour_levels, actual_contour_levels)
-    assert contour_set.contours == []
-    assert contour_set.contour_orders == []
+    p._match_contour_count(contour_set, contour_levels)
+    assert len(contour_set.contours) == 3
+    assert contour_set.contour_orders == [0, 1, 2]
+    assert contour_set.contours[0].level == 2900.
+    assert contour_set.contours[1].level == 2900.
+    assert contour_set.contours[2].level == 17000.
 
 
 def test_ConcentrationPlot_draw_conc_above_ground():
@@ -1387,6 +1391,19 @@ def test_ConcentrationPlot_draw_conc_on_ground():
         raise pytest.fail("unexpected exception: {0}".format(ex))
     
     
+def test_ConcentrationPlot__create_gis_writer_list():
+    p = plot.ConcentrationPlot()
+    p.merge_plot_settings("data/default_cplot", ["-idata/cdump", "-jdata/arlmap_truncated", "-a3", "+a0", "-A0"])
+    p.read_data_files()
+    p._initialize_map_projection(p.cdump)
+    axes = plt.axes(projection=p.projection.crs)
+    axes.axis(p.initial_corners_xy)
+    
+    gis_writers = p._create_gis_writer_list(p.settings, p.time_zone)
+
+    assert len(gis_writers) == 1
+
+
 def test_ConcentrationPlot_draw():
     p = plot.ConcentrationPlot()
     p.merge_plot_settings(None, ["-idata/cdump", "-jdata/arlmap_truncated"])

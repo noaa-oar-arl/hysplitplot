@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 @pytest.fixture
 def cdump_two_pollutants():
     return model.ConcentrationDump().get_reader().read("data/cdump_two_pollutants")
-    
+
 
 # Concrete classes to test abstract classes
 class AbstractWriterTest(gisout.AbstractWriter):
@@ -264,11 +264,63 @@ def test_PointsGenerateFileWriter_write(cdump_two_pollutants):
     plt.close(ax.figure)
     
     contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
-    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
-    contour_set.colors = ["#ff0000", "#00ff00"]
-    contour_set.levels = [1.0e-15, 1.0e-12]
-    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
-    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.contours[0].raw_color = (1.0, 1.0, 1.0)
+    contour_set.contours[0].color = "#ff0000"
+    contour_set.contours[0].level = 1.0e-15
+    contour_set.contours[0].level_str = "1.0e-15"
+    contour_set.contours[0].label = "USER-2"
+    contour_set.contours[1].raw_color = (1.0, 0.0, 0.0)
+    contour_set.contours[1].color = "#00ff00"
+    contour_set.contours[1].level =  1.0e-12
+    contour_set.contours[1].level_str =  "1.0e-12"
+    contour_set.contours[1].label = "USER-1"
+    contour_set.concentration_unit = "mass/m^3"
+    contour_set.min_concentration = 1.0e-16
+    contour_set.max_concentration = 8.0e-12
+    contour_set.min_concentration_str = "1.0e-16"
+    contour_set.max_concentration_str = "8.0e-12"
+    
+    try:
+        basename = "GIS_00100_ps_01"
+        o.write(basename, g, contour_set, 100, 500)
+    except Exception as ex:
+        pytest.fail("unexpected exception: {}".format(ex))
+        
+    assert os.path.exists("GIS_00100_ps_01.att")
+    assert os.path.exists("GIS_00100_ps_01.txt")
+    
+    os.remove("GIS_00100_ps_01.att")
+    os.remove("GIS_00100_ps_01.txt")
+
+
+def test_PointsGenerateFileWriter_write_case2(cdump_two_pollutants):
+    """
+    When no contours are available.
+    """
+    # delete files we are about to create
+    if os.path.exists("GIS_00100_ps_01.att"):
+        os.remove("GIS_00100_ps_01.att")
+    if os.path.exists("GIS_00100_ps_01.txt"):
+        os.remove("GIS_00100_ps_01.txt")
+    
+    o = gisout.PointsGenerateFileWriter( gisout.PointsGenerateFileWriter.DecimalFormWriter() )
+    s = plot.ConcentrationPlotSettings()
+    conc_type = helper.ConcentrationTypeFactory.create_instance( s.KAVG )
+    conc_map = helper.ConcentrationMapFactory.create_instance( s.KMAP, s.KHEMIN )
+    depo_type = helper.DepositSumFactory.create_instance(s.NDEP,
+                                                         cdump_two_pollutants.has_ground_level_grid())
+    g = cdump_two_pollutants.grids[0]
+    
+    o.initialize(s.gis_alt_mode,
+                 s.KMLOUT,
+                 s.output_suffix,
+                 s.KMAP,
+                 s.NSSLBL,
+                 s.show_max_conc,
+                 s.NDEP)
+
+    contour_set = cntr.ContourSet()
+    # contour_set.contours and .contour_orders are not set.
     contour_set.concentration_unit = "mass/m^3"
     contour_set.min_concentration = 1.0e-16
     contour_set.max_concentration = 8.0e-12
@@ -546,11 +598,62 @@ def test_KMLWriter_write(cdump_two_pollutants):
     plt.close(ax.figure)
     
     contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
-    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
-    contour_set.colors = ["#ff0000", "#00ff00"]
-    contour_set.levels = [1.0e-15, 1.0e-12]
-    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
-    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.contours[0].raw_color = (1.0, 1.0, 1.0)
+    contour_set.contours[0].color = "#ff0000"
+    contour_set.contours[0].level = 1.0e-15
+    contour_set.contours[0].level_str = "1.0e-15"
+    contour_set.contours[0].label = "USER-2"
+    contour_set.contours[1].raw_color = (1.0, 0.0, 0.0)
+    contour_set.contours[1].color = "#00ff00"
+    contour_set.contours[1].level =  1.0e-12
+    contour_set.contours[1].level_str =  "1.0e-12"
+    contour_set.contours[1].label = "USER-1"
+    contour_set.concentration_unit = "mass/m^3"
+    contour_set.min_concentration = 1.0e-16
+    contour_set.max_concentration = 8.0e-12
+    contour_set.min_concentration_str = "1.0e-16"
+    contour_set.max_concentration_str = "8.0e-12"
+    
+    try:
+        o.write("HYSPLIT_ps", g, contour_set, 100, 500)
+        o.finalize()
+    except Exception as ex:
+        pytest.fail("unexpected exception: {}".format(ex))
+        
+    assert os.path.exists("HYSPLIT_ps.kml")
+    assert os.path.exists("GELABEL_ps.txt")
+
+    os.remove("HYSPLIT_ps.kml")
+    os.remove("GELABEL_ps.txt")
+
+
+def test_KMLWriter_write_case2(cdump_two_pollutants):
+    """
+    When no contours are available
+    """
+    # delete files we are about to create
+    if os.path.exists("HYSPLIT_ps.kml"):
+        os.remove("HYSPLIT_ps.kml")
+    if os.path.exists("GELABEL_ps.txt"):
+        os.remove("GELABEL_ps.txt")
+        
+    s = plot.ConcentrationPlotSettings()
+    o = gisout.KMLWriter(s.kml_option)
+
+    g = cdump_two_pollutants.grids[0]
+    g.extension = helper.GridProperties()
+    g.extension.max_locs = helper.find_max_locs(g)
+    
+    o.initialize(s.gis_alt_mode,
+                 s.output_basename,
+                 s.output_suffix,
+                 s.KMAP,
+                 s.NSSLBL,
+                 s.show_max_conc,
+                 s.NDEP)
+    
+    contour_set = cntr.ContourSet()
+    # contour_set.contours and .contour_orders are not set.
     contour_set.concentration_unit = "mass/m^3"
     contour_set.min_concentration = 1.0e-16
     contour_set.max_concentration = 8.0e-12
@@ -625,11 +728,16 @@ def test_KMLWriter__write_attributes(cdump_two_pollutants):
     plt.close(ax.figure)
     
     contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
-    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
-    contour_set.colors = ["#ff0000", "#00ff00"]
-    contour_set.levels = [1.0e-15, 1.0e-12]
-    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
-    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.contours[0].raw_color = (1.0, 1.0, 1.0)
+    contour_set.contours[0].color = "#ff0000"
+    contour_set.contours[0].level = 1.0e-15
+    contour_set.contours[0].level_str = "1.0e-15"
+    contour_set.contours[0].label = "USER-2"
+    contour_set.contours[1].raw_color = (1.0, 0.0, 0.0)
+    contour_set.contours[1].color = "#00ff00"
+    contour_set.contours[1].level =  1.0e-12
+    contour_set.contours[1].level_str =  "1.0e-12"
+    contour_set.contours[1].label = "USER-1"
     contour_set.concentration_unit = "mass/m^3"
     contour_set.min_concentration = 1.0e-16
     contour_set.max_concentration = 8.0e-12
@@ -688,11 +796,16 @@ def test_KMLWriter__write_attributes_case2(cdump_two_pollutants):
     plt.close(ax.figure)
     
     contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
-    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
-    contour_set.colors = ["#ff0000", "#00ff00"]
-    contour_set.levels = [1.0e-15, 1.0e-12]
-    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
-    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.contours[0].raw_color = (1.0, 1.0, 1.0)
+    contour_set.contours[0].color = "#ff0000"
+    contour_set.contours[0].level = 1.0e-15
+    contour_set.contours[0].level_str = "1.0e-15"
+    contour_set.contours[0].label = "USER-2"
+    contour_set.contours[1].raw_color = (1.0, 0.0, 0.0)
+    contour_set.contours[1].color = "#00ff00"
+    contour_set.contours[1].level =  1.0e-12
+    contour_set.contours[1].level_str =  "1.0e-12"
+    contour_set.contours[1].label = "USER-1"
     contour_set.concentration_unit = "mass/m^3"
     contour_set.min_concentration = 1.0e-16
     contour_set.max_concentration = 8.0e-12
@@ -770,11 +883,62 @@ def test_PartialKMLWriter_write(cdump_two_pollutants):
     plt.close(ax.figure)
     
     contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
-    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
-    contour_set.colors = ["#ff0000", "#00ff00"]
-    contour_set.levels = [1.0e-15, 1.0e-12]
-    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
-    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.contours[0].raw_color = (1.0, 1.0, 1.0)
+    contour_set.contours[0].color = "#ff0000"
+    contour_set.contours[0].level = 1.0e-15
+    contour_set.contours[0].level_str = "1.0e-15"
+    contour_set.contours[0].label = "USER-2"
+    contour_set.contours[1].raw_color = (1.0, 0.0, 0.0)
+    contour_set.contours[1].color = "#00ff00"
+    contour_set.contours[1].level =  1.0e-12
+    contour_set.contours[1].level_str =  "1.0e-12"
+    contour_set.contours[1].label = "USER-1"
+    contour_set.concentration_unit = "mass/m^3"
+    contour_set.min_concentration = 1.0e-16
+    contour_set.max_concentration = 8.0e-12
+    contour_set.min_concentration_str = "1.0e-16"
+    contour_set.max_concentration_str = "8.0e-12"
+    
+    try:
+        o.write("HYSPLIT_ps", g, contour_set, 100, 500)
+        o.finalize()
+    except Exception as ex:
+        pytest.fail("unexpected exception: {}".format(ex))
+        
+    assert os.path.exists("HYSPLIT_ps.txt")
+    assert os.path.exists("GELABEL_ps.txt")
+        
+    os.remove("HYSPLIT_ps.txt")
+    os.remove("GELABEL_ps.txt")
+
+
+def test_PartialKMLWriter_write_case2(cdump_two_pollutants):
+    """
+    When no contours are available
+    """
+    # delete files we are about to create
+    if os.path.exists("HYSPLIT_ps.txt"):
+        os.remove("HYSPLIT_ps.txt")
+    if os.path.exists("GELABEL_ps.txt"):
+        os.remove("GELABEL_ps.txt")
+        
+    s = plot.ConcentrationPlotSettings()
+    o = gisout.PartialKMLWriter(s.kml_option)
+
+    g = cdump_two_pollutants.grids[0]
+    g.extension = helper.GridProperties()
+    g.extension.max_locs = helper.find_max_locs(g)
+    
+    o.initialize(s.gis_alt_mode,
+                 s.output_basename,
+                 s.output_suffix,
+                 s.KMAP,
+                 s.NSSLBL,
+                 s.show_max_conc,
+                 s.NDEP)
+    
+    contour_set = cntr.ContourSet()
+    # contour_set.contours and .contour_orders are not set.
     contour_set.concentration_unit = "mass/m^3"
     contour_set.min_concentration = 1.0e-16
     contour_set.max_concentration = 8.0e-12
@@ -830,11 +994,16 @@ def test_PartialKMLWriter__write_attributes(cdump_two_pollutants):
     plt.close(ax.figure)
     
     contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
-    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
-    contour_set.colors = ["#ff0000", "#00ff00"]
-    contour_set.levels = [1.0e-15, 1.0e-12]
-    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
-    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.contours[0].raw_color = (1.0, 1.0, 1.0)
+    contour_set.contours[0].color = "#ff0000"
+    contour_set.contours[0].level = 1.0e-15
+    contour_set.contours[0].level_str = "1.0e-15"
+    contour_set.contours[0].label = "USER-2"
+    contour_set.contours[1].raw_color = (1.0, 0.0, 0.0)
+    contour_set.contours[1].color = "#00ff00"
+    contour_set.contours[1].level =  1.0e-12
+    contour_set.contours[1].level_str =  "1.0e-12"
+    contour_set.contours[1].label = "USER-1"
     contour_set.concentration_unit = "mass/m^3"
     contour_set.min_concentration = 1.0e-16
     contour_set.max_concentration = 8.0e-12
@@ -989,7 +1158,7 @@ def test_AbstractKMLContourWriter__get_contour_name(cdump_two_pollutants):
     o = AbstractKMLContourWriterTest("relativeToGround")
     assert o._get_contour_name("300", "ppm") == "Contour Level: 300 ppm"
 
-    
+
 def test_AbstractKMLContourWriter_write(cdump_two_pollutants):
     o = AbstractKMLContourWriterTest("relativeToGround")
     
@@ -1005,11 +1174,45 @@ def test_AbstractKMLContourWriter_write(cdump_two_pollutants):
     plt.close(ax.figure)
     
     contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
-    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
-    contour_set.colors = ["#ff0000", "#00ff00"]
-    contour_set.levels = [1.0e-15, 1.0e-12]
-    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
-    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.contours[0].raw_color = (1.0, 1.0, 1.0)
+    contour_set.contours[0].color = "#ff0000"
+    contour_set.contours[0].level = 1.0e-15
+    contour_set.contours[0].level_str = "1.0e-15"
+    contour_set.contours[0].label = "USER-2"
+    contour_set.contours[1].raw_color = (1.0, 0.0, 0.0)
+    contour_set.contours[1].color = "#00ff00"
+    contour_set.contours[1].level =  1.0e-12
+    contour_set.contours[1].level_str =  "1.0e-12"
+    contour_set.contours[1].label = "USER-1"
+    contour_set.concentration_unit = "mass/m^3"
+    contour_set.min_concentration = 1.0e-16
+    contour_set.max_concentration = 8.0e-12
+    contour_set.min_concentration_str = "1.0e-16"
+    contour_set.max_concentration_str = "8.0e-12"
+    
+    xml_root = ET.Element('kml')
+    doc = ET.SubElement(xml_root, 'Document')
+    
+    try:
+        o.write(xml_root, g, contour_set, 100, 500, "ps")
+    except Exception as ex:
+        pytest.fail("unexpected exception: {}".format(ex))
+
+    assert o.frame_counter.get() == 1
+
+
+def test_AbstractKMLContourWriter_write_case2(cdump_two_pollutants):
+    """
+    When no contours are available.
+    """
+    o = AbstractKMLContourWriterTest("relativeToGround")
+    
+    g = cdump_two_pollutants.grids[0]
+    g.extension = helper.GridProperties()
+    g.extension.max_locs = helper.find_max_locs(g)
+    
+    contour_set = cntr.ContourSet()
+    # contour_set.contours, and .contour_orders are not set.
     contour_set.concentration_unit = "mass/m^3"
     contour_set.min_concentration = 1.0e-16
     contour_set.max_concentration = 8.0e-12
@@ -1050,11 +1253,16 @@ def test_AbstractKMLContourWriter__write_contour(cdump_two_pollutants):
     plt.close(ax.figure)
     
     contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
-    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
-    contour_set.colors = ["#ff0000", "#00ff00"]
-    contour_set.levels = [1.0e-15, 1.0e-12]
-    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
-    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.contours[0].raw_color = (1.0, 1.0, 1.0)
+    contour_set.contours[0].color = "#ff0000"
+    contour_set.contours[0].level = 1.0e-15
+    contour_set.contours[0].level_str = "1.0e-15"
+    contour_set.contours[0].label = "USER-2"
+    contour_set.contours[1].raw_color = (1.0, 0.0, 0.0)
+    contour_set.contours[1].color = "#00ff00"
+    contour_set.contours[1].level =  1.0e-12
+    contour_set.contours[1].level_str =  "1.0e-12"
+    contour_set.contours[1].label = "USER-1"
     contour_set.concentration_unit = "mass/m^3"
     contour_set.min_concentration = 1.0e-16
     contour_set.max_concentration = 8.0e-12
@@ -1085,11 +1293,16 @@ def test_AbstractKMLContourWriter__write_polygon(cdump_two_pollutants):
     plt.close(ax.figure)
     
     contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
-    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
-    contour_set.colors = ["#ff0000", "#00ff00"]
-    contour_set.levels = [1.0e-15, 1.0e-12]
-    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
-    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.contours[0].raw_color = (1.0, 1.0, 1.0)
+    contour_set.contours[0].color = "#ff0000"
+    contour_set.contours[0].level = 1.0e-15
+    contour_set.contours[0].level_str = "1.0e-15"
+    contour_set.contours[0].label = "USER-2"
+    contour_set.contours[1].raw_color = (1.0, 0.0, 0.0)
+    contour_set.contours[1].color = "#00ff00"
+    contour_set.contours[1].level =  1.0e-12
+    contour_set.contours[1].level_str =  "1.0e-12"
+    contour_set.contours[1].label = "USER-1"
     contour_set.concentration_unit = "mass/m^3"
     contour_set.min_concentration = 1.0e-16
     contour_set.max_concentration = 8.0e-12
@@ -1120,11 +1333,16 @@ def test_AbstractKMLContourWriter__write_boundary(cdump_two_pollutants):
     plt.close(ax.figure)
     
     contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
-    contour_set.raw_colors = [(1.0, 1.0, 1.0), (1.0, 0.0, 0.0)]
-    contour_set.colors = ["#ff0000", "#00ff00"]
-    contour_set.levels = [1.0e-15, 1.0e-12]
-    contour_set.levels_str = ["1.0e-15", "1.0e-12"]
-    contour_set.labels = ["USER-2", "USER-1"]
+    contour_set.contours[0].raw_color = (1.0, 1.0, 1.0)
+    contour_set.contours[0].color = "#ff0000"
+    contour_set.contours[0].level = 1.0e-15
+    contour_set.contours[0].level_str = "1.0e-15"
+    contour_set.contours[0].label = "USER-2"
+    contour_set.contours[1].raw_color = (1.0, 0.0, 0.0)
+    contour_set.contours[1].color = "#00ff00"
+    contour_set.contours[1].level =  1.0e-12
+    contour_set.contours[1].level_str =  "1.0e-12"
+    contour_set.contours[1].label = "USER-1"
     contour_set.concentration_unit = "mass/m^3"
     contour_set.min_concentration = 1.0e-16
     contour_set.max_concentration = 8.0e-12

@@ -21,11 +21,6 @@ logger = logging.getLogger(__name__)
 class ContourSet:
 
     def __init__(self):
-        self.raw_colors = []
-        self.colors = []
-        self.levels = []
-        self.levels_str = []
-        self.labels = []
         self.contours = []
         self.contour_orders = []
         self.concentration_unit = ""
@@ -41,6 +36,11 @@ class Contour:
     def __init__(self, contour_set):
         self.parent = contour_set
         self.polygons = []
+        self.raw_color = None
+        self.color = None
+        self.level = None
+        self.level_str = None
+        self.label = None
 
 
 class Polygon:
@@ -120,8 +120,13 @@ def convert_matplotlib_quadcontourset(quadContourSet):
     contour_set = ContourSet()
 
     if quadContourSet is not None:
+        logger.debug(f'quadContourSet.levels {quadContourSet.levels}, '
+                     f'colors {quadContourSet.colors}, '
+                     f'allsegs len {len(quadContourSet.allsegs)}')
         for k, segs in enumerate(quadContourSet.allsegs):
             contour = Contour(contour_set)
+            contour.color = quadContourSet.colors[k]
+            contour.level = quadContourSet.levels[k]
             contour_set.contours.append(contour)
             contour_set.contour_orders.append(k)
             for j, seg in enumerate(segs):

@@ -436,8 +436,6 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         self.depo_map = None
         self.prev_forecast_time = None
         self.length_factory = None
-        self.__actual_contour_levels = None  # None: no duplicate contour levels
-        self.__actual_fill_colors = None     # None: no duplicate contour levels
 
         self.fig = None
         self.conc_outer = None
@@ -920,8 +918,6 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                           self.settings.ring_distance)
 
         # remove duplicate contour levels 
-        self.__actual_contour_levels = None
-        self.__actual_fill_colors = None
         actual_contour_levels, actual_fill_colors = \
             self._normalize_contour_levels(contour_levels,
                                            fill_colors,
@@ -966,7 +962,7 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                         c.set_edgecolor('k')
                         c.set_linewidth(0.25)
             except ValueError as ex:
-                logger.error("cannot generate contours")
+                logger.warning("Cannot generate contours: {}".format(str(ex)))
 
         if self.settings.show_max_conc == 1 \
                 or self.settings.show_max_conc == 3:
@@ -994,10 +990,6 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                              self.datem,
                              conc_grid.starting_datetime,
                              conc_grid.ending_datetime)
-
-        if len(actual_contour_levels) != len(contour_levels):
-            self.__actual_contour_levels = actual_contour_levels
-            self.__actual_fill_colors = actual_fill_colors
 
         return contour_set
 
@@ -1203,23 +1195,20 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                                                                 scaling_factor)
 
         contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
-        contour_set.raw_colors = color_table.raw_colors
-        contour_set.colors = color_table.colors
-        contour_set.levels = contour_levels
-        contour_set.levels_str = [self.conc_map.format_conc(level)
-                                  for level in contour_levels]
-        contour_set.labels = self.contour_labels
+        # add one or more contour objects to match the number of contour levels.
+        self._match_contour_count(contour_set, contour_levels)
+        for k, contour in enumerate(contour_set.contours):
+            contour.raw_color = color_table.raw_colors[k]
+            contour.color = color_table.colors[k]
+            contour.level = contour_levels[k]
+            contour.level_str = self.conc_map.format_conc(contour_levels[k])
+            contour.label = self.contour_labels[k]
         contour_set.concentration_unit = self.get_conc_unit(self.conc_map,
                                                             self.settings)
         contour_set.min_concentration = min_conc
         contour_set.max_concentration = max_conc
         contour_set.min_concentration_str = self.conc_map.format_conc(min_conc)
         contour_set.max_concentration_str = self.conc_map.format_conc(max_conc)
-
-        if self.__actual_contour_levels is not None:
-            # copy one or more contours to match the number of contour levels.
-            self._insert_contours(contour_set, contour_levels,
-                                  self.__actual_contour_levels)
 
         for w in gis_writers:
             basename = w.make_output_basename(
@@ -1230,24 +1219,37 @@ class ConcentrationPlot(plotbase.AbstractPlot):
             w.write(basename, g, contour_set,
                     lower_vert_level, upper_vert_level)
 
-    def _insert_contours(self,
-                         contour_set: cntr.ContourSet,
-                         contour_levels: list,
-                         actual_contour_levels: list) -> None:
-        if len(contour_levels) == len(actual_contour_levels):
+    def _match_contour_count(self,
+                             contour_set: cntr.ContourSet,
+                             contour_levels: list) -> None:
+        logger.debug(f"contour_levels {contour_levels}, contour count {len(contour_set.contours)}")
+        if len(contour_set.contours) == len(contour_levels):
             return
 
-        # Recall contour_levels and actual_contour_levels are ordered lists.
-        # contour_levels has one or more duplicate elements.
-        # actual_contour_levels has no duplicate elements.
+        # contour_set.contours, and .contour_orders may be empty.
+        if len(contour_set.contours) == 0:
+            logger.info(f"Adding {len(contour_levels)} empty contour(s)")
+            for k, c in enumerate(contour_levels):
+                contour = cntr.Contour(contour_set)
+                contour.level = c
+                contour_set.contours.append(contour)
+                contour_set.contour_orders.append(k)
+            return
+
+        # Recall contour_levels is a ordered list.
+        # contour_levels may have one or more duplicate values.
         j = 0
         for k, c in enumerate(contour_levels):
-            if j < len(actual_contour_levels) and c == actual_contour_levels[j]:
-                j += 1
+            if k < len(contour_set.contours) and c == contour_set.contours[k].level:
+                pass
             else:
                 try:
                     # insert the contour level, c.
-                    i = actual_contour_levels.index(c)
+                    i = -1
+                    for m, v in enumerate(contour_set.contours):
+                        if c == v.level:
+                            i = m
+                            break
                     contour = contour_set.contours[i]
                     contour_order = contour_set.contour_orders[i]
                     contour_set.contours.insert(i, contour)

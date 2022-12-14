@@ -801,7 +801,7 @@ class GridPlot(plotbase.AbstractPlot):
                         rectangles.set_color(clr)
                         axes.add_collection(rectangles)
             except ValueError as ex:
-                logger.error("cannot generate contours: {}".format(str(ex)))
+                logger.warning("Cannot generate contours: {}".format(str(ex)))
 
         # place station locations
         self._draw_stations_if_exists(axes, self.settings)
@@ -975,9 +975,12 @@ class GridPlot(plotbase.AbstractPlot):
         else:
             self._turn_off_spines(self.text_axes)
 
-    def _write_gisout(self, gis_writer, g, lower_vert_level, upper_vert_level,
+    def _write_gisout(self, gis_writers, g, lower_vert_level, upper_vert_level,
                       rect_collections, contour_levels, color_table,
                       scaling_factor):
+        """
+        Create GIS output files in as many formats as requested.
+        """
         if g.extension.max_locs is None:
             g.extension.max_locs = helper.find_max_locs(g)
 
@@ -985,12 +988,13 @@ class GridPlot(plotbase.AbstractPlot):
                                                                 scaling_factor)
 
         contour_set = cntr.convert_matplotlib_rectangle_collections(rect_collections)
-        contour_set.raw_colors = color_table.raw_colors
-        contour_set.colors = color_table.colors
-        contour_set.levels = contour_levels
-        contour_set.levels_str = [self.conc_map.format_conc(level)
-                                  for level in contour_levels]
-        contour_set.labels = self.contour_labels
+        # TODO: match the number of contours as ConcentrationPlot does?
+        for k, contour in enumerate(contour_set.contours):
+            contour.raw_color = color_table.raw_colors[k]
+            contour.color = color_table.colors[k]
+            contour.level = contour_levels[k]
+            contour.level_str = self.conc_map.format_conc(contour_levels[k])
+            contour.label = self.contour_labels[k]
         contour_set.concentration_unit = self.get_conc_unit(self.conc_map,
                                                             self.settings)
         contour_set.min_concentration = min_conc
@@ -998,18 +1002,18 @@ class GridPlot(plotbase.AbstractPlot):
         contour_set.min_concentration_str = self.conc_map.format_conc(min_conc)
         contour_set.max_concentration_str = self.conc_map.format_conc(max_conc)
 
-        basename = gis_writer.make_output_basename(
-            g,
-            self.conc_type,
-            self.depo_sum,
-            upper_vert_level)
-
-        gis_writer.write(basename, g, contour_set,
-                         lower_vert_level, upper_vert_level,
-                         distinguishable_vert_level=False)
+        for w in gis_writers:
+            basename = w.make_output_basename(
+                g,
+                self.conc_type,
+                self.depo_sum,
+                upper_vert_level)
+            w.write(basename, g, contour_set,
+                    lower_vert_level, upper_vert_level,
+                    distinguishable_vert_level=False)
 
     def draw_conc_grid(self, g, event_handlers, level_generator,
-                               color_table, gis_writer=None, *args, **kwargs):
+                       color_table, gis_writers=None, *args, **kwargs):
 
         self.layout(g, event_handlers)
 
@@ -1078,8 +1082,8 @@ class GridPlot(plotbase.AbstractPlot):
                                   color_skip=color_skip)
         self.draw_bottom_text()
 
-        if gis_writer is not None:
-            self._write_gisout(gis_writer, g, level1, level2,
+        if isinstance(gis_writers, list) and len(gis_writers) > 0:
+            self._write_gisout(gis_writers, g, level1, level2,
                                quad_contour_set, contour_levels,
                                color_table, conc_scaling_factor)
 
@@ -1093,6 +1097,33 @@ class GridPlot(plotbase.AbstractPlot):
 
         plt.close(self.fig)
         self.current_frame += 1
+
+    def _create_gis_writer_list(self, settings, time_zone):
+        gis_writer_list = []
+        
+        o = gisout.GISFileWriterFactory.create_instance(
+                settings.gis_output,
+                settings.kml_option,
+                time_zone)
+        gis_writer_list.append(o)
+        
+        for gis_opt in settings.additional_gis_outputs:
+            o = gisout.GISFileWriterFactory.create_instance(
+                    gis_opt,
+                    settings.kml_option,
+                    time_zone)
+            gis_writer_list.append(o)
+        
+        for w in gis_writer_list:
+            w.initialize(settings.gis_alt_mode,
+                         settings.output_basename,
+                         settings.output_suffix,
+                         settings.KMAP,
+                         settings.NSSLBL,
+                         settings.show_max_conc,
+                         settings.NDEP)
+
+        return gis_writer_list
 
     def draw(self, ev_handlers=None, *args, **kwargs):
         if not self.settings.interactive_mode:
@@ -1112,18 +1143,7 @@ class GridPlot(plotbase.AbstractPlot):
         self.user_label = False
         color_table = ColorTableFactory.create_instance(self.settings)
 
-        gis_writer = gisout.GISFileWriterFactory.create_instance(
-            self.settings.gis_output,
-            self.settings.kml_option,
-            self.time_zone)
-
-        gis_writer.initialize(self.settings.gis_alt_mode,
-                              self.settings.output_basename,
-                              self.settings.output_suffix,
-                              self.settings.KMAP,
-                              self.settings.NSSLBL,
-                              self.settings.show_max_conc,
-                              self.settings.NDEP)
+        gis_writers = self._create_gis_writer_list(self.settings, self.time_zone)
 
         self._initialize_map_projection(self.cdump)
 
@@ -1152,13 +1172,13 @@ class GridPlot(plotbase.AbstractPlot):
                 # expect only one grid, i.e. len(grids) == 1.
                 for g in grids:
                     self.draw_conc_grid(g, ev_handlers, level_gen_depo,
-                                        color_table, gis_writer,
+                                        color_table, gis_writers,
                                         *args, **kwargs)
             else:
                 for g in grids_above_ground:
                     if g.vert_level == self.settings.hlevel:
                         self.draw_conc_grid(g, ev_handlers, level_generator,
-                                            color_table, gis_writer,
+                                            color_table, gis_writers,
                                             *args, **kwargs)
 
             if self.value_output_writer is not None:
@@ -1168,8 +1188,8 @@ class GridPlot(plotbase.AbstractPlot):
 
         for plot_saver in self.plot_saver_list:
             plot_saver.close()
-        if gis_writer is not None:
-            gis_writer.finalize()
+        for w in gis_writers:
+            w.finalize()
 
     def get_plot_count_str(self):
         plot_saver = self.plot_saver_list[0]

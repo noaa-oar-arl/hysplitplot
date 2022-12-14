@@ -990,7 +990,7 @@ def test_TimeOfArrivalPlot__write_gisout():
     if os.path.exists("GELABEL_ps.txt"):
         os.remove("GELABEL_ps.txt")
     
-    p._write_gisout(gis_writer, toa_data.grid, lower_vert_level, upper_vert_level,
+    p._write_gisout([gis_writer], toa_data.grid, lower_vert_level, upper_vert_level,
                     quad_contour_set, toa_data.contour_levels, color_table,
                     scaling_factor, time_of_arrivals)
     
@@ -1092,6 +1092,19 @@ def test_TimeOfArrivalPlot_draw_toa_plot_on_ground():
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
+    
+    
+def test_TimeOfArrivalPlot__create_gis_writer_list():
+    p = plot.TimeOfArrivalPlot()
+    p.merge_plot_settings(None, ["-idata/rsmc.cdump2", "-jdata/arlmap_truncated", "-a3", "+a0", "-A0"])
+    p.read_data_files()
+    p._initialize_map_projection(p.cdump)
+    axes = plt.axes(projection=p.projection.crs)
+    axes.axis(p.initial_corners_xy)
+    
+    gis_writers = p._create_gis_writer_list(p.settings, p.time_zone)
+
+    assert len(gis_writers) == 1
 
 
 def test_TimeOfArrivalPlot_draw():

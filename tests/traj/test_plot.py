@@ -869,6 +869,16 @@ def test_TrajectoryPlot_write_gis_files():
     os.remove("HYSPLITtraj_ps_01.kml")
 
 
+def test_TrajectoryPlot__create_gis_writer_list():
+    p = plot.TrajectoryPlot()
+    p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated", "-a3", "+a0", "-A0"])
+    p.read_data_files()
+
+    gis_writers = p._create_gis_writer_list(p.settings, p.time_zone)
+
+    assert len(gis_writers) == 1
+
+
 def test_ColorCycle___init__():
     cc = plot.ColorCycle()
     assert cc.max_colors == 7

@@ -27,11 +27,6 @@ def cdump_two_pollutants():
 
 def test_ContourSet___init__():
     o = cntr.ContourSet()
-    assert hasattr(o, "raw_colors")
-    assert hasattr(o, "colors")
-    assert hasattr(o, "levels")
-    assert hasattr(o, "levels_str")
-    assert hasattr(o, "labels")
     assert hasattr(o, "contours")
     assert hasattr(o, "contour_orders")
     assert hasattr(o, "concentration_unit")
@@ -47,6 +42,11 @@ def test_Contour___init__():
     o = cntr.Contour(cs)
     assert o.parent is cs
     assert hasattr(o, "polygons")
+    assert hasattr(o, "raw_color")
+    assert hasattr(o, "color")
+    assert hasattr(o, "level")
+    assert hasattr(o, "level_str")
+    assert hasattr(o, "label")
 
 
 def test_Polygon___init__():
@@ -168,6 +168,10 @@ def test_convert_matplotlib_quadcontourset(cdump_two_pollutants):
     assert len(contour_set.contours) == 2
     assert len(contour_set.contour_orders) == 2
     assert contour_set.contour_orders == pytest.approx( [0, 1] )
+    assert contour_set.contours[0].level == 1.0e-15
+    assert contour_set.contours[1].level == 1.0e-12
+    assert contour_set.contours[0].color == "#ff0000"
+    assert contour_set.contours[1].color == "#00ff00"
     assert len(contour_set.contours[0].polygons) == 11
     assert len(contour_set.contours[0].polygons[0].boundaries) == 29
     
