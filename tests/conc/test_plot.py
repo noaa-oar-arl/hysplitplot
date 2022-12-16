@@ -1300,6 +1300,20 @@ def test_ConcentrationPlot__match_contour_count():
     assert contour_set.contours[1].level == 2900.
     assert contour_set.contours[2].level == 17000.
 
+    # When only one contour is present
+    c0 = cntr.Contour(contour_set)
+    c0.level = 100.
+    contour_set.contours = [c0]
+    contour_set.contour_orders = [0]
+    contour_levels = [50., 100., 150., 200.]
+    p._match_contour_count(contour_set, contour_levels)
+    assert len(contour_set.contours) == 4
+    assert contour_set.contour_orders == [0, 1, 2, 3]
+    assert contour_set.contours[0].level ==  50.
+    assert contour_set.contours[1].level == 100.
+    assert contour_set.contours[2].level == 150.
+    assert contour_set.contours[3].level == 200.
+
 
 def test_ConcentrationPlot_draw_conc_above_ground():
     p = plot.ConcentrationPlot()

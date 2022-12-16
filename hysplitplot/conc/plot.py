@@ -1226,41 +1226,25 @@ class ConcentrationPlot(plotbase.AbstractPlot):
         if len(contour_set.contours) == len(contour_levels):
             return
 
-        # contour_set.contours, and .contour_orders may be empty.
-        if len(contour_set.contours) == 0:
-            logger.info(f"Adding {len(contour_levels)} empty contour(s)")
-            for k, c in enumerate(contour_levels):
-                contour = cntr.Contour(contour_set)
-                contour.level = c
-                contour_set.contours.append(contour)
-                contour_set.contour_orders.append(k)
-            return
-
-        # Recall contour_levels is a ordered list.
+        # Recall contour_levels and contour_set.contours are ordered lists.
         # contour_levels may have one or more duplicate values.
-        j = 0
-        for k, c in enumerate(contour_levels):
-            if k < len(contour_set.contours) and c == contour_set.contours[k].level:
-                pass
-            else:
-                try:
-                    # insert the contour level, c.
-                    i = -1
-                    for m, v in enumerate(contour_set.contours):
-                        if c == v.level:
-                            i = m
-                            break
+        for k, level in enumerate(contour_levels):
+            if k >= len(contour_set.contours) or level != contour_set.contours[k].level:
+                # insert a contour for the contour level.
+                i = -1
+                for m, c in enumerate(contour_set.contours):
+                    if level == c.level:
+                        i = m
+                        break
+                if i == -1:
+                    logger.info(f"Adding an empty contour for level {level}")
+                    contour = cntr.Contour(contour_set)
+                    contour.level = level
+                else:
                     contour = contour_set.contours[i]
-                    contour_order = contour_set.contour_orders[i]
-                    contour_set.contours.insert(i, contour)
-                    contour_set.contour_orders.insert(i, contour_order)
-                    # normalize contour orders
-                    i += 1
-                    while i < len(contour_set.contour_orders):
-                        contour_set.contour_orders[i] += 1
-                        i += 1
-                except IndexError as ex:
-                    logger.info(f'No contour found at level {c}')
+                contour_set.contours.insert(k, contour)
+        # recreate contour orders
+        contour_set.contour_orders = list(range(len(contour_levels)))
 
     def draw_conc_above_ground(self, g, event_handlers, level_generator,
                                color_table, gis_writers=None, *args, **kwargs):
