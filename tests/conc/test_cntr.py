@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 @pytest.fixture
 def cdump_two_pollutants():
     return model.ConcentrationDump().get_reader().read("data/cdump_two_pollutants")
-    
+
 
 def test_ContourSet___init__():
     o = cntr.ContourSet()
@@ -35,6 +35,11 @@ def test_ContourSet___init__():
     assert hasattr(o, "min_concentration_str")
     assert hasattr(o, "max_concentration_str")
     assert hasattr(o, "time_of_arrivals") and o.time_of_arrivals is None
+
+
+def test_ContourSet_has_contour_lines():
+    o = cntr.ContourSet()
+    assert o.has_contour_lines() is False
 
 
 def test_Contour___init__():
@@ -49,12 +54,25 @@ def test_Contour___init__():
     assert hasattr(o, "label")
 
 
+def test_Contour_has_contour_lines():
+    cs = cntr.ContourSet()
+    o = cntr.Contour(cs)
+    assert o.has_contour_lines() is False
+
+
 def test_Polygon___init__():
     cs = cntr.ContourSet()
     c = cntr.Contour(cs)
     o = cntr.Polygon(c)
     assert o.parent is c
     assert hasattr(o, "boundaries")
+
+
+def test_Polygon_has_contour_lines():
+    cs = cntr.ContourSet()
+    c = cntr.Contour(cs)
+    o = cntr.Polygon(c)
+    assert o.has_contour_lines() is False
 
 
 def test_Boundary___init__():
@@ -66,8 +84,16 @@ def test_Boundary___init__():
     assert hasattr(o, "hole")
     assert hasattr(o, "longitudes")
     assert hasattr(o, "latitudes")
-    
-    
+
+
+def test_Boundary_has_contour_lines():
+    cs = cntr.ContourSet()
+    c = cntr.Contour(cs)
+    p = cntr.Polygon(c)
+    o = cntr.Boundary(p)
+    assert o.has_contour_lines() is False
+
+
 def test_Boundary_copy_with_dateline_crossing_fix():
     cs = cntr.ContourSet()
     c = cntr.Contour(cs)
@@ -181,5 +207,5 @@ def test_convert_matplotlib_quadcontourset(cdump_two_pollutants):
     assert b.hole == False
     assert b.longitudes[0] == pytest.approx(-84.22)
     
-    
-    
+    assert contour_set.has_contour_lines() is True
+

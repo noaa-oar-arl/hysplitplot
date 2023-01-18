@@ -1194,11 +1194,15 @@ def test_AbstractKMLContourWriter_write(cdump_two_pollutants):
     doc = ET.SubElement(xml_root, 'Document')
     
     try:
-        o.write(xml_root, g, contour_set, 100, 500, "ps")
+        o.write(doc, g, contour_set, 100, 500, "ps")
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
 
     assert o.frame_counter.get() == 1
+
+    # Folder/Snippet shouldn't be present when contours are there.
+    snippet = doc.findall('./Folder/Snippet')
+    assert len(snippet) == 0
 
 
 def test_AbstractKMLContourWriter_write_case2(cdump_two_pollutants):
@@ -1223,11 +1227,25 @@ def test_AbstractKMLContourWriter_write_case2(cdump_two_pollutants):
     doc = ET.SubElement(xml_root, 'Document')
     
     try:
-        o.write(xml_root, g, contour_set, 100, 500, "ps")
+        o.write(doc, g, contour_set, 100, 500, "ps")
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
 
     assert o.frame_counter.get() == 1
+
+    tree = ET.ElementTree(xml_root)
+    tree.write('test_filename.xml', encoding='UTF-8',
+                       xml_declaration=True,
+                       short_empty_elements=False)
+    
+    # Folder/Snippet should be present when no contours are there.
+    snippet = doc.findall('./Folder/Snippet')
+    assert len(snippet) == 1
+    assert 'NO PLUME RESULT' in snippet[0].text
+    
+    desc = doc.findall('./Folder/description')
+    assert len(desc) == 1
+    assert 'It may be that 1) emission has not' in desc[0].text
 
 
 def test_AbstractKMLContourWriter__get_contour_height_at():
@@ -1417,9 +1435,9 @@ def test_KMLConcentrationWriter__get_description_cdata():
     dt = datetime.datetime(2019, 7, 5, 7, 42, 0, 0, utc)
     lower_level = util.LengthInMeters(100)
     upper_level = util.LengthInMeters(500)    
-    assert o._get_description_cdata(lower_level, upper_level, dt) == """<pre>
+    assert o._get_description_cdata(lower_level, upper_level, dt) == """\
 Averaged from 100 m to 500 m
-Valid:20190705 0742 UTC</pre>"""
+Valid:20190705 0742 UTC"""
 
 
 def test_KMLConcentrationWriter__get_max_location_text():
@@ -1478,8 +1496,8 @@ def test_KMLDepositionWriter__get_description_cdata():
     utc = pytz.utc
     
     dt = datetime.datetime(2019, 7, 5, 7, 42, 0, 0, utc)
-    assert o._get_description_cdata(100, 500, dt) == """<pre>
-Valid:20190705 0742 UTC</pre>"""
+    assert o._get_description_cdata(100, 500, dt) == """\
+Valid:20190705 0742 UTC"""
 
     
 def test_KMLDepositionWriter__get_max_location_text():
@@ -1536,9 +1554,9 @@ def test_KMLMassLoadingWriter__get_description_cdata():
     dt = datetime.datetime(2019, 7, 5, 7, 42, 0, 0, utc)
     lower_level = util.LengthInMeters(100)
     upper_level = util.LengthInMeters(500)
-    assert o._get_description_cdata(lower_level, upper_level, dt) == """<pre>
+    assert o._get_description_cdata(lower_level, upper_level, dt) == """\
 From 100 m to 500 m
-Valid:20190705 0742 UTC</pre>"""
+Valid:20190705 0742 UTC"""
 
     
 def test_KMLMassLoadingWriter__get_max_location_text():
@@ -1595,15 +1613,15 @@ def test_KMLTimeOfArrivalWriter__get_description_cdata():
     dt = datetime.datetime(2019, 7, 5, 7, 42, 0, 0, utc)
     lower_level = util.LengthInMeters(100)
     upper_level = util.LengthInMeters(500)
-    assert o._get_description_cdata(lower_level, upper_level, dt) == """<pre>
+    assert o._get_description_cdata(lower_level, upper_level, dt) == """\
 Averaged from 100 m to 500 m
-Valid:20190705 0742 UTC</pre>"""
+Valid:20190705 0742 UTC"""
 
     lower_level = util.LengthInMeters(0)
     upper_level = util.LengthInMeters(0)
-    assert o._get_description_cdata(lower_level, upper_level, dt) == """<pre>
+    assert o._get_description_cdata(lower_level, upper_level, dt) == """\
 At ground-level
-Valid:20190705 0742 UTC</pre>"""
+Valid:20190705 0742 UTC"""
 
 
 def test_KMLTimeOfArrivalWriter__get_contour_name():

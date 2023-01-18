@@ -638,6 +638,15 @@ class KMLContourWriterFactory:
 
 class AbstractKMLContourWriter(ABC):
 
+    NO_PLUME_MESSAGE = '''
+
+NO PLUME RESULTS
+
+It may be that 1) emission has not started yet; 2) the 
+plume is out of range in latitude, in longitude, or in 
+height from the user-defined concentration grid; or 3) 
+no calculated values are above the output thresholds.  '''
+
     def __init__(self, alt_mode_str, time_zone=None, frame_counter=None):
         self.frame_counter = frame_counter if frame_counter is not None else FrameCounter()
         self.alt_mode_str = alt_mode_str
@@ -684,6 +693,7 @@ class AbstractKMLContourWriter(ABC):
         ET.SubElement(folder, 'name').text = '<![CDATA[{}]]>'.format(self._get_name_cdata(g.ending_datetime))
 
         # when not all of the concentration values are a zero
+        emptyQ = True
         if contour_set is not None and len(contour_set.contours) > 0:
             if self.frame_counter.get() == 1:
                 ET.SubElement(folder, 'visibility').text = '1'
@@ -691,10 +701,17 @@ class AbstractKMLContourWriter(ABC):
             else:
                 ET.SubElement(folder, 'visibility').text = '0'
 
-        ET.SubElement(folder, 'description').text = '<![CDATA[{}]]>'.format(
-                self._get_description_cdata(lower_vert_level,
-                                            upper_vert_level,
-                                            g.ending_datetime))
+            if contour_set.has_contour_lines():
+               emptyQ = False
+
+        desc = self._get_description_cdata(lower_vert_level,
+                                           upper_vert_level,
+                                           g.ending_datetime)
+        if emptyQ:
+           snippet = ET.SubElement(folder, 'Snippet', attrib={'maxLines':str(desc.count('\n')+2)})
+           snippet.text = '<![CDATA[<pre>{}</pre>]]>'.format(desc + '\nNO PLUME RESULTS')
+           desc += AbstractKMLContourWriter.NO_PLUME_MESSAGE
+        ET.SubElement(folder, 'description').text = '<![CDATA[<pre>{}</pre>]]>'.format(desc)
 
         screenoverlay = ET.SubElement(folder, 'ScreenOverlay')
         ET.SubElement(screenoverlay, 'name').text = 'Legend'
@@ -891,11 +908,10 @@ class KMLConcentrationWriter(AbstractKMLContourWriter):
 (Valid:{})</pre>""".format(self._get_timestamp_str(dt))
 
     def _get_description_cdata(self, lower_vert_level, upper_vert_level, dt):
-        return """<pre>
-Averaged from {} to {}
-Valid:{}</pre>""".format(lower_vert_level,
-                         upper_vert_level,
-                         self._get_timestamp_str(dt))
+        return """Averaged from {} to {}
+Valid:{}""".format(lower_vert_level,
+                   upper_vert_level,
+                   self._get_timestamp_str(dt))
 
     def _get_max_location_text(self):
         return """\
@@ -928,8 +944,7 @@ class KMLDepositionWriter(AbstractKMLContourWriter):
 (Valid:{})</pre>""".format(self._get_timestamp_str(dt))
 
     def _get_description_cdata(self, lower_vert_level, upper_vert_level, dt):
-        return """<pre>
-Valid:{}</pre>""".format(self._get_timestamp_str(dt))
+        return "Valid:{}".format(self._get_timestamp_str(dt))
 
     def _get_max_location_text(self):
         return """\
@@ -955,11 +970,10 @@ class KMLMassLoadingWriter(AbstractKMLContourWriter):
 (Valid:{})</pre>""".format(self._get_timestamp_str(dt))
 
     def _get_description_cdata(self, lower_vert_level, upper_vert_level, dt):
-        return """<pre>
-From {} to {}
-Valid:{}</pre>""".format(lower_vert_level,
-                         upper_vert_level,
-                         self._get_timestamp_str(dt))
+        return """From {} to {}
+Valid:{}""".format(lower_vert_level,
+                   upper_vert_level,
+                   self._get_timestamp_str(dt))
 
     def _get_max_location_text(self):
         return """\
@@ -986,15 +1000,13 @@ class KMLTimeOfArrivalWriter(AbstractKMLContourWriter):
 
     def _get_description_cdata(self, lower_vert_level, upper_vert_level, dt):
         if int(lower_vert_level) == 0 and int(upper_vert_level) == 0:
-            return """<pre>
-At ground-level
-Valid:{}</pre>""".format(self._get_timestamp_str(dt))
+            return """At ground-level
+Valid:{}""".format(self._get_timestamp_str(dt))
         else:
-            return """<pre>
-Averaged from {} to {}
-Valid:{}</pre>""".format(lower_vert_level,
-                         upper_vert_level,
-                         self._get_timestamp_str(dt))
+            return """Averaged from {} to {}
+Valid:{}""".format(lower_vert_level,
+                   upper_vert_level,
+                   self._get_timestamp_str(dt))
 
     def _get_contour_name(self, level_str, conc_unit):
         return "Time of arrival: {}".format(level_str)

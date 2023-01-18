@@ -30,6 +30,12 @@ class ContourSet:
         self.max_concentration_str = "0"
         self.time_of_arrivals = None
 
+    def has_contour_lines(self):
+        for x in self.contours:
+           if x.has_contour_lines():
+              return True
+        return False
+
 
 class Contour:
 
@@ -42,12 +48,23 @@ class Contour:
         self.level_str = None
         self.label = None
 
+    def has_contour_lines(self):
+        for x in self.polygons:
+           if x.has_contour_lines():
+              return True
+        return False
 
 class Polygon:
 
     def __init__(self, contour):
         self.parent = contour
         self.boundaries = []
+
+    def has_contour_lines(self):
+        for x in self.boundaries:
+           if x.has_contour_lines():
+              return True
+        return False
 
 
 class Boundary:
@@ -57,6 +74,11 @@ class Boundary:
         self.hole = False       # It is hole if points are ordered clockwise.
         self.longitudes = []
         self.latitudes = []
+
+    def has_contour_lines(self):
+        if len(self.latitudes) == 0:
+           return False
+        return True
 
     def copy_with_dateline_crossing_fix(self, lonlats):
         lons, lats = numpy.transpose(lonlats)

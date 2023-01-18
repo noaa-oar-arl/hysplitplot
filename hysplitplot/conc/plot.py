@@ -423,6 +423,14 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
     MAX_CONTOUR_LEVELS = 32
 
+    NO_PLUME_MESSAGE = '''\
+NO PLUME RESULTS
+
+It may be that 1) emission has not started yet; 2) the
+plume is out of range in latitude, in longitude, or in
+height from the user-defined concentration grid; or 3)
+no calculated values are above the output thresholds.'''
+
     def __init__(self):
         super(ConcentrationPlot, self).__init__()
         self.settings = ConcentrationPlotSettings()
@@ -1054,8 +1062,8 @@ class ConcentrationPlot(plotbase.AbstractPlot):
                       transform=axes.transAxes)
             y -= small_line_skip
 
-        if grid.nonzero_conc_count == 0:
-            return
+        # if grid.nonzero_conc_count == 0:
+        #     return
 
         dy = line_skip if s.contour_level_count <= 16 else line_skip * 0.65
         dx = 0.25
@@ -1320,6 +1328,18 @@ class ConcentrationPlot(plotbase.AbstractPlot):
 
         self.fig.canvas.draw()  # to get the plot spines right.
         self.on_update_plot_extent()
+
+        # Display a message after gridlines and lat/lon labels are drawn.
+        if quad_contour_set is None:
+            axes = self.conc_axes
+            axes.text(0.5, 0.5, ConcentrationPlot.NO_PLUME_MESSAGE,
+                      color='k',
+                      bbox={'facecolor':'w','edgecolor':'k'},
+                      fontsize='medium',
+                      horizontalalignment='center',
+                      verticalalignment='center',
+                      clip_on=True, transform=axes.transAxes)
+
         for plot_saver in self.plot_saver_list:
             plot_saver.save(self.fig, self.current_frame)
 
