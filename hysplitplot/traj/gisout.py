@@ -70,15 +70,15 @@ class IndexBasedTrajectoryStyle(AbstractTrajectoryStyle):
         ]
         for s in styles:
             style = ET.SubElement(doc, 'Style', attrib={'id': s['id']})
+            iconstyle = ET.SubElement(style, 'IconStyle')
+            ET.SubElement(iconstyle, 'scale').text = '0.6'
+            icon = ET.SubElement(iconstyle, 'Icon')
+            ET.SubElement(icon, 'href').text = s['iconhref']
             linestyle = ET.SubElement(style, 'LineStyle')
             ET.SubElement(linestyle, 'color').text = s['linecolor']
             ET.SubElement(linestyle, 'width').text = s['linewidth']
             polystyle = ET.SubElement(style, 'PolyStyle')
             ET.SubElement(polystyle, 'color').text = s['polycolor']
-            iconstyle = ET.SubElement(style, 'IconStyle')
-            ET.SubElement(iconstyle, 'scale').text = '0.6'
-            icon = ET.SubElement(iconstyle, 'Icon')
-            ET.SubElement(icon, 'href').text = s['iconhref']
 
     def get_id(self, t: model.Trajectory, t_index: int, thinner: bool = False) -> str:
         '''
@@ -322,13 +322,13 @@ class KMLWriter(AbstractGISFileWriter):
         ET.SubElement(doc, 'name').text = f'NOAA HYSPLIT Trajectory {self.output_suffix}'
         ET.SubElement(doc, 'open').text = '1'
         lookAt = ET.SubElement(doc, 'LookAt')
+        timestamp = ET.SubElement(lookAt, 'gx:TimeStamp')
+        ET.SubElement(timestamp, 'when').text = timestamp_str
         ET.SubElement(lookAt, 'longitude').text = f'{starting_loc[0]:.4f}'
         ET.SubElement(lookAt, 'latitude').text = f'{starting_loc[1]:.4f}'
         ET.SubElement(lookAt, 'altitude').text = '0'
         ET.SubElement(lookAt, 'tilt').text = '0'
         ET.SubElement(lookAt, 'range').text = '13700'
-        timestamp = ET.SubElement(lookAt, 'gx:TimeStamp')
-        ET.SubElement(timestamp, 'when').text = timestamp_str
         ET.SubElement(lookAt, 'gx:altitudeMode').text = 'relativeToSeaFloor'
         
         self.kml_trajectory_style.write_styles(doc)
@@ -405,18 +405,18 @@ class KMLWriter(AbstractGISFileWriter):
         ET.SubElement(folder, 'open').text = '1'
         
         placemark = ET.SubElement(folder, 'Placemark')
+        ET.SubElement(placemark, 'name').text = f'{t.starting_level:.1f} {self._get_level_type(t)} Trajectory'
         lookAt = ET.SubElement(placemark, 'LookAt')
-        ET.SubElement(lookAt, 'longitude').text = f'{t.starting_loc[0]:.4f}'
-        ET.SubElement(lookAt, 'latitude').text = f'{t.starting_loc[1]:.4f}'
-        ET.SubElement(lookAt, 'range').text = '2000000.0'
-        ET.SubElement(lookAt, 'tilt').text = '0.0'
-        ET.SubElement(lookAt, 'heading').text = '0.0'
         timestamp = ET.SubElement(lookAt, 'gx:TimeStamp')
         ET.SubElement(timestamp, 'when').text = util.get_iso_8601_str(t.starting_datetime,
                                                                       self.time_zone)
+        ET.SubElement(lookAt, 'longitude').text = f'{t.starting_loc[0]:.4f}'
+        ET.SubElement(lookAt, 'latitude').text = f'{t.starting_loc[1]:.4f}'
+        ET.SubElement(lookAt, 'heading').text = '0.0'
+        ET.SubElement(lookAt, 'tilt').text = '0.0'
+        ET.SubElement(lookAt, 'range').text = '2000000.0'
         ET.SubElement(lookAt, 'gx:altitudeMode').text = 'relativeToSeaFloor'
 
-        ET.SubElement(placemark, 'name').text = f'{t.starting_level:.1f} {self._get_level_type(t)} Trajectory'
         ET.SubElement(placemark, 'styleUrl').text = self.kml_trajectory_style.get_id(t, t_index)
         lineString = ET.SubElement(placemark, 'LineString')
         ET.SubElement(lineString, 'extrude').text = '1'
@@ -467,24 +467,9 @@ LAT: {1:.4f} LON: {2:.4f} Hght({3}): {4:.1f}
                 continue
 
             placemark = ET.SubElement(folder, 'Placemark')
-            ET.SubElement(folder, 'name').text = self._get_timestamp_str(t.datetimes[k], self.time_zone)
-            ET.SubElement(folder, 'visibility').text = '1'
-            lookAt = ET.SubElement(placemark, 'LookAt')
-            ET.SubElement(lookAt, 'longitude').text = f'{t.longitudes[k]:.4f}'
-            ET.SubElement(lookAt, 'latitude').text = f'{t.latitudes[k]:.4f}'
-            ET.SubElement(lookAt, 'range').text = '20000.0'
-            ET.SubElement(lookAt, 'tilt').text = '60.0'
-            ET.SubElement(lookAt, 'heading').text = '0.0'
+            ET.SubElement(placemark, 'name').text = self._get_timestamp_str(t.datetimes[k], self.time_zone)
+            ET.SubElement(placemark, 'visibility').text = '1'
             ET.SubElement(placemark, 'Snippet', attrib={'maxLines': '0'})
-            timeSpan = ET.SubElement(placemark, 'TimeSpan')
-            # Use the entire time period so that the ellipse would be
-            # initially visible with Google Earth.
-            if is_backward:
-                ET.SubElement(timeSpan, 'end').text = util.get_iso_8601_str(t.datetimes[-1], self.time_zone)
-                ET.SubElement(timeSpan, 'begin').text = util.get_iso_8601_str(t.datetimes[0], self.time_zone)
-            else:
-                ET.SubElement(timeSpan, 'begin').text = util.get_iso_8601_str(t.datetimes[0], self.time_zone)
-                ET.SubElement(timeSpan, 'end').text = util.get_iso_8601_str(t.datetimes[-1], self.time_zone)
             ET.SubElement(placemark, 'description').text = """\
 <![CDATA[<pre>HYSPLIT {0:4.0f}. hour ellipse of uncertainty
 
@@ -496,6 +481,21 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
                     t.longitudes[k],
                     self._get_level_type(t),
                     vc.values[k])
+            lookAt = ET.SubElement(placemark, 'LookAt')
+            ET.SubElement(lookAt, 'longitude').text = f'{t.longitudes[k]:.4f}'
+            ET.SubElement(lookAt, 'latitude').text = f'{t.latitudes[k]:.4f}'
+            ET.SubElement(lookAt, 'heading').text = '0.0'
+            ET.SubElement(lookAt, 'tilt').text = '60.0'
+            ET.SubElement(lookAt, 'range').text = '20000.0'
+            timeSpan = ET.SubElement(placemark, 'TimeSpan')
+            # Use the entire time period so that the ellipse would be
+            # initially visible with Google Earth.
+            if is_backward:
+                ET.SubElement(timeSpan, 'end').text = util.get_iso_8601_str(t.datetimes[-1], self.time_zone)
+                ET.SubElement(timeSpan, 'begin').text = util.get_iso_8601_str(t.datetimes[0], self.time_zone)
+            else:
+                ET.SubElement(timeSpan, 'begin').text = util.get_iso_8601_str(t.datetimes[0], self.time_zone)
+                ET.SubElement(timeSpan, 'end').text = util.get_iso_8601_str(t.datetimes[-1], self.time_zone)
             ET.SubElement(placemark, 'styleUrl').text = \
                     self.kml_trajectory_style.get_id(t, t_index, thinner=True)
             lineString = ET.SubElement(placemark, 'LineString')
@@ -524,20 +524,7 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
             placemark = ET.SubElement(folder, 'Placemark')
             ET.SubElement(placemark, 'name').text = self._get_timestamp_str(t.datetimes[k], self.time_zone)
             ET.SubElement(placemark, 'visibility').text = '1'
-            lookAt = ET.SubElement(placemark, 'LookAt')
-            ET.SubElement(lookAt, 'longitude').text = f'{t.longitudes[k]:.4f}'
-            ET.SubElement(lookAt, 'latitude').text = f'{t.latitudes[k]:.4f}'
-            ET.SubElement(lookAt, 'range').text = '20000.0'
-            ET.SubElement(lookAt, 'tilt').text = '60.0'
-            ET.SubElement(lookAt, 'heading').text = '0.0'
             ET.SubElement(placemark, 'Snippet', attrib={'maxLines': '0'})
-            timeSpan = ET.SubElement(placemark, 'TimeSpan')
-            if is_backward:
-                ET.SubElement(timeSpan, 'end').text = util.get_iso_8601_str(t.datetimes[k-1], self.time_zone)
-                ET.SubElement(timeSpan, 'begin').text = util.get_iso_8601_str(t.datetimes[k], self.time_zone)
-            else:
-                ET.SubElement(timeSpan, 'begin').text = util.get_iso_8601_str(t.datetimes[k-1], self.time_zone)
-                ET.SubElement(timeSpan, 'end').text = util.get_iso_8601_str(t.datetimes[k], self.time_zone)
             ET.SubElement(placemark, 'description').text = """\
 <![CDATA[<pre>HYSPLIT {0:4.0f}. hour endpoint
 
@@ -549,6 +536,19 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
                     t.longitudes[k],
                     self._get_level_type(t),
                     vc.values[k])
+            lookAt = ET.SubElement(placemark, 'LookAt')
+            ET.SubElement(lookAt, 'longitude').text = f'{t.longitudes[k]:.4f}'
+            ET.SubElement(lookAt, 'latitude').text = f'{t.latitudes[k]:.4f}'
+            ET.SubElement(lookAt, 'heading').text = '0.0'
+            ET.SubElement(lookAt, 'tilt').text = '60.0'
+            ET.SubElement(lookAt, 'range').text = '20000.0'
+            timeSpan = ET.SubElement(placemark, 'TimeSpan')
+            if is_backward:
+                ET.SubElement(timeSpan, 'end').text = util.get_iso_8601_str(t.datetimes[k-1], self.time_zone)
+                ET.SubElement(timeSpan, 'begin').text = util.get_iso_8601_str(t.datetimes[k], self.time_zone)
+            else:
+                ET.SubElement(timeSpan, 'begin').text = util.get_iso_8601_str(t.datetimes[k-1], self.time_zone)
+                ET.SubElement(timeSpan, 'end').text = util.get_iso_8601_str(t.datetimes[k], self.time_zone)
             ET.SubElement(placemark, 'styleUrl').text = self.kml_trajectory_style.get_id(t, t_index)
             point = ET.SubElement(placemark, 'Point')
             ET.SubElement(point, 'altitudeMode').text = self._get_alt_mode(t)

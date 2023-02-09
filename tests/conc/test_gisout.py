@@ -139,7 +139,7 @@ def test_AbstractWriter___init__():
 def test_AbstractWriter_initialize():
     o = AbstractWriterTest()
     o.initialize(0, "2", "3", 5, 6, 7, 8)
-    assert o.alt_mode_str == "clampedToGround"
+    assert o.alt_mode_str == "clampToGround"
     assert o.output_basename == "2"
     assert o.output_suffix == "3"
     assert o.KMAP == 5
@@ -1150,8 +1150,8 @@ def test_AbstractKMLContourWriter__get_begin_end_timestamps(cdump_two_pollutants
     
     o.time_zone = pytz.timezone("EST")
     a = o._get_begin_end_timestamps(g)
-    assert a[0] == "1983-09-25T12:00:00-0500"
-    assert a[1] == "1983-09-26T00:00:00-0500"
+    assert a[0] == "1983-09-25T12:00:00-05:00"
+    assert a[1] == "1983-09-26T00:00:00-05:00"
 
 
 def test_AbstractKMLContourWriter__get_contour_name(cdump_two_pollutants):

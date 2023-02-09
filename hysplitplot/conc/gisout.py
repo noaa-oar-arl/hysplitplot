@@ -55,7 +55,7 @@ class GISFileWriterFactory:
 class AbstractWriter(ABC):
 
     def __init__(self, time_zone=None):
-        self.alt_mode_str = "clampedToGround"
+        self.alt_mode_str = "clampToGround"
         self.output_basename = "plot"
         self.output_suffix = "ps"
         self.KMAP = const.ConcentrationMapType.CONCENTRATION
@@ -69,7 +69,7 @@ class AbstractWriter(ABC):
         if gis_alt_mode == const.GISOutputAltitude.RELATIVE_TO_GROUND:
             self.alt_mode_str = "relativeToGround"
         else:
-            self.alt_mode_str = "clampedToGround"
+            self.alt_mode_str = "clampToGround"
         self.output_basename = output_basename
         self.output_suffix = output_suffix
         self.KMAP = KMAP
@@ -443,17 +443,33 @@ class KMLWriter(AbstractWriter):
         ET.SubElement(doc, 'name').text = 'NOAA HYSPLIT RESULTS'
         ET.SubElement(doc, 'open').text = '1'
         lookAt = ET.SubElement(doc, 'LookAt')
+        timestamp = ET.SubElement(lookAt, 'gx:TimeStamp')
+        ET.SubElement(timestamp, 'when').text = util.get_iso_8601_str(g.starting_datetime,
+                                                                      self.time_zone)
         ET.SubElement(lookAt, 'longitude').text = '{:.4f}'.format(first_release_loc[0])
         ET.SubElement(lookAt, 'latitude').text = '{:.4f}'.format(first_release_loc[1])
         ET.SubElement(lookAt, 'altitude').text = '0'
         ET.SubElement(lookAt, 'tilt').text = '0'
         ET.SubElement(lookAt, 'range').text = '13700'
-        timestamp = ET.SubElement(lookAt, 'gx:TimeStamp')
-        ET.SubElement(timestamp, 'when').text = util.get_iso_8601_str(g.starting_datetime,
-                                                                      self.time_zone)
         ET.SubElement(lookAt, 'gx:altitudeMode').text = 'relativeToSeaFloor'
 
     def _write_colors(self, doc, colors):
+        # source
+        style = ET.SubElement(doc, 'Style', attrib={'id': 'sorc'})
+        iconstyle = ET.SubElement(style, 'IconStyle')
+        ET.SubElement(iconstyle, 'color').text = 'ff0000ff'
+        ET.SubElement(iconstyle, 'scale').text = '0.8'
+        icon = ET.SubElement(iconstyle, 'Icon')
+        ET.SubElement(icon, 'href').text = 'icon63.png'
+        ET.SubElement(iconstyle, 'hotSpot',
+                      attrib={'x': '0.5', 'y': '0.5',
+                              'xunits': 'fraction', 'yunits': 'fraction'})
+        labelstyle = ET.SubElement(style, 'LabelStyle')
+        ET.SubElement(labelstyle, 'color').text = 'ff0000ff'
+        linestyle = ET.SubElement(style, 'LineStyle')
+        ET.SubElement(linestyle, 'color').text = 'c8ffffff'
+        ET.SubElement(linestyle, 'width').text = '2'
+        # plumes
         for k, color in enumerate(colors):
             style = ET.SubElement(doc, 'Style', attrib={'id': 'conc{:d}'.format(k + 1)})
             linestyle = ET.SubElement(style, 'LineStyle')
@@ -485,21 +501,8 @@ class KMLWriter(AbstractWriter):
 LAT: {:.6f} LON: {:.6f}
 Released between {} and {} m AGL
 </pre>]]>""".format(loc[1], loc[0], level1, level2)
+            ET.SubElement(placemark, 'styleUrl').text = '#sorc'
             # white line to source height
-            style = ET.SubElement(placemark, 'Style', attrib={'id': 'sorc'})
-            iconstyle = ET.SubElement(style, 'IconStyle')
-            ET.SubElement(iconstyle, 'color').text = 'ff0000ff'
-            ET.SubElement(iconstyle, 'scale').text = '0.8'
-            icon = ET.SubElement(iconstyle, 'Icon')
-            ET.SubElement(icon, 'href').text = 'icon63.png'
-            ET.SubElement(iconstyle, 'hotSpot',
-                          attrib={'x': '0.5', 'y': '0.5',
-                                  'xunits': 'fraction', 'yunits': 'fraction'})
-            labelstyle = ET.SubElement(style, 'LabelStyle')
-            ET.SubElement(labelstyle, 'color').text = 'ff0000ff'
-            linestyle = ET.SubElement(style, 'LineStyle')
-            ET.SubElement(linestyle, 'color').text = 'c8ffffff'
-            ET.SubElement(linestyle, 'width').text = '2'
             point = ET.SubElement(placemark, 'Point')
             ET.SubElement(point, 'extrude').text = '1'
             ET.SubElement(point, 'altitudeMode').text = self.alt_mode_str
@@ -847,7 +850,7 @@ no calculated values are above the output thresholds.  '''
             ET.SubElement(placemark, 'name').text = 'Maximum Value Grid Cell'
 
         self._write_placemark_visibility(placemark)
-
+        ET.SubElement(placemark, 'Snippet', attrib={'maxLines': '0'})
         ET.SubElement(placemark, 'description').text = """<![CDATA[<pre>
 LAT: {:.4f} LON: {:.4f}
 Value: {}
@@ -855,8 +858,6 @@ Value: {}
                       loc[0],
                       max_conc_str,
                       self._get_max_location_text())
-
-        ET.SubElement(placemark, 'Snippet', attrib={'maxLines': '0'})
         timespan = ET.SubElement(placemark, 'TimeSpan')
         ET.SubElement(timespan, 'begin').text = begin_ts
         ET.SubElement(timespan, 'end').text = end_ts

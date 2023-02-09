@@ -163,7 +163,7 @@ def test_get_iso_8601_str():
 
     eastern = pytz.timezone("EST")
     dt = datetime.datetime(1983, 10, 13, 0, 15, 0, 0, eastern)
-    assert util.get_iso_8601_str(dt) == "1983-10-13T00:15:00-0500"
+    assert util.get_iso_8601_str(dt) == "1983-10-13T00:15:00-05:00"
 
 
 def test_calc_ring_distance():

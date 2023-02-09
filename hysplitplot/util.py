@@ -221,7 +221,9 @@ def get_iso_8601_str(dt, time_zone=None):
     t = dt if time_zone is None else dt.astimezone(time_zone)
     if t.tzinfo is None or t.tzinfo.utcoffset(t).total_seconds() == 0:
         return t.strftime("%Y-%m-%dT%H:%M:%SZ")
-    return t.strftime("%Y-%m-%dT%H:%M:%S%z")
+    tz = t.strftime("%z")  # '-0500'
+    tz_iso = tz[0:3] + ':' + tz[3:]  # '-05:00'
+    return t.strftime("%Y-%m-%dT%H:%M:%S") + tz_iso
 
 
 def calc_ring_distance(ext_sz, grid_delta, center_loc, ring_number,
