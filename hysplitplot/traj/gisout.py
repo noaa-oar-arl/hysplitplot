@@ -499,8 +499,8 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
             ET.SubElement(placemark, 'styleUrl').text = \
                     self.kml_trajectory_style.get_id(t, t_index, thinner=True)
             lineString = ET.SubElement(placemark, 'LineString')
-            ET.SubElement(placemark, 'extrude').text = '1'
-            ET.SubElement(placemark, 'altitudeMode').text = self._get_alt_mode(t)
+            ET.SubElement(lineString, 'extrude').text = '1'
+            ET.SubElement(lineString, 'altitudeMode').text = self._get_alt_mode(t)
             
             buffer = '\n'
             slon, slat = t.trajectory_stddevs[k]
