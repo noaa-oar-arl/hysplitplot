@@ -454,21 +454,6 @@ class KMLWriter(AbstractWriter):
         ET.SubElement(lookAt, 'gx:altitudeMode').text = 'relativeToSeaFloor'
 
     def _write_colors(self, doc, colors):
-        # source
-        style = ET.SubElement(doc, 'Style', attrib={'id': 'sorc'})
-        iconstyle = ET.SubElement(style, 'IconStyle')
-        ET.SubElement(iconstyle, 'color').text = 'ff0000ff'
-        ET.SubElement(iconstyle, 'scale').text = '0.8'
-        icon = ET.SubElement(iconstyle, 'Icon')
-        ET.SubElement(icon, 'href').text = 'icon63.png'
-        ET.SubElement(iconstyle, 'hotSpot',
-                      attrib={'x': '0.5', 'y': '0.5',
-                              'xunits': 'fraction', 'yunits': 'fraction'})
-        labelstyle = ET.SubElement(style, 'LabelStyle')
-        ET.SubElement(labelstyle, 'color').text = 'ff0000ff'
-        linestyle = ET.SubElement(style, 'LineStyle')
-        ET.SubElement(linestyle, 'color').text = 'c8ffffff'
-        ET.SubElement(linestyle, 'width').text = '2'
         # plumes
         for k, color in enumerate(colors):
             style = ET.SubElement(doc, 'Style', attrib={'id': 'conc{:d}'.format(k + 1)})
@@ -485,6 +470,21 @@ class KMLWriter(AbstractWriter):
         ET.SubElement(linestyle, 'width').text = '3'
         polystyle = ET.SubElement(style, 'PolyStyle')
         ET.SubElement(polystyle, 'fill').text = '0'
+        # source
+        style = ET.SubElement(doc, 'Style', attrib={'id': 'sorc'})
+        iconstyle = ET.SubElement(style, 'IconStyle')
+        ET.SubElement(iconstyle, 'color').text = 'ff0000ff'
+        ET.SubElement(iconstyle, 'scale').text = '0.8'
+        icon = ET.SubElement(iconstyle, 'Icon')
+        ET.SubElement(icon, 'href').text = 'icon63.png'
+        ET.SubElement(iconstyle, 'hotSpot',
+                      attrib={'x': '0.5', 'y': '0.5',
+                              'xunits': 'fraction', 'yunits': 'fraction'})
+        labelstyle = ET.SubElement(style, 'LabelStyle')
+        ET.SubElement(labelstyle, 'color').text = 'ff0000ff'
+        linestyle = ET.SubElement(style, 'LineStyle')
+        ET.SubElement(linestyle, 'color').text = 'c8ffffff'
+        ET.SubElement(linestyle, 'width').text = '2'
 
     def _write_source_locs(self, doc, g):
         folder = ET.SubElement(doc, 'Folder')
