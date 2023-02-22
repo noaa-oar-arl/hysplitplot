@@ -53,6 +53,18 @@ class Contour:
            if x.has_contour_lines():
               return True
         return False
+   
+    def clone(self):
+       o = Contour(self.parent)
+       for p in self.polygons:
+          o.polygons.append(p.clone())
+       o.raw_color = self.raw_color
+       o.color = self.color
+       o.level = self.level
+       o.level_str = self.level_str
+       o.label = self.label
+       return o
+
 
 class Polygon:
 
@@ -65,6 +77,12 @@ class Polygon:
            if x.has_contour_lines():
               return True
         return False
+
+    def clone(self):
+        o = Polygon(self.parent)
+        for b in self.boundaries:
+           o.boundaries.append(b.clone())
+        return o
 
 
 class Boundary:
@@ -79,6 +97,13 @@ class Boundary:
         if len(self.latitudes) == 0:
            return False
         return True
+
+    def clone(self):
+        o = Boundary(self.parent)
+        o.hole = self.hole
+        o.longitudes = self.longitudes.copy()
+        o.latitudes = self.latitudes.copy()
+        return o
 
     def copy_with_dateline_crossing_fix(self, lonlats):
         lons, lats = numpy.transpose(lonlats)

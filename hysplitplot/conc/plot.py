@@ -1249,7 +1249,7 @@ no calculated values are above the output thresholds.'''
                     contour = cntr.Contour(contour_set)
                     contour.level = level
                 else:
-                    contour = contour_set.contours[i]
+                    contour = contour_set.contours[i].clone()
                 contour_set.contours.insert(k, contour)
         # recreate contour orders
         contour_set.contour_orders = list(range(len(contour_levels)))

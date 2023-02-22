@@ -45,6 +45,7 @@ def test_ContourSet_has_contour_lines():
 def test_Contour___init__():
     cs = cntr.ContourSet()
     o = cntr.Contour(cs)
+    cs.contours.append(o)
     assert o.parent is cs
     assert hasattr(o, "polygons")
     assert hasattr(o, "raw_color")
@@ -57,13 +58,34 @@ def test_Contour___init__():
 def test_Contour_has_contour_lines():
     cs = cntr.ContourSet()
     o = cntr.Contour(cs)
+    cs.contours.append(o)
     assert o.has_contour_lines() is False
+
+
+def test_Contour_clone():
+    cs = cntr.ContourSet()
+    c = cntr.Contour(cs)
+    c.raw_color = '#F00'
+    c.color = 'r'
+    c.level = 1.0e-3
+    c.level_str = '1.0E-3 g/cm^3'
+    c.label = 'PAC-3'
+    cs.contours.append(c)
+    o = c.clone()
+    assert c.parent == o.parent
+    assert o.raw_color == '#F00'
+    assert o.color == 'r'
+    assert o.level == 1.0e-03
+    assert o.level_str == '1.0E-3 g/cm^3'
+    assert o.label == 'PAC-3'
 
 
 def test_Polygon___init__():
     cs = cntr.ContourSet()
     c = cntr.Contour(cs)
     o = cntr.Polygon(c)
+    c.polygons.append(o)
+    cs.contours.append(c)
     assert o.parent is c
     assert hasattr(o, "boundaries")
 
@@ -72,7 +94,25 @@ def test_Polygon_has_contour_lines():
     cs = cntr.ContourSet()
     c = cntr.Contour(cs)
     o = cntr.Polygon(c)
+    c.polygons.append(o)
+    cs.contours.append(c)
     assert o.has_contour_lines() is False
+
+
+def test_Polygon_clone():
+    cs = cntr.ContourSet()
+    c = cntr.Contour(cs)
+    p = cntr.Polygon(c)
+    b = cntr.Boundary(p)
+    b.longitudes = [1, 2, 3]
+    b.latitudes = [4, 5, 6]
+    p.boundaries.append(b)
+    c.polygons.append(p)
+    cs.contours.append(c)
+    o = p.clone()
+    assert o.parent == p.parent
+    assert o.boundaries[0].longitudes == [1, 2, 3]
+    assert o.boundaries[0].latitudes == [4, 5, 6]
 
 
 def test_Boundary___init__():
@@ -80,6 +120,9 @@ def test_Boundary___init__():
     c = cntr.Contour(cs)
     p = cntr.Polygon(c)
     o = cntr.Boundary(p)
+    p.boundaries.append(o)
+    c.polygons.append(p)
+    cs.contours.append(c)
     assert o.parent is p
     assert hasattr(o, "hole")
     assert hasattr(o, "longitudes")
@@ -91,7 +134,28 @@ def test_Boundary_has_contour_lines():
     c = cntr.Contour(cs)
     p = cntr.Polygon(c)
     o = cntr.Boundary(p)
+    p.boundaries.append(o)
+    c.polygons.append(p)
+    cs.contours.append(c)
     assert o.has_contour_lines() is False
+
+
+def test_Boundary_clone():
+    cs = cntr.ContourSet()
+    c = cntr.Contour(cs)
+    p = cntr.Polygon(c)
+    b = cntr.Boundary(p)
+    b.hole = True
+    b.longitudes = [1, 2, 3]
+    b.latitudes = [4, 5, 6]
+    p.boundaries.append(b)
+    c.polygons.append(p)
+    cs.contours.append(c)
+    o = b.clone()
+    assert o.parent == b.parent
+    assert o.hole is True
+    assert o.longitudes == [1, 2, 3]
+    assert o.latitudes == [4, 5, 6]
 
 
 def test_Boundary_copy_with_dateline_crossing_fix():
@@ -99,6 +163,9 @@ def test_Boundary_copy_with_dateline_crossing_fix():
     c = cntr.Contour(cs)
     p = cntr.Polygon(c)
     o = cntr.Boundary(p)
+    p.boundaries.append(o)
+    c.polygons.append(p)
+    cs.contours.append(c)
     
     o.copy_with_dateline_crossing_fix( [(0,0), (1,1.1), (2,2), (0,0)] )
     assert o.longitudes == pytest.approx( (0, 1, 2, 0) )

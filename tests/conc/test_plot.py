@@ -1264,8 +1264,11 @@ def test_ConcentrationPlot__match_contour_count():
     contour_levels = [2900., 2900., 17000.]
     p._match_contour_count(contour_set, contour_levels)
     print(f'DEBUG: levels {[c.level for c in contour_set.contours]}')
-    assert contour_set.contours == [c0, c0, c1]
+    assert len(contour_set.contours) == 3
     assert contour_set.contour_orders == [0, 1, 2]
+    assert contour_set.contours[0].level == 2900.
+    assert contour_set.contours[1].level == 2900.
+    assert contour_set.contours[2].level == 17000.
 
     # When the duplicate contour level is in the middle of the list.
     c0 = cntr.Contour(contour_set)
@@ -1278,16 +1281,24 @@ def test_ConcentrationPlot__match_contour_count():
     contour_set.contour_orders = [0, 1, 2]
     contour_levels = [100., 200., 200., 300.]
     p._match_contour_count(contour_set, contour_levels)
-    assert contour_set.contours == [c0, c1, c1, c2]
+    assert len(contour_set.contours) == 4
     assert contour_set.contour_orders == [0, 1, 2, 3]
+    assert contour_set.contours[0].level == 100.
+    assert contour_set.contours[1].level == 200.
+    assert contour_set.contours[2].level == 200.
+    assert contour_set.contours[3].level == 300.
     
     # When the duplicate contour level is at right.
     contour_set.contours = [c0, c1, c2]
     contour_set.contour_orders = [0, 1, 2]
     contour_levels = [100., 200., 300., 300.]
     p._match_contour_count(contour_set, contour_levels)
-    assert contour_set.contours == [c0, c1, c2, c2]
+    assert len(contour_set.contours) == 4
     assert contour_set.contour_orders == [0, 1, 2, 3]
+    assert contour_set.contours[0].level == 100.
+    assert contour_set.contours[1].level == 200.
+    assert contour_set.contours[2].level == 300.
+    assert contour_set.contours[3].level == 300.
     
     # When no contours are present
     contour_set.contours = []
