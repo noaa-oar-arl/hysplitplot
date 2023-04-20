@@ -1422,11 +1422,17 @@ no calculated values are above the output thresholds.'''
     def _create_gis_writer_list(self, grids, settings, time_zone):
         gis_writer_list = []
 
+        # get grids selected for plotting
+        fn = lambda g: \
+             g.vert_level in self.level_selector and \
+             g.pollutant_index in self.pollutant_selector
+        filtered_grids = list(filter(fn, grids))
+    
         # get the count of above-ground grids
         on_ground_grids = helper.VerticalLevelGridFilter(
-                grids,
+                filtered_grids,
                 helper.VerticalLevelSelector(0, 0)).grids
-        above_ground_grid_count = len(grids) - len(on_ground_grids)
+        above_ground_grid_count = len(filtered_grids) - len(on_ground_grids)
 
         o = gisout.GISFileWriterFactory.create_instance(
                 settings.gis_output,
