@@ -1419,15 +1419,21 @@ no calculated values are above the output thresholds.'''
         plt.close(self.fig)
         self.current_frame += 1
 
-    def _create_gis_writer_list(self, settings, time_zone):
+    def _create_gis_writer_list(self, grids, settings, time_zone):
         gis_writer_list = []
-        
+
+        # get the count of above-ground grids
+        on_ground_grids = helper.VerticalLevelGridFilter(
+                grids,
+                helper.VerticalLevelSelector(0, 0)).grids
+        above_ground_grid_count = len(grids) - len(on_ground_grids)
+
         o = gisout.GISFileWriterFactory.create_instance(
                 settings.gis_output,
                 settings.kml_option,
                 time_zone)
         gis_writer_list.append(o)
-        
+
         for gis_opt in settings.additional_gis_outputs:
             o = gisout.GISFileWriterFactory.create_instance(
                     gis_opt,
@@ -1443,6 +1449,7 @@ no calculated values are above the output thresholds.'''
                          settings.NSSLBL,
                          settings.show_max_conc,
                          settings.NDEP)
+            w.expect_number_of_above_ground_grids(above_ground_grid_count)
 
         return gis_writer_list
 
@@ -1461,7 +1468,9 @@ no calculated values are above the output thresholds.'''
             self.settings.UDMIN,
             self.settings.user_color)
 
-        gis_writers = self._create_gis_writer_list(self.settings, self.time_zone)
+        gis_writers = self._create_gis_writer_list(self.cdump.grids,
+                                                   self.settings,
+                                                   self.time_zone)
 
         self._initialize_map_projection(self.cdump)
 

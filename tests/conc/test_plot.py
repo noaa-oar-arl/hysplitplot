@@ -1424,7 +1424,7 @@ def test_ConcentrationPlot__create_gis_writer_list():
     axes = plt.axes(projection=p.projection.crs)
     axes.axis(p.initial_corners_xy)
     
-    gis_writers = p._create_gis_writer_list(p.settings, p.time_zone)
+    gis_writers = p._create_gis_writer_list(p.cdump.grids, p.settings, p.time_zone)
 
     assert len(gis_writers) == 1
 

@@ -77,6 +77,9 @@ class AbstractWriter(ABC):
         self.show_max_conc = show_max_conc
         self.NDEP = NDEP
 
+    def expect_number_of_above_ground_grids(self, above_ground_grid_count):
+        pass
+
     @abstractmethod
     def write(self, basename, g, contour_set, lower_vert_level,
               upper_vert_level, distinguishable_vert_level):
@@ -310,6 +313,11 @@ class KMLWriter(AbstractWriter):
                     self.frame_counter)
         w.set_show_max_conc(show_max_conc)
         return w
+
+    def expect_number_of_above_ground_grids(self, above_ground_grid_count):
+        if self.deposition_contour_writer is not None:
+            self.deposition_contour_writer.expect_number_of_above_ground_grids(
+                   above_ground_grid_count)
 
     def write(self, basename, g, contour_set,
               lower_vert_level, upper_vert_level,
@@ -655,6 +663,10 @@ no calculated values are above the output thresholds.  '''
         self.alt_mode_str = alt_mode_str
         self.time_zone = time_zone
         self.draw_max_conc_sqs = True
+        self.expected_number_of_above_ground_grids = None  # None means not set; cannot be 0.
+
+    def expect_number_of_above_ground_grids(self, count):
+        self.expected_number_of_above_ground_grids = count
 
     def set_show_max_conc(self, show_max_conc):
         if show_max_conc == const.ShowMaxSquare.BOTH or show_max_conc == const.ShowMaxSquare.SQUARE:
@@ -956,7 +968,10 @@ class KMLDepositionWriter(AbstractKMLContourWriter):
 
     def _write_placemark_visibility(self, x):
         if self.frame_counter.get() > 1:
-            ET.SubElement(x, 'visibility').text = '0'
+            if self.expected_number_of_above_ground_grids == 0:
+                ET.SubElement(x, 'visibility').text = '1'
+            else:
+                ET.SubElement(x, 'visibility').text = '0'
 
 
 class KMLMassLoadingWriter(AbstractKMLContourWriter):

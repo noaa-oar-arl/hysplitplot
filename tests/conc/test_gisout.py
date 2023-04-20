@@ -148,6 +148,14 @@ def test_AbstractWriter_initialize():
     assert o.NDEP == 8
 
 
+def test_AbstractWriter_expect_number_of_above_ground_grids():
+    o = AbstractWriterTest()
+    try:
+        o.expect_number_of_above_ground_grids(1)
+    except Exception as ex:
+        pytest.fail("unexpected exception: {}".format(ex))
+
+
 def test_AbstractWriter_write():
     o = AbstractWriterTest()
     try:
@@ -533,7 +541,7 @@ def test_KMLWriter_make_output_basename(cdump_two_pollutants):
     assert basename == "HYSPLIT_ps" and s.KMLOUT == 0
 
 
-def test_KMLWriter_initialize(cdump_two_pollutants):
+def test_KMLWriter_initialize():
     s = plot.ConcentrationPlotSettings()
     o = gisout.KMLWriter(s.kml_option)
 
@@ -566,6 +574,24 @@ def test_KMLWriter_initialize(cdump_two_pollutants):
     assert isinstance(o.contour_writer, gisout.AbstractKMLContourWriter)
     assert o.contour_writer.draw_max_conc_sqs == False
     assert o.deposition_contour_writer is None
+
+
+def test_KMLWriter_expect_number_of_above_ground_grids():
+    s = plot.ConcentrationPlotSettings()
+    o = gisout.KMLWriter(s.kml_option)
+
+    assert s.show_max_conc != 0 and s.show_max_conc != 2
+    o.initialize(s.gis_alt_mode,
+                 s.output_basename,
+                 s.output_suffix,
+                 s.KMAP,
+                 s.NSSLBL,
+                 s.show_max_conc,
+                 s.NDEP)
+    assert o.deposition_contour_writer.expected_number_of_above_ground_grids is None
+
+    o.expect_number_of_above_ground_grids(3)
+    assert o.deposition_contour_writer.expected_number_of_above_ground_grids == 3
 
 
 def test_KMLWriter_write(cdump_two_pollutants):
@@ -1113,6 +1139,7 @@ def test_AbstractKMLContourWriter___init__():
     assert o.alt_mode_str == "relativeToGround"
     assert o.time_zone is None
     assert o.draw_max_conc_sqs == True
+    assert o.expected_number_of_above_ground_grids is None
 
     tz = pytz.timezone("America/New_York")
     o = AbstractKMLContourWriterTest("relativeToGround", tz)
@@ -1122,6 +1149,12 @@ def test_AbstractKMLContourWriter___init__():
     fc = gisout.FrameCounter()
     o2 = AbstractKMLContourWriterTest("relativeToGround", frame_counter=fc)
     assert o2.frame_counter is fc
+    
+    
+def test_AbstractKMLContourWriter_expect_number_of_above_ground_grids():
+    o = AbstractKMLContourWriterTest("relativeToGround")
+    o.expect_number_of_above_ground_grids(3)
+    assert o.expected_number_of_above_ground_grids == 3
 
 
 def test_AbstractKMLContourWriter_set_show_max_conc():
@@ -1505,7 +1538,7 @@ def test_KMLDepositionWriter__get_max_location_text():
     
     assert o._get_max_location_text().strip().startswith("The square represents")
 
-    
+
 def test_KMLDepositionWriter__write_placemark_visibility():
     o = gisout.KMLDepositionWriter("relativeToGround")
     
@@ -1520,6 +1553,26 @@ def test_KMLDepositionWriter__write_placemark_visibility():
     f.close()
     
     assert lines[0].strip() == "<kml><visibility>0</visibility></kml>"
+
+    os.remove("__KMLDepositionWriter.txt")
+
+
+def test_KMLDepositionWriter__write_placemark_visibility_case2():
+    o = gisout.KMLDepositionWriter("relativeToGround")
+    o.expect_number_of_above_ground_grids(0)  # must be 0.
+    
+    xml_root = ET.Element('kml')
+    o.frame_counter.increase(2)
+    o._write_placemark_visibility(xml_root)
+    tree = ET.ElementTree(xml_root)
+    tree.write("__KMLDepositionWriter.txt")
+    
+    f = open("__KMLDepositionWriter.txt", "rt")
+    lines = f.read().splitlines()
+    f.close()
+    
+    # visibility should be set to unity (1).
+    assert lines[0].strip() == "<kml><visibility>1</visibility></kml>"
 
     os.remove("__KMLDepositionWriter.txt")
 
