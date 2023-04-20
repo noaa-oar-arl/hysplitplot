@@ -14,6 +14,7 @@ import os
 import pytest
 import pytz
 import xml.etree.ElementTree as ElementTree
+import math
 
 from hysplitdata.const import HeightUnit
 from hysplitdata.conc import model
@@ -1519,6 +1520,19 @@ def test_ContourLevelGeneratorFactory_create_instance(contourLevels):
                                                           user_color)
     assert isinstance(o, plot.ExponentialFixedLevelGenerator)
     
+    
+    o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC_VAR2,
+                                                          cntr_levels,
+                                                          cutoff,
+                                                          user_color)
+    assert isinstance(o, plot.ExponentialDynamicLevelGeneratorVariation2)
+    
+    o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.EXPONENTIAL_FIXED_VAR2,
+                                                          cntr_levels,
+                                                          cutoff,
+                                                          user_color)
+    assert isinstance(o, plot.ExponentialFixedLevelGeneratorVariation2)
+
     o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.LINEAR_DYNAMIC,
                                                           cntr_levels,
                                                           cutoff,
@@ -1681,6 +1695,115 @@ def test_ExponentialFixedLevelGenerator_make_levels():
     
 def test_ExponentialFixedLevelGenerator_compute_color_table_offset():
     o = plot.ExponentialFixedLevelGenerator( 0 )
+    o.set_global_min_max(1.39594e-15, 8.17302)
+    levels = o.make_levels(1.39594e-15, 8.17302e-13, 4)
+    assert o.compute_color_table_offset( levels ) == 0
+
+
+def test_ExponentialDynamicLevelGeneratorVariation2___init__():
+    cutoff = 3.14e-15
+    o = plot.ExponentialDynamicLevelGeneratorVariation2(cutoff)
+    assert o is not None
+    assert o.cutoff == pytest.approx(3.14e-15)
+
+
+def test_ExponentialDynamicLevelGeneratorVariation2__compute_interval():
+    o = plot.ExponentialDynamicLevelGeneratorVariation2(0)
+
+    cint, cint_inverse = o._compute_interval(1.39594e-15, 8.17302e-13)
+    assert cint == pytest.approx( math.sqrt(10.0) )
+    assert cint_inverse == pytest.approx( 1.0/math.sqrt(10.0) )
+
+    cint, cint_inverse = o._compute_interval(1.39594e-15, 8.17302e-6)
+    assert cint == pytest.approx( 10.0 )
+    assert cint_inverse == pytest.approx( 0.1 )
+    
+
+def test_ExponentialDynamicLevelGeneratorVariation2_make_levels():
+    o = plot.ExponentialDynamicLevelGeneratorVariation2(3.14e-19)
+    
+    # base sqrt(10.0)
+    
+    levels = o.make_levels(1.39594e-15, 8.17302e-13, 4)
+    
+    levels *= 1.e+16
+    assert levels == pytest.approx((11.16752, 100.0, 316.22776602, 1000.0))
+    
+    # base 10.0
+    
+    levels = o.make_levels(1.39594e-15, 8.17302e-07, 4)
+    
+    levels *= 1.e+13
+    assert levels == pytest.approx((1.116752e-02, 10000.0, 100000.0, 1000000.0))
+
+    # when cmax is zero
+    levels = o.make_levels(0, 0, 4)
+    assert levels == pytest.approx((3.14e-19, 0.1, 0.31622777, 1.0))
+    
+    # When the cutoff exceeds the min and max values.
+    o = plot.ExponentialDynamicLevelGeneratorVariation2( 1.0 )
+    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
+    assert levels == pytest.approx((1.0))
+    
+    # When the cutoff is between the min and max values
+    o = plot.ExponentialDynamicLevelGeneratorVariation2( 1.0e-14 )
+    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
+    levels *= 1.0e+16
+    assert levels == pytest.approx((100.0, 316.22776602, 1000.0))
+    
+    
+def test_ExponentialDynamicLevelGeneratorVariation2_compute_color_table_offset():
+    o = plot.ExponentialDynamicLevelGeneratorVariation2( 0 )
+    o.set_global_min_max(1.39594e-15, 8.17302e-13)
+    levels = o.make_levels(1.39594e-15, 8.17302e-13, 4)
+    
+    assert o.compute_color_table_offset( levels ) == 0
+    
+    o.set_global_min_max(1.39594e-15, 8.17302e-12)
+    
+    assert o.compute_color_table_offset( levels ) == 2
+    
+    assert o.compute_color_table_offset( [1.0e-13] ) == 3
+    
+    
+def test_ExponentialFixedLevelGeneratorVariation2___init__():
+    cutoff = 3.14e-15
+    o = plot.ExponentialFixedLevelGeneratorVariation2(cutoff)
+    assert o is not None
+    assert o.cutoff == pytest.approx(3.14e-15)
+
+
+def test_ExponentialFixedLevelGeneratorVariation2_make_levels():
+    o = plot.ExponentialFixedLevelGeneratorVariation2(3.14e-19)
+    o.set_global_min_max(1.39594e-15, 8.17302e-13)
+
+    levels = o.make_levels(1.39594e-16, 8.17302e-12, 4)
+    
+    # levels should be generated using the global min and max.
+    levels *= 1.e+16
+    assert levels == pytest.approx((11.16752, 100.0, 316.22776602, 1000.0))
+    
+    # when cmax is zero
+    o.set_global_min_max(0, 0)
+    levels = o.make_levels(1.39594e-16, 8.17302e-12, 4)
+    assert levels == pytest.approx((3.14000000e-19, 0.1, 0.316227766, 1.0))
+
+    # When the cutoff exceeds the min and max values.
+    o = plot.ExponentialFixedLevelGeneratorVariation2( 1.0 )
+    o.set_global_min_max(1.0e-16, 1.0e-12)
+    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
+    assert levels == pytest.approx((1.0))
+    
+    # When the cutoff is between the min and max values
+    o = plot.ExponentialFixedLevelGeneratorVariation2( 1.0e-14 )
+    o.set_global_min_max(1.0e-16, 1.0e-12)
+    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
+    levels *= 1.0e+16
+    assert levels == pytest.approx((100.0, 316.22776602, 1000.0))
+    
+    
+def test_ExponentialFixedLevelGeneratorVariation2_compute_color_table_offset():
+    o = plot.ExponentialFixedLevelGeneratorVariation2( 0 )
     o.set_global_min_max(1.39594e-15, 8.17302)
     levels = o.make_levels(1.39594e-15, 8.17302e-13, 4)
     assert o.compute_color_table_offset( levels ) == 0

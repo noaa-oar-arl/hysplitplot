@@ -607,10 +607,12 @@ no calculated values are above the output thresholds.'''
             s.LEVEL2 = cdump.vert_levels[-1]
         logger.debug("normalized LEVELs to %f, %f", s.LEVEL1, s.LEVEL2)
 
-        if s.contour_level_generator > \
-                const.ContourLevelGenerator.EXPONENTIAL_FIXED:
-            s.UCMIN = 0.0
-            s.UDMIN = 0.0
+        if s.contour_level_generator != const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC \
+            and s.contour_level_generator != const.ContourLevelGenerator.EXPONENTIAL_FIXED \
+            and s.contour_level_generator != const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC_VAR2 \
+            and s.contour_level_generator != const.ContourLevelGenerator.EXPONENTIAL_FIXED_VAR2:
+                s.UCMIN = 0.0
+                s.UDMIN = 0.0
 
         if s.exposure_unit == const.ExposureUnit.CHEMICAL_THRESHOLDS:
             s.KMAP = const.ConcentrationMapType.THRESHOLD_LEVELS
@@ -1565,10 +1567,10 @@ class ContourLevelGeneratorFactory:
             return ExponentialDynamicLevelGenerator(cutoff)
         elif generator == const.ContourLevelGenerator.CLG_50:
             return ExponentialDynamicLevelGenerator(cutoff,
-                                                    force_base_ten=True)
+                                                    force_base_10=True)
         elif generator == const.ContourLevelGenerator.CLG_51:
             return ExponentialDynamicLevelGenerator(cutoff,
-                                                    force_base_ten=True)
+                                                    force_base_10=True)
         elif generator == const.ContourLevelGenerator.EXPONENTIAL_FIXED:
             return ExponentialFixedLevelGenerator(cutoff)
         elif generator == const.ContourLevelGenerator.LINEAR_DYNAMIC:
@@ -1577,6 +1579,10 @@ class ContourLevelGeneratorFactory:
             return LinearFixedLevelGenerator()
         elif generator == const.ContourLevelGenerator.USER_SPECIFIED:
             return UserSpecifiedLevelGenerator(cntr_levels)
+        elif generator == const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC_VAR2:
+            return ExponentialDynamicLevelGeneratorVariation2(cutoff)
+        elif generator == const.ContourLevelGenerator.EXPONENTIAL_FIXED_VAR2:
+            return ExponentialFixedLevelGeneratorVariation2(cutoff)
         else:
             raise Exception("unknown method {0} for contour level "
                             "generation".format(generator))
@@ -1603,7 +1609,9 @@ class AbstractContourLevelGenerator(ABC):
 
 
 class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
-
+    """
+    Contour levels may change from frame to frame.
+    """
     def __init__(self, cutoff, **kwargs):
         super(ExponentialDynamicLevelGenerator, self).__init__(**kwargs)
         self.cutoff = cutoff
@@ -1667,12 +1675,83 @@ class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
 
 
 class ExponentialFixedLevelGenerator(ExponentialDynamicLevelGenerator):
-
+    """
+    Contour levels are the same across all frames.
+    """
     def __init__(self, cutoff, **kwargs):
         super(ExponentialFixedLevelGenerator, self).__init__(cutoff, **kwargs)
 
     def make_levels(self, min_conc, max_conc, max_levels):
         return super(ExponentialFixedLevelGenerator, self).make_levels(
+            self.global_min,
+            self.global_max,
+            max_levels)
+
+    def compute_color_table_offset(self, levels):
+        return 0
+
+
+class ExponentialDynamicLevelGeneratorVariation2(ExponentialDynamicLevelGenerator):
+    """
+    This is a variation of the exponential level generator.
+    Contour levels may change from frame to frame.
+    
+    Contour intervals are apart by a factor of sqrt(10) instead of 10
+    unless the min and max concentrations differ by a factor of 10^5.
+    This results in denser contour levels near the max concentration value.
+    A small value is added to pick up all non-zero concentration values.
+    """
+    def __init__(self, cutoff, **kwargs):
+        super(ExponentialDynamicLevelGeneratorVariation2, self).__init__(cutoff, **kwargs)
+        self.cutoff = cutoff
+
+    def _compute_interval(self, min_conc, max_conc):
+        cint = math.sqrt(10.0)
+        cint_inverse = 1.0 / cint
+        if (not self.force_base_10) and max_conc > 1.0e+5 * min_conc:
+            cint = 10.0
+            cint_inverse = 0.1
+        return cint, cint_inverse
+
+    def _approx_le(self, a, b, tol=1.0e-5):
+        if a == 0:
+            return abs(b) <= abs(tol)
+        elif abs(a - b) <= abs(a * tol):
+           return True
+        return False
+
+    def make_levels(self, min_conc, max_conc, max_levels):
+        # find a value small enough to draw contour lines for non-zero values.
+        v = 0.8 * min_conc  
+        if v == 0.0:
+           v = min_conc
+        if v < self.cutoff:
+           v = self.cutoff
+
+        b = super(ExponentialDynamicLevelGeneratorVariation2, self).make_levels(
+                           min_conc, max_conc, max_levels - 1)
+        if self._approx_le(b[0], v):
+           return b
+        
+        a = numpy.array([v], dtype=float)
+        return numpy.append(a, b)
+
+
+class ExponentialFixedLevelGeneratorVariation2(ExponentialDynamicLevelGeneratorVariation2):
+    """
+    This is a variation of the exponential level generator.
+    Contour levels are the same from frame to frame.
+    
+    Contour intervals are apart by a factor of sqrt(10) instead of 10
+    unless the min and max concentrations differ by a factor of 10^5.
+    This results in denser contour levels near the max concentration value.
+    A small value is added to pick up all non-zero concentration values.
+    """
+    def __init__(self, cutoff, **kwargs):
+        super(ExponentialFixedLevelGeneratorVariation2, self).__init__(cutoff, **kwargs)
+
+    def make_levels(self, min_conc, max_conc, max_levels):
+        return super(ExponentialFixedLevelGeneratorVariation2, self).make_levels(
             self.global_min,
             self.global_max,
             max_levels)
@@ -1772,8 +1851,11 @@ class ColorTableFactory:
         if settings.contour_level_generator == \
                 const.ContourLevelGenerator.USER_SPECIFIED:
             skip_std_colors = True
-        elif settings.contour_level_generator == \
+        elif (settings.contour_level_generator == \
                 const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC \
+                or \
+              settings.contour_level_generator == \
+                const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC_VAR2) \
                 and settings.IDYNC != 0:
             skip_std_colors = True
 
@@ -1787,8 +1869,11 @@ class ColorTableFactory:
             f = ColorTableFactory._get_color_table_filename()
             if f is not None:
                 ct.get_reader().read(f)
-                if settings.contour_level_generator == \
+                if (settings.contour_level_generator == \
                         const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC \
+                        or \
+                    settings.contour_level_generator == \
+                        const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC_VAR2) \
                         and settings.IDYNC != 0:
                     scaled_opacity = color_opacity * 0.01
                     for k in range(5):
