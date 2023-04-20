@@ -73,10 +73,10 @@ class ContourLevelGenerator:
     LINEAR_DYNAMIC = 2
     LINEAR_FIXED = 3
     USER_SPECIFIED = 4
-    CLG_50 = 50  # TODO: what is this called?
-    CLG_51 = 51  # TODO: what is this called?
-    EXPONENTIAL_DYNAMIC_VAR2 = 6  # variation of EXPONENTIAL_DYNAMIC
-    EXPONENTIAL_FIXED_VAR2 = 7    # variation of EXPONENTIAL_FIXED
+    CLG_50 = 50  # EXPONENTIAL_DYNAMIC with interval 10
+    CLG_51 = 51  # EXPONENTIAL_FIXED with interval 10
+    CLG_60 = 60  # EXPONENTIAL_DYNAMIC with interval sqrt(10)
+    CLG_61 = 61  # EXPONENTIAL_FIXED with interval sqrt(10)
 
     MAX_LEVELS = 32
 

@@ -131,8 +131,14 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.LEVEL1 = args.get_integer_value(["-b", "-B"], self.LEVEL1)
         self.LEVEL1 = max(0, self.LEVEL1)
 
-        self.contour_level_generator = \
-            args.get_integer_value(["-c", "-C"], self.contour_level_generator)
+        if args.has_arg(["-c", "-C"]):
+            str = args.get_value(["-c", "-C"])
+            if str.count(":") > 0:
+                self.contour_level_generator, self.contour_level_count = \
+                    self.parse_contour_level_generator(str)
+            else:
+                self.contour_level_generator = \
+                   args.get_integer_value(["-c", "-C"], self.contour_level_generator)
 
         self.write_contour_levels_only = \
             args.get_integer_value(["+c", "+C"], self.write_contour_levels_only)
@@ -271,6 +277,12 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
             if self.last_time_index < 0:
                 self.time_index_step = abs(self.last_time_index)
                 self.last_time_index = 9999
+
+    def parse_contour_level_generator(self, str):
+        divider = str.index(":")
+        generator = int(str[:divider])
+        count = int(str[divider+1:])
+        return generator, count
 
     def parse_contour_levels(self, str):
         if str.count(":") > 0:
@@ -607,10 +619,13 @@ no calculated values are above the output thresholds.'''
             s.LEVEL2 = cdump.vert_levels[-1]
         logger.debug("normalized LEVELs to %f, %f", s.LEVEL1, s.LEVEL2)
 
-        if s.contour_level_generator != const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC \
-            and s.contour_level_generator != const.ContourLevelGenerator.EXPONENTIAL_FIXED \
-            and s.contour_level_generator != const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC_VAR2 \
-            and s.contour_level_generator != const.ContourLevelGenerator.EXPONENTIAL_FIXED_VAR2:
+        if s.contour_level_generator not in [
+            const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC,
+            const.ContourLevelGenerator.EXPONENTIAL_FIXED,
+            const.ContourLevelGenerator.CLG_50,
+            const.ContourLevelGenerator.CLG_51,
+            const.ContourLevelGenerator.CLG_60,
+            const.ContourLevelGenerator.CLG_61]:
                 s.UCMIN = 0.0
                 s.UDMIN = 0.0
 
@@ -1579,9 +1594,9 @@ class ContourLevelGeneratorFactory:
             return LinearFixedLevelGenerator()
         elif generator == const.ContourLevelGenerator.USER_SPECIFIED:
             return UserSpecifiedLevelGenerator(cntr_levels)
-        elif generator == const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC_VAR2:
+        elif generator == const.ContourLevelGenerator.CLG_60:
             return ExponentialDynamicLevelGeneratorVariation2(cutoff)
-        elif generator == const.ContourLevelGenerator.EXPONENTIAL_FIXED_VAR2:
+        elif generator == const.ContourLevelGenerator.CLG_61:
             return ExponentialFixedLevelGeneratorVariation2(cutoff)
         else:
             raise Exception("unknown method {0} for contour level "
@@ -1851,12 +1866,11 @@ class ColorTableFactory:
         if settings.contour_level_generator == \
                 const.ContourLevelGenerator.USER_SPECIFIED:
             skip_std_colors = True
-        elif (settings.contour_level_generator == \
-                const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC \
-                or \
-              settings.contour_level_generator == \
-                const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC_VAR2) \
-                and settings.IDYNC != 0:
+        elif settings.contour_level_generator in [
+                const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC,
+                const.ContourLevelGenerator.CLG_50,
+                const.ContourLevelGenerator.CLG_60] \
+            and settings.IDYNC != 0:
             skip_std_colors = True
 
         if settings.KMAP == const.ConcentrationMapType.THRESHOLD_LEVELS \
@@ -1869,12 +1883,11 @@ class ColorTableFactory:
             f = ColorTableFactory._get_color_table_filename()
             if f is not None:
                 ct.get_reader().read(f)
-                if (settings.contour_level_generator == \
-                        const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC \
-                        or \
-                    settings.contour_level_generator == \
-                        const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC_VAR2) \
-                        and settings.IDYNC != 0:
+                if settings.contour_level_generator in [
+                        const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC,
+                        const.ContourLevelGenerator.CLG_50,
+                        const.ContourLevelGenerator.CLG_60] \
+                    and settings.IDYNC != 0:
                     scaled_opacity = color_opacity * 0.01
                     for k in range(5):
                         ct.set_rgb(k, (1.0, 1.0, 1.0, scaled_opacity))

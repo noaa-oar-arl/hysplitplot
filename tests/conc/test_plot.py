@@ -464,6 +464,13 @@ def test_ConcentrationPlotSettings_parse_time_indices():
     assert s.time_index_step == 5
     
     
+def test_ConcentrationPlotSettings_parse_contour_level_generator():
+    s = plot.ConcentrationPlotSettings()
+    generator, count = s.parse_contour_level_generator("61:7")
+    assert generator == 61
+    assert count == 7
+
+
 def test_ConcentrationPlotSettings_parse_contour_levels():
     s = plot.ConcentrationPlotSettings()
     s.parse_contour_levels("1E3+100+10")
@@ -1521,13 +1528,13 @@ def test_ContourLevelGeneratorFactory_create_instance(contourLevels):
     assert isinstance(o, plot.ExponentialFixedLevelGenerator)
     
     
-    o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC_VAR2,
+    o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.CLG_60,
                                                           cntr_levels,
                                                           cutoff,
                                                           user_color)
     assert isinstance(o, plot.ExponentialDynamicLevelGeneratorVariation2)
     
-    o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.EXPONENTIAL_FIXED_VAR2,
+    o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.CLG_61,
                                                           cntr_levels,
                                                           cutoff,
                                                           user_color)

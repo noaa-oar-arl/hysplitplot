@@ -36,11 +36,14 @@ def print_usage():
    +a[KML altitude mode: (0)-clampedToGround, 1-relativeToGround]
    -A[KML options: 0-none 1-KML with no extra overlays]
    -b[Bottom display level: (0) m]
-   -c[Contours: (0)-dyn/exp 1-fix/exp 2-dyn/lin 3-fix/lin 4-set 50-0,interval 10 51-1,interval 10]
+   -c[Contours: type, type:#contours
+      where type=(0)-dyn/exp, 1-fix/exp, 2-dyn/lin, 3-fix/lin, 4-set
+                 50-0 with interval 10, 51-1 with interval 10
+                 60-0 with interval sqrt(10), 61-1 with interval sqrt(10)]
    +c[Write contour values to text output file CONTUR: (0)-no 1-yes]
    -d[Display: (1)-by level, 2-levels averaged]
    -e[Exposure units flag: (0)-concentrations, 1-exposure, 2-chemical threshold,
-                                 3-hypothetical volcanic ash, 4-mass loading]
+                           3-hypothetical volcanic ash, 4-mass loading]
    -f[Frames: (0)-all frames one file, 1-one frame per file]
    -g[Circle overlay: ( )-auto, #circ(4), #circ:dist_km]
    -h[Hold map at center lat-lon: (source point), lat:lon]
