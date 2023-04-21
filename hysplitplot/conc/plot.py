@@ -549,6 +549,13 @@ no calculated values are above the output thresholds.'''
         self.color_table = ColorTableFactory.create_instance(self.settings,
                                                              color_opacity=self.color_opacity)
 
+        # set the last contour color to gray
+        if self.settings.contour_level_generator in [
+            const.ContourLevelGenerator.CLG_60, const.ContourLevelGenerator.CLG_61]:
+            self.color_table.set_rgb(self.settings.contour_level_count, (0.5, 0.5, 0.5))
+
+        self.settings.contour_level_count
+        
         self.plot_saver_list = self._create_plot_saver_list(self.settings)
 
         self._post_file_processing(self.cdump)
@@ -2009,6 +2016,11 @@ class DefaultColorTable(AbstractColorTable):
             self.__colors = self.create_plot_colors(self.raw_colors)
 
         return self.__colors
+
+    def set_rgb(self, k, rgb):
+        super(DefaultColorTable, self).set_rgb(k, rgb)
+        self.__raw_colors = None
+        self.__colors = None
 
 
 class DefaultChemicalThresholdColorTable(AbstractColorTable):
