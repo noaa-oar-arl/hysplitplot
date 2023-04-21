@@ -1595,9 +1595,11 @@ class ContourLevelGeneratorFactory:
         elif generator == const.ContourLevelGenerator.USER_SPECIFIED:
             return UserSpecifiedLevelGenerator(cntr_levels)
         elif generator == const.ContourLevelGenerator.CLG_60:
-            return ExponentialDynamicLevelGeneratorVariation2(cutoff)
+            return ExponentialDynamicLevelGeneratorVariation2(cutoff,
+                                                              force_base_sqrt10=True)
         elif generator == const.ContourLevelGenerator.CLG_61:
-            return ExponentialFixedLevelGeneratorVariation2(cutoff)
+            return ExponentialFixedLevelGeneratorVariation2(cutoff,
+                                                            force_base_sqrt10=True)
         else:
             raise Exception("unknown method {0} for contour level "
                             "generation".format(generator))
@@ -1719,11 +1721,12 @@ class ExponentialDynamicLevelGeneratorVariation2(ExponentialDynamicLevelGenerato
     def __init__(self, cutoff, **kwargs):
         super(ExponentialDynamicLevelGeneratorVariation2, self).__init__(cutoff, **kwargs)
         self.cutoff = cutoff
+        self.force_base_sqrt10 = kwargs.get("force_base_sqrt10", False)
 
     def _compute_interval(self, min_conc, max_conc):
         cint = math.sqrt(10.0)
         cint_inverse = 1.0 / cint
-        if (not self.force_base_10) and max_conc > 1.0e+5 * min_conc:
+        if (not self.force_base_sqrt10) and max_conc > 1.0e+5 * min_conc:
             cint = 10.0
             cint_inverse = 0.1
         return cint, cint_inverse

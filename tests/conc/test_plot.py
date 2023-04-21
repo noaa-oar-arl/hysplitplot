@@ -1709,9 +1709,10 @@ def test_ExponentialFixedLevelGenerator_compute_color_table_offset():
 
 def test_ExponentialDynamicLevelGeneratorVariation2___init__():
     cutoff = 3.14e-15
-    o = plot.ExponentialDynamicLevelGeneratorVariation2(cutoff)
+    o = plot.ExponentialDynamicLevelGeneratorVariation2(cutoff, force_base_sqrt10=True)
     assert o is not None
     assert o.cutoff == pytest.approx(3.14e-15)
+    assert o.force_base_sqrt10 == True 
 
 
 def test_ExponentialDynamicLevelGeneratorVariation2__compute_interval():
@@ -1725,6 +1726,12 @@ def test_ExponentialDynamicLevelGeneratorVariation2__compute_interval():
     assert cint == pytest.approx( 10.0 )
     assert cint_inverse == pytest.approx( 0.1 )
     
+    o.force_base_sqrt10 = True
+
+    cint, cint_inverse = o._compute_interval(1.39594e-15, 8.17302e-6)
+    assert cint == pytest.approx( math.sqrt(10.0) )
+    assert cint_inverse == pytest.approx( 1.0/math.sqrt(10.0) )
+
 
 def test_ExponentialDynamicLevelGeneratorVariation2_make_levels():
     o = plot.ExponentialDynamicLevelGeneratorVariation2(3.14e-19)
@@ -1742,6 +1749,14 @@ def test_ExponentialDynamicLevelGeneratorVariation2_make_levels():
     
     levels *= 1.e+13
     assert levels == pytest.approx((1.116752e-02, 10000.0, 100000.0, 1000000.0))
+
+    # force base sqrt(10)
+    
+    o.force_base_sqrt10 = True
+    levels = o.make_levels(1.39594e-15, 8.17302e-7, 4)
+    
+    levels *= 1.e+10
+    assert levels == pytest.approx((1.116752e-05, 100.0, 316.22776602, 1000.0))
 
     # when cmax is zero
     levels = o.make_levels(0, 0, 4)
