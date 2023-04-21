@@ -1779,11 +1779,11 @@ def test_ExponentialDynamicLevelGeneratorVariation2_compute_color_table_offset()
     o.set_global_min_max(1.39594e-15, 8.17302e-13)
     levels = o.make_levels(1.39594e-15, 8.17302e-13, 4)
     
-    assert o.compute_color_table_offset( levels ) == 0
+    assert o.compute_color_table_offset( levels ) == 1
     
     o.set_global_min_max(1.39594e-15, 8.17302e-12)
     
-    assert o.compute_color_table_offset( levels ) == 2
+    assert o.compute_color_table_offset( levels ) == 3
     
     assert o.compute_color_table_offset( [1.0e-13] ) == 3
     

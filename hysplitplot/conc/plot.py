@@ -549,11 +549,6 @@ no calculated values are above the output thresholds.'''
         self.color_table = ColorTableFactory.create_instance(self.settings,
                                                              color_opacity=self.color_opacity)
 
-        # set the last contour color to gray
-        if self.settings.contour_level_generator in [
-            const.ContourLevelGenerator.CLG_60, const.ContourLevelGenerator.CLG_61]:
-            self.color_table.set_rgb(self.settings.contour_level_count, (0.5, 0.5, 0.5))
-
         self.settings.contour_level_count
         
         self.plot_saver_list = self._create_plot_saver_list(self.settings)
@@ -1682,7 +1677,7 @@ class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
 
     def compute_color_table_offset(self, levels):
         if len(levels) > 1:
-            cint = levels[1] / levels[0]
+            cint = levels[-1] / levels[-2]
         else:
             cint, _ = self._compute_interval(self.global_min, self.global_max)
 
