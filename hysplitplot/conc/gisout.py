@@ -783,11 +783,7 @@ no calculated values are above the output thresholds.  '''
             contour_name = self._get_contour_name(
                                     contour.level_str,
                                     contour_set.concentration_unit)
-
-            if len(contour.label) > 0:
-                ET.SubElement(placemark, 'name', attrib={'LOC': contour.label}).text = contour_name
-            else:
-                ET.SubElement(placemark, 'name').text = contour_name
+            ET.SubElement(placemark, 'name').text = contour_name
 
             self._write_placemark_visibility(placemark)
 
@@ -796,7 +792,12 @@ no calculated values are above the output thresholds.  '''
             ET.SubElement(timespan, 'begin').text = begin_ts
             ET.SubElement(timespan, 'end').text = end_ts
             ET.SubElement(placemark, 'styleUrl').text = '#conc{}'.format(k + 1)
-            
+
+            if len(contour.label) > 0:
+                ext = ET.SubElement(placemark, 'ExtendedData')
+                dat = ET.SubElement(ext, 'Data', attrib={'name': 'LOC'})
+                ET.SubElement(dat, 'value').text = contour.label
+
             multigeometry = ET.SubElement(placemark, 'MultiGeometry')
             for polygon in contour.polygons:
                 self._write_polygon(multigeometry, polygon, vert_level)
@@ -856,10 +857,7 @@ no calculated values are above the output thresholds.  '''
 
         placemark = ET.SubElement(x, 'Placemark')
 
-        if len(contour_label) > 0:
-            ET.SubElement(placemark, 'name', attrib={'LOC': contour_label}).text = 'Maximum Value Grid Cell'
-        else:
-            ET.SubElement(placemark, 'name').text = 'Maximum Value Grid Cell'
+        ET.SubElement(placemark, 'name').text = 'Maximum Value Grid Cell'
 
         self._write_placemark_visibility(placemark)
         ET.SubElement(placemark, 'Snippet', attrib={'maxLines': '0'})
@@ -875,6 +873,11 @@ Value: {}
         ET.SubElement(timespan, 'end').text = end_ts
         ET.SubElement(placemark, 'styleUrl').text = '#maxv'
 
+        if len(contour_label) > 0:
+            ext = ET.SubElement(placemark, 'ExtendedData')
+            dat = ET.SubElement(ext, 'Data', attrib={'name': 'LOC'})
+            ET.SubElement(dat, 'value').text = contour_label
+                
         multigeometry = ET.SubElement(placemark, 'MultiGeometry')
         for loc in g.extension.max_locs:
             polygon = ET.SubElement(multigeometry, 'Polygon')
