@@ -730,6 +730,7 @@ no calculated values are above the output thresholds.  '''
 
         screenoverlay = ET.SubElement(folder, 'ScreenOverlay')
         ET.SubElement(screenoverlay, 'name').text = 'Legend'
+        self._write_placemark_visibility(screenoverlay)
         ET.SubElement(screenoverlay, 'Snippet', attrib={'maxLines': '0'})
         timespan = ET.SubElement(screenoverlay, 'TimeSpan')
         ET.SubElement(timespan, 'begin').text = begin_ts
