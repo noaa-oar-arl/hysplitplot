@@ -730,7 +730,7 @@ no calculated values are above the output thresholds.  '''
 
         screenoverlay = ET.SubElement(folder, 'ScreenOverlay')
         ET.SubElement(screenoverlay, 'name').text = 'Legend'
-        self._write_placemark_visibility(screenoverlay)
+        self._write_visibility(screenoverlay)
         ET.SubElement(screenoverlay, 'Snippet', attrib={'maxLines': '0'})
         timespan = ET.SubElement(screenoverlay, 'TimeSpan')
         ET.SubElement(timespan, 'begin').text = begin_ts
@@ -785,9 +785,7 @@ no calculated values are above the output thresholds.  '''
                                     contour.level_str,
                                     contour_set.concentration_unit)
             ET.SubElement(placemark, 'name').text = contour_name
-
-            self._write_placemark_visibility(placemark)
-
+            self._write_visibility(placemark)
             ET.SubElement(placemark, 'Snippet', attrib={'maxLines': '0'})
             timespan = ET.SubElement(placemark, 'TimeSpan')
             ET.SubElement(timespan, 'begin').text = begin_ts
@@ -860,7 +858,7 @@ no calculated values are above the output thresholds.  '''
 
         ET.SubElement(placemark, 'name').text = 'Maximum Value Grid Cell'
 
-        self._write_placemark_visibility(placemark)
+        self._write_visibility(placemark)
         ET.SubElement(placemark, 'Snippet', attrib={'maxLines': '0'})
         ET.SubElement(placemark, 'description').text = """<![CDATA[<pre>
 LAT: {:.4f} LON: {:.4f}
@@ -909,7 +907,7 @@ Value: {}
         t = dt if self.time_zone is None else dt.astimezone(self.time_zone)
         return t.strftime("%Y%m%d %H%M %Z")
 
-    def _write_placemark_visibility(self, x):
+    def _write_visibility(self, x):
         pass
 
 
@@ -970,12 +968,11 @@ class KMLDepositionWriter(AbstractKMLContourWriter):
       size of the square represents the
       deposition grid cell size."""
 
-    def _write_placemark_visibility(self, x):
-        if self.frame_counter.get() > 1:
-            if self.expected_number_of_above_ground_grids == 0:
-                ET.SubElement(x, 'visibility').text = '1'
-            else:
-                ET.SubElement(x, 'visibility').text = '0'
+    def _write_visibility(self, x):
+        if self.expected_number_of_above_ground_grids is not None \
+           and self.expected_number_of_above_ground_grids > 0:
+           # concentration and deposition layers
+           ET.SubElement(x, 'visibility').text = '0'
 
 
 class KMLMassLoadingWriter(AbstractKMLContourWriter):
@@ -1002,7 +999,7 @@ Valid:{}""".format(lower_vert_level,
       size of the square represents the
       deposition grid cell size."""
 
-    def _write_placemark_visibility(self, x):
+    def _write_visibility(self, x):
         if self.frame_counter.get() > 1:
             ET.SubElement(x, 'visibility').text = '0'
 

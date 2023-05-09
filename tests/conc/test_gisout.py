@@ -1539,12 +1539,13 @@ def test_KMLDepositionWriter__get_max_location_text():
     assert o._get_max_location_text().strip().startswith("The square represents")
 
 
-def test_KMLDepositionWriter__write_placemark_visibility():
+def test_KMLDepositionWriter__write_visibility():
     o = gisout.KMLDepositionWriter("relativeToGround")
     
     xml_root = ET.Element('kml')
+    o.expect_number_of_above_ground_grids(1)
     o.frame_counter.increase(2)
-    o._write_placemark_visibility(xml_root)
+    o._write_visibility(xml_root)
     tree = ET.ElementTree(xml_root)
     tree.write("__KMLDepositionWriter.txt")
     
@@ -1557,13 +1558,13 @@ def test_KMLDepositionWriter__write_placemark_visibility():
     os.remove("__KMLDepositionWriter.txt")
 
 
-def test_KMLDepositionWriter__write_placemark_visibility_case2():
+def test_KMLDepositionWriter__write_visibility_case2():
     o = gisout.KMLDepositionWriter("relativeToGround")
     o.expect_number_of_above_ground_grids(0)  # must be 0.
     
     xml_root = ET.Element('kml')
     o.frame_counter.increase(2)
-    o._write_placemark_visibility(xml_root)
+    o._write_visibility(xml_root)
     tree = ET.ElementTree(xml_root)
     tree.write("__KMLDepositionWriter.txt")
     
@@ -1571,8 +1572,8 @@ def test_KMLDepositionWriter__write_placemark_visibility_case2():
     lines = f.read().splitlines()
     f.close()
     
-    # visibility should be set to unity (1).
-    assert lines[0].strip() == "<kml><visibility>1</visibility></kml>"
+    # visibility should not be present.
+    assert lines[0].strip() == "<kml />"
 
     os.remove("__KMLDepositionWriter.txt")
 
@@ -1618,12 +1619,12 @@ def test_KMLMassLoadingWriter__get_max_location_text():
     assert o._get_max_location_text().strip().startswith("The square represents")
 
     
-def test_KMLMassLoadingWriter__write_placemark_visibility():
+def test_KMLMassLoadingWriter__write_visibility():
     o = gisout.KMLMassLoadingWriter("relativeToGround")
     
     xml_root = ET.Element('kml');
     o.frame_counter.increase(2)
-    o._write_placemark_visibility(xml_root)
+    o._write_visibility(xml_root)
     tree = ET.ElementTree(xml_root)
     tree.write("__KMLMassLoadingWriter.txt")
 
