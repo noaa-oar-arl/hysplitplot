@@ -1211,7 +1211,7 @@ no calculated values are above the output thresholds.'''
 
     def _write_gisout(self, gis_writers, g, lower_vert_level, upper_vert_level,
                       quad_contour_set, contour_levels, color_table,
-                      scaling_factor):
+                      scaling_factor, conc_or_depo_map):
         """
         Create GIS output files in as many formats as requested.
         """
@@ -1228,14 +1228,14 @@ no calculated values are above the output thresholds.'''
             contour.raw_color = color_table.raw_colors[k]
             contour.color = color_table.colors[k]
             contour.level = contour_levels[k]
-            contour.level_str = self.conc_map.format_conc(contour_levels[k])
+            contour.level_str = conc_or_depo_map.format_conc(contour_levels[k])
             contour.label = self.contour_labels[k]
-            contour.concentration_unit = self.get_conc_unit(self.conc_map,
+            contour.concentration_unit = self.get_conc_unit(conc_or_depo_map,
                                                             self.settings)
         contour_set.min_concentration = min_conc
         contour_set.max_concentration = max_conc
-        contour_set.min_concentration_str = self.conc_map.format_conc(min_conc)
-        contour_set.max_concentration_str = self.conc_map.format_conc(max_conc)
+        contour_set.min_concentration_str = conc_or_depo_map.format_conc(min_conc)
+        contour_set.max_concentration_str = conc_or_depo_map.format_conc(max_conc)
 
         for w in gis_writers:
             basename = w.make_output_basename(
@@ -1341,7 +1341,8 @@ no calculated values are above the output thresholds.'''
         if isinstance(gis_writers, list) and len(gis_writers) > 0:
             self._write_gisout(gis_writers, g, level1, level2,
                                quad_contour_set, contour_levels,
-                               color_table, conc_scaling_factor)
+                               color_table, conc_scaling_factor,
+                               self.conc_map)
 
         self.conc_map.undo_scale_exposure(self.conc_type)
 
@@ -1425,7 +1426,7 @@ no calculated values are above the output thresholds.'''
         if isinstance(gis_writers, list) and len(gis_writers) > 0:
             self._write_gisout(gis_writers, g, level1, level2,
                                contour_set, contour_levels, color_table,
-                               conc_scaling_factor)
+                               conc_scaling_factor, self.depo_map)
 
         self.fig.canvas.draw()  # to get the plot spines right.
         self.on_update_plot_extent()

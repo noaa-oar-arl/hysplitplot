@@ -1239,7 +1239,8 @@ def test_ConcentrationPlot__write_gisout():
     p._write_gisout([gis_writer], g,
                      lower_vert_level, upper_vert_level,
                      quad_contour_set, contour_levels,
-                     color_table, scaling_factor)
+                     color_table, scaling_factor,
+                     p.conc_map)
     
     gis_writer.finalize()
     plt.close(axes.figure)
