@@ -29,7 +29,6 @@ def test_ContourSet___init__():
     o = cntr.ContourSet()
     assert hasattr(o, "contours")
     assert hasattr(o, "contour_orders")
-    assert hasattr(o, "concentration_unit")
     assert hasattr(o, "min_concentration")
     assert hasattr(o, "max_concentration")
     assert hasattr(o, "min_concentration_str")
@@ -53,6 +52,7 @@ def test_Contour___init__():
     assert hasattr(o, "level")
     assert hasattr(o, "level_str")
     assert hasattr(o, "label")
+    assert hasattr(o, "concentration_unit")
 
 
 def test_Contour_has_contour_lines():

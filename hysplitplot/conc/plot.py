@@ -1230,7 +1230,7 @@ no calculated values are above the output thresholds.'''
             contour.level = contour_levels[k]
             contour.level_str = self.conc_map.format_conc(contour_levels[k])
             contour.label = self.contour_labels[k]
-        contour_set.concentration_unit = self.get_conc_unit(self.conc_map,
+            contour.concentration_unit = self.get_conc_unit(self.conc_map,
                                                             self.settings)
         contour_set.min_concentration = min_conc
         contour_set.max_concentration = max_conc

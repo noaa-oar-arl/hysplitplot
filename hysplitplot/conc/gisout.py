@@ -380,7 +380,7 @@ class KMLWriter(AbstractWriter):
 
     def _write_attributes(self, f, g, contour_set):
         f.write("{}\n".format(self.KMAP))
-        f.write("{}&\n".format(contour_set.concentration_unit))
+        f.write("{}&\n".format(contour_set.contours[0].concentration_unit))
 
         if self.NSSLBL == 1:
             starting_time = g.parent.release_datetimes[0]
@@ -783,7 +783,7 @@ no calculated values are above the output thresholds.  '''
             
             contour_name = self._get_contour_name(
                                     contour.level_str,
-                                    contour_set.concentration_unit)
+                                    contour.concentration_unit)
             ET.SubElement(placemark, 'name').text = contour_name
             self._write_visibility(placemark)
             ET.SubElement(placemark, 'Snippet', attrib={'maxLines': '0'})

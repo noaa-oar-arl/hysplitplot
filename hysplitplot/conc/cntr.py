@@ -23,7 +23,6 @@ class ContourSet:
     def __init__(self):
         self.contours = []
         self.contour_orders = []
-        self.concentration_unit = ""
         self.min_concentration = 0
         self.max_concentration = 0
         self.min_concentration_str = "0"
@@ -47,6 +46,7 @@ class Contour:
         self.level = None
         self.level_str = None
         self.label = None
+        self.concentration_unit = ""
 
     def has_contour_lines(self):
         for x in self.polygons:
@@ -63,6 +63,7 @@ class Contour:
        o.level = self.level
        o.level_str = self.level_str
        o.label = self.label
+       o.concentration_unit = self.concentration_unit
        return o
 
 

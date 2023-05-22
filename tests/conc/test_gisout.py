@@ -679,12 +679,20 @@ def test_KMLWriter_write_case2(cdump_two_pollutants):
                  s.NDEP)
     
     contour_set = cntr.ContourSet()
-    # contour_set.contours and .contour_orders are not set.
-    contour_set.concentration_unit = "mass/m^3"
     contour_set.min_concentration = 1.0e-16
     contour_set.max_concentration = 8.0e-12
     contour_set.min_concentration_str = "1.0e-16"
     contour_set.max_concentration_str = "8.0e-12"
+    #
+    contour = cntr.Contour(contour_set)
+    contour.raw_color = (1.0, 1.0, 1.0)
+    contour.color = '#ff0000'
+    contour.level = 1.0E-13
+    contour.level_str = "1.0E-13"
+    contour.label = "USER-2"
+    contour.concentration_unit = "mass/m^3"
+    contour_set.contours.append(contour)
+    contour_set.contour_orders.append(0)
     
     try:
         o.write("HYSPLIT_ps", g, contour_set, 100, 500)
@@ -759,12 +767,13 @@ def test_KMLWriter__write_attributes(cdump_two_pollutants):
     contour_set.contours[0].level = 1.0e-15
     contour_set.contours[0].level_str = "1.0e-15"
     contour_set.contours[0].label = "USER-2"
+    contour_set.contours[0].concentration_unit = "mass/m^3"
     contour_set.contours[1].raw_color = (1.0, 0.0, 0.0)
     contour_set.contours[1].color = "#00ff00"
     contour_set.contours[1].level =  1.0e-12
     contour_set.contours[1].level_str =  "1.0e-12"
     contour_set.contours[1].label = "USER-1"
-    contour_set.concentration_unit = "mass/m^3"
+    contour_set.contours[1].concentration_unit = "mass/m^3"
     contour_set.min_concentration = 1.0e-16
     contour_set.max_concentration = 8.0e-12
     contour_set.min_concentration_str = "1.0e-16"
@@ -827,12 +836,13 @@ def test_KMLWriter__write_attributes_case2(cdump_two_pollutants):
     contour_set.contours[0].level = 1.0e-15
     contour_set.contours[0].level_str = "1.0e-15"
     contour_set.contours[0].label = "USER-2"
+    contour_set.contours[0].concentration_unit = "mass/m^3"
     contour_set.contours[1].raw_color = (1.0, 0.0, 0.0)
     contour_set.contours[1].color = "#00ff00"
     contour_set.contours[1].level =  1.0e-12
     contour_set.contours[1].level_str =  "1.0e-12"
     contour_set.contours[1].label = "USER-1"
-    contour_set.concentration_unit = "mass/m^3"
+    contour_set.contours[1].concentration_unit = "mass/m^3"  # note change in the units.
     contour_set.min_concentration = 1.0e-16
     contour_set.max_concentration = 8.0e-12
     contour_set.min_concentration_str = "1.0e-16"
@@ -841,6 +851,10 @@ def test_KMLWriter__write_attributes_case2(cdump_two_pollutants):
     f = open("__KMLWriter.txt", "wt")
     
     try:
+        o._write_attributes(f, g, contour_set)
+        # change the unites
+        contour_set.contours[0].concentration_unit = "mass/m^2"
+        contour_set.contours[1].concentration_unit = "mass/m^2"
         o._write_attributes(f, g, contour_set)
     except Exception as ex:
         pytest.fail("unexpected exception: {}".format(ex))
@@ -851,17 +865,19 @@ def test_KMLWriter__write_attributes_case2(cdump_two_pollutants):
     lines = f.read().splitlines()
     f.close()
     
-    assert lines[0] == "4"
-    assert lines[1] == "mass/m^3&"
-    assert lines[2] == "Integrated: 1700 UTC Sep 25 1983&"
-    assert lines[3] == "        to: 0500 UTC Sep 26 1983&"
-    assert lines[4] == "8.0e-12 1.0e-16  4"
-    assert lines[5] == "0       0       1.0e-15 1.0e-12 "
-    assert lines[6] == " 1.00 1.00 1.00 1.00 1.00"
-    assert lines[7] == " 1.00 1.00 1.00 1.00 0.00"
-    assert lines[8] == " 1.00 1.00 1.00 1.00 0.00"
-    assert lines[9] == "USER-1   USER-2                     "
-    
+    assert lines[ 0] == "4"
+    assert lines[ 1] == "mass/m^3&"
+    assert lines[ 2] == "Integrated: 1700 UTC Sep 25 1983&"
+    assert lines[ 3] == "        to: 0500 UTC Sep 26 1983&"
+    assert lines[ 4] == "8.0e-12 1.0e-16  4"
+    assert lines[ 5] == "0       0       1.0e-15 1.0e-12 "
+    assert lines[ 6] == " 1.00 1.00 1.00 1.00 1.00"
+    assert lines[ 7] == " 1.00 1.00 1.00 1.00 0.00"
+    assert lines[ 8] == " 1.00 1.00 1.00 1.00 0.00"
+    assert lines[ 9] == "USER-1   USER-2                     "
+    assert lines[10] == "4"
+    assert lines[11] == "mass/m^2&"  # note a change in the units
+
     os.remove("__KMLWriter.txt")
 
 
@@ -914,12 +930,13 @@ def test_PartialKMLWriter_write(cdump_two_pollutants):
     contour_set.contours[0].level = 1.0e-15
     contour_set.contours[0].level_str = "1.0e-15"
     contour_set.contours[0].label = "USER-2"
+    contour_set.contours[0].concentration_unit = "mass/m^3"
     contour_set.contours[1].raw_color = (1.0, 0.0, 0.0)
     contour_set.contours[1].color = "#00ff00"
     contour_set.contours[1].level =  1.0e-12
     contour_set.contours[1].level_str =  "1.0e-12"
     contour_set.contours[1].label = "USER-1"
-    contour_set.concentration_unit = "mass/m^3"
+    contour_set.contours[1].concentration_unit = "mass/m^3"
     contour_set.min_concentration = 1.0e-16
     contour_set.max_concentration = 8.0e-12
     contour_set.min_concentration_str = "1.0e-16"
@@ -964,13 +981,21 @@ def test_PartialKMLWriter_write_case2(cdump_two_pollutants):
                  s.NDEP)
     
     contour_set = cntr.ContourSet()
-    # contour_set.contours and .contour_orders are not set.
-    contour_set.concentration_unit = "mass/m^3"
     contour_set.min_concentration = 1.0e-16
     contour_set.max_concentration = 8.0e-12
     contour_set.min_concentration_str = "1.0e-16"
     contour_set.max_concentration_str = "8.0e-12"
-    
+    #
+    contour = cntr.Contour(contour_set)
+    contour.raw_color = (1.0, 1.0, 1.0)
+    contour.color = '#ff0000'
+    contour.level = 1.0E-13
+    contour.level_str = "1.0E-13"
+    contour.label = "USER-2"
+    contour.concentration_unit = "mass/m^3"
+    contour_set.contours.append(contour)
+    contour_set.contour_orders.append(0)
+
     try:
         o.write("HYSPLIT_ps", g, contour_set, 100, 500)
         o.finalize()
