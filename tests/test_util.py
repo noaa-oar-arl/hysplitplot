@@ -51,6 +51,11 @@ def test_nearest_int():
     assert util.nearest_int( -9.4) ==  -9
 
 
+def test_make_color_int():
+    assert util.make_color_int(255, 128, 0) == "#ff8000"
+    assert util.make_color_int(255, 128, 0, 127) == "#ff80007f"
+
+
 def test_make_color():
     assert util.make_color(0.4, 0.6, 0.8) == "#6699cc"
     assert util.make_color(0.4, 0.6, 0.8, 0.5) == "#6699cc80"

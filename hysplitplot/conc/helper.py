@@ -626,8 +626,8 @@ class LevelConcentration(ConcentrationType):
             self.max_concs[level_index] = max(self.max_concs[level_index],
                                               vmax)
 
-        logger.debug("level %d: min %g, max %g",
-                     level_index,
+        logger.debug("level %d: min %g, max %g; glob min %g, glob max %g",
+                     level_index, vmin, vmax,
                      self.min_concs[level_index],
                      self.max_concs[level_index])
 

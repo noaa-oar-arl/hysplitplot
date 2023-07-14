@@ -82,6 +82,10 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.center_loc = [0.0, 0.0]    # lon, lat
         self.center_loc_fixed = False
         self.write_contour_levels_only = 0
+        self.add_near_min_cntr = False  # enabled via +8
+        self.near_min_cntr_multiplier = 0.8
+        self.near_min_cntr_color = "#999999"
+        self.near_min_cntr_raw_color = (0.6, 0.6, 0.6)
 
         # internally defined
         self.label_source = True
@@ -255,6 +259,9 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
         self.IZRO = args.get_integer_value("-8", self.IZRO)
         self.NSSLBL = args.get_integer_value("-9", self.NSSLBL)
 
+        if args.has_arg("+8"):
+            self.parse_near_min_cntr(args.get_value("+8"))
+
     @staticmethod
     def parse_source_label(str):
         c = int(str)
@@ -277,6 +284,24 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
             if self.last_time_index < 0:
                 self.time_index_step = abs(self.last_time_index)
                 self.last_time_index = 9999
+
+    def parse_near_min_cntr(self, str):
+        self.add_near_min_cntr = True
+        if len(str) == 0:
+            return
+        
+        if str.count(":") == 0:
+            self.near_min_cntr_multiplier = float(str)
+        else:
+            divider = str.index(":")
+            self.near_min_cntr_multiplier = float(str[:divider])
+            a = str[divider+1:]
+            if len(a) >= 9:
+                r = int(a[0:3])
+                g = int(a[3:6])
+                b = int(a[6:9])
+                self.near_min_cntr_color = util.make_color_int(r, g, b)
+                self.near_min_cntr_raw_color = (r/255., g/255., b/255.)
 
     def parse_contour_level_generator(self, str):
         divider = str.index(":")
@@ -1210,7 +1235,8 @@ no calculated values are above the output thresholds.'''
                 f.write('{:8.1e}\n'.format(v))
 
     def _write_gisout(self, gis_writers, g, lower_vert_level, upper_vert_level,
-                      quad_contour_set, contour_levels, color_table,
+                      quad_contour_set, contour_levels, contour_labels,
+                      fill_colors, fill_raw_colors,
                       scaling_factor, conc_or_depo_map):
         """
         Create GIS output files in as many formats as requested.
@@ -1225,11 +1251,11 @@ no calculated values are above the output thresholds.'''
         # add one or more contour objects to match the number of contour levels.
         self._match_contour_count(contour_set, contour_levels)
         for k, contour in enumerate(contour_set.contours):
-            contour.raw_color = color_table.raw_colors[k]
-            contour.color = color_table.colors[k]
+            contour.raw_color = fill_raw_colors[k]
+            contour.color = fill_colors[k]
             contour.level = contour_levels[k]
             contour.level_str = conc_or_depo_map.format_conc(contour_levels[k])
-            contour.label = self.contour_labels[k]
+            contour.label = contour_labels[k]
             contour.concentration_unit = self.get_conc_unit(conc_or_depo_map,
                                                             self.settings)
         contour_set.min_concentration = min_conc
@@ -1310,6 +1336,15 @@ no calculated values are above the output thresholds.'''
             contour_levels)
         color_table.set_offset(color_offset)
 
+        # TODO: do better!
+        colors = copy.deepcopy(color_table.colors)
+        raw_colors = copy.deepcopy(color_table.raw_colors)
+        contour_labels = copy.deepcopy(self.contour_labels)
+        if self.settings.add_near_min_cntr and len(contour_levels) > len(colors):
+           colors.insert(0, self.settings.near_min_cntr_color)
+           raw_colors.insert(0, self.settings.near_min_cntr_raw_color)
+           contour_labels.insert(0, '')
+
         scaled_conc = numpy.copy(g.conc)
         if conc_scaling_factor != 1.0:
             scaled_conc *= conc_scaling_factor
@@ -1328,21 +1363,21 @@ no calculated values are above the output thresholds.'''
                                                         scaled_conc,
                                                         self.conc_map,
                                                         contour_levels,
-                                                        color_table.colors,
+                                                        colors,
                                                         min_conc)
         self.draw_contour_legends(g,
                                   self.conc_map,
-                                  self.contour_labels,
+                                  contour_labels,
                                   contour_levels,
-                                  color_table.colors,
+                                  colors,
                                   conc_scaling_factor)
         self.draw_bottom_text()
 
         if isinstance(gis_writers, list) and len(gis_writers) > 0:
             self._write_gisout(gis_writers, g, level1, level2,
                                quad_contour_set, contour_levels,
-                               color_table, conc_scaling_factor,
-                               self.conc_map)
+                               contour_labels, colors, raw_colors,
+                               conc_scaling_factor, self.conc_map)
 
         self.conc_map.undo_scale_exposure(self.conc_type)
 
@@ -1398,6 +1433,15 @@ no calculated values are above the output thresholds.'''
             contour_levels)
         color_table.set_offset(color_offset)
 
+        # TODO: do better!
+        colors = copy.deepcopy(color_table.colors)
+        raw_colors = copy.deepcopy(color_table.raw_colors)
+        contour_labels = copy.deepcopy(self.contour_labels)
+        if self.settings.add_near_min_cntr and len(contour_levels) > len(colors):
+           colors.insert(0, self.settings.near_min_cntr_color)
+           raw_colors.insert(0, self.settings.near_min_cntr_raw_color)
+           contour_labels.insert(0, '')
+
         scaled_conc = numpy.copy(g.conc)
         if self.settings.DEPADJ != 1.0:
             scaled_conc *= self.settings.DEPADJ
@@ -1416,16 +1460,17 @@ no calculated values are above the output thresholds.'''
                                                    scaled_conc,
                                                    self.depo_map,
                                                    contour_levels,
-                                                   color_table.colors,
+                                                   colors,
                                                    min_conc)
-        self.draw_contour_legends(g, self.depo_map, self.contour_labels,
-                                  contour_levels, color_table.colors,
+        self.draw_contour_legends(g, self.depo_map, contour_labels,
+                                  contour_levels, colors,
                                   conc_scaling_factor)
         self.draw_bottom_text()
 
         if isinstance(gis_writers, list) and len(gis_writers) > 0:
             self._write_gisout(gis_writers, g, level1, level2,
-                               contour_set, contour_levels, color_table,
+                               contour_set, contour_levels,
+                               contour_labels, colors, raw_colors,
                                conc_scaling_factor, self.depo_map)
 
         self.fig.canvas.draw()  # to get the plot spines right.
@@ -1487,12 +1532,16 @@ no calculated values are above the output thresholds.'''
             self.settings.contour_level_generator,
             self.settings.contour_levels,
             self.settings.UCMIN,
-            self.settings.user_color)
+            self.settings.user_color,
+            self.settings.add_near_min_cntr,
+            self.settings.near_min_cntr_multiplier)
         level_gen_depo = ContourLevelGeneratorFactory.create_instance(
             self.settings.contour_level_generator,
             self.settings.contour_levels,
             self.settings.UDMIN,
-            self.settings.user_color)
+            self.settings.user_color,
+            self.settings.add_near_min_cntr,
+            self.settings.near_min_cntr_multiplier)
 
         gis_writers = self._create_gis_writer_list(self.cdump.grids,
                                                    self.settings,
@@ -1580,32 +1629,36 @@ class LabelledContourLevel:
 class ContourLevelGeneratorFactory:
 
     @staticmethod
-    def create_instance(generator, cntr_levels, cutoff, user_colorQ):
+    def create_instance(generator, cntr_levels, cutoff, user_colorQ,
+                        add_near_min_cntr=False, near_min_multiplier=0.8):
         if generator == const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC:
-            return ExponentialDynamicLevelGenerator(cutoff)
+            o = ExponentialDynamicLevelGenerator(cutoff)
         elif generator == const.ContourLevelGenerator.CLG_50:
-            return ExponentialDynamicLevelGenerator(cutoff,
-                                                    force_base_10=True)
+            o = ExponentialDynamicLevelGenerator(cutoff,
+                                                 force_base_10=True)
         elif generator == const.ContourLevelGenerator.CLG_51:
-            return ExponentialDynamicLevelGenerator(cutoff,
-                                                    force_base_10=True)
+            o = ExponentialDynamicLevelGenerator(cutoff,
+                                                 force_base_10=True)
         elif generator == const.ContourLevelGenerator.EXPONENTIAL_FIXED:
-            return ExponentialFixedLevelGenerator(cutoff)
+            o = ExponentialFixedLevelGenerator(cutoff)
         elif generator == const.ContourLevelGenerator.LINEAR_DYNAMIC:
-            return LinearDynamicLevelGenerator()
+            o = LinearDynamicLevelGenerator()
         elif generator == const.ContourLevelGenerator.LINEAR_FIXED:
-            return LinearFixedLevelGenerator()
+            o = LinearFixedLevelGenerator()
         elif generator == const.ContourLevelGenerator.USER_SPECIFIED:
-            return UserSpecifiedLevelGenerator(cntr_levels)
+            o = UserSpecifiedLevelGenerator(cntr_levels)
         elif generator == const.ContourLevelGenerator.CLG_60:
-            return ExponentialDynamicLevelGeneratorVariation2(cutoff,
-                                                              force_base_sqrt10=True)
+            o = ExponentialDynamicLevelGeneratorVariation2(cutoff,
+                                                           force_base_sqrt10=True)
         elif generator == const.ContourLevelGenerator.CLG_61:
-            return ExponentialFixedLevelGeneratorVariation2(cutoff,
-                                                            force_base_sqrt10=True)
+            o = ExponentialFixedLevelGeneratorVariation2(cutoff,
+                                                         force_base_sqrt10=True)
         else:
             raise Exception("unknown method {0} for contour level "
                             "generation".format(generator))
+        if add_near_min_cntr:
+            return NearMinLevelDecorator(o, near_min_multiplier)
+        return o
 
 
 class AbstractContourLevelGenerator(ABC):
@@ -1615,12 +1668,24 @@ class AbstractContourLevelGenerator(ABC):
         self.global_max = None
         return
 
-    def set_global_min_max(self, cmin, cmax):
-        self.global_min = cmin
-        self.global_max = cmax
+    def set_global_min_max(self, conc_min, conc_max):
+        self.global_min = conc_min
+        self.global_max = conc_max
+
+    def get_min_conc(self, frame_min):
+        """
+        A child class may override this method to return the global min.
+        """
+        return frame_min
+
+    def get_max_conc(self, frame_max):
+        """
+        A child class may override this method to return the global max.
+        """
+        return frame_max
 
     @abstractmethod
-    def make_levels(self, min_conc, max_conc, max_levels):
+    def make_levels(self, frame_min, frame_max, max_levels):
         pass
 
     @abstractmethod
@@ -1646,7 +1711,7 @@ class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
         return cint, cint_inverse
 
     def make_levels(self, min_conc, max_conc, max_levels):
-        logger.debug("making %d levels using min_conc %g, max_conc %g",
+        logger.debug("EDLG: making %d levels using min_conc %g, max_conc %g",
                      max_levels, min_conc, max_conc)
 
         cint, cint_inverse = self._compute_interval(min_conc, max_conc)
@@ -1701,7 +1766,15 @@ class ExponentialFixedLevelGenerator(ExponentialDynamicLevelGenerator):
     def __init__(self, cutoff, **kwargs):
         super(ExponentialFixedLevelGenerator, self).__init__(cutoff, **kwargs)
 
+    def get_min_conc(self, frame_min):
+        return self.global_min
+
+    def get_max_conc(self, frame_max):
+        return self.global_max
+
     def make_levels(self, min_conc, max_conc, max_levels):
+        logger.debug("EFLG: making %d levels using min_conc %g, max_conc %g",
+                     max_levels, min_conc, max_conc)
         return super(ExponentialFixedLevelGenerator, self).make_levels(
             self.global_min,
             self.global_max,
@@ -1719,7 +1792,6 @@ class ExponentialDynamicLevelGeneratorVariation2(ExponentialDynamicLevelGenerato
     Contour intervals are apart by a factor of sqrt(10) instead of 10
     unless the min and max concentrations differ by a factor of 10^5.
     This results in denser contour levels near the max concentration value.
-    A small value is added to pick up all non-zero concentration values.
     """
     def __init__(self, cutoff, **kwargs):
         super(ExponentialDynamicLevelGeneratorVariation2, self).__init__(cutoff, **kwargs)
@@ -1734,28 +1806,11 @@ class ExponentialDynamicLevelGeneratorVariation2(ExponentialDynamicLevelGenerato
             cint_inverse = 0.1
         return cint, cint_inverse
 
-    def _approx_le(self, a, b, tol=1.0e-5):
-        if a == 0:
-            return abs(b) <= abs(tol)
-        elif abs(a - b) <= abs(a * tol):
-           return True
-        return False
-
     def make_levels(self, min_conc, max_conc, max_levels):
-        # find a value small enough to draw contour lines for non-zero values.
-        v = 0.8 * min_conc  
-        if v == 0.0:
-           v = min_conc
-        if v < self.cutoff:
-           v = self.cutoff
-
-        b = super(ExponentialDynamicLevelGeneratorVariation2, self).make_levels(
-                           min_conc, max_conc, max_levels - 1)
-        if self._approx_le(b[0], v):
-           return b
-        
-        a = numpy.array([v], dtype=float)
-        return numpy.append(a, b)
+        logger.debug("EDLGV2: making %d levels using min_conc %g, max_conc %g",
+                     max_levels, min_conc, max_conc)
+        return super(ExponentialDynamicLevelGeneratorVariation2, self).make_levels(
+                           min_conc, max_conc, max_levels)
 
 
 class ExponentialFixedLevelGeneratorVariation2(ExponentialDynamicLevelGeneratorVariation2):
@@ -1766,12 +1821,19 @@ class ExponentialFixedLevelGeneratorVariation2(ExponentialDynamicLevelGeneratorV
     Contour intervals are apart by a factor of sqrt(10) instead of 10
     unless the min and max concentrations differ by a factor of 10^5.
     This results in denser contour levels near the max concentration value.
-    A small value is added to pick up all non-zero concentration values.
     """
     def __init__(self, cutoff, **kwargs):
         super(ExponentialFixedLevelGeneratorVariation2, self).__init__(cutoff, **kwargs)
 
+    def get_min_conc(self, frame_min):
+        return self.global_min
+
+    def get_max_conc(self, frame_max):
+        return self.global_max
+
     def make_levels(self, min_conc, max_conc, max_levels):
+        logger.debug("EFLGV2: making %d levels using min_conc %g, max_conc %g",
+                     max_levels, min_conc, max_conc)
         return super(ExponentialFixedLevelGeneratorVariation2, self).make_levels(
             self.global_min,
             self.global_max,
@@ -1799,6 +1861,8 @@ class LinearDynamicLevelGenerator(AbstractContourLevelGenerator):
         return cint, 1.0 / cint
 
     def make_levels(self, min_conc, max_conc, max_levels):
+        logger.debug("LDLG: making %d levels using min_conc %g, max_conc %g",
+                     max_levels, min_conc, max_conc)
         cint, _ = self._compute_interval(min_conc, max_conc)
 
         levels = numpy.empty(max_levels, dtype=float)
@@ -1832,7 +1896,15 @@ class LinearFixedLevelGenerator(LinearDynamicLevelGenerator):
     def __init__(self):
         super(LinearFixedLevelGenerator, self).__init__()
 
+    def get_min_conc(self, frame_min):
+        return self.global_min
+
+    def get_max_conc(self, frame_max):
+        return self.global_max
+
     def make_levels(self, min_conc, max_conc, max_levels):
+        logger.debug("LFLG: making %d levels using min_conc %g, max_conc %g",
+                     max_levels, min_conc, max_conc)
         return LinearDynamicLevelGenerator.make_levels(self,
                                                        self.global_min,
                                                        self.global_max,
@@ -1852,10 +1924,63 @@ class UserSpecifiedLevelGenerator(AbstractContourLevelGenerator):
             self.contour_levels = [o.level for o in user_specified_levels]
 
     def make_levels(self, min_conc, max_conc, max_levels):
+        logger.debug("USLG: making %d levels using min_conc %g, max_conc %g",
+                     max_levels, min_conc, max_conc)
         return self.contour_levels
 
     def compute_color_table_offset(self, levels):
         return 0
+
+
+class NearMinLevelDecorator(AbstractContourLevelGenerator):
+   """
+   A small value is added to pick up all non-zero concentration values.
+   """
+
+   def __init__(self, level_generator, min_multiplier=0.8):
+      self.level_generator = level_generator
+      self.min_multiplier = min_multiplier
+   
+   def set_min_multiplier(self, min_multiplier):
+      self.min_multiplier = min_multiplier
+
+   def _approx_le(self, a, b, tol=1.0e-5):
+      if a <= b:
+         return True
+      elif a != 0:
+         return abs(a - b) <= abs(a * tol)
+      return abs(b) <= abs(tol)
+
+   def set_global_min_max(self, cmin, cmax):
+      self.level_generator.set_global_min_max(cmin, cmax)
+
+   def make_levels(self, min_conc, max_conc, max_levels):
+      logger.debug("NMLD: making %d levels using min_conc %g, max_conc %g",
+                   max_levels, min_conc, max_conc)
+      b = self.level_generator.make_levels(min_conc, max_conc, max_levels)
+      logger.debug(f'initial contour levels {b}')
+
+      # find a value small enough to draw contour lines for non-zero values.
+      actual_min = self.level_generator.get_min_conc(min_conc)
+      v = self.min_multiplier * actual_min
+      logger.debug(f'mul {self.min_multiplier}, min {actual_min}, near min {v}')
+      if v == 0.0:
+         v = min_conc
+      if hasattr(self.level_generator, 'cutoff'):
+         if v < self.level_generator.cutoff:
+            v = self.level_generator.cutoff
+      logger.debug(f'final near min {v}')
+
+      if self._approx_le(b[0], v):
+         logger.debug(f'near min {v} too close to min {b[0]}: ignored')
+         return b
+
+      logger.debug(f'adding {v} to contour levels')
+      a = numpy.array([v], dtype=float)
+      return numpy.append(a, b)
+
+   def compute_color_table_offset(self, levels):
+      return self.level_generator.compute_color_table_offset(levels)
 
 
 class ColorTableFactory:

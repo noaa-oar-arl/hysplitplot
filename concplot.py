@@ -75,6 +75,7 @@ def print_usage():
    -4[Plot below threshold minimum contour for chemical output (-e=2): (0)-no, 1-yes]
    -5[Use -o prefix name for output kml file when -a=3 or 4: (0)-no, 1-yes]
    -8[Create map(s) even if all values zero: (0)-no, 1-yes]
+   +8[Add a contour near min: multiplier[:RRRGGGBBB] (0.8:153153153)]
    -9[Force sample start time label to start of release: (0)-no, 1-yes]
 
    --debug                      print debug messages

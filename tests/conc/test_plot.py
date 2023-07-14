@@ -137,6 +137,11 @@ def test_ConcentrationPlotSettings___init__():
     assert s.center_loc == [0.0, 0.0]
     assert s.center_loc_fixed == False
     assert s.write_contour_levels_only == 0
+    assert s.add_near_min_cntr == False
+    assert s.near_min_cntr_multiplier == 0.8
+    assert s.near_min_cntr_color == "#999999"
+    assert s.near_min_cntr_raw_color == (0.6, 0.6, 0.6)
+        
     assert s.gis_output == const.GISOutput.NONE
     assert s.kml_option == const.KMLOption.NONE
 
@@ -433,6 +438,19 @@ def test_ConcentrationPlotSettings_process_command_line_arguments():
     s.process_command_line_arguments(["-51"])
     assert s.KMLOUT == 1
 
+    # test +8
+    s.process_command_line_arguments(["+8"])
+    assert s.add_near_min_cntr == True
+    assert s.near_min_cntr_multiplier == pytest.approx(0.8)
+    assert s.near_min_cntr_color == '#999999'
+
+    s.process_command_line_arguments(["+80.75"])
+    assert s.near_min_cntr_multiplier == pytest.approx(0.75)
+    
+    s.process_command_line_arguments(["+80.75:255000128"])
+    assert s.near_min_cntr_color == '#ff0080'
+    assert s.near_min_cntr_raw_color == pytest.approx((1.0, 0.0, 0.5019608))
+
 
 def test_ConcentrationPlotSettings_parse_source_label():
     s = plot.ConcentrationPlotSettings()
@@ -462,8 +480,27 @@ def test_ConcentrationPlotSettings_parse_time_indices():
     assert s.first_time_index == 1
     assert s.last_time_index == 9999
     assert s.time_index_step == 5
+
+
+def test_ConcentrationPlotSettings_parse_near_min_cntr():
+    s = plot.ConcentrationPlotSettings()
+    assert s.add_near_min_cntr == False
     
+    s.parse_near_min_cntr("")
+    assert s.add_near_min_cntr == True
+    assert s.near_min_cntr_multiplier == pytest.approx(0.8)
     
+    s.parse_near_min_cntr("0.5")
+    assert s.add_near_min_cntr == True
+    assert s.near_min_cntr_multiplier == pytest.approx(0.5)
+    
+    s.parse_near_min_cntr("0.75:255000128")
+    assert s.add_near_min_cntr == True
+    assert s.near_min_cntr_multiplier == pytest.approx(0.75)
+    assert s.near_min_cntr_color == '#ff0080'
+    assert s.near_min_cntr_raw_color == pytest.approx((1., 0., 0.5019608))
+
+
 def test_ConcentrationPlotSettings_parse_contour_level_generator():
     s = plot.ConcentrationPlotSettings()
     generator, count = s.parse_contour_level_generator("61:7")
@@ -1224,6 +1261,7 @@ def test_ConcentrationPlot__write_gisout():
     lower_vert_level = util.LengthInMeters(0)
     upper_vert_level = util.LengthInMeters(100)
     contour_levels = [1.0e-15, 1.0e-14, 1.0e-13, 1.0e-12]
+    contour_labels = ['', '', '', '']
     fill_colors = ["#0000FF", "#00FF00", "#FFFF00", "#FF0000"]  # blue, green, yellow, red
     scaling_factor = 1.0
     quad_contour_set = axes.contourf(g.longitudes, g.latitudes, g.conc,
@@ -1238,8 +1276,9 @@ def test_ConcentrationPlot__write_gisout():
     
     p._write_gisout([gis_writer], g,
                      lower_vert_level, upper_vert_level,
-                     quad_contour_set, contour_levels,
-                     color_table, scaling_factor,
+                     quad_contour_set, contour_levels, contour_labels,
+                     color_table.colors, color_table.raw_colors,
+                     scaling_factor,
                      p.conc_map)
     
     gis_writer.finalize()
@@ -1568,20 +1607,41 @@ def test_ContourLevelGeneratorFactory_create_instance(contourLevels):
     except Exception as ex:
         assert str(ex) == "unknown method 100000 for contour level generation"
 
+    o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.CLG_60,
+                                                          cntr_levels,
+                                                          cutoff,
+                                                          user_color,
+                                                          True, 0.75)
+    assert isinstance(o, plot.NearMinLevelDecorator)
+    assert isinstance(o.level_generator, plot.ExponentialDynamicLevelGeneratorVariation2)
+    assert o.min_multiplier == pytest.approx(0.75)
+
 
 def test_AbstractContourLevelGenerator___init__():
     o = AbstractContourLevelGeneratorTest()
     assert o is not None
     assert hasattr(o, "global_min")
     assert hasattr(o, "global_max")
- 
+
 
 def test_AbstractContourLevelGenerator_set_global_min_max():
     o = AbstractContourLevelGeneratorTest()
     o.set_global_min_max(0.25, 0.75)
     assert o.global_min == pytest.approx(0.25)
     assert o.global_max == pytest.approx(0.75)
-       
+
+
+def test_AbstractContourLevelGenerator_get_min_conc():
+    o = AbstractContourLevelGeneratorTest()
+    o.set_global_min_max(0.25, 0.75)
+    assert o.get_min_conc(0.5) == pytest.approx(0.5)
+
+
+def test_AbstractContourLevelGenerator_get_max_conc():
+    o = AbstractContourLevelGeneratorTest()
+    o.set_global_min_max(0.25, 0.75)
+    assert o.get_max_conc(0.5) == pytest.approx(0.5)
+
 
 def test_ExponentialDynamicLevelGenerator___init__():
     cutoff = 3.14e-15
@@ -1672,6 +1732,18 @@ def test_ExponentialFixedLevelGenerator___init__():
     assert o.force_base_10 == True  
 
 
+def test_ExponentialFixedLevelGenerator_get_min_conc():
+    o = plot.ExponentialFixedLevelGenerator(3.14e-19)
+    o.set_global_min_max(1.39594e-15, 8.17302e-13)
+    assert o.get_min_conc(1.0e-14) * 1.0e+15 == pytest.approx(1.39594)
+
+
+def test_ExponentialFixedLevelGenerator_get_max_conc():
+    o = plot.ExponentialFixedLevelGenerator(3.14e-19)
+    o.set_global_min_max(1.39594e-15, 8.17302e-13)
+    assert o.get_max_conc(1.0e-14) * 1.0e+15 == pytest.approx(8.17302e+02)
+
+
 def test_ExponentialFixedLevelGenerator_make_levels():
     o = plot.ExponentialFixedLevelGenerator(3.14e-19)
     o.set_global_min_max(1.39594e-15, 8.17302e-13)
@@ -1742,14 +1814,14 @@ def test_ExponentialDynamicLevelGeneratorVariation2_make_levels():
     levels = o.make_levels(1.39594e-15, 8.17302e-13, 4)
     
     levels *= 1.e+16
-    assert levels == pytest.approx((11.16752, 100.0, 316.22776602, 1000.0))
+    assert levels == pytest.approx((31.6227766, 100.0, 316.22776602, 1000.0))
     
     # base 10.0
     
     levels = o.make_levels(1.39594e-15, 8.17302e-07, 4)
     
     levels *= 1.e+13
-    assert levels == pytest.approx((1.116752e-02, 10000.0, 100000.0, 1000000.0))
+    assert levels == pytest.approx((1000.0, 10000.0, 100000.0, 1000000.0))
 
     # force base sqrt(10)
     
@@ -1757,11 +1829,11 @@ def test_ExponentialDynamicLevelGeneratorVariation2_make_levels():
     levels = o.make_levels(1.39594e-15, 8.17302e-7, 4)
     
     levels *= 1.e+10
-    assert levels == pytest.approx((1.116752e-05, 100.0, 316.22776602, 1000.0))
+    assert levels == pytest.approx((31.6227766, 100.0, 316.22776602, 1000.0))
 
     # when cmax is zero
     levels = o.make_levels(0, 0, 4)
-    assert levels == pytest.approx((3.14e-19, 0.1, 0.31622777, 1.0))
+    assert levels == pytest.approx((0.0316227766, 0.1, 0.31622777, 1.0))
     
     # When the cutoff exceeds the min and max values.
     o = plot.ExponentialDynamicLevelGeneratorVariation2( 1.0 )
@@ -1796,6 +1868,18 @@ def test_ExponentialFixedLevelGeneratorVariation2___init__():
     assert o.cutoff == pytest.approx(3.14e-15)
 
 
+def test_ExponentialFixedLevelGeneratorVariation2_get_min_conc():
+    o = plot.ExponentialFixedLevelGeneratorVariation2(3.14e-19)
+    o.set_global_min_max(1.39594e-15, 8.17302e-13)
+    assert o.get_min_conc(1.0e-14) * 1.0e+15 == pytest.approx(1.39594)
+
+
+def test_ExponentialFixedLevelGeneratorVariation2_get_max_conc():
+    o = plot.ExponentialFixedLevelGeneratorVariation2(3.14e-19)
+    o.set_global_min_max(1.39594e-15, 8.17302e-13)
+    assert o.get_max_conc(1.0e-14) * 1.0e+15 == pytest.approx(8.17302e+2)
+
+
 def test_ExponentialFixedLevelGeneratorVariation2_make_levels():
     o = plot.ExponentialFixedLevelGeneratorVariation2(3.14e-19)
     o.set_global_min_max(1.39594e-15, 8.17302e-13)
@@ -1804,12 +1888,12 @@ def test_ExponentialFixedLevelGeneratorVariation2_make_levels():
     
     # levels should be generated using the global min and max.
     levels *= 1.e+16
-    assert levels == pytest.approx((11.16752, 100.0, 316.22776602, 1000.0))
+    assert levels == pytest.approx((31.6227766, 100.0, 316.22776602, 1000.0))
     
     # when cmax is zero
     o.set_global_min_max(0, 0)
     levels = o.make_levels(1.39594e-16, 8.17302e-12, 4)
-    assert levels == pytest.approx((3.14000000e-19, 0.1, 0.316227766, 1.0))
+    assert levels == pytest.approx((0.0316227766, 0.1, 0.316227766, 1.0))
 
     # When the cutoff exceeds the min and max values.
     o = plot.ExponentialFixedLevelGeneratorVariation2( 1.0 )
@@ -1875,6 +1959,18 @@ def test_LinearFixedLevelGenerator___init__():
     assert o is not None
 
 
+def test_LinearFixedLevelGenerator_get_min_conc():
+    o = plot.LinearFixedLevelGenerator()
+    o.set_global_min_max(1.0, 10.0)
+    assert o.get_min_conc(5.0) == pytest.approx(1.0)
+
+
+def test_LinearFixedLevelGenerator_get_max_conc():
+    o = plot.LinearFixedLevelGenerator()
+    o.set_global_min_max(1.0, 10.0)
+    assert o.get_max_conc(5.0) == pytest.approx(10.0)
+
+
 def test_LinearFixedLevelGenerator_make_levels():
     o = plot.LinearFixedLevelGenerator()
     o.set_global_min_max(1.0, 10.0)
@@ -1930,7 +2026,91 @@ def test_UserSpecifiedLevelGenerator_compute_color_table_offset(contourLevels):
     
     o.set_global_min_max(0, 100.0)
     assert o.compute_color_table_offset( levels ) == 0
-        
+
+
+def test_NearMinLevelDecorator___init__():
+    p = plot.ExponentialDynamicLevelGeneratorVariation2(3.14e-19)
+    o = plot.NearMinLevelDecorator(p)
+    assert o.level_generator is not None
+    assert o.min_multiplier == pytest.approx(0.8)
+
+
+def test_NearMinLevelDecorator_set_min_multiplier():
+    p = plot.ExponentialDynamicLevelGeneratorVariation2(3.14e-19)
+    o = plot.NearMinLevelDecorator(p)
+    o.set_min_multiplier(0.75)
+    assert o.min_multiplier == pytest.approx(0.75)
+
+
+def test_NearMinLevelDecorator__approx_le():
+    p = plot.ExponentialDynamicLevelGeneratorVariation2(3.14e-19)
+    o = plot.NearMinLevelDecorator(p)
+    assert o._approx_le(0., 0.) is True
+    assert o._approx_le(0., 10.) is True
+    assert o._approx_le(10., 0.) is False
+    #
+    assert o._approx_le(0., -1.0e-6) is True
+    assert o._approx_le(1.0, 0.70, 0.2) is False
+    assert o._approx_le(1.0, 0.70, 0.5) is True
+
+
+def test_NearMinLevelDecorator_set_global_min_max():
+    p = plot.ExponentialDynamicLevelGeneratorVariation2(3.14e-19)
+    o = plot.NearMinLevelDecorator(p)
+    o.set_global_min_max(2.0, 8.0)
+    assert o.level_generator.global_min == pytest.approx(2.0)
+    assert o.level_generator.global_max == pytest.approx(8.0)
+
+
+def test_NearMinLevelDecorator_make_levels():
+    o = plot.NearMinLevelDecorator(plot.ExponentialDynamicLevelGeneratorVariation2(3.14e-19))
+    
+    # base sqrt(10.0)
+    
+    levels = o.make_levels(1.39594e-15, 8.17302e-13, 4)
+    
+    levels *= 1.e+16
+    assert levels == pytest.approx((11.16752, 31.622776602, 100.0, 316.22776602, 1000.0))
+    
+    # base 10.0
+    
+    levels = o.make_levels(1.39594e-15, 8.17302e-07, 4)
+    
+    levels *= 1.e+13
+    assert levels == pytest.approx((1.116752e-02, 1000.0, 10000.0, 100000.0, 1000000.0))
+
+    # force base sqrt(10)
+    
+    o.level_generator.force_base_sqrt10 = True
+    levels = o.make_levels(1.39594e-15, 8.17302e-7, 4)
+    
+    levels *= 1.e+10
+    assert levels == pytest.approx((1.116752e-05, 31.622776602, 100.0, 316.22776602, 1000.0))
+
+    # when cmax is zero
+    levels = o.make_levels(0, 0, 4)
+    assert levels == pytest.approx((3.14e-19, 0.031622777, 0.1, 0.31622777, 1.0))
+    
+    # When the cutoff exceeds the min and max values.
+    o = plot.NearMinLevelDecorator(plot.ExponentialDynamicLevelGeneratorVariation2( 1.0 ))
+    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
+    assert levels == pytest.approx((1.0))
+    
+    # When the cutoff is between the min and max values
+    o = plot.NearMinLevelDecorator(plot.ExponentialDynamicLevelGeneratorVariation2( 1.0e-14 ))
+    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
+    levels *= 1.0e+16
+    assert levels == pytest.approx((100.0, 316.22776602, 1000.0))
+
+
+def test_NearMinLevelDecorator_compute_color_table_offset():
+    o = plot.NearMinLevelDecorator(plot.LinearDynamicLevelGenerator())
+    o.level_generator.set_global_min_max(0, 10.0)
+    levels = o.make_levels(1.0, 10.0, 4)
+    
+    # levels[-1] = 8.0
+    assert o.compute_color_table_offset( levels ) == 1
+
 
 def test_ColorTableFactory():
     p = plot.ColorTableFactory()

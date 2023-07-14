@@ -102,15 +102,19 @@ def nearest_int(a):
     return int(round(a))
 
 
+def make_color_int(ir, ig, ib, ix=255):
+    if ix == 255:
+        return "#{:02x}{:02x}{:02x}".format(ir, ig, ib)
+    else:
+        return "#{:02x}{:02x}{:02x}{:02x}".format(ir, ig, ib, ix)
+
+
 def make_color(r, g, b, x=1.0):
     ir = nearest_int(r*255)
     ig = nearest_int(g*255)
     ib = nearest_int(b*255)
     ix = nearest_int(x*255)
-    if ix == 255:
-        return "#{:02x}{:02x}{:02x}".format(ir, ig, ib)
-    else:
-        return "#{:02x}{:02x}{:02x}{:02x}".format(ir, ig, ib, ix)
+    return make_color_int(ir, ig, ib, ix)
 
 
 def decompose_color(s):
