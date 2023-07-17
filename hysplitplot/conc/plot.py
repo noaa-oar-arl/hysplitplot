@@ -1711,7 +1711,7 @@ class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
         return cint, cint_inverse
 
     def make_levels(self, min_conc, max_conc, max_levels):
-        logger.debug("EDLG: making %d levels using min_conc %g, max_conc %g",
+        logger.debug("EDLG: making %d levels using min %g, max %g",
                      max_levels, min_conc, max_conc)
 
         cint, cint_inverse = self._compute_interval(min_conc, max_conc)
@@ -1773,12 +1773,10 @@ class ExponentialFixedLevelGenerator(ExponentialDynamicLevelGenerator):
         return self.global_max
 
     def make_levels(self, min_conc, max_conc, max_levels):
-        logger.debug("EFLG: making %d levels using min_conc %g, max_conc %g",
-                     max_levels, min_conc, max_conc)
+        logger.debug("EFLG: making %d levels using global min %g, max %g",
+                     max_levels, self.global_min, self.global_max,)
         return super(ExponentialFixedLevelGenerator, self).make_levels(
-            self.global_min,
-            self.global_max,
-            max_levels)
+               self.global_min, self.global_max, max_levels)
 
     def compute_color_table_offset(self, levels):
         return 0
@@ -1807,7 +1805,7 @@ class ExponentialDynamicLevelGeneratorVariation2(ExponentialDynamicLevelGenerato
         return cint, cint_inverse
 
     def make_levels(self, min_conc, max_conc, max_levels):
-        logger.debug("EDLGV2: making %d levels using min_conc %g, max_conc %g",
+        logger.debug("EDLGV2: making %d levels using min %g, max %g",
                      max_levels, min_conc, max_conc)
         return super(ExponentialDynamicLevelGeneratorVariation2, self).make_levels(
                            min_conc, max_conc, max_levels)
@@ -1832,12 +1830,10 @@ class ExponentialFixedLevelGeneratorVariation2(ExponentialDynamicLevelGeneratorV
         return self.global_max
 
     def make_levels(self, min_conc, max_conc, max_levels):
-        logger.debug("EFLGV2: making %d levels using min_conc %g, max_conc %g",
-                     max_levels, min_conc, max_conc)
+        logger.debug("EFLGV2: making %d levels using global min %g, max %g",
+                     max_levels, self.global_min, self.global_max)
         return super(ExponentialFixedLevelGeneratorVariation2, self).make_levels(
-            self.global_min,
-            self.global_max,
-            max_levels)
+               self.global_min, self.global_max, max_levels)
 
     def compute_color_table_offset(self, levels):
         return 0
@@ -1861,7 +1857,7 @@ class LinearDynamicLevelGenerator(AbstractContourLevelGenerator):
         return cint, 1.0 / cint
 
     def make_levels(self, min_conc, max_conc, max_levels):
-        logger.debug("LDLG: making %d levels using min_conc %g, max_conc %g",
+        logger.debug("LDLG: making %d levels using min %g, max %g",
                      max_levels, min_conc, max_conc)
         cint, _ = self._compute_interval(min_conc, max_conc)
 
@@ -1869,8 +1865,7 @@ class LinearDynamicLevelGenerator(AbstractContourLevelGenerator):
         for k in range(len(levels)):
             levels[k] = cint * (k + 1)
 
-        logger.debug("contour levels: %s using max %g, levels %d",
-                     levels, max_conc, max_levels)
+        logger.debug("contour levels: %s", levels)
         return levels
 
     def compute_color_table_offset(self, levels):
@@ -1903,8 +1898,8 @@ class LinearFixedLevelGenerator(LinearDynamicLevelGenerator):
         return self.global_max
 
     def make_levels(self, min_conc, max_conc, max_levels):
-        logger.debug("LFLG: making %d levels using min_conc %g, max_conc %g",
-                     max_levels, min_conc, max_conc)
+        logger.debug("LFLG: making %d levels using global min %g, max %g",
+                     max_levels, self.global_min, self.global_max)
         return LinearDynamicLevelGenerator.make_levels(self,
                                                        self.global_min,
                                                        self.global_max,
@@ -1924,8 +1919,8 @@ class UserSpecifiedLevelGenerator(AbstractContourLevelGenerator):
             self.contour_levels = [o.level for o in user_specified_levels]
 
     def make_levels(self, min_conc, max_conc, max_levels):
-        logger.debug("USLG: making %d levels using min_conc %g, max_conc %g",
-                     max_levels, min_conc, max_conc)
+        logger.debug("USLG: making %d levels using user-specified values",
+                     max_levels)
         return self.contour_levels
 
     def compute_color_table_offset(self, levels):
@@ -1955,8 +1950,10 @@ class NearMinLevelDecorator(AbstractContourLevelGenerator):
       self.level_generator.set_global_min_max(cmin, cmax)
 
    def make_levels(self, min_conc, max_conc, max_levels):
-      logger.debug("NMLD: making %d levels using min_conc %g, max_conc %g",
-                   max_levels, min_conc, max_conc)
+      logger.debug("NMLD: making %d levels using min %g, max %g or global min %g, max %g",
+                   max_levels, min_conc, max_conc,
+                   self.level_generator.global_min,
+                   self.level_generator.global_max)
       b = self.level_generator.make_levels(min_conc, max_conc, max_levels)
       logger.debug(f'initial contour levels {b}')
 
