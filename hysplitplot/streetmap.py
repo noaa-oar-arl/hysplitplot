@@ -35,14 +35,14 @@ class MapBackgroundFactory:
     def create_instance(projection, use_street_map, street_map_selector):
         if projection.proj_type == const.MapProjection.WEB_MERCATOR \
                 and use_street_map:
-            if street_map_selector == const.StreetMap.STAMEN_TERRAIN:
-                o = StamenStreetMap(projection, "TERRAIN")
-            elif street_map_selector == const.StreetMap.STAMEN_TONER:
-                o = StamenStreetMap(projection, "TONER")
+            if street_map_selector == const.StreetMap.STREET:
+                o = OpenStreetMap(projection)
+            elif street_map_selector == const.StreetMap.TOPO:
+                o = OpenTopoMap(projection)
             else:
                 logger.warning("Change unknown street map type {} "
                                "to 0.".format(street_map_selector))
-                o = StamenStreetMap(projection, "TERRAIN")
+                o = OpenStreetMap(projection)
         else:
             o = HYSPLITMapBackground(projection)
 
@@ -626,3 +626,57 @@ class StamenStreetMap(AbstractStreetMap):
     @property
     def attribution(self):
         return self.__attribution
+
+
+class OpenStreetMap(AbstractStreetMap):
+
+    def __init__(self, projection):
+        super(OpenStreetMap, self).__init__(projection)
+        self.__tile_provider = contextily.providers.OpenStreetMap.Mapnik
+        self.__attribution = "(C) OpenStreetMap contributors"
+
+    @property
+    def min_zoom(self):
+        return 0
+
+    @property
+    def max_zoom(self):
+        # 19 from openstreetmap.org.
+        # Reduced to 15 to avoid HTTP errors.
+        return 15
+
+    @property
+    def tile_provider(self):
+        return self.__tile_provider
+
+    @property
+    def attribution(self):
+        return self.__attribution
+
+
+class OpenTopoMap(AbstractStreetMap):
+
+    def __init__(self, projection):
+        super(OpenTopoMap, self).__init__(projection)
+        self.__tile_provider = contextily.providers.OpenTopoMap
+        self.__attribution = "Map data: (C) OpenStreetMap contributors, " \
+                             "SRTM | Map style: (C) OpenTopoMap (CC-BY-SA)"
+
+    @property
+    def min_zoom(self):
+        return 0
+
+    @property
+    def max_zoom(self):
+        # 19 from openstreetmap.org.
+        # Reduced to 15 to avoid HTTP errors.
+        return 15
+
+    @property
+    def tile_provider(self):
+        return self.__tile_provider
+
+    @property
+    def attribution(self):
+        return self.__attribution
+

@@ -63,12 +63,11 @@ class AbstractStreetMapTest(streetmap.AbstractStreetMap):
 
     @property
     def tile_provider(self):
-        return contextily.providers.Stamen.Terrain
+        return contextily.providers.OpenStreetMap.Mapnik
     
     @property
     def attribution(self):
         return "copy left"
-    
     
     
 def test_MapBackgroundFactory_create_instance(web_merc_proj):
@@ -76,22 +75,22 @@ def test_MapBackgroundFactory_create_instance(web_merc_proj):
     o = streetmap.MapBackgroundFactory.create_instance(web_merc_proj, False, 0)
     assert isinstance(o, streetmap.HYSPLITMapBackground)
     
-    o = streetmap.MapBackgroundFactory.create_instance(web_merc_proj, True, const.StreetMap.STAMEN_TERRAIN)
-    assert isinstance(o, streetmap.StamenStreetMap)
-    assert o.tile_provider.url == contextily.providers.Stamen.Terrain.url
+    o = streetmap.MapBackgroundFactory.create_instance(web_merc_proj, True, const.StreetMap.STREET)
+    assert isinstance(o, streetmap.OpenStreetMap)
+    assert o.tile_provider.url == contextily.providers.OpenStreetMap.Mapnik.url
         
-    o = streetmap.MapBackgroundFactory.create_instance(web_merc_proj, True, const.StreetMap.STAMEN_TONER)
-    assert isinstance(o, streetmap.StamenStreetMap)
-    assert o.tile_provider.url == contextily.providers.Stamen.TonerLite.url
+    o = streetmap.MapBackgroundFactory.create_instance(web_merc_proj, True, const.StreetMap.TOPO)
+    assert isinstance(o, streetmap.OpenTopoMap)
+    assert o.tile_provider.url == contextily.providers.OpenTopoMap.url
     
     # when an invalid street map type is used.
     o = streetmap.MapBackgroundFactory.create_instance(web_merc_proj, True, 999999)
-    assert isinstance(o, streetmap.StamenStreetMap)
-    assert o.tile_provider.url == contextily.providers.Stamen.Terrain.url
+    assert isinstance(o, streetmap.OpenStreetMap)
+    assert o.tile_provider.url == contextily.providers.OpenStreetMap.Mapnik.url
 
     # when a non-WEB-MERCATOR projection is used.
     m = mapproj.PolarProjection(const.MapProjection.POLAR, 0.5, [-125.0, 85.0], 1.3, [1.0, 1.0])
-    o = streetmap.MapBackgroundFactory.create_instance(m, True, const.StreetMap.STAMEN_TERRAIN)
+    o = streetmap.MapBackgroundFactory.create_instance(m, True, const.StreetMap.STREET)
     assert isinstance(o, streetmap.HYSPLITMapBackground)
     
 
@@ -522,4 +521,20 @@ def test_StamenStreetMap_tile_provider():
 def test_StamenStreetMap_attribution():
     # Tested by test_StamenStreetMap___init__.
     pass
+
+
+def test_OpenStreetMap___init__(web_merc_proj):
+    o = streetmap.OpenStreetMap(web_merc_proj)
+    assert o.min_zoom == 0
+    assert o.max_zoom == 15
+    assert o.tile_provider.url == contextily.providers.OpenStreetMap.Mapnik.url
+    assert o.attribution.startswith("(C) OpenStreetMap contributors")
+
+
+def test_OpenTopoMap___init__(web_merc_proj):
+    o = streetmap.OpenTopoMap(web_merc_proj)
+    assert o.min_zoom == 0
+    assert o.max_zoom == 15
+    assert o.tile_provider.url == contextily.providers.OpenTopoMap.url
+    assert o.attribution.startswith("Map data: (C) OpenStreetMap contributors,")
 

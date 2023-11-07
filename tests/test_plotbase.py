@@ -299,7 +299,7 @@ def test_AbstractPlot_create_street_map():
     projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
     projection.corners_xy = [1.0, 500.0, 1.0, 500.0]
     projection.corners_lonlat = [-95.0, -75.0, 25.0, 45.0]
-    street_map = p.create_street_map(projection, False, const.StreetMap.STAMEN_TERRAIN)
+    street_map = p.create_street_map(projection, False, const.StreetMap.STREET)
 
     assert street_map.fix_map_color_fn is None
     assert street_map.projection is projection
