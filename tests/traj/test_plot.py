@@ -1142,7 +1142,7 @@ def test_AbstractVerticalProjection___init__():
     assert o.settings == s
     assert o.time_interval == 6
     plt.close(axes.get_figure())
-    
+
 
 def test_AbstractVerticalProjection_calc_xrange(plotData):
     s = plot.TrajectoryPlotSettings()
@@ -1150,7 +1150,15 @@ def test_AbstractVerticalProjection_calc_xrange(plotData):
     o = AbstractVerticalProjectionTest(axes, s, 6)
     assert o.calc_xrange(plotData) == None
     plt.close(axes.get_figure())
-        
+
+
+def test_AbstractVerticalProjection_get_major_tick_locator(plotData):
+    s = plot.TrajectoryPlotSettings()
+    axes = plt.axes()
+    o = AbstractVerticalProjectionTest(axes, s, 6)
+    assert o.get_major_tick_locator() is None
+    plt.close(axes.get_figure())
+
 
 def test_AbstractVerticalProjection_create_xlabel_formatter():
     s = plot.TrajectoryPlotSettings()
@@ -1158,7 +1166,7 @@ def test_AbstractVerticalProjection_create_xlabel_formatter():
     o = AbstractVerticalProjectionTest(axes, s, 6)
     assert o.create_xlabel_formatter() == None
     plt.close(axes.get_figure())
-  
+
 
 def test_AbstractVerticalProjection_select_xvalues(plotData):
     s = plot.TrajectoryPlotSettings()
@@ -1184,7 +1192,7 @@ def test_TimeVerticalProjection___init__():
     assert o.settings == s
     assert o.time_interval == 6
     plt.close(axes.get_figure())
-    
+
 
 def test_TimeVerticalProjection_calc_xrange(plotData):
     s = plot.TrajectoryPlotSettings()
@@ -1201,7 +1209,21 @@ def test_TimeVerticalProjection_calc_xrange(plotData):
     assert r[1] == datetime.datetime(1995, 10, 16,  7, 0, 0, 0)
     
     plt.close(axes.get_figure())
-        
+
+
+def test_TimeVerticalProjection_get_major_tick_locator(plotData):
+    s = plot.TrajectoryPlotSettings()
+    axes = plt.axes()
+    o = plot.TimeVerticalProjection(axes, s, 0)
+    assert o.get_major_tick_locator() is not None
+    o = plot.TimeVerticalProjection(axes, s, 24)
+    assert o.get_major_tick_locator() is not None
+    o = plot.TimeVerticalProjection(axes, s, -6)
+    assert o.get_major_tick_locator() is not None
+    o = plot.TimeVerticalProjection(axes, s, 48)
+    assert o.get_major_tick_locator() is not None
+    plt.close(axes.get_figure())
+
 
 def test_TimeVerticalProjection_create_xlabel_formatter():
     s = plot.TrajectoryPlotSettings()
@@ -1251,7 +1273,7 @@ def test_AgeVerticalProjection___init__():
     assert o.settings == s
     assert o.time_interval == 6
     plt.close(axes.get_figure())
-    
+
 
 def test_AgeVerticalProjection_calc_xrange(plotData):
     s = plot.TrajectoryPlotSettings()
@@ -1259,6 +1281,15 @@ def test_AgeVerticalProjection_calc_xrange(plotData):
     o = plot.AgeVerticalProjection(axes, s, 6)
     assert o.calc_xrange(plotData) == (0.0, 12.0)
     assert o.calc_xrange(plotData, pytz.utc) == (0.0, 12.0)
+    plt.close(axes.get_figure())
+
+
+def test_AgeVerticalProjection_get_major_tick_locator(plotData):
+    s = plot.TrajectoryPlotSettings()
+    axes = plt.axes()
+
+    o = plot.AgeVerticalProjection(axes, s, 6)
+    assert o.get_major_tick_locator() is None
     plt.close(axes.get_figure())
 
 

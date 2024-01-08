@@ -575,6 +575,9 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         for pd in data_list:
             x_range = util.union_ranges(x_range,
                                         vert_proj.calc_xrange(pd, time_zone))
+        tick_locator = vert_proj.get_major_tick_locator()
+        if tick_locator is not None:
+           axes.xaxis.set_major_locator(tick_locator)
         axes.set_xlim(x_range[0], x_range[1])
 
         # Invert the x-axis if it is a backward trajectory
@@ -1037,6 +1040,12 @@ class AbstractVerticalProjection(ABC):
     def calc_xrange(self, plot_data, time_zone=None):
         pass
 
+    def get_major_tick_locator(self):
+        """
+        A child class may return a locator object for customization.
+        """
+        return None
+     
     @abstractmethod
     def create_xlabel_formatter(self):
         pass
@@ -1064,6 +1073,16 @@ class TimeVerticalProjection(AbstractVerticalProjection):
         # See _format_datetime() for the reason why tzinfo is removed
         # after applying the timezone.
         return [x.astimezone(time_zone).replace(tzinfo=None) for x in r]
+
+    def get_major_tick_locator(self):
+        i = abs(self.time_interval)
+        if i == 0:
+            return matplotlib.ticker.NullLocator()
+        elif i == 24:
+            return matplotlib.dates.HourLocator(byhour=0)
+        elif i > 0 and i < 24:
+            return matplotlib.dates.HourLocator(byhour=range(0,24,i))
+        return matplotlib.dates.AutoDateLocator()
 
     def create_xlabel_formatter(self):
         return plt.FuncFormatter(self._format_datetime)
