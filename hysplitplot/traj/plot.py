@@ -613,7 +613,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                     if k == 0:
                         axes.text(ages[0], vc[0], "{0}  ".format(int(vc[0])),
                                   horizontalalignment="right",
-                                  verticalalignment="center", clip_on=True)
+                                  verticalalignment="center", clip_on=False)
                 else:
                     logger.info("skip drawing a trajectory with no "
                                 "vertical coordinate")
