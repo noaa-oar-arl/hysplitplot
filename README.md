@@ -26,7 +26,7 @@ to the tests subdirectory and run pytest:
 
 No error should have occurred. There may be warning messages but they may be ignored.
 
-To generate a trajectory plot using a trajectory dump file in the current directory,
+To plot a trajectory dump file, say, tdump in the current directory,
 run
 
     $ python ~/hysplitplot/trajplot.py -itdump
