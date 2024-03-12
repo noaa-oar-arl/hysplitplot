@@ -23,7 +23,7 @@ setup(
               "hysplitplot.toa", "hysplitplot.grid"],
     python_requires="==3.7",
     install_requires=[
-        "hysplitdata==0.0.*",  # omit the patch level
+        "hysplitdata==0.2.*",  # omit the patch level
         "geopandas==0.8.1",
         "cartopy==0.17.0",
         "numpy==1.20.1",

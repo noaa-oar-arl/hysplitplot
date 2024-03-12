@@ -1716,19 +1716,27 @@ class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
 
         cint, cint_inverse = self._compute_interval(min_conc, max_conc)
 
-        nexp = int(math.log10(max_conc)) if max_conc > 0 else 0
-        if nexp < 0:
-            nexp -= 1
+        if max_conc > 0:
+            y = math.log(max_conc)/math.log(cint)
+            if y > 0:
+                nexp = int(y)
+            else:
+                nexp = int(y)-1
+        else:
+            nexp = 0  # sets the highest contour level to 1.0
 
         # Use a numpy ndarray to allow the *= operator.
         levels = numpy.empty(max_levels, dtype=float)
 
-        a = math.pow(10.0, nexp)
+        a = math.pow(cint, nexp)
         if a < self.cutoff:
             levels[0] = self.cutoff
             levels.resize(1)
         else:
             levels[0] = a
+            # ensure level[0] < max_conc
+            if (a > max_conc or math.isclose(a,max_conc)) and max_conc > 0:
+                levels[0] *= cint_inverse
             for k in range(1, max_levels):
                 a = levels[k - 1] * cint_inverse
                 if a >= self.cutoff:
@@ -1742,6 +1750,9 @@ class ExponentialDynamicLevelGenerator(AbstractContourLevelGenerator):
         return numpy.flip(levels)
 
     def compute_color_table_offset(self, levels):
+        if levels[-1] > self.global_max:
+            return 0
+        
         if len(levels) > 1:
             cint = levels[-1] / levels[-2]
         else:
@@ -1808,7 +1819,7 @@ class ExponentialDynamicLevelGeneratorVariation2(ExponentialDynamicLevelGenerato
         logger.debug("EDLGV2: making %d levels using min %g, max %g",
                      max_levels, min_conc, max_conc)
         return super(ExponentialDynamicLevelGeneratorVariation2, self).make_levels(
-                           min_conc, max_conc, max_levels)
+                        min_conc, max_conc, max_levels)
 
 
 class ExponentialFixedLevelGeneratorVariation2(ExponentialDynamicLevelGeneratorVariation2):
@@ -1869,6 +1880,9 @@ class LinearDynamicLevelGenerator(AbstractContourLevelGenerator):
         return levels
 
     def compute_color_table_offset(self, levels):
+        if levels[-1] > self.global_max:
+            return 0
+         
         if len(levels) > 1:
             cint = levels[1] - levels[0]
         else:

@@ -1674,27 +1674,62 @@ def test_ExponentialDynamicLevelGenerator_make_levels():
     
     # base 10.0
     
+    # when int(log10(max_conc)) < 0
     levels = o.make_levels(1.39594e-15, 8.17302e-13, 4)
-    
-    levels *= 1.e+16
-    assert levels == pytest.approx((1.0, 10.0, 100.0, 1000.0))
+    # levels = [1.e-16 1.e-15 1.e-14 1.e-13]
+    assert levels*1.e+16 == pytest.approx((1.0, 10.0, 100.0, 1000.0))
+    assert levels[-1] < 8.17302e-13
+
+    # when int(log10(max_conc)) == 0
+    levels = o.make_levels(0.0005, 0.5, 4)
+    # leves = [0.0001 0.001  0.01   0.1   ]
+    assert levels == pytest.approx((0.0001, 0.001, 0.01, 0.1))
+    assert levels[-1] < 0.5
+
+    # when int(log10(max_conc)) > 0
+    levels = o.make_levels(0.5, 500.0, 4)
+    # levels = [  0.1   1.   10.  100. ]
+    assert levels == pytest.approx((0.1, 1.0, 10.0, 100.0))
+    assert levels[-1] < 500.0
     
     # base 100.0
     
+    # when int(log10(max_conc)) < 0
     levels = o.make_levels(1.39594e-15, 8.17302e-07, 4)
+    assert levels*1.e+13 == pytest.approx((0.1, 10.0, 1000.0, 100000.0))
+    assert levels[-1] < 8.17302e-07
     
-    levels *= 1.e+13
-    assert levels == pytest.approx((1.0, 100.0, 10000.0, 1000000.0))
+    # when int(log10(max_conc)) == 0
+    levels = o.make_levels(0.5e-9, 0.5, 4)
+    assert levels*1.e+8 == pytest.approx((1., 100., 10000., 1000000.))
+    assert levels[-1] < 0.5
 
+    # when int(log10(max_conc)) > 0
+    levels = o.make_levels(0.5e-6, 500.0, 4)
+    assert levels == pytest.approx((0.0001, 0.01, 1.0, 100.0))
+    assert levels[-1] < 500.0
+    
     # force base 10
     
     o.force_base_10 = True
-    levels = o.make_levels(1.39594e-15, 8.17302e-7, 4)
     
-    levels *= 1.e+10
-    assert levels == pytest.approx((1.0, 10.0, 100.0, 1000.0))
+    # when int(log10(max_conc)) < 0
+    levels = o.make_levels(1.39594e-15, 8.17302e-7, 4)
+    assert levels*1.e+10 == pytest.approx((1.0, 10.0, 100.0, 1000.0))
+    assert levels[-1] < 8.17302e-07
+    
+    # when int(log10(max_conc)) == 0
+    levels = o.make_levels(0.5e-9, 0.5, 4)
+    assert levels == pytest.approx((0.0001, 0.001, 0.01, 0.1))
+    assert levels[-1] < 0.5
 
+    # when int(log10(max_conc)) > 0
+    levels = o.make_levels(0.5e-6, 500.0, 4)
+    assert levels == pytest.approx((0.1, 1.0, 10.0, 100.0))
+    assert levels[-1] < 500.0
+    #
     # when cmax is zero
+    #
     levels = o.make_levels(0, 0, 4)
     assert levels == pytest.approx((0.001, 0.01, 0.1, 1.0))
     
@@ -1706,8 +1741,8 @@ def test_ExponentialDynamicLevelGenerator_make_levels():
     # When the cutoff is between the min and max values
     o = plot.ExponentialDynamicLevelGenerator( 1.0e-14 )
     levels = o.make_levels(1.0e-16, 1.0e-12, 4)
-    levels *= 1.0e+16
-    assert levels == pytest.approx((100.0, 1000.0))
+    assert levels*1.0e+15 == pytest.approx((10., 100.))
+    assert levels[-1] < 1.0e-12
     
     
 def test_ExponentialDynamicLevelGenerator_compute_color_table_offset():
@@ -1751,8 +1786,8 @@ def test_ExponentialFixedLevelGenerator_make_levels():
     levels = o.make_levels(1.39594e-16, 8.17302e-12, 4)
     
     # levels should be generated using the global min and max.
-    levels *= 1.e+16
-    assert levels == pytest.approx((1.0, 10.0, 100.0, 1000.0))
+    assert levels*1.e+16 == pytest.approx((1.0, 10.0, 100.0, 1000.0))
+    assert levels[-1] < 8.17302e-12
     
     # when cmax is zero
     o.set_global_min_max(0, 0)
@@ -1769,8 +1804,8 @@ def test_ExponentialFixedLevelGenerator_make_levels():
     o = plot.ExponentialFixedLevelGenerator( 1.0e-14 )
     o.set_global_min_max(1.0e-16, 1.0e-12)
     levels = o.make_levels(1.0e-16, 1.0e-12, 4)
-    levels *= 1.0e+16
-    assert levels == pytest.approx((100.0, 1000.0))
+    assert levels*1.0e+15 == pytest.approx((10., 100.))
+    assert levels[-1] < 1.0e-12
     
     
 def test_ExponentialFixedLevelGenerator_compute_color_table_offset():
@@ -1811,26 +1846,58 @@ def test_ExponentialDynamicLevelGeneratorVariation2_make_levels():
     
     # base sqrt(10.0)
     
+    # when int(log10(max_conc)) < 0
     levels = o.make_levels(1.39594e-15, 8.17302e-13, 4)
-    
-    levels *= 1.e+16
-    assert levels == pytest.approx((31.6227766, 100.0, 316.22776602, 1000.0))
+    assert levels*1.e+16 == pytest.approx((100.0, 316.22776602, 1000.0, 3162.27766))
+    assert levels[-1] < 8.17302e-13
+
+    # when int(log10(max_conc)) == 0
+    levels = o.make_levels(0.0005, 0.5, 4)
+    # leves = [0.0001 0.001  0.01   0.1   ]
+    assert levels == pytest.approx((0.01, 0.0316227766, 0.1, 0.316227766))
+    assert levels[-1] < 0.5
+
+    # when int(log10(max_conc)) > 0
+    levels = o.make_levels(0.5, 500.0, 4)
+    assert levels == pytest.approx((10., 31.6227766, 100.0, 316.227766))
+    assert levels[-1] < 500.0
     
     # base 10.0
     
+    # when int(log10(max_conc)) < 0
     levels = o.make_levels(1.39594e-15, 8.17302e-07, 4)
+    assert levels*1.e+10 == pytest.approx((1.0, 10.0, 100.0, 1000.0))
+    assert levels[-1] < 8.17302e-07
     
-    levels *= 1.e+13
-    assert levels == pytest.approx((1000.0, 10000.0, 100000.0, 1000000.0))
+    # when int(log10(max_conc)) == 0
+    levels = o.make_levels(0.5e-9, 0.5, 4)
+    assert levels == pytest.approx((0.0001, 0.001, 0.01, 0.1))
+    assert levels[-1] < 0.5
 
+    # when int(log10(max_conc)) > 0
+    levels = o.make_levels(0.5e-6, 500.0, 4)
+    assert levels == pytest.approx((0.1, 1.0, 10.0, 100.0))
+    assert levels[-1] < 500.0
+    
     # force base sqrt(10)
     
     o.force_base_sqrt10 = True
-    levels = o.make_levels(1.39594e-15, 8.17302e-7, 4)
     
-    levels *= 1.e+10
-    assert levels == pytest.approx((31.6227766, 100.0, 316.22776602, 1000.0))
+    # when int(log10(max_conc)) < 0
+    levels = o.make_levels(1.39594e-15, 8.17302e-7, 4)
+    assert levels*1.e+10 == pytest.approx((100.0, 316.22776602, 1000.0, 3162.27766))
+    assert levels[-1] < 8.17302e-7
 
+    # when int(log10(max_conc)) == 0
+    levels = o.make_levels(0.5e-9, 0.5, 4)
+    assert levels == pytest.approx((0.01, 0.0316227766, 0.1, 0.316227766))
+    assert levels[-1] < 0.5
+
+    # when int(log10(max_conc)) > 0
+    levels = o.make_levels(0.5e-6, 500.0, 4)
+    assert levels == pytest.approx((10.0, 31.622776602, 100.0, 316.22776602))
+    assert levels[-1] < 500.0
+    
     # when cmax is zero
     levels = o.make_levels(0, 0, 4)
     assert levels == pytest.approx((0.0316227766, 0.1, 0.31622777, 1.0))
@@ -1843,8 +1910,8 @@ def test_ExponentialDynamicLevelGeneratorVariation2_make_levels():
     # When the cutoff is between the min and max values
     o = plot.ExponentialDynamicLevelGeneratorVariation2( 1.0e-14 )
     levels = o.make_levels(1.0e-16, 1.0e-12, 4)
-    levels *= 1.0e+16
-    assert levels == pytest.approx((100.0, 316.22776602, 1000.0))
+    assert levels*1.e+16 == pytest.approx((316.22776602, 1000.0, 3162.2776602))
+    assert levels[-1] < 1.0e-12
     
     
 def test_ExponentialDynamicLevelGeneratorVariation2_compute_color_table_offset():
@@ -1852,11 +1919,12 @@ def test_ExponentialDynamicLevelGeneratorVariation2_compute_color_table_offset()
     o.set_global_min_max(1.39594e-15, 8.17302e-13)
     levels = o.make_levels(1.39594e-15, 8.17302e-13, 4)
     
-    assert o.compute_color_table_offset( levels ) == 1
+    # levels = [1.00000000e-14, 3.16227766e-14, 1.00000000e-13, 3.16227766e-13]
+    assert o.compute_color_table_offset( levels ) == 0
     
     o.set_global_min_max(1.39594e-15, 8.17302e-12)
     
-    assert o.compute_color_table_offset( levels ) == 3
+    assert o.compute_color_table_offset( levels ) == 2
     
     assert o.compute_color_table_offset( [1.0e-13] ) == 3
     
@@ -1882,13 +1950,25 @@ def test_ExponentialFixedLevelGeneratorVariation2_get_max_conc():
 
 def test_ExponentialFixedLevelGeneratorVariation2_make_levels():
     o = plot.ExponentialFixedLevelGeneratorVariation2(3.14e-19)
-    o.set_global_min_max(1.39594e-15, 8.17302e-13)
-
-    levels = o.make_levels(1.39594e-16, 8.17302e-12, 4)
     
     # levels should be generated using the global min and max.
-    levels *= 1.e+16
-    assert levels == pytest.approx((31.6227766, 100.0, 316.22776602, 1000.0))
+    # when int(log10(max_conc)) < 0
+    o.set_global_min_max(1.39594e-15, 8.17302e-13)
+    levels = o.make_levels(1.39594e-16, 8.17302e-12, 4)
+    assert levels*1.e+16 == pytest.approx((100.0, 316.22776602, 1000.0, 3162.27766))
+    assert levels[-1] < 8.17302e-13
+
+    # when int(log10(max_conc)) == 0
+    o.set_global_min_max(0.0005, 0.5)
+    levels = o.make_levels(0.5, 50.0, 4)
+    assert levels == pytest.approx((0.01, 0.0316227766, 0.1, 0.316227766))
+    assert levels[-1] < 0.5
+    
+    # when int(log10(max_conc)) > 0
+    o.set_global_min_max(0.5, 500.0)
+    levels = o.make_levels(50.0, 5000.0, 4)
+    assert levels == pytest.approx((10., 31.6227766, 100.0, 316.227766))
+    assert levels[-1] < 500.0
     
     # when cmax is zero
     o.set_global_min_max(0, 0)
@@ -1905,8 +1985,8 @@ def test_ExponentialFixedLevelGeneratorVariation2_make_levels():
     o = plot.ExponentialFixedLevelGeneratorVariation2( 1.0e-14 )
     o.set_global_min_max(1.0e-16, 1.0e-12)
     levels = o.make_levels(1.0e-16, 1.0e-12, 4)
-    levels *= 1.0e+16
-    assert levels == pytest.approx((100.0, 316.22776602, 1000.0))
+    assert levels*1.0e+16 == pytest.approx((316.22776602, 1000.0, 3162.2776602))
+    assert levels[-1] < 1.0e-12
     
     
 def test_ExponentialFixedLevelGeneratorVariation2_compute_color_table_offset():
@@ -1931,9 +2011,8 @@ def test_LinearDynamicLevelGenerator_make_levels():
     o = plot.LinearDynamicLevelGenerator()
     
     levels = o.make_levels(1.0, 10.0, 4)
-    
     assert levels == pytest.approx((2., 4., 6., 8.))
-    
+
     # when cmax is zero
     levels = o.make_levels(0.0, 0.0, 4)
     assert levels == pytest.approx((1., 2., 3., 4.))
@@ -2068,24 +2147,18 @@ def test_NearMinLevelDecorator_make_levels():
     # base sqrt(10.0)
     
     levels = o.make_levels(1.39594e-15, 8.17302e-13, 4)
-    
-    levels *= 1.e+16
-    assert levels == pytest.approx((11.16752, 31.622776602, 100.0, 316.22776602, 1000.0))
+    assert levels*1.e+16 == pytest.approx((11.16752, 100.0, 316.22776602, 1000.0, 3162.2776602))
     
     # base 10.0
     
     levels = o.make_levels(1.39594e-15, 8.17302e-07, 4)
-    
-    levels *= 1.e+13
-    assert levels == pytest.approx((1.116752e-02, 1000.0, 10000.0, 100000.0, 1000000.0))
+    assert levels*1.e+13 == pytest.approx((1.116752e-02, 1000.0, 10000.0, 100000.0, 1000000.0))
 
     # force base sqrt(10)
     
     o.level_generator.force_base_sqrt10 = True
     levels = o.make_levels(1.39594e-15, 8.17302e-7, 4)
-    
-    levels *= 1.e+10
-    assert levels == pytest.approx((1.116752e-05, 31.622776602, 100.0, 316.22776602, 1000.0))
+    assert levels*1.e+10 == pytest.approx((1.116752e-05, 100.0, 316.22776602, 1000.0, 3162.2776602))
 
     # when cmax is zero
     levels = o.make_levels(0, 0, 4)
@@ -2097,10 +2170,9 @@ def test_NearMinLevelDecorator_make_levels():
     assert levels == pytest.approx((1.0))
     
     # When the cutoff is between the min and max values
-    o = plot.NearMinLevelDecorator(plot.ExponentialDynamicLevelGeneratorVariation2( 1.0e-14 ))
+    o = plot.NearMinLevelDecorator(plot.ExponentialDynamicLevelGeneratorVariation2( 5.0e-14 ))
     levels = o.make_levels(1.0e-16, 1.0e-12, 4)
-    levels *= 1.0e+16
-    assert levels == pytest.approx((100.0, 316.22776602, 1000.0))
+    assert levels*1.e+16 == pytest.approx((500.0, 1000.0, 3162.2776602))
 
 
 def test_NearMinLevelDecorator_compute_color_table_offset():
