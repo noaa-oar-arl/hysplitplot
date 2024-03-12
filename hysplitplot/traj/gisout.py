@@ -14,7 +14,10 @@ import xml.etree.ElementTree as ET
 from hysplitdata.const import HeightUnit, VerticalCoordinate
 from hysplitdata.traj import model
 from hysplitplot import const, util
-
+from hysplitplot.traj.color import (
+   ColorCycle,
+   ColorCycleFactory
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +42,9 @@ class GISFileWriterFactory:
 
 class AbstractTrajectoryStyle(ABC):
 
+    def __init__(self):
+        self.colors = ColorCycle._colors[0:3]  # first three colors
+
     @abstractmethod
     def write_styles(self, doc: ET.SubElement) -> None:
         pass
@@ -46,6 +52,9 @@ class AbstractTrajectoryStyle(ABC):
     @abstractmethod
     def get_id(self, t: model.Trajectory, t_index: int, thinner: bool = False) -> str:
         return None
+     
+    def set_colors(self, o: list) -> None:
+        self.colors = o  # list of color strings formatted in '#RRGGBB'
 
 
 class IndexBasedTrajectoryStyle(AbstractTrajectoryStyle):
@@ -54,20 +63,44 @@ class IndexBasedTrajectoryStyle(AbstractTrajectoryStyle):
         super(IndexBasedTrajectoryStyle, self).__init__()
 
     def write_styles(self, doc: ET.SubElement) -> None:
-        styles = [
-            {'id': 'traj1', 'linecolor': 'ff0000ff', 'linewidth':'4',
-             'polycolor': '7f0000ff', 'iconhref':'redball.png'},
-            {'id': 'traj1a', 'linecolor': 'ff0000ff', 'linewidth':'1.25',
-             'polycolor': '7f0000ff', 'iconhref':'redball.png'},
-            {'id': 'traj2', 'linecolor': 'ffff0000', 'linewidth':'4',
-             'polycolor': '7fff0000', 'iconhref':'blueball.png'},
-            {'id': 'traj2a', 'linecolor': 'ffff0000', 'linewidth':'1.25',
-             'polycolor': '7fff0000', 'iconhref':'blueball.png'},
-            {'id': 'traj3', 'linecolor': 'ff00ff00', 'linewidth':'4',
-             'polycolor': '7f00ff00', 'iconhref':'greenball.png'},
-            {'id': 'traj3a', 'linecolor': 'ff00ff00', 'linewidth':'1.25',
-             'polycolor': '7f00ff00', 'iconhref':'greenball.png'}
-        ]
+        styles = []
+        for k, clr in enumerate(self.colors):
+           r = clr[1:3]
+           g = clr[3:5]
+           b = clr[5:7]
+           bgr = f'{b}{g}{r}'
+
+           if (k%3) == 0:
+               iconhref = 'redball.png'
+           elif (k%3) == 1:
+               iconhref = 'blueball.png'
+           else:
+               iconhref = 'greenball.png'
+
+           ln1 = {'id': f'traj{k+1}', 'linecolor': f'ff{bgr}', 'linewidth':'4',
+                  'polycolor': f'7f{bgr}', 'iconhref':iconhref}
+           styles.append(ln1)
+
+           ln2 = {'id': f'traj{k+1}a', 'linecolor': f'ff{bgr}', 'linewidth':'1.25',
+                  'polycolor': f'7f{bgr}', 'iconhref':iconhref}
+           styles.append(ln2)
+
+        # styles = [
+        #     {'id': 'traj1', 'linecolor': 'ff0000ff', 'linewidth':'4',
+        #      'polycolor': '7f0000ff', 'iconhref':'redball.png'},
+        #     {'id': 'traj1a', 'linecolor': 'ff0000ff', 'linewidth':'1.25',
+        #      'polycolor': '7f0000ff', 'iconhref':'redball.png'},
+        #
+        #     {'id': 'traj2', 'linecolor': 'ffff0000', 'linewidth':'4',
+        #      'polycolor': '7fff0000', 'iconhref':'blueball.png'},
+        #     {'id': 'traj2a', 'linecolor': 'ffff0000', 'linewidth':'1.25',
+        #      'polycolor': '7fff0000', 'iconhref':'blueball.png'},
+        #
+        #     {'id': 'traj3', 'linecolor': 'ff00ff00', 'linewidth':'4',
+        #      'polycolor': '7f00ff00', 'iconhref':'greenball.png'},
+        #     {'id': 'traj3a', 'linecolor': 'ff00ff00', 'linewidth':'1.25',
+        #      'polycolor': '7f00ff00', 'iconhref':'greenball.png'}
+        # ]
         for s in styles:
             style = ET.SubElement(doc, 'Style', attrib={'id': s['id']})
             iconstyle = ET.SubElement(style, 'IconStyle')
@@ -84,7 +117,8 @@ class IndexBasedTrajectoryStyle(AbstractTrajectoryStyle):
         '''
         Return a style ID based on the trajectory index.
         '''
-        k = (t_index % 3) + 1  # only three colors are defined.
+        n = len(self.colors)
+        k = (t_index % n) + 1
         if thinner:
             return f'#traj{k:1d}a'
         return f'#traj{k:1d}'

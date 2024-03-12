@@ -22,6 +22,7 @@ from hysplitdata.traj import model
 from hysplitplot import clist, cmdline, const, mapbox, mapproj, \
                         plotbase, stnplot, streetmap, timezone, util
 from hysplitplot.traj import gisout
+from hysplitplot.traj.color import ColorCycleFactory
 
 
 logger = logging.getLogger(__name__)
@@ -820,13 +821,20 @@ class TrajectoryPlot(plotbase.AbstractPlot):
     def write_gis_files(self):
         gis_writers = self._create_gis_writer_list(self.settings,
                                                    self.time_zone)
+
         for w in gis_writers:
             if w is not None:
                 w.output_suffix = self.settings.output_suffix
                 w.output_name = self.settings.output_filename
                 w.kml_option = self.settings.kml_option
-    
+
                 for k, plot_data in enumerate(self.data_list):
+                    clrs = []
+                    for t in plot_data.trajectories:
+                        clr = self.settings.color_cycle.next_color(
+                                    t.starting_level_index, t.color)
+                        clrs.append(clr)
+                    w.kml_trajectory_style.set_colors(clrs)
                     w.write(k + 1, plot_data)
                 
                 w.finalize()
@@ -853,65 +861,6 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                 o.create_kml_per_write = False
 
         return gis_writer_list
-
-
-class ColorCycle(ABC):
-
-    _colors = ["r", "b", "#00ff00", "c", "m", "y", "#3399cc"]
-
-    def __init__(self, max_colors=7):
-        self.max_colors = max(min(7, max_colors), 3)
-        self.index = -1
-
-    def next_color(self, height_index, color_code):
-        self.index = (self.index + 1) % self.max_colors
-        return self._colors[self.index]
-
-    def reset(self):
-        self.index = -1
-
-
-class ItemizedColorCycle(ColorCycle):
-
-    def __init__(self):
-        super(ItemizedColorCycle, self).__init__()
-
-    def next_color(self, height_index, color_code):
-        k = (int(color_code) - 1) % self.max_colors
-        return self._colors[k]
-
-
-class MonoColorCycle(ColorCycle):
-
-    def __init__(self):
-        super(MonoColorCycle, self).__init__()
-
-    def next_color(self, height_index, color_code):
-        return "k"
-
-
-class HeightColorCycle(ColorCycle):
-
-    def __init__(self):
-        super(HeightColorCycle, self).__init__()
-
-    def next_color(self, height_index, color_code):
-        return self._colors[height_index % self.max_colors]
-
-
-class ColorCycleFactory:
-
-    @staticmethod
-    def create_instance(settings, height_count):
-        if settings.color == const.Color.COLOR:
-            if height_count == 1:
-                return ColorCycle(3)
-            else:
-                return HeightColorCycle()
-        elif settings.color == const.Color.ITEMIZED:
-            return ItemizedColorCycle()
-        else:
-            return MonoColorCycle()
 
 
 class IntervalSymbolDrawer(ABC):
