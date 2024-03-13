@@ -418,7 +418,7 @@ def test_TrajectoryPlot_set_trajectory_color():
     pd.trajectories.append(model.Trajectory())
     pd.trajectories.append(model.Trajectory())
     
-    p.set_trajectory_color(pd, s)
+    p.set_trajectory_color([pd], s)
     
     assert pd.trajectories[0].color == '2'
     assert pd.trajectories[1].color == '3'

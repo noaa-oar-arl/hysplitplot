@@ -186,7 +186,8 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
                             "n={0} m={1}".format(ntraj, ncolors))
         for c in str[divider+1:]:
             color_codes.append(c)
-
+        
+        logger.debug("color codes {}".format(color_codes))
         return color_codes
 
     def get_reader(self):
@@ -272,13 +273,13 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                                       self.settings.height_unit)
             r.read(inp)
             self.settings.vertical_coordinate = r.vertical_coordinate
-            self.set_trajectory_color(pd, self.settings)
             self.data_list.append(pd)
 
-        # create an color cycle instance
+        # create an color cycle instance and assign colors to trajectories.
         self.settings.color_cycle = ColorCycleFactory.create_instance(
             self.settings,
             len(self.data_list[0].uniq_start_levels))
+        self.set_trajectory_color(self.data_list, self.settings)
 
         self.plot_saver_list = self._create_plot_saver_list(self.settings)
 
@@ -298,15 +299,19 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                 return True
         return False
 
-    def set_trajectory_color(self, plot_data, settings):
+    def set_trajectory_color(self, data_list, settings):
         if settings.color == const.Color.ITEMIZED:
-            for k, t in enumerate(plot_data.trajectories):
-                if k >= len(settings.color_codes):
-                    logger.warning("KLR Traj #%d not defined, default "
-                                   "to color 1", k)
-                    t.color = '1'
-                else:
-                    t.color = settings.color_codes[k]
+            c = 0
+            cmax = len(settings.color_codes)
+            for plot_data in data_list:
+                for k, t in enumerate(plot_data.trajectories):
+                    if c >= cmax:
+                        logger.warning("KLR Traj #%d not defined, default "
+                                       "to color %s", c, '1')
+                        t.color = '1'
+                    else:
+                        t.color = settings.color_codes[c]
+                    c += 1
 
     def _make_clusterlist_filename(self, traj_count):
         f1 = "CLUSLIST_{0}".format(traj_count)
@@ -834,6 +839,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                         clr = self.settings.color_cycle.next_color(
                                     t.starting_level_index, t.color)
                         clrs.append(clr)
+                    logger.debug("traj {}, GIS colors {}".format(k,clrs))
                     w.kml_trajectory_style.set_colors(clrs)
                     w.write(k + 1, plot_data)
                 
