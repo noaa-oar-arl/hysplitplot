@@ -41,7 +41,7 @@ def print_usage():
    -i[Input files: name1+name2+... or +listfile or (tdump)]'
    -j[Map background file: (arlmap) or shapefiles.<(txt)|process suffix>]'
    -k[Kolor: 0-B&W, (1)-Color, N:colortraj1,...colortrajN]'
-      1=red,2=blue,3=green,4=cyan,5=magenta,6=yellow,7=olive'
+      1=red,2=blue,3=green,4=cyan,5=magenta,6=yellow,7=olive,...,i=darkBrown'
    -l[Label interval: ... -12, -6, 0, (6), 12, ... hrs '
       <0=with respect to traj start, >0=synoptic times)]'
    -L[LatLonLabels: none=0 auto=(1) set=2:value(tenths)]'
