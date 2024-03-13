@@ -303,14 +303,29 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         if settings.color == const.Color.ITEMIZED:
             c = 0
             cmax = len(settings.color_codes)
-            for plot_data in data_list:
-                for k, t in enumerate(plot_data.trajectories):
+            if len(data_list) <= 1:
+                # For a single file, assign color per trajectory.
+                for plot_data in data_list:
+                    for t in plot_data.trajectories:
+                        if c >= cmax:
+                            logger.warning("KLR Traj #%d not defined, default "
+                                           "to color %s", c+1, '1')
+                            clr = '1'
+                        else:
+                            clr = settings.color_codes[c]
+                        t.color = clr
+                        c += 1
+            else:
+                # For multiple files, assign color per file.
+                for plot_data in data_list:
                     if c >= cmax:
                         logger.warning("KLR Traj #%d not defined, default "
-                                       "to color %s", c, '1')
-                        t.color = '1'
+                                       "to color %s", c+1, '1')
+                        clr = '1'
                     else:
-                        t.color = settings.color_codes[c]
+                        clr = settings.color_codes[c]
+                    for t in plot_data.trajectories:
+                        t.color = clr
                     c += 1
 
     def _make_clusterlist_filename(self, traj_count):

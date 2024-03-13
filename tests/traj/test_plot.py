@@ -424,6 +424,21 @@ def test_TrajectoryPlot_set_trajectory_color():
     assert pd.trajectories[1].color == '3'
     assert pd.trajectories[2].color == '1'
     assert pd.trajectories[3].color == '1'
+    
+    # create an additional tdump.
+    # for multiple files, colors are assigned by file.
+    pd2 = model.TrajectoryDump()
+    pd2.trajectories.append(model.Trajectory())
+    pd2.trajectories.append(model.Trajectory())
+    
+    p.set_trajectory_color([pd,pd2], s)
+
+    assert pd.trajectories[0].color == '2'
+    assert pd.trajectories[1].color == '2'
+    assert pd.trajectories[2].color == '2'
+    assert pd.trajectories[3].color == '2'
+    assert pd2.trajectories[0].color == '3'
+    assert pd2.trajectories[1].color == '3'
 
 
 def test_TrajectoryPlot__make_clusterlist_filename():
