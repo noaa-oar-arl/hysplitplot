@@ -16,7 +16,7 @@ import xml.etree.ElementTree as ET
 from hysplitdata.const import HeightUnit
 from hysplitdata.traj import model
 from hysplitplot import const
-from hysplitplot.traj import plot, gisout
+from hysplitplot.traj import plot, gisout, color
 
 
 @pytest.fixture
@@ -104,6 +104,15 @@ def test_GISFileWriterFactory_create_instance__without_time_zone():
 def test_IndexBasedTrajectoryStyle___init__():
     o = gisout.IndexBasedTrajectoryStyle()
     assert o is not None
+
+
+def test_IndexBasedTrajectoryStyle__get_iconhref():
+    o = gisout.IndexBasedTrajectoryStyle()
+    o.colors = color.ColorCycle._colors  # use 18 colors
+    assert o._get_iconhref(0) == 'ball01.png'
+    assert o._get_iconhref(1) == 'ball02.png'
+    assert o._get_iconhref(17) == 'ball18.png'
+    assert o._get_iconhref(18) == 'ball01.png'
 
 
 def test_IndexBasedTrajectoryStyle_write_styles():

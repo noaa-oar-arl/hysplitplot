@@ -62,6 +62,10 @@ class IndexBasedTrajectoryStyle(AbstractTrajectoryStyle):
     def __init__(self):
         super(IndexBasedTrajectoryStyle, self).__init__()
 
+    def _get_iconhref(self, k: int) -> str:
+        k = k % len(self.colors)
+        return 'ball{:02d}.png'.format(k+1)
+
     def write_styles(self, doc: ET.SubElement) -> None:
         styles = []
         for k, clr in enumerate(self.colors):
@@ -70,12 +74,7 @@ class IndexBasedTrajectoryStyle(AbstractTrajectoryStyle):
            b = clr[5:7]
            bgr = f'{b}{g}{r}'
 
-           if (k%3) == 0:
-               iconhref = 'redball.png'
-           elif (k%3) == 1:
-               iconhref = 'blueball.png'
-           else:
-               iconhref = 'greenball.png'
+           iconhref = self._get_iconhref(k)
 
            ln1 = {'id': f'traj{k+1}', 'linecolor': f'ff{bgr}', 'linewidth':'4',
                   'polycolor': f'7f{bgr}', 'iconhref':iconhref}
@@ -85,22 +84,6 @@ class IndexBasedTrajectoryStyle(AbstractTrajectoryStyle):
                   'polycolor': f'7f{bgr}', 'iconhref':iconhref}
            styles.append(ln2)
 
-        # styles = [
-        #     {'id': 'traj1', 'linecolor': 'ff0000ff', 'linewidth':'4',
-        #      'polycolor': '7f0000ff', 'iconhref':'redball.png'},
-        #     {'id': 'traj1a', 'linecolor': 'ff0000ff', 'linewidth':'1.25',
-        #      'polycolor': '7f0000ff', 'iconhref':'redball.png'},
-        #
-        #     {'id': 'traj2', 'linecolor': 'ffff0000', 'linewidth':'4',
-        #      'polycolor': '7fff0000', 'iconhref':'blueball.png'},
-        #     {'id': 'traj2a', 'linecolor': 'ffff0000', 'linewidth':'1.25',
-        #      'polycolor': '7fff0000', 'iconhref':'blueball.png'},
-        #
-        #     {'id': 'traj3', 'linecolor': 'ff00ff00', 'linewidth':'4',
-        #      'polycolor': '7f00ff00', 'iconhref':'greenball.png'},
-        #     {'id': 'traj3a', 'linecolor': 'ff00ff00', 'linewidth':'1.25',
-        #      'polycolor': '7f00ff00', 'iconhref':'greenball.png'}
-        # ]
         for s in styles:
             style = ET.SubElement(doc, 'Style', attrib={'id': s['id']})
             iconstyle = ET.SubElement(style, 'IconStyle')
