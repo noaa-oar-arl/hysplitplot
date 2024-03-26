@@ -452,6 +452,16 @@ def test_ConcentrationPlotSettings_process_command_line_arguments():
     assert s.near_min_cntr_raw_color == pytest.approx((1.0, 0.0, 0.5019608))
 
 
+def test_ConcentrationPlotSettings_process_command_line_arguments_opt4():
+    s = plot.ConcentrationPlotSettings()
+    # test -41
+    s.process_command_line_arguments(["-41"])
+    assert s.add_near_min_cntr is True
+    assert s.near_min_cntr_multiplier == 10.0
+    assert s.near_min_cntr_color == '#cccccc'
+    assert s.near_min_cntr_raw_color == pytest.approx((0.8, 0.8, 0.8))
+
+
 def test_ConcentrationPlotSettings_parse_source_label():
     s = plot.ConcentrationPlotSettings()
     assert s.parse_source_label("72") == "*"
