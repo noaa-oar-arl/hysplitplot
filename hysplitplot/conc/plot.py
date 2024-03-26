@@ -263,7 +263,7 @@ class ConcentrationPlotSettings(plotbase.AbstractPlotSettings):
             self.parse_near_min_cntr(args.get_value("+8"))
         elif self.KHEMIN == 1:
             self.add_near_min_cntr = True
-            self.near_min_cntr_multiplier = 10.0
+            self.near_min_cntr_multiplier = 0.8
             self.near_min_cntr_color = "#cccccc"
             self.near_min_cntr_raw_color = (0.8, 0.8, 0.8)
 

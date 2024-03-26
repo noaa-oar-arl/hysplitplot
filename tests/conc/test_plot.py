@@ -457,7 +457,7 @@ def test_ConcentrationPlotSettings_process_command_line_arguments_opt4():
     # test -41
     s.process_command_line_arguments(["-41"])
     assert s.add_near_min_cntr is True
-    assert s.near_min_cntr_multiplier == 10.0
+    assert s.near_min_cntr_multiplier == pytest.approx(0.8)
     assert s.near_min_cntr_color == '#cccccc'
     assert s.near_min_cntr_raw_color == pytest.approx((0.8, 0.8, 0.8))
 
