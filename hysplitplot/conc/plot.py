@@ -532,9 +532,13 @@ no calculated values are above the output thresholds.'''
             self.settings.LEVEL1,
             self.settings.LEVEL2)
 
-        # limit time indices. assume that the last concentration grid
-        # has the largest time index.
-        self.time_selector.normalize(cdump.grids[-1].time_index)
+        # limit time indices.
+        if len(cdump.grids) > 0:
+           # assume that the last concentration grid has the largest time index.
+           self.time_selector.normalize(cdump.grids[-1].time_index)
+        else:
+           # empty cdump.
+           self.time_selector.normalize(0)
         logger.debug("time iteration is limited to index range [%d, %d]",
                      self.time_selector.first, self.time_selector.last)
 
