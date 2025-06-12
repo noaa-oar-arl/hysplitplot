@@ -18,7 +18,6 @@ from pandas.plotting import register_matplotlib_converters
 
 import hysplitplot
 
-
 # Register a converter to avoid a warning message.
 register_matplotlib_converters()
 

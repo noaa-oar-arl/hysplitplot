@@ -14,7 +14,6 @@ import sys
 
 from hysplitplot import util
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -53,7 +52,7 @@ class Contour:
            if x.has_contour_lines():
               return True
         return False
-   
+
     def clone(self):
        o = Contour(self.parent)
        for p in self.polygons:
@@ -90,7 +89,7 @@ class Boundary:
 
     def __init__(self, polygon):
         self.parent = polygon
-        self.hole = False       # It is hole if points are ordered clockwise.
+        self.hole = False  # It is hole if points are ordered clockwise.
         self.longitudes = []
         self.latitudes = []
 
@@ -118,7 +117,7 @@ class Boundary:
     @staticmethod
     def _crossing_date_line(lons):
         for k in range(1, len(lons)):
-            if util.is_crossing_date_line(lons[k-1], lons[k]):
+            if util.is_crossing_date_line(lons[k - 1], lons[k]):
                 return True
 
         return False
@@ -134,7 +133,7 @@ class Boundary:
         if n == len(lats) and n > 0:
             area = (lons[0] + lons[-1]) * (lats[0] - lats[-1])
             for k in range(1, n):
-                area += (lons[k] + lons[k-1]) * (lats[k] - lats[k-1])
+                area += (lons[k] + lons[k - 1]) * (lats[k] - lats[k - 1])
 
             if lons[-1] != lons[0] or lats[-1] != lats[0]:
                 area += (lons[0] + lons[-1]) * (lats[0] - lats[-1])
@@ -143,6 +142,9 @@ class Boundary:
 
 
 def _separate_paths(seg, path_codes, separator_code):
+    if path_codes is None:
+        return []
+
     head = [k for k, c in enumerate(path_codes) if c == separator_code]
 
     tail = copy.deepcopy(head)
@@ -198,7 +200,7 @@ def convert_matplotlib_quadcontourset(quadContourSet):
 
 def convert_matplotlib_rectangle_collections(rect_colls):
     contour_set = ContourSet()
-    
+
     if rect_colls is not None:
         for k, coll in enumerate(rect_colls):
             contour = Contour(contour_set)
@@ -215,5 +217,5 @@ def convert_matplotlib_rectangle_collections(rect_colls):
                 lonlats = [[x0 + w, y0], [x0, y0], [x0, y0 + h], [x0 + w, y0 + h], [x0 + w, y0]]
                 boundary.copy_with_dateline_crossing_fix(lonlats)
                 boundary.hole = False
-    
+
     return contour_set

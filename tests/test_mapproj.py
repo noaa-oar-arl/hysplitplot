@@ -23,7 +23,7 @@ def create_map_box(s):
     r.set_vertical_coordinate(s.vertical_coordinate, s.height_unit)
     r.read("data/tdump")
     s.vertical_coordinate = r.vertical_coordinate
-    
+
     map_box = mapbox.MapBox()
     map_box.allocate()
     for t in d.trajectories:
@@ -53,33 +53,33 @@ def lambert_proj():
 
 # For testing the AbstractMapProjection abstract class
 class AbstractMapProjectionTest(mapproj.AbstractMapProjection):
-    
+
     def __init__(self, proj_type, zoom_factor, center_loc, scale, grid_deltas):
         super(AbstractMapProjectionTest, self).__init__(proj_type, zoom_factor, center_loc, scale, grid_deltas)
-        
+
     def get_tangent_lat(self, center_loc):
         return 0.0
-    
+
     def create_crs(self):
         raise Exception("This should not happen")
 
 
 # For testing the PoleExcludingProjection abstract class
 class PoleExcludingPorjectionTest(mapproj.PoleExcludingProjection):
-    
+
     def __init__(self, proj_type, zoom_factor, center_loc, scale, grid_deltas):
         super(PoleExcludingPorjectionTest, self).__init__(proj_type, zoom_factor, center_loc, scale, grid_deltas)
-     
+
     def get_tangent_lat(self, center_loc):
         pass
-   
+
     def create_crs(self):
         pass
-    
-    
+
+
 def test_MapProjectionFactory_create_instance():
     zoom_factor = 0.50
-    
+
     map_box = mapbox.MapBox()
     map_box.allocate()
     map_box.add((-120.5, 45.5))
@@ -122,12 +122,12 @@ def test_MapProjectionFactory_create_instance():
     map_box.add((-120.5, -89.0))
     map_box.add((-120.5, -90.0))
     map_box.determine_plume_extent()
-    
+
     map_proj = const.MapProjection.LAMBERT
     m = mapproj.MapProjectionFactory.create_instance(map_proj, zoom_factor, [-125.0, -89.0], 1.3, [1.0, 1.0], map_box)
     assert isinstance(m, mapproj.PolarProjection)
-    
-    
+
+
 def test_AbstractMapProjection___init__():
     m = AbstractMapProjectionTest(const.MapProjection.AUTO, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
 
@@ -141,7 +141,7 @@ def test_AbstractMapProjection___init__():
     assert m.center_loc == [-125.0, 45.0]
     assert m.corners_xy == None
     assert m.corners_lonlat == None
-    
+
     assert m.reflon == -125.0
     assert m.tnglat == 0.0
 
@@ -155,14 +155,14 @@ def test_AbstractMapProjection_calc_xy():
     map_box = create_map_box(s)
     m = mapproj.MapProjectionFactory.create_instance(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0], map_box)
 
-    assert m.calc_xy(-125.0,  45.0) == pytest.approx((1000.0, 1000.0))
-    assert m.calc_xy(-125.0,  91.0) == pytest.approx((1000.0, 6343095.6))
-    assert m.calc_xy(-125.0,  90.0) == pytest.approx((1000.0, 6343095.6))
-    
+    assert m.calc_xy(-125.0, 45.0) == pytest.approx((1000.0, 1000.0))
+    assert m.calc_xy(-125.0, 91.0) == pytest.approx((1000.0, 6343095.6))
+    assert m.calc_xy(-125.0, 90.0) == pytest.approx((1000.0, 6343095.6))
+
     s.center_loc = [-125.0, -45.0]
     map_box = create_map_box(s)
     m = mapproj.MapProjectionFactory.create_instance(const.MapProjection.LAMBERT, 0.5, [-125.0, -45.0], 1.3, [1.0, 1.0], map_box)
-    
+
     assert m.calc_xy(-125.0, -45.0) == pytest.approx((1000.0, 1000.0))
     assert m.calc_xy(-125.0, -90.0) == pytest.approx((1000.0, -6341095.6))
     assert m.calc_xy(-125.0, -91.0) == pytest.approx((1000.0, -6341095.6))
@@ -187,14 +187,14 @@ def test_AbstractMapProjection_determine_projection():
     k_mercator = const.MapProjection.MERCATOR
     k_cylequ = const.MapProjection.CYL_EQU
 
-    assert mapproj.AbstractMapProjection.determine_projection(k_polar,    [-125.0, 35.0]) == k_polar
-    assert mapproj.AbstractMapProjection.determine_projection(k_lambert,  [-125.0, 35.0]) == k_lambert
+    assert mapproj.AbstractMapProjection.determine_projection(k_polar, [-125.0, 35.0]) == k_polar
+    assert mapproj.AbstractMapProjection.determine_projection(k_lambert, [-125.0, 35.0]) == k_lambert
     assert mapproj.AbstractMapProjection.determine_projection(k_mercator, [-125.0, 35.0]) == k_mercator
-    assert mapproj.AbstractMapProjection.determine_projection(k_cylequ,   [-125.0, 35.0]) == k_cylequ
+    assert mapproj.AbstractMapProjection.determine_projection(k_cylequ, [-125.0, 35.0]) == k_cylequ
 
     assert mapproj.AbstractMapProjection.determine_projection(k_auto, [-125.0, 35.0]) == k_lambert
     assert mapproj.AbstractMapProjection.determine_projection(k_auto, [-125.0, 65.0]) == k_polar
-    assert mapproj.AbstractMapProjection.determine_projection(k_auto, [-125.0,-65.0]) == k_polar
+    assert mapproj.AbstractMapProjection.determine_projection(k_auto, [-125.0, -65.0]) == k_polar
     assert mapproj.AbstractMapProjection.determine_projection(k_auto, [-125.0, 15.0]) == k_mercator
     assert mapproj.AbstractMapProjection.determine_projection(k_auto, [-125.0, 15.0]) == k_mercator
 
@@ -206,7 +206,7 @@ def test_AbstractMapProjection_refine_corners__lambert():
     s.ring_number = 4
     s.ring_distance = 0.0
     testMapBox = create_map_box(s)
-    
+
     m = mapproj.MapProjectionFactory.create_instance(const.MapProjection.LAMBERT,
                                                      0.0,
                                                      [-90.0, 40.0],
@@ -218,7 +218,7 @@ def test_AbstractMapProjection_refine_corners__lambert():
     m.refine_corners([-90.0, 40.0])
 
     assert m.corners_lonlat == pytest.approx((-95.00, -84.38, 35.82, 43.94), 0.05)
-    #assert m.corners_xy == pytest.approx((-448858.0, 450238.0, -448427.0, 450669.0))
+    # assert m.corners_xy == pytest.approx((-448858.0, 450238.0, -448427.0, 450669.0))
 
 
 def test_AbstractMapProjection_refine_corners__polar():
@@ -228,7 +228,7 @@ def test_AbstractMapProjection_refine_corners__polar():
     s.ring_number = 4
     s.ring_distance = 0.0
     testMapBox = create_map_box(s)
-    
+
     m = mapproj.MapProjectionFactory.create_instance(const.MapProjection.POLAR,
                                                      0.0,
                                                      [-90.0, 85.0],
@@ -239,7 +239,7 @@ def test_AbstractMapProjection_refine_corners__polar():
     m.refine_corners([-90.0, 85.0])
 
     assert m.corners_lonlat == pytest.approx((-112.73, -21.14, 80.693, 86.14), 0.05)
-    #assert m.corners_xy == pytest.approx((-3088585.0, 3246636.0, -6490604.0, -155383.0))
+    # assert m.corners_xy == pytest.approx((-3088585.0, 3246636.0, -6490604.0, -155383.0))
 
 
 def test_AbstractMapProjection_refine_corners__mercator():
@@ -259,7 +259,7 @@ def test_AbstractMapProjection_refine_corners__mercator():
     m.refine_corners([-90.0, 40.0])
 
     assert m.corners_lonlat == pytest.approx((-93.60, -85.00, 35.09, 41.84), 0.05)
-    #assert m.corners_xy == pytest.approx((-470936.0, 628383.0, 4276505.0, 5375824.0))
+    # assert m.corners_xy == pytest.approx((-470936.0, 628383.0, 4276505.0, 5375824.0))
 
 
 def test_AbstractMapProjection_refine_corners__cylequ():
@@ -279,7 +279,7 @@ def test_AbstractMapProjection_refine_corners__cylequ():
     m.refine_corners([-90.0, 5.0])
 
     assert m.corners_lonlat == pytest.approx((-94.0, -78.0, 1.00, 9.10), 0.05)
-    #assert m.corners_xy == pytest.approx((-17.0, 55.0, 1.0, 37.0))
+    # assert m.corners_xy == pytest.approx((-17.0, 55.0, 1.0, 37.0))
 
 
 def test_AbstractMapProjection_validate_corners(lambert_proj):
@@ -398,18 +398,18 @@ def test_AbstractMapProjection__estimate_plot_extent_with_center_fixed():
                                      s.center_loc,
                                      1.0,
                                      [1.0, 1.0])
-    # find out (x, y) values of a few (lon, lat) coordinates. 
+    # find out (x, y) values of a few (lon, lat) coordinates.
     pts = []
     pts.append(proj.calc_xy(-92.0, 38.0))
     pts.append(proj.calc_xy(-88.0, 42.5))
     assert pts[0] == pytest.approx((-173805.5, -217904.2), 0.1)
-    assert pts[1] == pytest.approx(( 164632.4,  279048.8), 0.1)
+    assert pts[1] == pytest.approx((164632.4, 279048.8), 0.1)
 
     # xc = 1000.0
     # yc = 2575.8
     res = proj._estimate_plot_extent_with_center_fixed(
             -156041.6, 158041.6, -196386.2, 201537.8,
-            ((-92.0, 38.0),(-88.0, 42.5))
+            ((-92.0, 38.0), (-88.0, 42.5))
     )
 
     # |y2-yc| = 198962.0, |pts0.y - yc| = 220480.0, |pts1.y - yc| = 276473.0
@@ -429,18 +429,18 @@ def test_AbstractMapProjection__estimate_plot_extent():
                                      s.center_loc,
                                      1.0,
                                      [1.0, 1.0])
-    # find out (x, y) values of a few (lon, lat) coordinates. 
+    # find out (x, y) values of a few (lon, lat) coordinates.
     pts = []
     pts.append(proj.calc_xy(-92.0, 38.0))
     pts.append(proj.calc_xy(-88.0, 42.5))
     assert pts[0] == pytest.approx((-173805.5, -217904.2), 0.1)
-    assert pts[1] == pytest.approx(( 164632.4,  279048.8), 0.1)
+    assert pts[1] == pytest.approx((164632.4, 279048.8), 0.1)
 
     # xc = 1000.0
     # yc = 2575.8
     res = proj._estimate_plot_extent(
             -156041.6, 158041.6, -196386.2, 201537.8,
-            ((-92.0, 38.0),(-88.0, 42.5))
+            ((-92.0, 38.0), (-88.0, 42.5))
     )
 
     assert res == pytest.approx((-173805.5, 164632.4, -217904.2, 279048.8), 0.1)
@@ -465,8 +465,8 @@ def test_PoleExcludingProjection__init__():
     assert m.zoom_factor == 0.5
     assert m.proj_type == const.MapProjection.AUTO
     assert m.scale == 1.3
-    assert m.deltas == pytest.approx( (1.0, 1.0) )
-    assert m.center_loc == pytest.approx( (-125.0, 45.0) )
+    assert m.deltas == pytest.approx((1.0, 1.0))
+    assert m.center_loc == pytest.approx((-125.0, 45.0))
 
 
 def test_PoleExcludingProjection_sanity_check(lambert_proj):
@@ -489,9 +489,9 @@ def test_PoleExcludingProjection_create_sane_projection(lambert_proj):
 
 
 def test_PoleExcludingProjection_need_pole_exclusion(lambert_proj):
-    assert lambert_proj.need_pole_exclusion([-135.0, -115.0,-81.0, 55.0]) == True
-    assert lambert_proj.need_pole_exclusion([-135.0, -115.0,-80.0, 55.0]) == False
-    assert lambert_proj.need_pole_exclusion([-135.0, -115.0,-35.0, 55.0]) == False
+    assert lambert_proj.need_pole_exclusion([-135.0, -115.0, -81.0, 55.0]) == True
+    assert lambert_proj.need_pole_exclusion([-135.0, -115.0, -80.0, 55.0]) == False
+    assert lambert_proj.need_pole_exclusion([-135.0, -115.0, -35.0, 55.0]) == False
     assert lambert_proj.need_pole_exclusion([-135.0, -115.0, 35.0, 55.0]) == False
     assert lambert_proj.need_pole_exclusion([-135.0, -115.0, 35.0, 80.0]) == False
     assert lambert_proj.need_pole_exclusion([-135.0, -115.0, 35.0, 80.1]) == True
@@ -507,10 +507,10 @@ def test_LambertProjection___init__():
 def test_LambertProjection_get_tangent_lat():
     s = plot.TrajectoryPlotSettings()
     m = mapproj.LambertProjection(const.MapProjection.AUTO, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
-    assert m.get_tangent_lat([-125.0, 45.0]) ==  45.0
-    assert m.get_tangent_lat([-125.0,  0.0]) ==   0.0
-    assert m.get_tangent_lat([-125.0, -1.0]) ==  -1.0
- 
+    assert m.get_tangent_lat([-125.0, 45.0]) == 45.0
+    assert m.get_tangent_lat([-125.0, 0.0]) == 0.0
+    assert m.get_tangent_lat([-125.0, -1.0]) == -1.0
+
 
 def test_LambertProjection_create_crs(lambert_proj):
     o = lambert_proj.create_crs()
@@ -527,8 +527,8 @@ def test_PolarProjection___init__():
 def test_PolarProjection_get_tangent_lat():
     s = plot.TrajectoryPlotSettings()
     m = mapproj.PolarProjection(s.map_projection, s.zoom_factor, [-125.0, 85.0], 1.3, [1.0, 1.0])
-    assert m.get_tangent_lat([-125.0, 45.0]) ==  90.0
-    assert m.get_tangent_lat([-125.0,  0.0]) ==  90.0
+    assert m.get_tangent_lat([-125.0, 45.0]) == 90.0
+    assert m.get_tangent_lat([-125.0, 0.0]) == 90.0
     assert m.get_tangent_lat([-125.0, -1.0]) == -90.0
 
 
@@ -554,7 +554,7 @@ def test_MercatorProjection_get_tangent_lat():
     s = plot.TrajectoryPlotSettings()
     m = mapproj.MercatorProjection(s.map_projection, s.zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0])
     assert m.get_tangent_lat([-125.0, 45.0]) == 0.0
- 
+
 
 def test_MercatorProjection_create_crs():
     s = plot.TrajectoryPlotSettings()
@@ -608,29 +608,29 @@ def test_WebMercatorProjection_create_crs():
 def test_WebMercatorCRS___init__():
     o = mapproj.WebMercatorCRS(0.0)
     assert o.central_longitude == pytest.approx(0.0)
-    assert o.bounds == pytest.approx( (-20037508.3, 20037508.3, -20048966.1, 20048966.1) )
+    assert o.bounds == pytest.approx((-20037508.3, 20037508.3, -20048966.1, 20048966.1))
 
     o = mapproj.WebMercatorCRS(170.0)
     assert o.central_longitude == pytest.approx(170.0)
-    assert o.bounds == pytest.approx( (-20037508.3, 20037508.3, -20048966.1, 20048966.1) )
+    assert o.bounds == pytest.approx((-20037508.3, 20037508.3, -20048966.1, 20048966.1))
 
 
-def test_WebMercatorCRS___repr__():
+def test_WebMercatorCRS___str__():
     o = mapproj.WebMercatorCRS(170.0)
     assert str(o) == "WebMercatorCRS(central_longitude=170.0)"
 
 
 def test_WebMercatorCRS_x_limits():
     o = mapproj.WebMercatorCRS(170.0)
-    assert o.x_limits == pytest.approx( (-20037508.3, 20037508.3) )
+    assert o.x_limits == pytest.approx((-20037508.3, 20037508.3))
 
 
 def test_WebMercatorCRS_y_limits():
     o = mapproj.WebMercatorCRS(170.0)
-    assert o.y_limits == pytest.approx( (-20048966.1, 20048966.1) )
+    assert o.y_limits == pytest.approx((-20048966.1, 20048966.1))
 
 
 def test_WebMercatorCRS_threshold():
     o = mapproj.WebMercatorCRS(170.0)
-    assert o.threshold == pytest.approx( 2*200375.083 )
+    assert o.threshold == pytest.approx(2 * 200375.083)
 

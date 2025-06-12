@@ -16,7 +16,6 @@ from hysplitdata.const import HeightUnit
 from hysplitplot import cmdline, const, labels, logo, multipage, \
                         stnplot, streetmap, util
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -32,7 +31,7 @@ class AbstractPlotSettings(ABC):
         self.zoom_factor = 0.50
         self.interactive_mode = False  # True if --interactive is specified.
         self.additional_output_formats = []
-        self.use_source_time_zone = False   # for the --source-time-zone option
+        self.use_source_time_zone = False  # for the --source-time-zone option
         self.time_zone_str = None  # for the --time-zone option
         self.use_street_map = False  # for the --street-map option
         self.street_map_type = 0
@@ -48,8 +47,8 @@ class AbstractPlotSettings(ABC):
         self.frames_per_file = const.Frames.ALL_FILES_ON_ONE
         self.map_color = "#1f77b4"
         self.station_marker = "o"
-        self.station_marker_color = "k"     # black
-        self.station_marker_size = 6*6
+        self.station_marker_color = "k"  # black
+        self.station_marker_size = 6 * 6
         self.height_unit = HeightUnit.METERS
         self.street_map_update_delay = 0.3  # in seconds
 
@@ -127,13 +126,13 @@ class AbstractPlotSettings(ABC):
     @staticmethod
     def parse_lat_lon_label_interval(str):
         divider = str.index(":")
-        return int(str[divider+1:]) * 0.1
+        return int(str[divider + 1:]) * 0.1
 
     @staticmethod
     def parse_ring_option(str):
         divider = str.index(":")
         count = int(str[:divider])
-        distance = float(str[divider+1:])
+        distance = float(str[divider + 1:])
         return count, distance
 
     @staticmethod
@@ -184,7 +183,7 @@ class AbstractPlot(ABC):
         self.time_zone = None  # None implies UTC.
         self.street_map = None
         self.logo_drawer = None
-        self.settings = None    # child class should create an instance.
+        self.settings = None  # child class should create an instance.
         self.initial_corners_xy = None
         self.initial_corners_lonlat = None
 
@@ -203,7 +202,7 @@ class AbstractPlot(ABC):
         pixel_aspect_ratio = h_fig * w_dis / (h_dis * w_fig)
 
         # TODO: better?
-        pixel_aspect_ratio *= 1.0 / 0.953   # empirical adjustment
+        pixel_aspect_ratio *= 1.0 / 0.953  # empirical adjustment
         logger.debug("fig size %f x %f in; display %f x %f px; pixel aspect"
                      " ratio %f", w_fig, h_fig, w_dis, h_dis,
                      pixel_aspect_ratio)
@@ -345,7 +344,7 @@ class AbstractPlot(ABC):
                 count = 0
                 for k, buff in enumerate(lines):
                     if filter_fn(buff, k):
-                        axes.text(0.05, 0.928-vskip*count, buff,
+                        axes.text(0.05, 0.928 - vskip * count, buff,
                                   verticalalignment="top", clip_on=True,
                                   transform=axes.transAxes)
                         count += 1
@@ -355,7 +354,7 @@ class AbstractPlot(ABC):
         h = 1.0 / (len(lines) + 1)
         t = 1.0 - 0.5 * h
         for k, buff in enumerate(lines):
-            axes.text(0.05, t - h*count, buff,
+            axes.text(0.05, t - h * count, buff,
                       verticalalignment="top", clip_on=True,
                       transform=axes.transAxes)
             count += 1
@@ -363,15 +362,15 @@ class AbstractPlot(ABC):
     def _draw_concentric_circles(self, axes, starting_loc, ring_number,
                                  ring_distance):
         lon, lat = starting_loc
-        R = ring_distance/111.0
+        R = ring_distance / 111.0
         for k in range(ring_number):
-            radius = R*(k+1)
+            radius = R * (k + 1)
             circ = matplotlib.patches.CirclePolygon((lon, lat), radius,
                                                     color="k", fill=False,
                                                     resolution=50,
                                                     transform=self.data_crs)
             axes.add_patch(circ)
-            str = "{:d} km".format(int(ring_distance * (k+1)))
+            str = "{:d} km".format(int(ring_distance * (k + 1)))
             axes.text(lon, lat - radius, str, clip_on=True,
                       transform=self.data_crs)
 
@@ -386,7 +385,7 @@ class AbstractPlot(ABC):
         r = self.compute_pixel_aspect_ratio(axes)
         h = 90
         w = h * r
-        box_dis = [[pt_dis[0]-w, pt_dis[1]], [pt_dis[0], pt_dis[1]+h]]
+        box_dis = [[pt_dis[0] - w, pt_dis[1]], [pt_dis[0], pt_dis[1] + h]]
 
         # in the axes coordinate
         box_axes = axes.transAxes.inverted().transform(box_dis)
@@ -403,20 +402,25 @@ class AbstractPlot(ABC):
     def _create_plot_saver_list(self, settings):
         plot_saver_list = []
 
-        plot_saver = multipage.PlotFileWriterFactory.create_instance(
-            settings.frames_per_file,
-            settings.output_basename,
-            settings.output_suffix,
-            settings.output_format)
-        plot_saver_list.append(plot_saver)
+        # Jun 12, 2025
+        # For interactive mode, don't save plots to other formats.
+        # This is to void a runtime error that reads "main thread
+        # is not in main loop" when the ARL map background is selected.
+        if not settings.interactive_mode:
+           plot_saver = multipage.PlotFileWriterFactory.create_instance(
+               settings.frames_per_file,
+               settings.output_basename,
+               settings.output_suffix,
+               settings.output_format)
+           plot_saver_list.append(plot_saver)
 
-        for output_format in settings.additional_output_formats:
-            output_suffix = settings.normalize_output_suffix(output_format)
-            plot_saver = multipage.PlotFileWriterFactory.create_instance(
-                settings.frames_per_file,
-                settings.output_basename,
-                output_suffix,
-                output_format)
-            plot_saver_list.append(plot_saver)
+           for output_format in settings.additional_output_formats:
+               output_suffix = settings.normalize_output_suffix(output_format)
+               plot_saver = multipage.PlotFileWriterFactory.create_instance(
+                   settings.frames_per_file,
+                   settings.output_basename,
+                   output_suffix,
+                   output_format)
+               plot_saver_list.append(plot_saver)
 
         return plot_saver_list

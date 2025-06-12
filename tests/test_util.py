@@ -10,7 +10,7 @@ import datetime
 import numpy
 import os
 import pytest
-import pytz
+import zoneinfo
 
 from hysplitdata.const import HeightUnit
 from hysplitplot import util, const
@@ -25,30 +25,30 @@ def test_myzip():
 
 
 def test_convert_int_to_bool():
-    assert util.convert_int_to_bool(-1) == False # strange but it is to retain the existing capability.
+    assert util.convert_int_to_bool(-1) == False  # strange but it is to retain the existing capability.
     assert util.convert_int_to_bool(0) == False
     assert util.convert_int_to_bool(1) == True
     assert util.convert_int_to_bool(2) == True
 
 
 def test_sign():
-    assert util.sign( 10.0,  1.0) ==  10.0
-    assert util.sign( 10.0, -1.0) == -10.0
-    assert util.sign(-10.0,  1.0) ==  10.0
+    assert util.sign(10.0, 1.0) == 10.0
+    assert util.sign(10.0, -1.0) == -10.0
+    assert util.sign(-10.0, 1.0) == 10.0
     assert util.sign(-10.0, -1.0) == -10.0
 
 
 def test_nearest_int():
-    assert util.nearest_int( 9.4) ==  9
-    assert util.nearest_int( 9.5) == 10
+    assert util.nearest_int(9.4) == 9
+    assert util.nearest_int(9.5) == 10
     assert util.nearest_int(10.0) == 10
     assert util.nearest_int(10.4) == 10
 
     assert util.nearest_int(-10.4) == -10
     assert util.nearest_int(-10.0) == -10
-    assert util.nearest_int( -9.6) == -10
-    assert util.nearest_int( -9.5) == -10
-    assert util.nearest_int( -9.4) ==  -9
+    assert util.nearest_int(-9.6) == -10
+    assert util.nearest_int(-9.5) == -10
+    assert util.nearest_int(-9.4) == -9
 
 
 def test_make_color_int():
@@ -63,7 +63,7 @@ def test_make_color():
 
 def test_decompose_color():
     # abs=0.01 to ignore difference smaller than 0.01
-    assert util.decompose_color("#6699cc") == pytest.approx((0.4, 0.6, 0.8, 1.0,), abs=0.01) 
+    assert util.decompose_color("#6699cc") == pytest.approx((0.4, 0.6, 0.8, 1.0,), abs=0.01)
     assert util.decompose_color("#6699cc80") == pytest.approx((0.4, 0.6, 0.8, 0.5,), abs=0.01)
 
 
@@ -72,13 +72,13 @@ def test_make_int_if_same():
     assert util.make_int_if_same(1.0) == 1
     assert util.make_int_if_same(45.0) == 45
     assert util.make_int_if_same(45.1) == 45.1
-   
+
 
 def test_is_valid_lonlat():
     assert util.is_valid_lonlat((99.0, 99.0)) == False
-    assert util.is_valid_lonlat((99.0,  0.0)) == True
-    
-    
+    assert util.is_valid_lonlat((99.0, 0.0)) == True
+
+
 def test_union_ranges():
     r = util.union_ranges(None, None)
     assert r == None
@@ -129,8 +129,8 @@ def test_normalize_output_format():
     assert util.normalize_output_format("output", "PDF", "png") == "pdf"
     assert util.normalize_output_format("output", "3141", "png") == "png"
     assert util.normalize_output_format("output", "3141", "PNG") == "png"
-    
-    
+
+
 def test_normalize_output_filename():
     n, b, x = util.normalize_output_filename("output.PS", "ps")
     assert (n, b, x) == ("output.PS", "output", "PS")
@@ -150,23 +150,23 @@ def test_join_file():
         f1.write("123")
     with open("join.2", "wt") as f2:
         f2.write("456")
-    
+
     util.join_file("join.1", "join.2")
-    
+
     with open("join.2", "rt") as o:
         str = o.read()
-        
+
     assert str == "456123"
     os.remove("join.1")
     os.remove("join.2")
 
 
 def test_get_iso_8601_str():
-    utc = pytz.utc
+    utc = datetime.timezone.utc
     dt = datetime.datetime(1983, 10, 13, 0, 15, 0, 0, utc)
     assert util.get_iso_8601_str(dt) == "1983-10-13T00:15:00Z"
 
-    eastern = pytz.timezone("EST")
+    eastern = zoneinfo.ZoneInfo("EST")
     dt = datetime.datetime(1983, 10, 13, 0, 15, 0, 0, eastern)
     assert util.get_iso_8601_str(dt) == "1983-10-13T00:15:00-05:00"
 
@@ -201,7 +201,7 @@ def test_km_to_deg():
 def test_nonzero_min():
     a = numpy.zeros((3, 3))
     assert util.nonzero_min(a) == None
-    
+
     a[1, 1] = 1.0
     assert util.nonzero_min(a) == 1.0
 
@@ -212,7 +212,7 @@ def test_calc_lon_average():
     assert util.calc_lon_average(lon, w) == pytest.approx(-91.5)
 
     lon = (90.0, 91.0, 92.0, 93.0)
-    assert util.calc_lon_average(lon, w) == pytest.approx( 91.5)
+    assert util.calc_lon_average(lon, w) == pytest.approx(91.5)
 
     lon = (178.0, 179.0, -180.0, -179.0)
     assert util.calc_lon_average(lon, w) == pytest.approx(179.5)
@@ -226,46 +226,46 @@ def test_calc_lon_average():
 
 def test_is_crossing_date_line():
     assert util.is_crossing_date_line(150.0, -170.0) == True
-    assert util.is_crossing_date_line(-10.0,   10.0) == False
+    assert util.is_crossing_date_line(-10.0, 10.0) == False
 
 
 def test_normalize_lon():
-    assert util.normalize_lon(   0.0) == 0
-    assert util.normalize_lon( 179.9) == pytest.approx( 179.9)
-    assert util.normalize_lon( 180.0) == pytest.approx(-180.0)
-    assert util.normalize_lon( 181.0) == pytest.approx(-179.0)
+    assert util.normalize_lon(0.0) == 0
+    assert util.normalize_lon(179.9) == pytest.approx(179.9)
+    assert util.normalize_lon(180.0) == pytest.approx(-180.0)
+    assert util.normalize_lon(181.0) == pytest.approx(-179.0)
     assert util.normalize_lon(-179.0) == pytest.approx(-179.0)
     assert util.normalize_lon(-180.0) == pytest.approx(-180.0)
-    assert util.normalize_lon(-181.0) == pytest.approx( 179.0)
+    assert util.normalize_lon(-181.0) == pytest.approx(179.0)
 
 
 def test_union_lonlat_bounding_boxes():
     box1 = (40.0, 50.0, -10.0, 10.0)
-    box2 = (45.0, 48.0,  -8.0,  8.0)
+    box2 = (45.0, 48.0, -8.0, 8.0)
     assert util.union_lonlat_bounding_boxes(box1, box2) == pytest.approx((40.0, 50.0, -10.0, 10.0))
 
-    box2 = (45.0, 55.0,  -5.0, 15.0)
+    box2 = (45.0, 55.0, -5.0, 15.0)
     assert util.union_lonlat_bounding_boxes(box1, box2) == pytest.approx((40.0, 55.0, -10.0, 15.0))
 
     # test with boxes one of which crosses the date-line
     box1 = (170.0, -170.0, -10.0, 10.0)
-    box2 = (180.0, -165.0,  -5.0, 15.0)
+    box2 = (180.0, -165.0, -5.0, 15.0)
     assert util.union_lonlat_bounding_boxes(box1, box2) == pytest.approx((170.0, -165.0, -10.0, 15.0))
 
-    box2 = (160.0,  165.0,  -5.0, 15.0)
+    box2 = (160.0, 165.0, -5.0, 15.0)
     assert util.union_lonlat_bounding_boxes(box1, box2) == pytest.approx((160.0, -170.0, -10.0, 15.0))
 
-    box2 = (-175.0, -165.0,  -5.0, 15.0)
+    box2 = (-175.0, -165.0, -5.0, 15.0)
     assert util.union_lonlat_bounding_boxes(box1, box2) == pytest.approx((170.0, -165.0, -10.0, 15.0))
 
 
 def test_AbstractLengthFactory_create_factory():
     f = util.AbstractLengthFactory.create_factory(HeightUnit.METERS)
     assert isinstance(f, util.LengthInMetersFactory)
-    
+
     f = util.AbstractLengthFactory.create_factory(HeightUnit.FEET)
     assert isinstance(f, util.LengthInFeetFactory)
-    
+
     try:
         f = util.AbstractLengthFactory.create_factory(99999)
         pytest.fail("expected an exception")
@@ -275,11 +275,11 @@ def test_AbstractLengthFactory_create_factory():
 
 def test_LengthInMetersFactory_create_instance():
     f = util.LengthInMetersFactory()
-    
+
     o = f.create_instance(1.0)
     assert isinstance(o, util.LengthInMeters)
     assert o.v == 1.0
-    
+
     o = f.create_instance(1.0, HeightUnit.FEET)
     assert isinstance(o, util.LengthInMeters)
     assert o.v == 0.3048
@@ -287,20 +287,20 @@ def test_LengthInMetersFactory_create_instance():
 
 def test_LengthInFeetFactory_create_instance():
     f = util.LengthInFeetFactory()
-    
+
     o = f.create_instance(1.0)
     assert isinstance(o, util.LengthInFeet)
     assert o.v == 3.28084
-    
+
     o = f.create_instance(1.0, HeightUnit.FEET)
     assert isinstance(o, util.LengthInFeet)
     assert o.v == 1.0
-    
+
 
 def test_LengthInMeters___init__():
     o = util.LengthInMeters(1.0)
     assert str(o) == "1 m"
-    
+
     o = util.LengthInMeters(1.0, False)
     assert str(o) == "1.0 m"
 
@@ -309,11 +309,11 @@ def test_LengthInMeters___int__():
     o = util.LengthInMeters(1.2)
     assert int(o) == 1
 
-    
+
 def test_LengthInFeet___init__():
     o = util.LengthInFeet(1.0)
     assert str(o) == "1 ft"
-    
+
     o = util.LengthInFeet(1.0, False)
     assert str(o) == "1.0 ft"
 

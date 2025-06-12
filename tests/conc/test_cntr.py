@@ -16,7 +16,6 @@ from hysplitdata.conc import model
 from hysplitplot import const
 from hysplitplot.conc import cntr
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -166,23 +165,23 @@ def test_Boundary_copy_with_dateline_crossing_fix():
     p.boundaries.append(o)
     c.polygons.append(p)
     cs.contours.append(c)
-    
-    o.copy_with_dateline_crossing_fix( [(0,0), (1,1.1), (2,2), (0,0)] )
-    assert o.longitudes == pytest.approx( (0, 1, 2, 0) )
-    assert o.latitudes == pytest.approx( (0, 1.1, 2, 0) )
-    
-    o.copy_with_dateline_crossing_fix( [(170,0), (175,1.1), (-185,2), (-190,0)] )
-    assert o.longitudes == pytest.approx( (170, 175, 175, 170) )
-    assert o.latitudes == pytest.approx( (0, 1.1, 2, 0) )
-    
+
+    o.copy_with_dateline_crossing_fix([(0, 0), (1, 1.1), (2, 2), (0, 0)])
+    assert o.longitudes == pytest.approx((0, 1, 2, 0))
+    assert o.latitudes == pytest.approx((0, 1.1, 2, 0))
+
+    o.copy_with_dateline_crossing_fix([(170, 0), (175, 1.1), (-185, 2), (-190, 0)])
+    assert o.longitudes == pytest.approx((170, 175, 175, 170))
+    assert o.latitudes == pytest.approx((0, 1.1, 2, 0))
+
 
 def test_Boundary__crossing_date_line():
     lons = [170, 175, -185, -190]
     assert cntr.Boundary._crossing_date_line(lons) == True
-    
+
     lons = [170, 175, 177, 178]
-    assert cntr.Boundary._crossing_date_line(lons) == False   
- 
+    assert cntr.Boundary._crossing_date_line(lons) == False
+
 
 def test_compute_area():
     cs = cntr.ContourSet()
@@ -192,52 +191,52 @@ def test_compute_area():
     o.longitudes = [0, 1, 1, 0, 0]
     o.latitudes = [0, 0, 1, 1, 0]
     assert o.compute_area() == pytest.approx(1.0)
-    
-    
+
+
 def test_Boundary__compute_polygon_area():
     # clockwise, area < 0
     x = [0, 0, 1, 1, 0]
     y = [0, 1, 1, 0, 0]
     area = cntr.Boundary._compute_polygon_area(x, y)
     assert area == pytest.approx(-1.0)
-    
+
     # counterclockwise, area > 0
     x = [0, 1, 1, 0, 0]
     y = [0, 0, 1, 1, 0]
     area = cntr.Boundary._compute_polygon_area(x, y)
     assert area == pytest.approx(1.0)
-   
-    
+
+
 def test__separate_paths():
     path_codes = [1, 2, 2, 79]
-    seg = [(0,0), (1,1), (2,2), (0,0)]
-    
+    seg = [(0, 0), (1, 1), (2, 2), (0, 0)]
+
     paths = cntr._separate_paths(seg, path_codes, 1)
 
-    assert paths == [ [(0,0), (1,1), (2,2), (0,0)] ]
-    
+    assert paths == [ [(0, 0), (1, 1), (2, 2), (0, 0)] ]
+
     path_codes = [1, 2, 2, 79, 1, 2, 2, 79]
-    seg = [(0,0), (1,1), (2,2), (0,0), (5,5), (6,6), (7,7), (5,5)]
-    
+    seg = [(0, 0), (1, 1), (2, 2), (0, 0), (5, 5), (6, 6), (7, 7), (5, 5)]
+
     paths = cntr._separate_paths(seg, path_codes, 1)
 
-    assert paths == [ [(0,0), (1,1), (2,2), (0,0)], [(5,5), (6,6), (7,7), (5,5)] ]
+    assert paths == [ [(0, 0), (1, 1), (2, 2), (0, 0)], [(5, 5), (6, 6), (7, 7), (5, 5)] ]
 
 
 def test__reduce_points():
     pts = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-    
+
     # expect no reduction
     a = cntr._reduce_points(pts)
     assert len(a) == 11
-    
+
     # expect reduction in the number of points
     a = cntr._reduce_points(pts, 10)
     assert len(a) == 3
     assert a[0] == 0
     assert a[1] == 5
     assert a[2] == 10
-    
+
     a = cntr._reduce_points(pts, 10, 2)
     assert len(a) == 6
     assert a[0] == 0
@@ -248,31 +247,31 @@ def test__reduce_points():
 
 def test_convert_matplotlib_quadcontourset(cdump_two_pollutants):
     g = cdump_two_pollutants.grids[0]
-    
+
     ax = plt.axes()
     quad_contour_set = plt.contourf(g.longitudes, g.latitudes, g.conc,
                                     [1.0e-15, 1.0e-12],
                                     colors=["#ff0000", "#00ff00"],
                                     extend="max")
     plt.close(ax.figure)
-    
+
     contour_set = cntr.convert_matplotlib_quadcontourset(quad_contour_set)
-    
+
     assert len(contour_set.contours) == 2
     assert len(contour_set.contour_orders) == 2
-    assert contour_set.contour_orders == pytest.approx( [0, 1] )
+    assert contour_set.contour_orders == pytest.approx([0, 1])
     assert contour_set.contours[0].level == 1.0e-15
     assert contour_set.contours[1].level == 1.0e-12
     assert contour_set.contours[0].color == "#ff0000"
     assert contour_set.contours[1].color == "#00ff00"
-    assert len(contour_set.contours[0].polygons) == 11
-    assert len(contour_set.contours[0].polygons[0].boundaries) == 29
-    
+    assert len(contour_set.contours[0].polygons) == 39
+    assert len(contour_set.contours[0].polygons[0].boundaries) == 1
+
     b = contour_set.contours[0].polygons[0].boundaries[0]
     assert len(b.longitudes) == 421
     assert len(b.latitudes) == 421
     assert b.hole == False
     assert b.longitudes[0] == pytest.approx(-84.22)
-    
+
     assert contour_set.has_contour_lines() is True
 

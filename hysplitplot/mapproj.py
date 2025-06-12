@@ -15,7 +15,6 @@ import shapely
 
 from hysplitplot import util, const
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -72,12 +71,12 @@ class AbstractMapProjection(ABC):
         self.proj_type = proj_type
         self.zoom_factor = zoom_factor
         self.scale = scale
-        self.deltas = grid_deltas       # (dlon, dlat)
+        self.deltas = grid_deltas  # (dlon, dlat)
         #
         self.crs = None  # to be created by a child class
         self.crs_geodetic = cartopy.crs.Geodetic()
-        self.center_loc = center_loc    # (lon, lat)
-        self.corners_xy = None      # [x1, x2, y1, y2]
+        self.center_loc = center_loc  # (lon, lat)
+        self.corners_xy = None  # [x1, x2, y1, y2]
         self.corners_lonlat = None  # [lon_left,lon_right,lat_bottom,lat_top]
         #
         self.reflon = center_loc[0]
@@ -155,14 +154,14 @@ class AbstractMapProjection(ABC):
         x2, y2 = self.calc_xy(alonr, alatt)
 
         # move lower left corner toward center
-        if max(abs(x1-x1s), abs(y1s-y1)) >= self.TOLERANCE:
-            x1 = x1s + self.CONTRACTION*(x2s - x1s)
-            y1 = y1s + self.CONTRACTION*(y2s - y1s)
+        if max(abs(x1 - x1s), abs(y1s - y1)) >= self.TOLERANCE:
+            x1 = x1s + self.CONTRACTION * (x2s - x1s)
+            y1 = y1s + self.CONTRACTION * (y2s - y1s)
 
         # move upper right corner toward center
-        if max(abs(x2-x2s), abs(y2s-y2)) >= self.TOLERANCE:
-            x2 = x2s - self.CONTRACTION*(x2s - x1s)
-            y2 = y2s - self.CONTRACTION*(y2s - y1s)
+        if max(abs(x2 - x2s), abs(y2s - y2)) >= self.TOLERANCE:
+            x2 = x2s - self.CONTRACTION * (x2s - x1s)
+            y2 = y2s - self.CONTRACTION * (y2s - y1s)
 
         return (x1, x2, y1, y2)
 
@@ -174,16 +173,16 @@ class AbstractMapProjection(ABC):
         yc = 0.5 * (y1 + y2)
 
         # scale map according to aspect ratio
-        if abs(x2-x1) <= aspect_ratio*abs(y2 - y1):
+        if abs(x2 - x1) <= aspect_ratio * abs(y2 - y1):
             # expand in x-direction
-            delx = 0.5 * (y2-y1) * aspect_ratio
+            delx = 0.5 * (y2 - y1) * aspect_ratio
             x1 = xc - delx
             x2 = xc + delx
             logger.debug("aspect_ratio %f, x-expansion %f",
                          aspect_ratio, delx)
         else:
             # expand in y-direction
-            dely = 0.5 * (x2-x1) / aspect_ratio
+            dely = 0.5 * (x2 - x1) / aspect_ratio
             y1 = yc - dely
             y2 = yc + dely
             logger.debug("aspect_ratio %f, y-expansion %f",
@@ -203,7 +202,7 @@ class AbstractMapProjection(ABC):
         x1, y1 = self.calc_xy(alonl, alatb)
         x2, y2 = self.calc_xy(alonr, alatt)
 
-        dev = max(abs(x1-x1s), abs(x2-x2s), abs(y1-y1s), abs(y2-y2s))
+        dev = max(abs(x1 - x1s), abs(x2 - x2s), abs(y1 - y1s), abs(y2 - y2s))
         if dev >= self.TOLERANCE:
             return corners_prev
 
@@ -216,8 +215,8 @@ class AbstractMapProjection(ABC):
     def zoom_corners(self, corners_xy, zoom_factor):
         x1, x2, y1, y2 = corners_xy
 
-        delx = abs(x2-x1)
-        dely = abs(y2-y1)
+        delx = abs(x2 - x1)
+        dely = abs(y2 - y1)
         x_margin = util.sign(zoom_factor * delx * 0.5, x2 - x1)
         y_margin = util.sign(zoom_factor * dely * 0.5, y2 - y1)
         logger.debug("zoom %f, margins %f %f", zoom_factor, x_margin, y_margin)
@@ -235,7 +234,7 @@ class AbstractMapProjection(ABC):
 
         y1 = util.nearest_int(y1)
         y2 = util.nearest_int(y2)
-        delx = (y2-y1)*self.scale
+        delx = (y2 - y1) * self.scale
         if self.proj_type == const.MapProjection.CYL_EQU:
             delx *= 2.0
         x1 = util.nearest_int(x1)
@@ -317,8 +316,8 @@ class AbstractMapProjection(ABC):
         self.corners_xy = (x1, x2, y1, y2)
 
         # find new map center
-        xc = 0.5*(x1 + x2)
-        yc = 0.5*(y1 + y2)
+        xc = 0.5 * (x1 + x2)
+        yc = 0.5 * (y1 + y2)
         qlon, qlat = self.calc_lonlat(xc, yc)
         logger.debug("Center : %f %f", qlat, qlon)
         self.center_loc = (qlon, qlat)
@@ -330,8 +329,8 @@ class AbstractMapProjection(ABC):
         logger.debug("Corners: %f %f %f %f", alonl, alonr, alatb, alatt)
 
     def _estimate_plot_extent_with_center_fixed(self, x1, x2, y1, y2, lonlat_pts):
-        xc = 0.5*(x1 + x2)
-        yc = 0.5*(y1 + y2)
+        xc = 0.5 * (x1 + x2)
+        yc = 0.5 * (y1 + y2)
         dx = abs(x2 - xc)
         dy = abs(y2 - yc)
         for plon, plat in lonlat_pts:
@@ -345,7 +344,7 @@ class AbstractMapProjection(ABC):
         y1 = yc - dy
         y2 = yc + dy
         return (x1, x2, y1, y2)
-    
+
     def _estimate_plot_extent(self, x1, x2, y1, y2, lonlat_pts):
         for plon, plat in lonlat_pts:
             if plon > 180.0:
@@ -408,17 +407,17 @@ class LambertProjection(PoleExcludingProjection):
 
     def create_crs(self):
         if self.tnglat >= 84.0:
-            pars = (self.tnglat-6.0, 89.99)
+            pars = (self.tnglat - 6.0, 89.99)
         elif self.tnglat <= -84.0:
-            pars = (-89.99, self.tnglat+6.0)
+            pars = (-89.99, self.tnglat + 6.0)
         else:
-            pars = (self.tnglat-6.0, self.tnglat+6.0)
+            pars = (self.tnglat - 6.0, self.tnglat + 6.0)
         cutoff_val = -60.0 if self.tnglat > 0 else 60.0
         return cartopy.crs.LambertConformal(central_longitude=self.reflon,
                                             central_latitude=self.tnglat,
                                             standard_parallels=pars,
-                                            false_easting=1.0*1000.0,
-                                            false_northing=1.0*1000.0,
+                                            false_easting=1.0 * 1000.0,
+                                            false_northing=1.0 * 1000.0,
                                             cutoff=cutoff_val)
 
 
@@ -457,8 +456,8 @@ class MercatorProjection(PoleExcludingProjection):
                                     min_latitude=-80.0,
                                     max_latitude=84.0,
                                     latitude_true_scale=self.tnglat,
-                                    false_easting=1.0*1000.0,
-                                    false_northing=1.0*1000.0)
+                                    false_easting=1.0 * 1000.0,
+                                    false_northing=1.0 * 1000.0)
 
 
 class CylindricalEquidistantProjection(AbstractMapProjection):
@@ -523,7 +522,7 @@ class WebMercatorCRS(cartopy.crs.Projection):
         y = points[:, 1]
         self.bounds = (x.min(), x.max(), y.min(), y.max())
 
-    def __repr__(self):
+    def __str__(self):
         return 'WebMercatorCRS(central_longitude={})' \
           .format(self.central_longitude)
 

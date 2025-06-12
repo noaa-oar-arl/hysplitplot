@@ -21,14 +21,14 @@ setup(
     author_email=meta.__email__,
     packages=["hysplitplot", "hysplitplot.traj", "hysplitplot.conc",
               "hysplitplot.toa", "hysplitplot.grid"],
-    python_requires="==3.7",
+    python_requires="==3.9",
     install_requires=[
         "hysplitdata==0.3.*",  # omit the patch level
-        "geopandas==0.8.1",
-        "cartopy==0.17.0",
-        "numpy==1.20.1",
-        "pytz==2021.1",
-        "timezonefinder==5.2.0",
-        "contextily==1.1.0",
+        "geopandas==0.14.4",
+        "cartopy==0.23.0",
+        "numpy==2.0.2",
+        "pytz==2025.2",
+        "timezonefinder==6.5.9",
+        "contextily==1.6.2",
         "mercantile==1.2.1"]
 )

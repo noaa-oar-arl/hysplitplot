@@ -12,7 +12,6 @@ import contextily
 import copy
 import geopandas
 import logging
-import matplotlib.pyplot as plt
 import mercantile
 import math
 import numpy
@@ -24,7 +23,6 @@ import warnings
 from hysplitplot import const, mapfile, util
 from matplotlib.lines import segment_hits
 from numpy import isin
-
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +76,12 @@ class AbstractMapBackground(ABC):
         # clear labels from a previous call
         for t in self.text_objs:
             if t in ax.texts:
-                ax.texts.remove(t)
+                # Jun 12, 2025
+                # t.remove() is replaced with t.set_visible(False)
+                # to prevent a runtime error from happening when
+                # the HYSPLIT map background is used.
+                # t.remove()
+                t.set_visible(False)  # TODO: fix t.remove()
         self.text_objs.clear()
 
     @abstractmethod
@@ -96,12 +99,12 @@ class AbstractMapBackground(ABC):
 
 class HYSPLITMapBackground(AbstractMapBackground):
 
-    _GRIDLINE_DENSITY = 0.25        # 4 gridlines at minimum in each direction
+    _GRIDLINE_DENSITY = 0.25  # 4 gridlines at minimum in each direction
 
     def __init__(self, projection):
         super(HYSPLITMapBackground, self).__init__(projection)
         self.background_maps = []
-        self.frozen_collection_count = None
+        self.gridliners = None
 
     def read_background_map(self, filename):
         self.background_maps.clear()
@@ -193,7 +196,6 @@ class HYSPLITMapBackground(AbstractMapBackground):
 
     def draw_underlay(self, axes, corners_xy, crs):
         proj4_pars = crs.proj4_init
-        self.frozen_collection_count = None
         for o in self.background_maps:
             if isinstance(o.map, geopandas.geoseries.GeoSeries):
                 fixed = self._remove_spurious_hlines(
@@ -216,24 +218,16 @@ class HYSPLITMapBackground(AbstractMapBackground):
                                self.lat_lon_label_interval)
 
     def _erase_gridlines(self, axes):
-        # From reading cartopy source code, gridliners are added
-        # to the collections.
-        axes._gridliners.clear()
-
-        # this works because gridlines appear last in the collections.
-        if self.frozen_collection_count is None:
-            self.frozen_collection_count = len(axes.collections)
-        else:
-            a = copy.copy(axes.collections)
-            for k in range(self.frozen_collection_count, len(a)):
-                axes.collections.remove(a[k])
+        if self.gridliners is not None:
+            self.gridliners.remove()
+            self.gridliners = None
 
     def _update_gridlines(self, axes, projection, data_crs, map_color,
                           latlon_label_opt, latlon_spacing):
         deltax = deltay = self._get_gridline_spacing(projection.corners_lonlat,
                                                      latlon_label_opt,
                                                      latlon_spacing)
-        ideltax = ideltay = int(deltax*10.0)
+        ideltax = ideltay = int(deltax * 10.0)
         if ideltax == 0:
             logger.debug("not updating gridlines because deltas are %f, %f",
                          deltax, deltay)
@@ -256,23 +250,23 @@ class HYSPLITMapBackground(AbstractMapBackground):
                                            0.1, lonlat_ext[0:2])
         logger.debug("gridlines at lons %s", xticks)
         if len(xticks) == 0 \
-                or deltax >= abs(self._GRIDLINE_DENSITY*(alonr - alonl)):
+                or deltax >= abs(self._GRIDLINE_DENSITY * (alonr - alonl)):
             # recompute deltax with zero latitude span and try again
             deltax = self._calc_gridline_spacing([alonl, alonr, alatb, alatb])
-            ideltax = int(deltax*10.0)
+            ideltax = int(deltax * 10.0)
             xticks = self._collect_tick_values(-1800, 1800, ideltax,
                                                0.1, lonlat_ext[0:2])
             logger.debug("gridlines at lats %s", xticks)
 
-        yticks = self._collect_tick_values(-900+ideltay, 900, ideltay,
+        yticks = self._collect_tick_values(-900 + ideltay, 900, ideltay,
                                            0.1, lonlat_ext[2:4])
         logger.debug("gridlines at lats %s", yticks)
         if len(yticks) == 0 \
-                or deltay >= abs(self._GRIDLINE_DENSITY*(alatt - alatb)):
+                or deltay >= abs(self._GRIDLINE_DENSITY * (alatt - alatb)):
             # recompute deltay with zero longitude span and try again
             deltay = self._calc_gridline_spacing([alonl, alonl, alatb, alatt])
-            ideltay = int(deltay*10.0)
-            yticks = self._collect_tick_values(-900+ideltay, 900, ideltay,
+            ideltay = int(deltay * 10.0)
+            yticks = self._collect_tick_values(-900 + ideltay, 900, ideltay,
                                                0.1, lonlat_ext[2:4])
             logger.debug("gridlines at lats %s", yticks)
 
@@ -286,7 +280,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
             kwargs["xlocs"] = xticks
         if len(yticks) > 0:
             kwargs["ylocs"] = yticks
-        gl = axes.gridlines(**kwargs)
+        self.gridliners = axes.gridlines(**kwargs)
 
         # lat/lon line labels
         self._draw_latlon_labels(axes, projection, data_crs,
@@ -317,8 +311,8 @@ class HYSPLITMapBackground(AbstractMapBackground):
                      "lats %f, %f", alonl, alonr, alatb, alatt)
 
         # interval to have at least 4 lat/lon lines on a map
-        ref = max(abs(alatt-alatb)*self._GRIDLINE_DENSITY,
-                  abs(alonl-alonr)*self._GRIDLINE_DENSITY, spacings[-1])
+        ref = max(abs(alatt - alatb) * self._GRIDLINE_DENSITY,
+                  abs(alonl - alonr) * self._GRIDLINE_DENSITY, spacings[-1])
         logger.debug("searching optimal spacing starting from %f", ref)
 
         delta = None
@@ -338,7 +332,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
     def _collect_tick_values(istart, iend, idelta, scale, lmt):
         amin, amax = lmt
         logger.debug("collecting tick values in the range [%f, %f] "
-                     "using spacing %f", amin, amax, scale*idelta)
+                     "using spacing %f", amin, amax, scale * idelta)
         state = 0
         list = []
         for i in range(istart, iend, idelta):
@@ -358,8 +352,8 @@ class HYSPLITMapBackground(AbstractMapBackground):
     def _draw_latlon_labels(self, axes, projection, data_crs, deltax, deltay,
                             map_color):
         logger.debug("latlon labels at intervals %f, %f", deltax, deltay)
-        ideltax = int(deltax*10.0)
-        ideltay = int(deltay*10.0)
+        ideltax = int(deltax * 10.0)
+        ideltay = int(deltay * 10.0)
         if ideltax == 0 or ideltay == 0:
             logger.debug("not drawing latlon labels because deltas are %f, %f",
                          deltax, deltay)
@@ -368,14 +362,14 @@ class HYSPLITMapBackground(AbstractMapBackground):
         self.clear_text_objs(axes)
 
         x1, x2, y1, y2 = projection.corners_xy
-        clon, clat = projection.calc_lonlat(0.5*(x1+x2), 0.5*(y1+y2))
-        clon = util.nearest_int(clon/deltax)*deltax
-        clat = util.nearest_int(clat/deltay)*deltay
+        clon, clat = projection.calc_lonlat(0.5 * (x1 + x2), 0.5 * (y1 + y2))
+        clon = util.nearest_int(clon / deltax) * deltax
+        clat = util.nearest_int(clat / deltay) * deltay
         logger.debug("label reference at lon %f, lat %f", clon, clat)
 
         # lon labels
         lat = (clat - 0.5 * deltay) if (clat > 80.0) else clat + 0.5 * deltay
-        for k in range(-(1800-ideltax), 1800, ideltax):
+        for k in range(-(1800 - ideltax), 1800, ideltax):
             lon = 0.1 * k
 
             # 5/17/2019
@@ -398,7 +392,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
 
         # lat labels
         lon = clon + 0.5 * deltax
-        for k in range(-(900-ideltay), 900, ideltay):
+        for k in range(-(900 - ideltay), 900, ideltay):
             lat = 0.1 * k
 
             # 5/17/2019
@@ -488,12 +482,12 @@ class AbstractStreetMap(AbstractMapBackground):
         if util.is_crossing_date_line(lonl, lonr):
             eps = 1.0e-10
             logger.debug("Counting tiles for %f %f %f %f",
-                         lonl, latb, 180.0-eps, latt)
+                         lonl, latb, 180.0 - eps, latt)
             ntiles1 = contextily.howmany(lonl, latb, 180.0, latt,
                                          zoom, ll=True)
             logger.debug("Counting tiles for %f %f %f %f",
                          -180.0, latb, lonr, latt)
-            ntiles2 = contextily.howmany(-180.0+eps, latb, lonr, latt,
+            ntiles2 = contextily.howmany(-180.0 + eps, latb, lonr, latt,
                                          zoom, ll=True)
             ntiles = max(ntiles1, ntiles2)
         else:
@@ -521,13 +515,13 @@ class AbstractStreetMap(AbstractMapBackground):
             # at the dateline crossing.
             eps = 1.0e-10
             basemap1, extent1 = contextily.bounds2img(lonl, latb,
-                                                      180.0-eps, latt,
+                                                      180.0 - eps, latt,
                                                       zoom=zoom, ll=True,
                                                       source=self.tile_provider)
             extent1 = self._reproject_extent(extent1)
             tiles.append([basemap1, extent1])
 
-            basemap2, extent2 = contextily.bounds2img(-180.0+eps, latb,
+            basemap2, extent2 = contextily.bounds2img(-180.0 + eps, latb,
                                                       lonr, latt,
                                                       zoom=zoom, ll=True,
                                                       source=self.tile_provider)
@@ -569,17 +563,9 @@ class AbstractStreetMap(AbstractMapBackground):
                     zoom -= 1
 
         if ntiles > 0:
-            # Ad hoc fix because ax.imshow() incorrectly shows the basemap.
-            saved = None if ax is plt.gca() else plt.gca()
-            if saved is not None:
-                plt.sca(ax)
-
             for tile in tiles:
                 basemap, extent = tile
-                plt.imshow(basemap, extent=extent, interpolation='bilinear')
-
-            if saved is not None:
-                plt.sca(saved)
+                ax.imshow(basemap, extent=extent, interpolation='bilinear')
 
             self.last_extent = corners_xy
 
@@ -596,8 +582,8 @@ class AbstractStreetMap(AbstractMapBackground):
 
 class StamenStreetMap(AbstractStreetMap):
 
-    providers = {"TERRAIN": contextily.providers.Stamen.Terrain,
-            "TONER": contextily.providers.Stamen.TonerLite}
+    providers = {"TERRAIN": contextily.providers.Stadia.StamenTerrain,
+            "TONER": contextily.providers.Stadia.StamenTonerLite}
 
     def __init__(self, projection, stamen_type):
         super(StamenStreetMap, self).__init__(projection)

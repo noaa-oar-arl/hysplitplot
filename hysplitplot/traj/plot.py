@@ -24,7 +24,6 @@ from hysplitplot import clist, cmdline, const, mapbox, mapproj, \
 from hysplitplot.traj import gisout
 from hysplitplot.traj.color import ColorCycleFactory
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -61,23 +60,23 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
         #        0      draw no circle but set square map scaling
         #        n      scale square map for n circles
         self.ring_distance = 0.0
-        self.center_loc = [0.0, 0.0]    # lon, lat
+        self.center_loc = [0.0, 0.0]  # lon, lat
         self.center_loc_fixed = False
 
         # internally defined
-        self.marker_cycle = ["^", "s", "o"]   # triangle, square, circle
+        self.marker_cycle = ["^", "s", "o"]  # triangle, square, circle
         self.marker_cycle_index = -1
         self.source_label = "\u2605"  # filled star
         self.source_marker = "*"
-        self.source_marker_color = "k"    # black
-        self.source_marker_size = 8*8
-        self.major_hour_marker_size = 6*6
-        self.minor_hour_marker_size = 4*4
-        self.terrain_line_color = "k"     # black
-        self.terrain_marker = "^"         # triangle
+        self.source_marker_color = "k"  # black
+        self.source_marker_size = 8 * 8
+        self.major_hour_marker_size = 6 * 6
+        self.minor_hour_marker_size = 4 * 4
+        self.terrain_line_color = "k"  # black
+        self.terrain_marker = "^"  # triangle
         self.station_marker = "o"
-        self.station_marker_color = "k"   # black
-        self.station_marker_size = 6*6
+        self.station_marker_color = "k"  # black
+        self.station_marker_size = 6 * 6
         self.color_cycle = None
 
     def dump(self, stream):
@@ -184,9 +183,9 @@ class TrajectoryPlotSettings(plotbase.AbstractPlotSettings):
         if ntraj != ncolors:
             raise Exception("FATAL ERROR: Mismatch in option (-kn:m) "
                             "n={0} m={1}".format(ntraj, ncolors))
-        for c in str[divider+1:]:
+        for c in str[divider + 1:]:
             color_codes.append(c)
-        
+
         logger.debug("color codes {}".format(color_codes))
         return color_codes
 
@@ -246,7 +245,7 @@ class TrajectoryPlotSettingsReader:
 class TrajectoryPlot(plotbase.AbstractPlot):
 
     def __init__(self):
-        super(TrajectoryPlot, self).__init__(cartopy.crs.Geodetic())
+        super(TrajectoryPlot, self).__init__(cartopy.crs.PlateCarree())
         self.settings = TrajectoryPlotSettings()
         self.data_list = None
         self.traj_axes = None
@@ -309,7 +308,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                     for t in plot_data.trajectories:
                         if c >= cmax:
                             logger.warning("KLR Traj #%d not defined, default "
-                                           "to color %s", c+1, '1')
+                                           "to color %s", c + 1, '1')
                             clr = '1'
                         else:
                             clr = settings.color_codes[c]
@@ -320,7 +319,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                 for plot_data in data_list:
                     if c >= cmax:
                         logger.warning("KLR Traj #%d not defined, default "
-                                       "to color %s", c+1, '1')
+                                       "to color %s", c + 1, '1')
                         clr = '1'
                     else:
                         clr = settings.color_codes[c]
@@ -429,7 +428,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                     break
 
         mb.determine_plume_extent()
-        
+
         return mb
 
     def _determine_vertical_limit(self, plot_data, vertical_coordinate):
@@ -455,7 +454,8 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         fig = plt.figure(
             figsize=(8.5, 11.0),  # letter size
             clear=True,  # clear an existing figure
-            constrained_layout=False
+            constrained_layout=False,
+            dpi=150
         )
 
         # cluster information
@@ -767,7 +767,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
             xy = (lons[k], lats[k])
             slon, slat = slonlat
             # The multiplier 2 below is for one sigma radius.
-            ellipse = matplotlib.patches.Ellipse(xy, 2*slon, 2*slat,
+            ellipse = matplotlib.patches.Ellipse(xy, 2 * slon, 2 * slat,
                                                  color=clr,
                                                  fill=False,
                                                  clip_on=True,
@@ -854,21 +854,21 @@ class TrajectoryPlot(plotbase.AbstractPlot):
                         clr = self.settings.color_cycle.next_color(
                                     t.starting_level_index, t.color)
                         clrs.append(clr)
-                    logger.debug("traj {}, GIS colors {}".format(k,clrs))
+                    logger.debug("traj {}, GIS colors {}".format(k, clrs))
                     w.kml_trajectory_style.set_colors(clrs)
                     w.write(k + 1, plot_data)
-                
+
                 w.finalize()
 
     def _create_gis_writer_list(self, settings, time_zone):
         gis_writer_list = []
-        
+
         o = gisout.GISFileWriterFactory.create_instance(
                 settings.gis_output,
                 settings.height_unit,
                 time_zone)
         gis_writer_list.append(o)
-        
+
         for gis_opt in settings.additional_gis_outputs:
             o = gisout.GISFileWriterFactory.create_instance(
                     gis_opt,
@@ -1015,7 +1015,7 @@ class AbstractVerticalProjection(ABC):
         A child class may return a locator object for customization.
         """
         return None
-     
+
     @abstractmethod
     def create_xlabel_formatter(self):
         pass
@@ -1051,7 +1051,7 @@ class TimeVerticalProjection(AbstractVerticalProjection):
         elif i == 24:
             return matplotlib.dates.HourLocator(byhour=0)
         elif i > 0 and i < 24:
-            return matplotlib.dates.HourLocator(byhour=range(0,24,i))
+            return matplotlib.dates.HourLocator(byhour=range(0, 24, i))
         return matplotlib.dates.AutoDateLocator()
 
     def create_xlabel_formatter(self):

@@ -15,7 +15,6 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 from hysplitplot import const, util
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -64,7 +63,7 @@ class SinglePlotFileWriter(AbstractMultiplePlotFileWriter):
     def save(self, figure, frame_no):
         filename = self._make_filename(frame_no)
         logger.info("Saving plot %d to file %s", frame_no, filename)
-        figure.savefig(filename, papertype="letter", format=self.output_format)
+        figure.savefig(filename, bbox_inches="tight", format=self.output_format)
         self.file_count += 1
 
     def _make_filename(self, frame_no):
@@ -104,10 +103,10 @@ class MultiplePlotPostscriptWriter(AbstractMultiplePlotFileWriter):
     def save(self, figure, frame_no):
         logger.info("Saving plot %d to file %s", frame_no, self.filename)
         if self.page_count == 0:
-            figure.savefig(self.filename, papertype="letter", format="ps")
+            figure.savefig(self.filename, bbox_inches="tight", format="ps")
         else:
             tempfile = "{}.{}".format(self.filename, self.page_count)
-            figure.savefig(tempfile, papertype="letter", format="ps")
+            figure.savefig(tempfile, bbox_inches="tight", format="ps")
             util.join_file(tempfile, self.filename)
             os.remove(tempfile)
         self.page_count += 1
