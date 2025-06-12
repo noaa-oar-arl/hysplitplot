@@ -30,7 +30,6 @@ from hysplitplot.grid.helper import GisOutputFilenameForGridPlot, \
                                     KmlOutputFilenameForGridPlot, \
                                     TextOutputForGridPlot
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -48,12 +47,12 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
         # pollutants are selected.
         self.pollutant_index = 1
 
-        self.first_time_index = 1    # 1-based index for now.
+        self.first_time_index = 1  # 1-based index for now.
         self.last_time_index = 9999  # 1-based index for now.
         self.time_index_step = 1
         self.contour_level_generator = \
             const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC
-        self.source_label = "\u2606"    # open star
+        self.source_label = "\u2606"  # open star
         self.LEVEL1 = 0  # bottom display level defaults to deposition surface
         self.LEVEL2 = 99999  # top level defaults to whole model atmosphere
         self.exposure_unit = const.ExposureUnit.CONCENTRATION  # KEXP; -e
@@ -63,12 +62,12 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
         self.show_max_conc = 1
         self.mass_unit = "mass"
         self.mass_unit_by_user = False
-        self.CFACT = 1.0   # conc unit conversion multiplication factor
-        self.DEPADJ = 1.0   # deposition unit conversion multiplication factor
-        self.IDYNC = 0      # allow colors to change for dyn contours?
-        self.KHEMIN = 0     # plot below threshold contour for chemical output
-        self.IZRO = 0       # create map(s) even if all values are zero
-        self.NSSLBL = 0     # force sample start time label to start of release
+        self.CFACT = 1.0  # conc unit conversion multiplication factor
+        self.DEPADJ = 1.0  # deposition unit conversion multiplication factor
+        self.IDYNC = 0  # allow colors to change for dyn contours?
+        self.KHEMIN = 0  # plot below threshold contour for chemical output
+        self.IZRO = 0  # create map(s) even if all values are zero
+        self.NSSLBL = 0  # force sample start time label to start of release
         self.color = const.ConcentrationPlotColor.COLOR  # KOLOR
         self.gis_alt_mode = const.GISOutputAltitude.CLAMPED_TO_GROUND
         self.ring = False
@@ -78,26 +77,26 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
         #        0      draw no circle but set square map scaling
         #        n      scale square map for n circles
         self.ring_distance = 0.0
-        self.center_loc = [None, None]    # lon, lat
+        self.center_loc = [None, None]  # lon, lat
         self.center_loc_specified = False
-        self.science_for_sphere = False     # NSOS
+        self.science_for_sphere = False  # NSOS
         self.hlevel = 0  # hlevel
         self.CVAL1 = 1.0e-36  # CVAL(1)
         self.DELTA = 1000.0  # DELTA contour value
-        self.MINCON = False  # min conc. 
+        self.MINCON = False  # min conc.
         self.NSCALE = 1  # logarithmic. 0 is for linear.
         self.output_values = False  # for the -f option.
 
         # internally defined
         self.label_source = True
-        self.source_label_color = "k"       # black
-        self.source_label_font_size = 12    # font size
+        self.source_label_color = "k"  # black
+        self.source_label_font_size = 12  # font size
         self.user_color = True
-        self.user_colors = None             # list of (r, g, b) tuples
+        self.user_colors = None  # list of (r, g, b) tuples
         self.user_label = False
         self.contour_levels = None
         self.contour_level_count = 12
-        self.pollutant = ""         # name of the selected pollutant
+        self.pollutant = ""  # name of the selected pollutant
         self.SCALE = 1.0
         self.max_contour_legend_count = 25
 
@@ -143,10 +142,10 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
             self.MINCON = True
 
         self.kml_option = args.get_integer_value(["-k", "-K"], self.kml_option)
-        
+
         if args.has_arg(["-n", "-N"]):
             self.parse_time_indices(args.get_value(["-n", "-N"]))
-        self.first_time_index -= 1      # to 0-based indices
+        self.first_time_index -= 1  # to 0-based indices
         self.last_time_index -= 1
 
         self.NDEP = args.get_integer_value(["-r", "-R"], self.NDEP)
@@ -154,8 +153,8 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
 
         self.pollutant_index = args.get_integer_value(["-s", "-S"],
                                                       self.pollutant_index)
-        self.pollutant_index -= 1       # to 0-based index
- 
+        self.pollutant_index -= 1  # to 0-based index
+
         if args.has_arg(["-u", "-U"]):
             self.mass_unit = args.get_value(["-u", "-U"])
             self.mass_unit_by_user = True
@@ -176,7 +175,7 @@ class GridPlotSettings(plotbase.AbstractPlotSettings):
         if str.count(":") > 0:
             divider = str.index(":")
             self.first_time_index = int(str[:divider])
-            self.last_time_index = int(str[divider+1:])
+            self.last_time_index = int(str[divider + 1:])
             if self.first_time_index > self.last_time_index:
                 self.first_time_index = 1
         else:
@@ -305,9 +304,9 @@ class GridPlot(plotbase.AbstractPlot):
             logger.info("Multiple pollutant species in file")
             for k, name in enumerate(cdump.pollutants):
                 if k == self.settings.pollutant_index:
-                    logger.info("%d - %s <--- selected", k+1, name)
+                    logger.info("%d - %s <--- selected", k + 1, name)
                 else:
-                    logger.info("%d - %s", k+1, name)
+                    logger.info("%d - %s", k + 1, name)
 
         # make sure the requested level exists
         self.settings.hlevel = self._adjust_vertical_level(cdump, self.settings.hlevel)
@@ -334,7 +333,7 @@ class GridPlot(plotbase.AbstractPlot):
 
         if self.settings.output_values:
             self.value_output_writer = TextOutputForGridPlot()
- 
+
         time_zone_helper = timezone.TimeZoneHelper()
         if self.settings.time_zone_str is not None:
             self.time_zone = time_zone_helper.lookup_time_zone(self.settings.time_zone_str)
@@ -512,7 +511,7 @@ class GridPlot(plotbase.AbstractPlot):
 
     def make_xlabel(self, g):
         curr_forecast_time = g.ending_datetime \
-            - datetime.timedelta(hours=g.ending_forecast_hr)
+            -datetime.timedelta(hours=g.ending_forecast_hr)
 
         if g.ending_forecast_hr > 12 \
                 and (self.prev_forecast_time is None
@@ -560,7 +559,7 @@ class GridPlot(plotbase.AbstractPlot):
             self.settings.SCALE,
             self.cdump.grid_deltas,
             map_box,
-            self.settings.center_loc_fixed)
+            self.settings.center_loc_specified)
         self.projection.refine_corners(self.settings.center_loc)
 
         # The map projection might have changed to avoid singularities.
@@ -653,16 +652,16 @@ class GridPlot(plotbase.AbstractPlot):
                     break
 
         mbox.determine_plume_extent()
-        
+
         return mbox
 
     def _build_grid_rect_list(self,
-                              conc : numpy.ndarray,
-                              longitudes : [float],
-                              latitudes : [float],
-                              dx : float,
-                              dy : float,
-                              contour_levels : []) -> [] :
+                              conc: numpy.ndarray,
+                              longitudes: [float],
+                              latitudes: [float],
+                              dx: float,
+                              dy: float,
+                              contour_levels: []) -> []:
         ncol = len(longitudes)
         contour_levels_len = len(contour_levels)
         rect_list = [[] for _ in range(contour_levels_len)]
@@ -703,12 +702,12 @@ class GridPlot(plotbase.AbstractPlot):
                         i = v[0] - j * ncol
                         lat = latitudes[j]
                         lon = longitudes[i]
-                        r = matplotlib.patches.Rectangle((lon-hx, lat-hy), dx, dy)
+                        r = matplotlib.patches.Rectangle((lon - hx, lat - hy), dx, dy)
                         rect_list[k].append(r)
 
         return rect_list
 
-    def draw_concentration_plot(self, conc_grid, scaled_conc : numpy.ndarray, conc_map,
+    def draw_concentration_plot(self, conc_grid, scaled_conc: numpy.ndarray, conc_map,
                                 contour_levels, fill_colors, min_conc, color_skip=1):
         """
         Draws a concentration grid plot and returns collections of rectangles.
@@ -779,7 +778,7 @@ class GridPlot(plotbase.AbstractPlot):
         if conc_grid.nonzero_conc_count > 0 and contour_levels_len > 1:
             # draw filled contours
             # TODO: delete patches of previous drawing?
-            
+
             try:
                 dx = conc_grid.parent.grid_deltas[0]
                 dy = conc_grid.parent.grid_deltas[1]
@@ -901,14 +900,14 @@ class GridPlot(plotbase.AbstractPlot):
                 clr = colors[k]
 
             if clr is not None:
-                box = matplotlib.patches.Rectangle((x, y-dy), dx, dy,
+                box = matplotlib.patches.Rectangle((x, y - dy), dx, dy,
                                                    color=clr,
                                                    transform=axes.transAxes)
                 axes.add_patch(box)
 
             if k < len(labels):
                 label = "NR" if level == -1.0 else labels[k]
-                axes.text(x+0.5*dx, y-0.5*dy, label,
+                axes.text(x + 0.5 * dx, y - 0.5 * dy, label,
                           color="k",
                           fontsize=font_sz,
                           horizontalalignment="center",
@@ -918,7 +917,7 @@ class GridPlot(plotbase.AbstractPlot):
 
             v = conc_map.format_conc(level)
             str = ">{0} ${1}$".format(v, conc_unit)
-            axes.text(x + dx + x, y-0.5*dy, str,
+            axes.text(x + dx + x, y - 0.5 * dy, str,
                       color="k",
                       fontsize=font_sz,
                       horizontalalignment="left",
@@ -1062,10 +1061,10 @@ class GridPlot(plotbase.AbstractPlot):
                 if min_conc > contour_levels[k]:
                     min_conc_idx = k
                     break
-            color_skip = max(1, int(len(contour_levels)/(max_conc_idx - min_conc_idx + 1)))
+            color_skip = max(1, int(len(contour_levels) / (max_conc_idx - min_conc_idx + 1)))
             logger.debug('min_conc_idx %d, max_conc_idx %d, color_skip %d',
                          min_conc_idx, max_conc_idx, color_skip)
-        
+
         quad_contour_set = self.draw_concentration_plot(g,
                                                         scaled_conc,
                                                         self.conc_map,
@@ -1100,20 +1099,20 @@ class GridPlot(plotbase.AbstractPlot):
 
     def _create_gis_writer_list(self, settings, time_zone):
         gis_writer_list = []
-        
+
         o = gisout.GISFileWriterFactory.create_instance(
                 settings.gis_output,
                 settings.kml_option,
                 time_zone)
         gis_writer_list.append(o)
-        
+
         for gis_opt in settings.additional_gis_outputs:
             o = gisout.GISFileWriterFactory.create_instance(
                     gis_opt,
                     settings.kml_option,
                     time_zone)
             gis_writer_list.append(o)
-        
+
         for w in gis_writer_list:
             w.initialize(settings.gis_alt_mode,
                          settings.output_basename,
@@ -1150,7 +1149,7 @@ class GridPlot(plotbase.AbstractPlot):
         self.depo_sum.initialize(self.cdump.grids,
                                  self.time_selector,
                                  self.pollutant_selector)
-        
+
         for t_index in self.time_selector:
             t_grids = helper.TimeIndexGridFilter(self.cdump.grids,
                                                  helper.TimeIndexSelector(t_index, t_index))
@@ -1192,9 +1191,10 @@ class GridPlot(plotbase.AbstractPlot):
             w.finalize()
 
     def get_plot_count_str(self):
-        plot_saver = self.plot_saver_list[0]
-        if plot_saver.file_count > 1:
-            return "{} output files".format(plot_saver.file_count)
+        if len(self.plot_saver_list) > 0:
+           plot_saver = self.plot_saver_list[0]
+           if plot_saver.file_count > 1:
+               return "{} output files".format(plot_saver.file_count)
 
         s = "{} time period".format(self.time_period_count)
         if self.time_period_count > 1:

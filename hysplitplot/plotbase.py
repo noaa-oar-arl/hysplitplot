@@ -403,10 +403,13 @@ class AbstractPlot(ABC):
         plot_saver_list = []
 
         # Jun 12, 2025
-        # For interactive mode, don't save plots to other formats.
+        # For interactive mode, don't save plots to files.
         # This is to void a runtime error that reads "main thread
         # is not in main loop" when the ARL map background is selected.
-        if not settings.interactive_mode:
+        if settings.interactive_mode:
+           logger.warn("Interactive mode is on. Plots will be displayed " \
+                       "but will not be saved to files.")
+        else:
            plot_saver = multipage.PlotFileWriterFactory.create_instance(
                settings.frames_per_file,
                settings.output_basename,

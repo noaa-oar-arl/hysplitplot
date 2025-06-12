@@ -26,7 +26,6 @@ from hysplitplot.conc import helper, gisout, cntr
 from hysplitplot.conc.plot import ColorTableFactory, LabelledContourLevel
 from hysplitplot.toa import helper as thelper
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -44,13 +43,13 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         # pollutants are selected.
         self.pollutant_index = 1
 
-        self.first_time_index = 1    # 1-based index for now.
+        self.first_time_index = 1  # 1-based index for now.
         self.last_time_index = 9999  # 1-based index for now.
         self.time_index_step = 1
         self.contour_level_generator = \
             const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC
         self.QFILE = None
-        self.source_label = "\u2606"    # open star
+        self.source_label = "\u2606"  # open star
         self.this_is_test = 0
         # bottom display level defaults to deposition surface
         self.LEVEL1 = 0
@@ -62,12 +61,12 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         self.show_max_conc = 0
         self.mass_unit = "mass"
         self.mass_unit_by_user = False
-        self.CONADJ = 1.0   # conc unit conversion multiplication factor
-        self.DEPADJ = 1.0   # deposition unit conversion multiplication factor
-        self.IDYNC = 0      # allow colors to change for dyn contours?
-        self.KHEMIN = 0     # plot below threshold contour for chemical output
-        self.IZRO = 0       # create map(s) even if all values are zero
-        self.NSSLBL = 0     # force sample start time label to start of release
+        self.CONADJ = 1.0  # conc unit conversion multiplication factor
+        self.DEPADJ = 1.0  # deposition unit conversion multiplication factor
+        self.IDYNC = 0  # allow colors to change for dyn contours?
+        self.KHEMIN = 0  # plot below threshold contour for chemical output
+        self.IZRO = 0  # create map(s) even if all values are zero
+        self.NSSLBL = 0  # force sample start time label to start of release
         self.color = const.ConcentrationPlotColor.COLOR  # KOLOR
         self.gis_alt_mode = const.GISOutputAltitude.CLAMPED_TO_GROUND
         self.KMLOUT = 0
@@ -78,23 +77,23 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         #        0      draw no circle but set square map scaling
         #        n      scale square map for n circles
         self.ring_distance = 0.0
-        self.center_loc = [0.0, 0.0]    # lon, lat
+        self.center_loc = [0.0, 0.0]  # lon, lat
         self.center_loc_fixed = False
 
         # internally defined
         self.label_source = True
-        self.source_label_color = "k"       # black
-        self.source_label_font_size = 12    # font size
+        self.source_label_color = "k"  # black
+        self.source_label_font_size = 12  # font size
         self.user_color = False
-        self.user_colors = None             # list of (r, g, b) tuples
+        self.user_colors = None  # list of (r, g, b) tuples
         self.user_label = False
         self.contour_levels = None
         self.contour_level_count = 4
-        self.pollutant = ""                 # name of the selected pollutant
-        self.SCALE = 0.7784433              # aspect ratio of the main plot box
+        self.pollutant = ""  # name of the selected pollutant
+        self.SCALE = 0.7784433  # aspect ratio of the main plot box
         self.station_marker = "o"
-        self.station_marker_color = "k"     # black
-        self.station_marker_size = 6*6
+        self.station_marker_color = "k"  # black
+        self.station_marker_size = 6 * 6
         self.max_contour_legend_count = 5
 
     def dump(self, stream):
@@ -192,14 +191,14 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
 
         if args.has_arg(["-n", "-N"]):
             self.parse_time_indices(args.get_value(["-n", "-N"]))
-        self.first_time_index -= 1      # to 0-based indices
+        self.first_time_index -= 1  # to 0-based indices
         self.last_time_index -= 1
 
         self.QFILE = args.get_string_value(["-q", "-Q"], self.QFILE)
 
         self.pollutant_index = args.get_integer_value(["-s", "-S"],
                                                       self.pollutant_index)
-        self.pollutant_index -= 1       # to 0-based index
+        self.pollutant_index -= 1  # to 0-based index
 
         self.LEVEL2 = args.get_integer_value(["-t", "-T"], self.LEVEL2)
         self.LEVEL2 = max(0, self.LEVEL2)
@@ -217,14 +216,13 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         self.KMLOUT = args.get_integer_value(["-5"], self.KMLOUT)
         self.IZRO = args.get_integer_value("-8", self.IZRO)
 
-
     @staticmethod
     def parse_source_label(str):
         c = int(str)
         if c == 72:
             return "*"
         elif c == 73:
-            return "\u2606"    # open star
+            return "\u2606"  # open star
         else:
             return chr(c)
 
@@ -232,7 +230,7 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         if str.count(":") > 0:
             divider = str.index(":")
             self.first_time_index = int(str[:divider])
-            self.last_time_index = int(str[divider+1:])
+            self.last_time_index = int(str[divider + 1:])
             if self.first_time_index > self.last_time_index:
                 self.first_time_index = 1
         else:
@@ -291,7 +289,7 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
             self.user_colors = [it[1] for it in s]
 
     def validate_contour_levels(self, contour_levels):
-        # See if the -v option is used without contour levels. 
+        # See if the -v option is used without contour levels.
         for c in contour_levels:
             if (c.level is None):
                 return False
@@ -311,7 +309,7 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         k = 0
         while k < len(tokens):
             if tokens[k][-1].upper() == "E":
-                t = tokens[k] + tokens[k+1]
+                t = tokens[k] + tokens[k + 1]
                 k += 1
             else:
                 t = tokens[k]
@@ -338,7 +336,7 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         k = 0
         while k < len(tokens):
             if tokens[k][-1].upper() == "E":
-                s = tokens[k] + tokens[k+1]
+                s = tokens[k] + tokens[k + 1]
                 k += 1
             else:
                 s = tokens[k]
@@ -486,9 +484,9 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
             logger.info("Multiple pollutant species in file")
             for k, name in enumerate(cdump.pollutants):
                 if k == self.settings.pollutant_index:
-                    logger.info("%d - %s <--- selected", k+1, name)
+                    logger.info("%d - %s <--- selected", k + 1, name)
                 else:
-                    logger.info("%d - %s", k+1, name)
+                    logger.info("%d - %s", k + 1, name)
 
         # if only one non-depositing level, change -d2 to -d1.
         if self.settings.KAVG == const.ConcentrationType.VERTICAL_AVERAGE:
@@ -677,7 +675,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
 
     def make_xlabel(self, g):
         curr_forecast_time = g.ending_datetime \
-            - datetime.timedelta(hours=g.ending_forecast_hr)
+            -datetime.timedelta(hours=g.ending_forecast_hr)
 
         if g.ending_forecast_hr > 12 \
                 and (self.prev_forecast_time is None
@@ -953,12 +951,12 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         for k, level in enumerate(reversed(display_levels)):
             clr = colors[k]
 
-            box = matplotlib.patches.Rectangle((x, y-dy), dx, dy, color=clr,
+            box = matplotlib.patches.Rectangle((x, y - dy), dx, dy, color=clr,
                                                transform=axes.transAxes)
             axes.add_patch(box)
 
             str = "{}".format(level)
-            axes.text(x + dx + x, y-0.5*dy, str, color="k", fontsize=font_sz,
+            axes.text(x + dx + x, y - 0.5 * dy, str, color="k", fontsize=font_sz,
                       horizontalalignment="left", verticalalignment="center",
                       clip_on=True, transform=axes.transAxes)
 
@@ -970,7 +968,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
 
         if self.settings.this_is_test:
             y -= small_line_skip * 1.5
-            axes.hlines(y-small_line_skip * 0.5, 0.05, 0.95,
+            axes.hlines(y - small_line_skip * 0.5, 0.05, 0.95,
                         color="k",
                         linewidth=0.125,
                         transform=axes.transAxes)
@@ -982,7 +980,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
                       clip_on=True,
                       transform=axes.transAxes)
 
-            axes.hlines(y-small_line_skip, 0.05, 0.95,
+            axes.hlines(y - small_line_skip, 0.05, 0.95,
                         color="k",
                         linewidth=0.125,
                         transform=axes.transAxes)
@@ -1137,20 +1135,20 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
 
     def _create_gis_writer_list(self, settings, time_zone):
         gis_writer_list = []
-        
+
         o = gisout.GISFileWriterFactory.create_instance(
                 settings.gis_output,
                 settings.kml_option,
                 time_zone)
         gis_writer_list.append(o)
-        
+
         for gis_opt in settings.additional_gis_outputs:
             o = gisout.GISFileWriterFactory.create_instance(
                     gis_opt,
                     settings.kml_option,
                     time_zone)
             gis_writer_list.append(o)
-        
+
         for w in gis_writer_list:
             w.initialize(settings.gis_alt_mode,
                          settings.output_basename,
@@ -1176,37 +1174,37 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
 
         toa_data = self.toa_generator.make_plume_data(
             thelper.TimeOfArrival.DAY_0, fill_colors)
-        toa_data.grid.time_index = 0    # for GIS output file name.
+        toa_data.grid.time_index = 0  # for GIS output file name.
         self.draw_toa_plot_above_ground(toa_data, ev_handlers, color_table,
                                         gis_writers, *args, **kwargs)
 
         toa_data = self.toa_generator.make_plume_data(
             thelper.TimeOfArrival.DAY_1, fill_colors)
-        toa_data.grid.time_index = 1    # for GIS output file name.
+        toa_data.grid.time_index = 1  # for GIS output file name.
         self.draw_toa_plot_above_ground(toa_data, ev_handlers, color_table,
                                         gis_writers, *args, **kwargs)
 
         toa_data = self.toa_generator.make_plume_data(
             thelper.TimeOfArrival.DAY_2, fill_colors)
-        toa_data.grid.time_index = 2    # for GIS output file name.
+        toa_data.grid.time_index = 2  # for GIS output file name.
         self.draw_toa_plot_above_ground(toa_data, ev_handlers, color_table,
                                         gis_writers, *args, **kwargs)
 
         toa_data = self.toa_generator.make_deposition_data(
             thelper.TimeOfArrival.DAY_0, fill_colors)
-        toa_data.grid.time_index = 0    # for GIS output file name.
+        toa_data.grid.time_index = 0  # for GIS output file name.
         self.draw_toa_plot_on_ground(toa_data, ev_handlers, color_table,
                                      gis_writers, *args, **kwargs)
 
         toa_data = self.toa_generator.make_deposition_data(
             thelper.TimeOfArrival.DAY_1, fill_colors)
-        toa_data.grid.time_index = 1    # for GIS output file name.
+        toa_data.grid.time_index = 1  # for GIS output file name.
         self.draw_toa_plot_on_ground(toa_data, ev_handlers, color_table,
                                      gis_writers, *args, **kwargs)
 
         toa_data = self.toa_generator.make_deposition_data(
             thelper.TimeOfArrival.DAY_2, fill_colors)
-        toa_data.grid.time_index = 2    # for GIS output file name.
+        toa_data.grid.time_index = 2  # for GIS output file name.
         self.draw_toa_plot_on_ground(toa_data, ev_handlers, color_table,
                                      gis_writers, *args, **kwargs)
 
@@ -1218,9 +1216,10 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
             w.finalize()
 
     def get_plot_count_str(self):
-        plot_saver = self.plot_saver_list[0]
-        if plot_saver.file_count > 1:
-            return "{} output files".format(plot_saver.file_count)
+        if len(self.plot_saver_list) > 0:
+           plot_saver = self.plot_saver_list[0]
+           if plot_saver.file_count > 1:
+               return "{} output files".format(plot_saver.file_count)
 
         self.time_period_count = self.toa_generator.time_period_count
         s = "{} time period".format(self.time_period_count)
