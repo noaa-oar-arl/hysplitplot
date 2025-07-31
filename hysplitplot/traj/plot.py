@@ -713,6 +713,8 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         self.draw_trajectories(self.traj_axes, data_list)
         self.draw_source_markers(self.traj_axes, data_list)
 
+        self.add_cartopy_map_scale(axes, x_pos=0.05, y_pos=0.95)
+
     def draw_trajectories(self, axes, data_list):
         # See if the data time span is longer than the specified interval
         interval_symbol_drawer = IntervalSymbolDrawerFactory.create_instance(

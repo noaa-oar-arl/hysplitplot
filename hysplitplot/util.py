@@ -18,7 +18,6 @@ import sys
 from hysplitdata.const import HeightUnit
 from hysplitplot import const
 
-
 PLOT_FORMATS = ["eps", "jpeg", "jpg", "pdf", "pgf", "png", "ps", "raw",
                 "rgba", "svg", "svgz", "tif", "tiff"]
 
@@ -68,7 +67,7 @@ def run(mainFunction, programName, **kwargs):
     c = logging.getLogger('matplotlib.font_manager')
     c.setLevel(logging.CRITICAL)
     c.disabled = True
-    
+
     logging.info("This is %s.", programName)
 
     exitCode = mainFunction()
@@ -110,10 +109,10 @@ def make_color_int(ir, ig, ib, ix=255):
 
 
 def make_color(r, g, b, x=1.0):
-    ir = nearest_int(r*255)
-    ig = nearest_int(g*255)
-    ib = nearest_int(b*255)
-    ix = nearest_int(x*255)
+    ir = nearest_int(r * 255)
+    ig = nearest_int(g * 255)
+    ib = nearest_int(b * 255)
+    ix = nearest_int(x * 255)
     return make_color_int(ir, ig, ib, ix)
 
 
@@ -237,7 +236,7 @@ def calc_ring_distance(ext_sz, grid_delta, center_loc, ring_number,
         # max radius extent adjusted for latitude
         logger.debug("QLON %f, HLAT %f", ext_lon, center_loc[1])
         ext_lon = ext_lon * math.cos(center_loc[1] / 57.3)
-        kspan = nearest_int(math.sqrt(ext_lon*ext_lon + ext_lat*ext_lat) / grid_delta)
+        kspan = nearest_int(math.sqrt(ext_lon * ext_lon + ext_lat * ext_lat) / grid_delta)
         # circle distance interval in km
         ring_distance = deg_to_km(grid_delta) * kspan / max(ring_number, 1)
     else:
@@ -251,9 +250,9 @@ def calc_ring_distance(ext_sz, grid_delta, center_loc, ring_number,
     if ring_distance <= 10.0:
         ring_distance = int(ring_distance) * 1.0
     elif ring_distance <= 100.0:
-        ring_distance = int(ring_distance/10.0) * 10.0
+        ring_distance = int(ring_distance / 10.0) * 10.0
     else:
-        ring_distance = int(ring_distance/100.0) * 100.0
+        ring_distance = int(ring_distance / 100.0) * 100.0
 
     return kspan, ring_distance
 
@@ -294,7 +293,7 @@ def calc_lon_average(lons, weights):
 
     if n_neg == 0 and n_pos == 0:
         return None
-    
+
     if n_pos == 0:
         avg = sum_neg / sum_w_neg
     elif n_neg == 0:
@@ -307,7 +306,7 @@ def calc_lon_average(lons, weights):
         if delta_cw <= delta_ccw:
             avg = (sum_neg + sum_pos) / (sum_w_neg + sum_w_pos)
         else:
-            avg = (sum_neg + 360.0*sum_w_neg + sum_pos) / (sum_w_neg + sum_w_pos)
+            avg = (sum_neg + 360.0 * sum_w_neg + sum_pos) / (sum_w_neg + sum_w_pos)
 
     return avg
 
@@ -358,6 +357,48 @@ def union_lonlat_bounding_boxes(box1, box2):
     l = normalize_lon(l)
     r = normalize_lon(r)
     return [l, r, min(b1, b2), max(t1, t2)]
+
+
+def get_nice_number(span_km):
+    """
+    Produces a "nice" number in km that is about 0.1 to 0.5 of the span.
+    The nice number should be like 10, 20, 25, 50, 75, 100, etc.
+
+    Args:
+        span_km (float): The given span in kilometers.
+
+    Returns:
+        float or str: A nice number within the desired range, or a message if not found.
+    """
+    if span_km <= 0:
+       # Span must be a positive number
+       span_km = 1.0
+
+    lower_bound = 0.1 * span_km
+    upper_bound = 0.5 * span_km
+
+    # Base nice numbers (multiplied by powers of 10)
+    base_nice_numbers = [1, 2, 2.5, 5, 7.5]
+
+    # Determine the range of powers of 10 to check
+    # We need to cover the lower and upper bounds
+    min_power = math.floor(math.log10(lower_bound)) if lower_bound > 0 else -300
+    max_power = math.ceil(math.log10(upper_bound)) if upper_bound > 0 else -300
+
+    # Iterate through powers of 10
+    # We go one power higher than max_power to ensure we don't miss values
+    for power in range(min_power, max_power + 2):
+        multiplier = 10 ** power
+        for base in base_nice_numbers:
+            nice_num = base * multiplier
+            # Round to avoid floating point inaccuracies for comparison
+            nice_num_rounded = round(nice_num, 10)
+
+            if lower_bound <= nice_num_rounded <= upper_bound:
+                return nice_num_rounded
+
+    # Could not find a nice number between {lower_bound:.2f} km and {upper_bound:.2f} km.
+    return span_km * 0.25
 
 
 class AbstractLengthFactory():

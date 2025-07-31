@@ -1051,6 +1051,8 @@ no calculated values are above the output thresholds.'''
                              conc_grid.starting_datetime,
                              conc_grid.ending_datetime)
 
+        self.add_cartopy_map_scale(axes, x_pos=0.05, y_pos=0.95)
+
         return contour_set
 
     def get_conc_unit(self, conc_map, settings):

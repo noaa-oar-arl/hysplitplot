@@ -427,3 +427,71 @@ class AbstractPlot(ABC):
                plot_saver_list.append(plot_saver)
 
         return plot_saver_list
+
+    def add_cartopy_map_scale(self, ax, x_pos, y_pos, use_km=False,
+                              scale_height=0.015, color='black', text_color='black', font_size=9,
+                              zorder=5):
+       """
+       Adds a simple map scale bar to a Cartopy plot.
+   
+       Parameters:
+       - ax (cartopy.mpl.geoaxes.GeoAxes): The Cartopy axes to add the scale bar to.
+                                           Coordinates are expected to be in meters.
+       - x_pos (float): The x-coordinate (in axes fraction) for the left end of the scale bar.
+                        0.0 is the left edge, 1.0 is the right edge.
+       - y_pos (float): The y-coordinate (in axes fraction) for the bottom of the scale bar.
+                        0.0 is the bottom edge, 1.0 is the top edge.
+       - use_km (bool): km or miles.
+       - scale_height (float): The height of the scale bar as a fraction of the plot height.
+       - color (str): The color of the scale bar.
+       - text_color (str): The color of the text label.
+       - font_size (int): The font size of the text label.
+       - zorder (int): The drawing order for the scale bar. Higher values draw on top.
+       """
+
+       # Get the data limits of the axes (in projected coordinates)
+       x_min, x_max = ax.get_xlim()
+       y_min, y_max = ax.get_ylim()
+       logger.debug('map scale data limits: x %f %f, y %f %f', x_min, x_max, y_min, y_max)
+
+       if use_km:
+          units = 'km'
+          scale_len = util.get_nice_number((x_max - x_min) * 0.001)  # m to km
+          length_in_data_units = scale_len * 1000  # km to m
+       else:
+          units = 'mi'
+          scale_len = util.get_nice_number((x_max - x_min) / 1609.34)  # m to mi
+          length_in_data_units = scale_len * 1609.34  # mi to m
+
+       # Calculate the position in data coordinates from axes fractions
+       x_data_pos = x_min + x_pos * (x_max - x_min)
+       y_data_pos = y_min + y_pos * (y_max - y_min)
+
+       # Calculate the height of the scale bar in data units
+       height_data_units = scale_height * (y_max - y_min)
+
+       # Draw the main bar
+       ax.plot([x_data_pos, x_data_pos + length_in_data_units],
+               [y_data_pos + height_data_units / 2, y_data_pos + height_data_units / 2],
+               color=color, linewidth=3, solid_capstyle='butt', zorder=zorder,
+               transform=ax.transData)  # Important: use transData for drawing in data coordinates
+
+       # Draw the ends of the bar
+       ax.plot([x_data_pos, x_data_pos],
+               [y_data_pos, y_data_pos + height_data_units],
+               color=color, linewidth=2, zorder=zorder,
+               transform=ax.transData)
+       ax.plot([x_data_pos + length_in_data_units, x_data_pos + length_in_data_units],
+               [y_data_pos, y_data_pos + height_data_units],
+               color=color, linewidth=2, zorder=zorder,
+               transform=ax.transData)
+
+       # Add the text label below the bar
+       ax.text(x_data_pos + length_in_data_units / 2, y_data_pos - height_data_units / 2,
+               f'{scale_len} {units}',
+               horizontalalignment='center',
+               verticalalignment='top',
+               color=text_color,
+               fontsize=font_size,
+               zorder=zorder,
+               transform=ax.transData)  # Important: use transData for text in data coordinates
