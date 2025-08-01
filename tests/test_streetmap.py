@@ -144,7 +144,7 @@ def test_AbstractMapBackground_clear_text_objs(web_merc_proj):
     o.clear_text_objs(axes)
 
     assert len(o.text_objs) == 0
-    assert len(axes.texts) == 0
+    # assert len(axes.texts) == 0  # text objects are hidden, not removed.
 
     plt.close(axes.figure)
 
@@ -153,7 +153,6 @@ def test_HYSPLITMapBackground___init__(lambert_proj):
     o = streetmap.HYSPLITMapBackground(lambert_proj)
     assert o._GRIDLINE_DENSITY == pytest.approx(0.25)
     assert len(o.background_maps) == 0
-    assert o.gridliners is None
 
 
 def test_HYSPLITMapBackground_read_background_map(lambert_proj):
@@ -310,13 +309,12 @@ def test_HYSPLITMapBackground__erase_gridlines(lambert_proj):
 
     ncol = len(axes.get_children())
 
-    o.gridliners = axes.gridlines(xlocs=[-10.0, 10.0], ylocs=[-10.0, 10.0])
+    axes.gridlines(xlocs=[-10.0, 10.0], ylocs=[-10.0, 10.0])
     assert len(axes.get_children()) == ncol + 1
 
     o._erase_gridlines(axes)
 
     assert len(axes.get_children()) == ncol
-    assert o.gridliners is None
 
     plt.close(axes.figure)
 

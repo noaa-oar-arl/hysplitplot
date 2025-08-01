@@ -13,7 +13,6 @@ import numpy
 
 from hysplitplot import util
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -23,9 +22,9 @@ class NOAALogoDrawer:
     # of dimensions 480x480 with the center at (240, 240)
 
     _bot = [
-      49., 300.6491,  54., 297.4863,  59., 294.2104,  63., 291.2323,
-      66., 288.8176,  70., 285.3888,  74., 281.7560,  80., 276.0039,
-      86., 269.9912,  95., 260.7160, 103., 252.4435, 109., 246.3477,
+      49., 300.6491, 54., 297.4863, 59., 294.2104, 63., 291.2323,
+      66., 288.8176, 70., 285.3888, 74., 281.7560, 80., 276.0039,
+      86., 269.9912, 95., 260.7160, 103., 252.4435, 109., 246.3477,
       115., 240.4270, 121., 234.7451, 129., 227.6344, 135., 222.7078,
       144., 216.0513, 153., 210.3397, 162., 205.6037, 169., 202.5871,
       178., 199.5206, 188., 197.0726, 198., 195.4423, 206., 194.5501,
@@ -50,7 +49,7 @@ class NOAALogoDrawer:
       417., 329.8671, 419., 332.9419]
 
     _top = [
-      83., 352.0953,  88., 351.0599,  91., 349.9423,  98., 346.0323,
+      83., 352.0953, 88., 351.0599, 91., 349.9423, 98., 346.0323,
       103., 342.2440, 109., 336.7567, 116., 329.2594, 123., 320.8134,
       130., 311.6486, 136., 303.3857, 143., 293.4512, 150., 283.3823,
       156., 274.7810, 163., 264.9279, 170., 255.4173, 177., 246.3907,
@@ -73,15 +72,19 @@ class NOAALogoDrawer:
         self.cx = 240.0
         self.cy = 240.0
         self.R = 200.0
-        self.base_font_sz = 12.0   # to be computed
-        self.font_sz1 = 2.5*12.0   # to be computed
-        self.font_sz2 = 1.1*12.0   # to be computed
+        self.base_font_sz = 12.0  # to be computed
+        self.font_sz1 = 2.5 * 12.0  # to be computed
+        self.font_sz2 = 1.1 * 12.0  # to be computed
         self.plot_objs = []
         self.useColor = useColor
 
     def clear(self):
         for t in self.plot_objs:
-            t.remove()
+            # Errors can occur when the rendering engine attempts to access
+            # deleted text objects. An ad hoc solution is to mark these
+            # objects as invisible rather than removing them.
+            # t.remove()
+            t.set_visible(False)
         self.plot_objs.clear()
 
     def draw(self, axes, bbox):
@@ -90,11 +93,11 @@ class NOAALogoDrawer:
         w_axes = abs(x1 - x0)
         h_axes = abs(y1 - y0)
         tr = matplotlib.transforms.Affine2D() \
-            .scale(w_axes/self.logo_width, h_axes/self.logo_height) \
+            .scale(w_axes / self.logo_width, h_axes / self.logo_height) \
             .translate(x0, y0) + axes.transAxes
 
         # 10% of the radius is the font size
-        pts_dis = tr.transform(((0, 0), (0, 0.10*self.R)))
+        pts_dis = tr.transform(((0, 0), (0, 0.10 * self.R)))
         pts_fig = axes.figure.transFigure.inverted().transform(pts_dis)
         self.base_font_sz = 72.0 * axes.figure.get_figheight() \
             * (pts_fig[1, 1] - pts_fig[0, 1])  # inch to pt
@@ -107,13 +110,13 @@ class NOAALogoDrawer:
             clr = util.make_color(0.0, 0.0, 0.7)
         else:
             clr = util.make_color(0.08, 0.08, 0.08)
-        pts = numpy.zeros((107+55, 2))
+        pts = numpy.zeros((107 + 55, 2))
         for k in range(40, 147):
-            pts[k - 40, 0] = self.R*math.cos(k*self._DEG2RAD) + self.cx
-            pts[k - 40, 1] = self.R*math.sin(k*self._DEG2RAD) + self.cy
+            pts[k - 40, 0] = self.R * math.cos(k * self._DEG2RAD) + self.cx
+            pts[k - 40, 1] = self.R * math.sin(k * self._DEG2RAD) + self.cy
         for k in range(55):
-            pts[107 + k, 0] = self._top[k*2]
-            pts[107 + k, 1] = self._top[k*2 + 1]
+            pts[107 + k, 0] = self._top[k * 2]
+            pts[107 + k, 1] = self._top[k * 2 + 1]
         sg1 = matplotlib.patches.Polygon(pts, color=clr, fill=True,
                                          zorder=3, transform=tr)
         axes.add_patch(sg1)
@@ -124,13 +127,13 @@ class NOAALogoDrawer:
             clr = util.make_color(0.0, 0.6, 1.0)
         else:
             clr = util.make_color(0.47, 0.47, 0.47)
-        pts = numpy.zeros((215+98, 2))
+        pts = numpy.zeros((215 + 98, 2))
         for k in range(18, -198, -1):
-            pts[18 - k, 0] = self.R*math.cos(k*self._DEG2RAD) + self.cx
-            pts[18 - k, 1] = self.R*math.sin(k*self._DEG2RAD) + self.cy
+            pts[18 - k, 0] = self.R * math.cos(k * self._DEG2RAD) + self.cx
+            pts[18 - k, 1] = self.R * math.sin(k * self._DEG2RAD) + self.cy
         for k in range(98):
-            pts[215 + k, 0] = self._bot[k*2]
-            pts[215 + k, 1] = self._bot[k*2 + 1]
+            pts[215 + k, 0] = self._bot[k * 2]
+            pts[215 + k, 1] = self._bot[k * 2 + 1]
         sg2 = matplotlib.patches.Polygon(pts, color=clr, fill=True,
                                          zorder=3, transform=tr)
         axes.add_patch(sg2)
@@ -157,10 +160,11 @@ class NOAALogoDrawer:
         for c in noaa1:
             xp = (self.R + 15.0) * math.cos(ang * self._DEG2RAD) + self.cx
             yp = (self.R + 15.0) * math.sin(ang * self._DEG2RAD) + self.cy
-            axes.text(xp, yp, c, fontsize=self.font_sz2, rotation=(ang-90.0),
-                      horizontalalignment="center",
-                      verticalalignment="center", clip_on=True, color="k",
-                      transform=tr)
+            t = axes.text(xp, yp, c, fontsize=self.font_sz2, rotation=(ang - 90.0),
+                          horizontalalignment="center",
+                          verticalalignment="center", clip_on=True, color="k",
+                          transform=tr)
+            self.plot_objs.append(t)
             ang -= delta_ang
 
     def _draw_bottom_label(self, axes, tr):
@@ -172,15 +176,16 @@ class NOAALogoDrawer:
         for c in noaa2:
             xp = (self.R + 15.0) * math.cos(ang * self._DEG2RAD) + self.cx
             yp = (self.R + 15.0) * math.sin(ang * self._DEG2RAD) + self.cy
-            axes.text(xp, yp, c, fontsize=self.font_sz2, rotation=(ang+90.0),
-                      horizontalalignment="center",
-                      verticalalignment="center", clip_on=True, color="k",
-                      transform=tr)
+            t = axes.text(xp, yp, c, fontsize=self.font_sz2, rotation=(ang + 90.0),
+                          horizontalalignment="center",
+                          verticalalignment="center", clip_on=True, color="k",
+                          transform=tr)
+            self.plot_objs.append(t)
             ang += delta_ang
 
     def _draw_ref_circ(self, axes, tr):
         # reference circle for debugging
         circ = matplotlib.patches.Circle((self.cx, self.cy),
-                                         radius=(self.R+15), color="r",
+                                         radius=(self.R + 15), color="r",
                                          fill=False, transform=tr)
         axes.add_patch(circ)

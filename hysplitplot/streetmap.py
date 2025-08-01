@@ -23,6 +23,7 @@ import warnings
 from hysplitplot import const, mapfile, util
 from matplotlib.lines import segment_hits
 from numpy import isin
+from cartopy.mpl.gridliner import Gridliner
 
 logger = logging.getLogger(__name__)
 
@@ -75,13 +76,12 @@ class AbstractMapBackground(ABC):
     def clear_text_objs(self, ax):
         # clear labels from a previous call
         for t in self.text_objs:
-            if t in ax.texts:
-                # Jun 12, 2025
-                # t.remove() is replaced with t.set_visible(False)
-                # to prevent a runtime error from happening when
-                # the HYSPLIT map background is used.
-                # t.remove()
-                t.set_visible(False)  # TODO: fix t.remove()
+            logger.debug('deleting text %d %s', id(t), t.get_text())
+            # Errors can occur when the rendering engine attempts to access
+            # deleted text objects. An ad hoc solution is to mark these
+            # objects as invisible rather than removing them.
+            # t.remove()
+            t.set_visible(False)
         self.text_objs.clear()
 
     @abstractmethod
@@ -104,7 +104,6 @@ class HYSPLITMapBackground(AbstractMapBackground):
     def __init__(self, projection):
         super(HYSPLITMapBackground, self).__init__(projection)
         self.background_maps = []
-        self.gridliners = None
 
     def read_background_map(self, filename):
         self.background_maps.clear()
@@ -218,9 +217,9 @@ class HYSPLITMapBackground(AbstractMapBackground):
                                self.lat_lon_label_interval)
 
     def _erase_gridlines(self, axes):
-        if self.gridliners is not None:
-            self.gridliners.remove()
-            self.gridliners = None
+        for gl in axes.findobj(match=Gridliner):
+           if gl is not None:
+              gl.remove()
 
     def _update_gridlines(self, axes, projection, data_crs, map_color,
                           latlon_label_opt, latlon_spacing):
@@ -280,7 +279,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
             kwargs["xlocs"] = xticks
         if len(yticks) > 0:
             kwargs["ylocs"] = yticks
-        self.gridliners = axes.gridlines(**kwargs)
+        axes.gridlines(**kwargs)
 
         # lat/lon line labels
         self._draw_latlon_labels(axes, projection, data_crs,
@@ -389,6 +388,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
                           verticalalignment="center",
                           color=map_color, clip_on=True)
             self.text_objs.append(t)
+            logger.debug('new lon label %d %s', id(t), t.get_text())
 
         # lat labels
         lon = clon + 0.5 * deltax
@@ -412,6 +412,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
                           verticalalignment="center",
                           color=map_color, clip_on=True)
             self.text_objs.append(t)
+            logger.debug('new lat label %d %s', id(t), t.get_text())
 
 
 class AbstractStreetMap(AbstractMapBackground):

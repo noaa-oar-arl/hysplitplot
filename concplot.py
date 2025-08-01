@@ -18,7 +18,6 @@ from pandas.plotting import register_matplotlib_converters
 
 import hysplitplot
 
-
 # Register a converter to avoid a warning message.
 register_matplotlib_converters()
 
@@ -92,6 +91,7 @@ def print_usage():
 
 
 def refresh_overlay(event):
+    logger.debug("refresh_overlay: called")
     the_plot.on_update_plot_extent()
 
     # next on_draw() should not call this.
@@ -114,6 +114,7 @@ def delayed_refresh_overlay(event):
 
 
 def on_draw(event):
+    logger.debug("on_draw: event %s", event)
     global call_refresh_overlay
     if call_refresh_overlay:
         # Consecutive on_draw() calls are contracted to one call.
