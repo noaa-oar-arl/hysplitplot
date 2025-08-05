@@ -526,8 +526,8 @@ class TrajectoryPlot(plotbase.AbstractPlot):
             # use the first grid for plotting
             model_name = plot_data.grids[0].model.strip()
             if plot_data.get_max_forecast_hour() > 12:
-                dt = self.adjust_for_time_zone(
-                    plot_data.get_forecast_init_datetime())
+                # Show date and time in UTC.
+                dt = plot_data.get_forecast_init_datetime()
                 init_time_str = dt.strftime("%H %Z %d %b")
                 fig_title += "\n{0}  {1}  Forecast Initialization" \
                     .format(init_time_str, model_name)
