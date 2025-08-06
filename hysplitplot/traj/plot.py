@@ -588,8 +588,13 @@ class TrajectoryPlot(plotbase.AbstractPlot):
 
         if self.settings.use_source_time_zone:
             time_zone = self.time_zone
+            # Convert 'America/Chicago' to 'PST' or 'PDT.'
+            dt = data_list[0].trajectories[0].datetimes[0]
+            dt = self.adjust_for_time_zone(dt)
+            time_zone_label = dt.strftime('%Z')
         else:
             time_zone = None
+            time_zone_label = 'UTC'
 
         # Adjust x-range.
         x_range = None
@@ -605,7 +610,9 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         if not data_list[0].is_forward_calculation():
             axes.invert_xaxis()
 
-        axes.xaxis.set_major_formatter(vert_proj.create_xlabel_formatter())
+        axes.set_xlabel(vert_proj.get_xlabel(time_zone_label))
+        axes.tick_params(axis='x', labelsize='small')  # smaller font for tick labels.
+        axes.xaxis.set_major_formatter(vert_proj.create_xvalue_formatter())
         interval_symbol_drawer = vert_proj.create_interval_symbol_drawer()
 
         for k, plotData in enumerate(data_list):
@@ -1019,7 +1026,7 @@ class AbstractVerticalProjection(ABC):
         return None
 
     @abstractmethod
-    def create_xlabel_formatter(self):
+    def create_xvalue_formatter(self):
         pass
 
     @abstractmethod
@@ -1029,6 +1036,10 @@ class AbstractVerticalProjection(ABC):
     def create_interval_symbol_drawer(self):
         return IntervalSymbolDrawerFactory.create_instance(self.axes,
                                                            self.settings)
+
+    @abstractmethod
+    def get_xlabel(self, time_zone_label: str) -> str:
+        pass
 
 
 class TimeVerticalProjection(AbstractVerticalProjection):
@@ -1056,7 +1067,7 @@ class TimeVerticalProjection(AbstractVerticalProjection):
             return matplotlib.dates.HourLocator(byhour=range(0, 24, i))
         return matplotlib.dates.AutoDateLocator()
 
-    def create_xlabel_formatter(self):
+    def create_xvalue_formatter(self):
         return plt.FuncFormatter(self._format_datetime)
 
     @staticmethod
@@ -1071,11 +1082,9 @@ class TimeVerticalProjection(AbstractVerticalProjection):
             dt = matplotlib.dates.num2date(value)
             if dt.minute == 0 and dt.second == 0:
                 if dt.hour == 0:
-                    return "{0:d}\n{1:d}/{2:d}".format(dt.hour,
-                                                       dt.month,
-                                                       dt.day)
+                    return f"{dt.hour:d}\n{dt.month}/{dt.day}"
                 else:
-                    return "{0:d}".format(dt.hour)
+                    return f"{dt.hour:d}"
         return ""
 
     def select_xvalues(self, t, time_zone=None):
@@ -1085,6 +1094,9 @@ class TimeVerticalProjection(AbstractVerticalProjection):
         # after applying the timezone.
         return [x.astimezone(time_zone).replace(tzinfo=None)
                 for x in t.datetimes]
+
+    def get_xlabel(self, time_zone_label: str) -> str:
+        return f"Date and time ({time_zone_label})"
 
 
 class AgeVerticalProjection(AbstractVerticalProjection):
@@ -1097,7 +1109,7 @@ class AgeVerticalProjection(AbstractVerticalProjection):
     def calc_xrange(self, plot_data, time_zone=None):
         return plot_data.get_age_range()
 
-    def create_xlabel_formatter(self):
+    def create_xvalue_formatter(self):
         return plt.FuncFormatter(self._format_age)
 
     @staticmethod
@@ -1108,6 +1120,9 @@ class AgeVerticalProjection(AbstractVerticalProjection):
 
     def select_xvalues(self, t, time_zone=None):
         return t.ages
+
+    def get_xlabel(self, time_zone_label: str) -> str:
+        return f"Age (hrs)"
 
 
 class VerticalProjectionFactory:

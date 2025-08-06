@@ -34,7 +34,7 @@ def plotData():
     r.set_vertical_coordinate(s.vertical_coordinate, s.height_unit)
     r.read("data/tdump")
     s.vertical_coordinate = r.vertical_coordinate
-        
+
     return d
 
 
@@ -47,29 +47,32 @@ def cleanup_plot(p):
     if p.fig is not None:
         plt.close(p.fig)
 
-
 # concrete classes to test abstract classes
 
+
 class AbstractFrameDataIteratorTest(plot.AbstractFrameDataIterator):
-    
+
     def __init__(self, tdump_list):
         super(AbstractFrameDataIteratorTest, self).__init__(tdump_list)
-        
+
     def __iter__(self):
         pass
 
 
 class AbstractVerticalProjectionTest(plot.AbstractVerticalProjection):
-    
+
     def calc_xrange(self, plot_data, time_zone=None):
         pass
-    
-    def create_xlabel_formatter(self):
+
+    def create_xvalue_formatter(self):
         pass
-    
+
     def select_xvalues(self, trajectory, time_zone=None):
         pass
-    
+
+    def get_xlabel(self, time_zone_label):
+        pass
+
 
 def test_TrajectoryPlotSettings___init__():
     s = plot.TrajectoryPlotSettings()
@@ -83,7 +86,7 @@ def test_TrajectoryPlotSettings___init__():
     assert s.map_center == 0
     assert s.color == 1
     assert s.color_codes == None
-    
+
     assert s.end_hour_duration == 0
     assert s.input_files == "tdump"
     assert s.ring == False
@@ -126,7 +129,7 @@ def test_TrajectoryPlotSettings_process_command_line_arguments():
     assert s.label_source == False
     assert s.vertical_coordinate == 1
     assert s.zoom_factor == 0.90
-    
+
     # The -o option implies non-interactive mode
     assert s.interactive_mode == False
 
@@ -135,15 +138,15 @@ def test_TrajectoryPlotSettings_process_command_line_arguments():
 
     s.process_command_line_arguments(["-m1"])
     assert s.map_projection == 1
-    
+
     s.process_command_line_arguments(["-M2"])
     assert s.map_projection == 2
-    
+
     # test -a
     s.gis_output = 0
     s.process_command_line_arguments(["-a2"])
     assert s.gis_output == 2
-    
+
     # test -A
     s.kml_option = 0
     s.process_command_line_arguments(["-A3"])
@@ -206,7 +209,7 @@ def test_TrajectoryPlotSettings_process_command_line_arguments():
     # test -i or -I
     s.process_command_line_arguments(["-iINPUT"])
     assert s.input_files == "INPUT"
-    
+
     s.process_command_line_arguments(["-ITEST_INPUT"])
     assert s.input_files == "TEST_INPUT"
 
@@ -250,7 +253,7 @@ def test_TrajectoryPlotSettings_process_command_line_arguments():
     s.process_command_line_arguments(["-L2:50"])
     assert s.lat_lon_label_interval_option == 2
     assert s.lat_lon_label_interval == 5.0
-    
+
     # test -s or -S
     s.label_source = False
     s.process_command_line_arguments(["-s1"])
@@ -258,7 +261,7 @@ def test_TrajectoryPlotSettings_process_command_line_arguments():
 
     s.process_command_line_arguments(["-S0"])
     assert s.label_source == False
-    
+
     # test -v or -V
     s.vertical_coordinate = -1
     s.process_command_line_arguments(["-v0"])
@@ -328,7 +331,6 @@ def test_TrajectoryPlotSettings_reset_marker_cycle():
     assert s.marker_cycle_index == -1
 
 
-
 def test_TrajectoryPlotSettingsReader___init__():
     s = plot.TrajectoryPlotSettings()
     r = plot.TrajectoryPlotSettingsReader(s)
@@ -363,7 +365,7 @@ def test_TrajectoryPlotSettingsReader_read():
 def test_TrapjectoyPlot___init__():
     p = plot.TrajectoryPlot()
 
-    assert isinstance(p.labels, labels.LabelsConfig)    # from the base class
+    assert isinstance(p.labels, labels.LabelsConfig)  # from the base class
     assert hasattr(p, "settings")
     assert hasattr(p, "data_list")
     assert hasattr(p, "traj_axes")
@@ -393,7 +395,7 @@ def test_TrajectoryPlot_read_data_files():
     assert p.settings.color_cycle is not None
     assert p.plot_saver_list is not None
     assert p.time_zone is not None
-    
+
 
 def test_TrajectoryPlot_has_terrain_profile(plotData):
     assert plot.TrajectoryPlot.has_terrain_profile([plotData]) == False
@@ -417,21 +419,21 @@ def test_TrajectoryPlot_set_trajectory_color():
     pd.trajectories.append(model.Trajectory())
     pd.trajectories.append(model.Trajectory())
     pd.trajectories.append(model.Trajectory())
-    
+
     p.set_trajectory_color([pd], s)
-    
+
     assert pd.trajectories[0].color == '2'
     assert pd.trajectories[1].color == '3'
     assert pd.trajectories[2].color == '1'
     assert pd.trajectories[3].color == '1'
-    
+
     # create an additional tdump.
     # for multiple files, colors are assigned by file.
     pd2 = model.TrajectoryDump()
     pd2.trajectories.append(model.Trajectory())
     pd2.trajectories.append(model.Trajectory())
-    
-    p.set_trajectory_color([pd,pd2], s)
+
+    p.set_trajectory_color([pd, pd2], s)
 
     assert pd.trajectories[0].color == '2'
     assert pd.trajectories[1].color == '2'
@@ -443,25 +445,25 @@ def test_TrajectoryPlot_set_trajectory_color():
 
 def test_TrajectoryPlot__make_clusterlist_filename():
     p = plot.TrajectoryPlot()
-    
+
     # create a test file
     with open("CLUSLIST_4", "wt") as f:
         f.write("line")
-    
+
     fn, start_index, candidates = p._make_clusterlist_filename(4)
     assert fn == "CLUSLIST_4"
     assert start_index == 1
-    
+
     os.remove("CLUSLIST_4")
-    
+
     # create another test file
     with open("CLUSLIST_3", "wt") as f:
         f.write("line")
-    
+
     fn, start_index, candidates = p._make_clusterlist_filename(4)
     assert fn == "CLUSLIST_3"
     assert start_index == 0
-    
+
     os.remove("CLUSLIST_3")
 
     # otherwise
@@ -471,7 +473,7 @@ def test_TrajectoryPlot__make_clusterlist_filename():
     assert candidates[0] == "CLUSLIST_4"
     assert candidates[1] == "CLUSLIST_3"
 
-    
+
 def test_TrajecotryPlot__read_cluster_info_if_exists():
     p = plot.TrajectoryPlot()
     pd = model.TrajectoryDump()
@@ -482,21 +484,21 @@ def test_TrajecotryPlot__read_cluster_info_if_exists():
     pd.trajectories.append(model.Trajectory())
     pd.trajectories.append(model.Trajectory())
     p.data_list = [pd]
-    
+
     # when CLUSLIST_4 does not exist
     try:
         p._read_cluster_info_if_exists(p.data_list)
         pytest.fail("expected an exception")
     except Exception as ex:
         assert str(ex) == "file not found CLUSLIST_4 or CLUSLIST_3"
-    
+
     # create CLUSLIST_4
     with open("CLUSLIST_4", "wt") as f:
         f.write("1 1\n")
         f.write("2 1\n")
         f.write("3 1\n")
         f.write("4 1\n")
-    
+
     try:
         p._read_cluster_info_if_exists(p.data_list)
         assert p.cluster_list is not None
@@ -513,7 +515,7 @@ def test_TrajectoryPlot__initialize_map_projection():
     p.read_data_files()
 
     assert p.street_map is None
-    
+
     p._initialize_map_projection(p.data_list)
 
     assert isinstance(p.projection, mapproj.AbstractMapProjection)
@@ -565,7 +567,7 @@ def test_TrajectoryPlot__determine_vertical_limit(plotData):
     low, high = p._determine_vertical_limit(pd, VerticalCoordinate.ABOVE_GROUND_LEVEL)
     assert low is None
     assert high is None
-    
+
 
 def test_TrajectoryPlot_layout():
     p = plot.TrajectoryPlot()
@@ -587,7 +589,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
     p = plot.TrajectoryPlot()
     p.labels = labels.LabelsConfig()
     p.cluster_list = clist.ClusterList(1)
-    
+
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "Forward trajectories starting at 0000 UTC 16 Oct 1995\n" + \
@@ -618,7 +620,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
            "Forward trajectories starting at 1900 EST 15 Oct 1995\n" + \
            "TEST  Meteorological Data"
     p.time_zone = None
-    
+
     # Change the starting time of a trajectory
 
     t = plotData.trajectories[2]
@@ -654,16 +656,16 @@ def test_TrajectoryPlot_make_plot_title(plotData):
            "TEST  Meteorological Data"
 
     # IDLBL = "MERGMEAN"
-    
+
     plotData.IDLBL = "MERGMEAN"
     p.cluster_list.total_traj = 112
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "112 forward trajectories\n" + \
            "TEST  Meteorological Data"
-           
+
     # change direction
-    
+
     plotData.trajectory_direction = "BACKWARD"
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
@@ -671,8 +673,8 @@ def test_TrajectoryPlot_make_plot_title(plotData):
            "TEST  Meteorological Data"
 
     # Forecast
-    
-    plotData.trajectories[0].forecast_hours[0] = 13.0 # > 12
+
+    plotData.trajectories[0].forecast_hours[0] = 13.0  # > 12
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "112 backward trajectories\n" + \
@@ -680,11 +682,11 @@ def test_TrajectoryPlot_make_plot_title(plotData):
 
     # Time zone
     p.time_zone = pytz.timezone("EST")
-    
+
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "112 backward trajectories\n" + \
-           "06 EST 15 Oct  TEST  Forecast Initialization"
+           "11 UTC 15 Oct  TEST  Forecast Initialization"
 
 
 def test_TrajectoryPlot_make_ylabel():
@@ -722,15 +724,15 @@ def test_TrajectoryPlot_make_ylabel():
 
     label = plot.TrajectoryPlot.make_ylabel(plotData, "*", 6)
     assert label == "Source * at multiple locations"
-    
-    
+
+
 def test_TrajectoryPlot_get_street_map_target_axes():
     p = plot.TrajectoryPlot()
     ax = plt.axes()
     p.traj_axes = ax
     assert p.get_street_map_target_axes() is ax
     plt.close(ax.get_figure())
-    
+
 
 def test_TrajectoryPlot_draw_height_profile():
     p = plot.TrajectoryPlot()
@@ -797,13 +799,13 @@ def test_TrajectoryPlot_draw_trajectory_uncertainty():
     # See if no exception is thrown.
     try:
         lons = (-84.815, -84.395)
-        lats = ( 39.908,  39.690)
+        lats = (39.908, 39.690)
         sigmas = ((0.1, 0.1), (0.1, 0.2))
         p.draw_trajectory_uncertainty(lons, lats, sigmas, "r")
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
-    
+
     plt.close(ax.get_figure())
 
 
@@ -848,7 +850,7 @@ def test_TrajectoryPlot_draw():
 
     assert os.path.exists("trajplot.ps")
     os.remove("trajplot.ps")
-    
+
     # Save to a file
     p.settings.interactive_mode = False
     plot_saver = multipage.PlotFileWriterFactory.create_instance(p.settings.frames_per_file,
@@ -861,26 +863,26 @@ def test_TrajectoryPlot_draw():
     os.remove("__traj0002.png")
 
     cleanup_plot(p)
-    
+
 
 def test_TrajectoryPlot_write_gis_files():
     p = plot.TrajectoryPlot()
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated", "-a3", "+a0", "-A0"])
     p.read_data_files()
-    
+
     if os.path.exists("HYSPLITtraj_ps_01.kml"):
         os.remove("HYSPLITtraj_ps_01.kml")
-        
+
     p.write_gis_files()
-    
+
     assert os.path.exists("HYSPLITtraj_ps_01.kml")
-    
+
     # parse the XML document and check some elements.
     tree = ElementTree.parse("HYSPLITtraj_ps_01.kml")
     root = tree.getroot()
     name = root.find("./{http://www.opengis.net/kml/2.2}Document/{http://www.opengis.net/kml/2.2}name")
     assert name.text == "NOAA HYSPLIT Trajectory ps"
-    
+
     os.remove("HYSPLITtraj_ps_01.kml")
 
 
@@ -983,7 +985,7 @@ def test_TimeIntervalSymbolDrawer__filter_datadraw(plotData):
     assert y12[0] == 38.586
 
     plt.close(axes.get_figure())
-    
+
 
 def test_AgeIntervalSymbolDrawer___init__():
     s = plot.TrajectoryPlotSettings()
@@ -1036,8 +1038,8 @@ def test_AgeIntervalSymbolDrawer__filter_data(plotData):
     assert y12[0] == 38.586
 
     plt.close(axes.get_figure())
-    
-    
+
+
 def test_IntervalSymbolDrawerFactory_create_instance():
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
@@ -1055,7 +1057,7 @@ def test_IntervalSymbolDrawerFactory_create_instance():
     assert isinstance(d, plot.NullIntervalSymbolDrawer)
 
     plt.close(axes.get_figure())
- 
+
 
 def test_AbstractVerticalProjection___init__():
     s = plot.TrajectoryPlotSettings()
@@ -1083,11 +1085,11 @@ def test_AbstractVerticalProjection_get_major_tick_locator(plotData):
     plt.close(axes.get_figure())
 
 
-def test_AbstractVerticalProjection_create_xlabel_formatter():
+def test_AbstractVerticalProjection_create_xvalue_formatter():
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
     o = AbstractVerticalProjectionTest(axes, s, 6)
-    assert o.create_xlabel_formatter() == None
+    assert o.create_xvalue_formatter() == None
     plt.close(axes.get_figure())
 
 
@@ -1098,7 +1100,7 @@ def test_AbstractVerticalProjection_select_xvalues(plotData):
     assert o.select_xvalues(plotData.trajectories[0]) == None
     plt.close(axes.get_figure())
 
-    
+
 def test_AbstractVerticalProjection_create_interval_symbol_drawer():
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
@@ -1123,14 +1125,14 @@ def test_TimeVerticalProjection_calc_xrange(plotData):
     o = plot.TimeVerticalProjection(axes, s, 6)
     r = o.calc_xrange(plotData)
     utc = pytz.utc
-    assert r[0] == datetime.datetime(1995, 10, 16,  0, 0, 0, 0, utc)
+    assert r[0] == datetime.datetime(1995, 10, 16, 0, 0, 0, 0, utc)
     assert r[1] == datetime.datetime(1995, 10, 16, 12, 0, 0, 0, utc)
-    
+
     est = pytz.timezone("EST")
     r = o.calc_xrange(plotData, est)
     assert r[0] == datetime.datetime(1995, 10, 15, 19, 0, 0, 0)
-    assert r[1] == datetime.datetime(1995, 10, 16,  7, 0, 0, 0)
-    
+    assert r[1] == datetime.datetime(1995, 10, 16, 7, 0, 0, 0)
+
     plt.close(axes.get_figure())
 
 
@@ -1148,11 +1150,11 @@ def test_TimeVerticalProjection_get_major_tick_locator(plotData):
     plt.close(axes.get_figure())
 
 
-def test_TimeVerticalProjection_create_xlabel_formatter():
+def test_TimeVerticalProjection_create_xvalue_formatter():
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
     o = plot.TimeVerticalProjection(axes, s, 6)
-    f = o.create_xlabel_formatter()
+    f = o.create_xvalue_formatter()
     assert isinstance(f, plt.FuncFormatter)
     plt.close(axes.get_figure())
 
@@ -1173,18 +1175,26 @@ def test_TimeVerticalProjection_select_xvalues(plotData):
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
     o = plot.TimeVerticalProjection(axes, s, 6)
-    
+
     x = o.select_xvalues(plotData.trajectories[0])
     utc = pytz.utc
     assert len(x) > 0
     assert x[0] == datetime.datetime(1995, 10, 16, 0, 0, 0, 0, utc)
 
-    est = pytz.timezone("EST")    
+    est = pytz.timezone("EST")
     x = o.select_xvalues(plotData.trajectories[0], est)
     utc = pytz.utc
     assert len(x) > 0
     assert x[0] == datetime.datetime(1995, 10, 15, 19, 0, 0, 0)
-    
+
+    plt.close(axes.get_figure())
+
+
+def test_TimeVerticalProjection_create_xvalue_formatter():
+    s = plot.TrajectoryPlotSettings()
+    axes = plt.axes()
+    o = plot.TimeVerticalProjection(axes, s, 6)
+    assert o.get_xlabel("EDT") == "Date and time (EDT)"
     plt.close(axes.get_figure())
 
 
@@ -1216,11 +1226,11 @@ def test_AgeVerticalProjection_get_major_tick_locator(plotData):
     plt.close(axes.get_figure())
 
 
-def test_AgeVerticalProjection_create_xlabel_formatter():
+def test_AgeVerticalProjection_create_xvalue_formatter():
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
     o = plot.AgeVerticalProjection(axes, s, 6)
-    f = o.create_xlabel_formatter()
+    f = o.create_xvalue_formatter()
     assert isinstance(f, plt.FuncFormatter)
     plt.close(axes.get_figure())
 
@@ -1235,51 +1245,59 @@ def test_AgeVerticalProjection_select_xvalues(plotData):
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
     o = plot.AgeVerticalProjection(axes, s, 6)
-    
+
     x = o.select_xvalues(plotData.trajectories[0])
     assert len(x) > 0
     assert x[0] == 0
-    
+
     est = pytz.timezone("EST")
     x = o.select_xvalues(plotData.trajectories[0], est)
     assert len(x) > 0
     assert x[0] == 0
-    
+
     plt.close(axes.get_figure())
- 
+
+
+def test_AgeVerticalProjection_create_xvalue_formatter():
+    s = plot.TrajectoryPlotSettings()
+    axes = plt.axes()
+    o = plot.AgeVerticalProjection(axes, s, 6)
+    assert o.get_xlabel("EDT") == "Age (hrs)"
+    plt.close(axes.get_figure())
+
 
 def test_VerticalProjectionFactory_create_instance():
     s = plot.TrajectoryPlotSettings()
     axes = plt.axes()
-    
+
     s.time_label_interval = 6
     o = plot.VerticalProjectionFactory.create_instance(axes, s)
     assert isinstance(o, plot.TimeVerticalProjection)
-    
+
     s.time_label_interval = -6
     o = plot.VerticalProjectionFactory.create_instance(axes, s)
     assert isinstance(o, plot.AgeVerticalProjection)
-    
+
     s.time_label_interval = 0
     o = plot.VerticalProjectionFactory.create_instance(axes, s)
     assert isinstance(o, plot.TimeVerticalProjection)
-    
+
     plt.close(axes.get_figure())
-    
-    
+
+
 def test_FrameDataIteratorFactory_create_instance(plotData):
     tdump_list = [plotData]
-    
+
     o = plot.FrameDataIteratorFactory.create_instance(const.Frames.ALL_FILES_ON_ONE, tdump_list)
     assert isinstance(o, plot.AllAtOnceFrameDataIterator)
-        
+
     o = plot.FrameDataIteratorFactory.create_instance(const.Frames.ONE_PER_FILE, tdump_list)
     assert isinstance(o, plot.OneByOneFrameDataIterator)
 
 
 def test_AbstractFrameDataIterator___init__(plotData):
     tdump_list = [plotData]
-        
+
     # Since an object cannot be created from an abstract class, instantiate a concrete test class.
     o = AbstractFrameDataIteratorTest(tdump_list)
     assert len(o.tdump_list) == 1
@@ -1288,20 +1306,20 @@ def test_AbstractFrameDataIterator___init__(plotData):
 
 def test_AllAtOnceFrameDataIterator___init__(plotData):
     tdump_list = [plotData]
-    
+
     o = plot.AllAtOnceFrameDataIterator(tdump_list)
     assert len(o.tdump_list) == 1
     assert o.tdump_list[0] is plotData
-    
-    
+
+
 def test_AllAtOnceFrameDataIterator___iter__(plotData):
     tdump_list = [plotData, plotData]
     a = []
-    
+
     o = plot.AllAtOnceFrameDataIterator(tdump_list)
     for data_list in o:
         a.append(data_list)
-        
+
     assert len(a) == 1
     assert len(a[0]) == 2
     assert a[0] == [plotData, plotData]
@@ -1309,19 +1327,19 @@ def test_AllAtOnceFrameDataIterator___iter__(plotData):
 
 def test_OneByOneFrameDataIterator___init__(plotData):
     tdump_list = [plotData]
-    
+
     o = plot.OneByOneFrameDataIterator(tdump_list)
     assert len(o.tdump_list) == 1
     assert o.tdump_list[0] is plotData
-    
-    
+
+
 def test_OneByOneFrameDataIterator___iter__(plotData):
     tdump_list = [plotData, plotData]
     a = []
-    
+
     o = plot.OneByOneFrameDataIterator(tdump_list)
     for data_list in o:
         a.append(data_list)
-        
+
     assert len(a) == 2
     assert a == [[plotData], [plotData]]
