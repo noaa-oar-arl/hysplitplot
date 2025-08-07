@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class MapProjectionFactory:
 
     @staticmethod
-    def create_instance(map_proj, zoom_factor, center_loc, scale, grid_deltas,
+    def create_instance(map_proj, zoom_factor, center_loc, aspect_ratio, grid_deltas,
                         map_box, fixed_center_loc=False):
         obj = None
 
@@ -29,20 +29,20 @@ class MapProjectionFactory:
                                                            center_loc)
 
         if kproj == const.MapProjection.POLAR:
-            obj = PolarProjection(kproj, zoom_factor, center_loc, scale,
+            obj = PolarProjection(kproj, zoom_factor, center_loc, aspect_ratio,
                                   grid_deltas)
         elif kproj == const.MapProjection.LAMBERT:
-            obj = LambertProjection(kproj, zoom_factor, center_loc, scale,
+            obj = LambertProjection(kproj, zoom_factor, center_loc, aspect_ratio,
                                     grid_deltas)
         elif kproj == const.MapProjection.MERCATOR:
-            obj = MercatorProjection(kproj, zoom_factor, center_loc, scale,
+            obj = MercatorProjection(kproj, zoom_factor, center_loc, aspect_ratio,
                                      grid_deltas)
         elif kproj == const.MapProjection.CYL_EQU:
             obj = CylindricalEquidistantProjection(kproj, zoom_factor,
-                                                   center_loc, scale,
+                                                   center_loc, aspect_ratio,
                                                    grid_deltas)
         elif kproj == const.MapProjection.WEB_MERCATOR:
-            obj = WebMercatorProjection(kproj, zoom_factor, center_loc, scale,
+            obj = WebMercatorProjection(kproj, zoom_factor, center_loc, aspect_ratio,
                                         grid_deltas)
         else:
             raise Exception("unknown map projection {0}".format(kproj))
@@ -52,7 +52,7 @@ class MapProjectionFactory:
         # Mercator/Lambert grids not permitted to encompass the poles
         if not obj.sanity_check():
             proj = obj.create_sane_projection(kproj, zoom_factor, center_loc,
-                                              scale, grid_deltas)
+                                              aspect_ratio, grid_deltas)
             proj.do_initial_estimates(map_box, center_loc, fixed_center_loc)
             return proj
 
@@ -67,10 +67,10 @@ class AbstractMapProjection(ABC):
     TOLERANCE = 0.5  # xy2ll->ll2xy allows difference <= TOLERANCE*grid
     CONTRACTION = 0.2  # contraction factor when corners are outside map
 
-    def __init__(self, proj_type, zoom_factor, center_loc, scale, grid_deltas):
+    def __init__(self, proj_type, zoom_factor, center_loc, aspect_ratio, grid_deltas):
         self.proj_type = proj_type
         self.zoom_factor = zoom_factor
-        self.scale = scale
+        self.aspect_ratio = aspect_ratio
         self.deltas = grid_deltas  # (dlon, dlat)
         #
         self.crs = None  # to be created by a child class
@@ -113,7 +113,7 @@ class AbstractMapProjection(ABC):
 
         # scale map per aspect ratio
         corners_saved = corners_xy
-        corners_xy = self.scale_per_aspect_ratio(corners_xy, self.scale)
+        corners_xy = self.scale_per_aspect_ratio(corners_xy, self.aspect_ratio)
         corners_xy = self.choose_corners(corners_xy, corners_saved)
         logger.debug("X, Y asp-zum: %s", corners_xy)
 
@@ -139,8 +139,14 @@ class AbstractMapProjection(ABC):
 
         self.corners_xy = corners_xy
         self.corners_lonlat = corners_lonlat
-        logger.debug("Final: %s", corners_xy)
-        logger.debug("Final: lonlat %s", self.corners_lonlat)
+        ratio_xy = self.calc_aspect_ratio(corners_xy)
+        ratio_ll = self.calc_aspect_ratio(corners_lonlat)
+        logger.debug("Final: %s (aspect ratio %f)", corners_xy, ratio_xy)
+        logger.debug("Final: lonlat %s (aspect ratio %f)", self.corners_lonlat, ratio_ll)
+
+    def calc_aspect_ratio(self, corners) -> float:
+        x1, x2, y1, y2 = corners
+        return abs((x2 - x1) / (y2 - y1))
 
     def validate_corners(self, corners):
         x1, x2, y1, y2 = corners
@@ -234,7 +240,7 @@ class AbstractMapProjection(ABC):
 
         y1 = util.nearest_int(y1)
         y2 = util.nearest_int(y2)
-        delx = (y2 - y1) * self.scale
+        delx = (y2 - y1) * self.aspect_ratio
         if self.proj_type == const.MapProjection.CYL_EQU:
             delx *= 2.0
         x1 = util.nearest_int(x1)
@@ -360,7 +366,7 @@ class AbstractMapProjection(ABC):
         # A child class may override this.
         return True
 
-    def create_sane_projection(self, map_proj, zoom_factor, center_loc, scale,
+    def create_sane_projection(self, map_proj, zoom_factor, center_loc, aspect_ratio,
                                grid_deltas):
         # A child class should override this if its sanity_check() can
         # return False.
@@ -373,9 +379,9 @@ class AbstractMapProjection(ABC):
 
 class PoleExcludingProjection(AbstractMapProjection):
 
-    def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
+    def __init__(self, map_proj, zoom_factor, center_loc, aspect_ratio, grid_deltas):
         super(PoleExcludingProjection, self).__init__(map_proj, zoom_factor,
-                                                      center_loc, scale,
+                                                      center_loc, aspect_ratio,
                                                       grid_deltas)
 
     def sanity_check(self):
@@ -384,9 +390,9 @@ class PoleExcludingProjection(AbstractMapProjection):
             return False
         return True
 
-    def create_sane_projection(self, map_proj, zoom_factor, center_loc, scale,
+    def create_sane_projection(self, map_proj, zoom_factor, center_loc, aspect_ratio,
                                grid_deltas):
-        return PolarProjection(map_proj, zoom_factor, center_loc, scale,
+        return PolarProjection(map_proj, zoom_factor, center_loc, aspect_ratio,
                                grid_deltas)
 
     def need_pole_exclusion(self, corners_lonlat):
@@ -396,9 +402,9 @@ class PoleExcludingProjection(AbstractMapProjection):
 
 class LambertProjection(PoleExcludingProjection):
 
-    def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
+    def __init__(self, map_proj, zoom_factor, center_loc, aspect_ratio, grid_deltas):
         super(LambertProjection, self).__init__(map_proj, zoom_factor,
-                                                center_loc, scale, grid_deltas)
+                                                center_loc, aspect_ratio, grid_deltas)
         self.proj_type = const.MapProjection.LAMBERT
         self.crs = self.create_crs()
 
@@ -423,9 +429,9 @@ class LambertProjection(PoleExcludingProjection):
 
 class PolarProjection(AbstractMapProjection):
 
-    def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
+    def __init__(self, map_proj, zoom_factor, center_loc, aspect_ratio, grid_deltas):
         super(PolarProjection, self).__init__(map_proj, zoom_factor,
-                                              center_loc, scale, grid_deltas)
+                                              center_loc, aspect_ratio, grid_deltas)
         self.proj_type = const.MapProjection.POLAR
         self.crs = self.create_crs()
 
@@ -441,9 +447,9 @@ class PolarProjection(AbstractMapProjection):
 
 class MercatorProjection(PoleExcludingProjection):
 
-    def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
+    def __init__(self, map_proj, zoom_factor, center_loc, aspect_ratio, grid_deltas):
         super(MercatorProjection, self).__init__(map_proj, zoom_factor,
-                                                 center_loc, scale,
+                                                 center_loc, aspect_ratio,
                                                  grid_deltas)
         self.proj_type = const.MapProjection.MERCATOR
         self.crs = self.create_crs()
@@ -462,11 +468,11 @@ class MercatorProjection(PoleExcludingProjection):
 
 class CylindricalEquidistantProjection(AbstractMapProjection):
 
-    def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
+    def __init__(self, map_proj, zoom_factor, center_loc, aspect_ratio, grid_deltas):
         super(CylindricalEquidistantProjection, self).__init__(map_proj,
                                                                zoom_factor,
                                                                center_loc,
-                                                               scale,
+                                                               aspect_ratio,
                                                                grid_deltas)
         self.proj_type = const.MapProjection.CYL_EQU
         self.crs = self.create_crs()
@@ -480,9 +486,9 @@ class CylindricalEquidistantProjection(AbstractMapProjection):
 
 class WebMercatorProjection(PoleExcludingProjection):
 
-    def __init__(self, map_proj, zoom_factor, center_loc, scale, grid_deltas):
+    def __init__(self, map_proj, zoom_factor, center_loc, aspect_ratio, grid_deltas):
         super(WebMercatorProjection, self).__init__(map_proj, zoom_factor,
-                                                    center_loc, scale,
+                                                    center_loc, aspect_ratio,
                                                     grid_deltas)
         self.proj_type = const.MapProjection.WEB_MERCATOR
         self.crs = self.create_crs()

@@ -54,8 +54,8 @@ def lambert_proj():
 # For testing the AbstractMapProjection abstract class
 class AbstractMapProjectionTest(mapproj.AbstractMapProjection):
 
-    def __init__(self, proj_type, zoom_factor, center_loc, scale, grid_deltas):
-        super(AbstractMapProjectionTest, self).__init__(proj_type, zoom_factor, center_loc, scale, grid_deltas)
+    def __init__(self, proj_type, zoom_factor, center_loc, aspect_ratio, grid_deltas):
+        super(AbstractMapProjectionTest, self).__init__(proj_type, zoom_factor, center_loc, aspect_ratio, grid_deltas)
 
     def get_tangent_lat(self, center_loc):
         return 0.0
@@ -67,8 +67,8 @@ class AbstractMapProjectionTest(mapproj.AbstractMapProjection):
 # For testing the PoleExcludingProjection abstract class
 class PoleExcludingPorjectionTest(mapproj.PoleExcludingProjection):
 
-    def __init__(self, proj_type, zoom_factor, center_loc, scale, grid_deltas):
-        super(PoleExcludingPorjectionTest, self).__init__(proj_type, zoom_factor, center_loc, scale, grid_deltas)
+    def __init__(self, proj_type, zoom_factor, center_loc, aspect_ratio, grid_deltas):
+        super(PoleExcludingPorjectionTest, self).__init__(proj_type, zoom_factor, center_loc, aspect_ratio, grid_deltas)
 
     def get_tangent_lat(self, center_loc):
         pass
@@ -133,7 +133,7 @@ def test_AbstractMapProjection___init__():
 
     assert m.proj_type == const.MapProjection.AUTO
     assert m.zoom_factor == 0.5
-    assert m.scale == 1.3
+    assert m.aspect_ratio == 1.3
     assert m.deltas == [1.0, 1.0]
 
     assert m.crs == None
@@ -464,7 +464,7 @@ def test_PoleExcludingProjection__init__():
     m = PoleExcludingPorjectionTest(const.MapProjection.AUTO, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
     assert m.zoom_factor == 0.5
     assert m.proj_type == const.MapProjection.AUTO
-    assert m.scale == 1.3
+    assert m.aspect_ratio == 1.3
     assert m.deltas == pytest.approx((1.0, 1.0))
     assert m.center_loc == pytest.approx((-125.0, 45.0))
 
@@ -483,7 +483,7 @@ def test_PoleExcludingProjection_create_sane_projection(lambert_proj):
     o = lambert_proj.create_sane_projection(const.MapProjection.LAMBERT,
                                               0.5,
                                               m.center_loc,
-                                              m.scale,
+                                              m.aspect_ratio,
                                               m.deltas)
     assert isinstance(o, mapproj.PolarProjection)
 
