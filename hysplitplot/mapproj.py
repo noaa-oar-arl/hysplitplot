@@ -70,7 +70,7 @@ class AbstractMapProjection(ABC):
     def __init__(self, proj_type, zoom_factor, center_loc, aspect_ratio, grid_deltas):
         self.proj_type = proj_type
         self.zoom_factor = zoom_factor
-        self.aspect_ratio = aspect_ratio
+        self.aspect_ratio = aspect_ratio  # plot width over plot height
         self.deltas = grid_deltas  # (dlon, dlat)
         #
         self.crs = None  # to be created by a child class
@@ -146,7 +146,7 @@ class AbstractMapProjection(ABC):
 
     def calc_aspect_ratio(self, corners) -> float:
         x1, x2, y1, y2 = corners
-        return abs((x2 - x1) / (y2 - y1))
+        return abs((y2 - y1) / (x2 - x1))
 
     def validate_corners(self, corners):
         x1, x2, y1, y2 = corners
@@ -179,16 +179,16 @@ class AbstractMapProjection(ABC):
         yc = 0.5 * (y1 + y2)
 
         # scale map according to aspect ratio
-        if abs(x2 - x1) <= aspect_ratio * abs(y2 - y1):
+        if aspect_ratio * abs(x2 - x1) <= abs(y2 - y1):
             # expand in x-direction
-            delx = 0.5 * (y2 - y1) * aspect_ratio
+            delx = 0.5 * (y2 - y1) / aspect_ratio
             x1 = xc - delx
             x2 = xc + delx
             logger.debug("aspect_ratio %f, x-expansion %f",
                          aspect_ratio, delx)
         else:
             # expand in y-direction
-            dely = 0.5 * (x2 - x1) / aspect_ratio
+            dely = 0.5 * (x2 - x1) * aspect_ratio
             y1 = yc - dely
             y2 = yc + dely
             logger.debug("aspect_ratio %f, y-expansion %f",
@@ -240,7 +240,7 @@ class AbstractMapProjection(ABC):
 
         y1 = util.nearest_int(y1)
         y2 = util.nearest_int(y2)
-        delx = (y2 - y1) * self.aspect_ratio
+        delx = (y2 - y1) / self.aspect_ratio
         if self.proj_type == const.MapProjection.CYL_EQU:
             delx *= 2.0
         x1 = util.nearest_int(x1)
