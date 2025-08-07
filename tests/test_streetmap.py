@@ -426,28 +426,6 @@ def test_AbstractStreetMap_update_extent(web_merc_proj):
     plt.close(axes.figure)
 
 
-def test_AbstractStreetMap__compute_tile_count(web_merc_proj):
-    o = AbstractStreetMapTest(web_merc_proj)
-    assert o._compute_tile_count(-20.0, 20.0, 35.0, 65.0, 3) == 4
-    assert o._compute_tile_count(142.35, -168.87, -58.07, -21.50, 3) == 2
-
-
-def test_AbstractStreetMap__reproject_extent(web_merc_proj):
-    o = AbstractStreetMapTest(web_merc_proj)
-
-    ext = o._reproject_extent((15028131.3, 20037508.3, -10018754.2, 0.0))
-    assert ext == pytest.approx((-3533280.4, 1476096.6, -10018754.2, 0.0))
-
-
-def test_AbstractStreetMap__fetch_tiles(web_merc_proj):
-    o = AbstractStreetMapTest(web_merc_proj)
-
-    t = o._fetch_tiles(142.35, -168.87, -57.8292, -21.9153, 2)
-    assert len(t) == 2
-    assert t[0][1] == pytest.approx((-8542657.5, 1476096.7, -10018754.2, -1.4162309e-09), abs=1.0)
-    assert t[1][1] == pytest.approx((1476096.7, 11494850.8, -10018754.2, -1.4162309e-09), abs=1.0)
-
-
 def test_AbstractStreetMap_draw(lambert_proj):
     data_crs = cartopy.crs.Geodetic()
 

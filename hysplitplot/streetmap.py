@@ -473,68 +473,6 @@ class AbstractStreetMap(AbstractMapBackground):
                   self.projection.corners_xy,
                   self.projection.corners_lonlat)
 
-    def _compute_tile_count(self, lonl, lonr, latb, latt, zoom):
-        logger.debug("Counting tiles for %f %f %f %f", lonl, lonr, latb, latt)
-        # Recall a longitude is in the range [-180, 180]
-        # for the Web Mercator projection.
-        if util.is_crossing_date_line(lonl, lonr):
-            eps = 1.0e-10
-            logger.debug("Counting tiles for %f %f %f %f",
-                         lonl, latb, 180.0 - eps, latt)
-            ntiles1 = contextily.howmany(lonl, latb, 180.0, latt,
-                                         zoom, ll=True)
-            logger.debug("Counting tiles for %f %f %f %f",
-                         -180.0, latb, lonr, latt)
-            ntiles2 = contextily.howmany(-180.0 + eps, latb, lonr, latt,
-                                         zoom, ll=True)
-            ntiles = max(ntiles1, ntiles2)
-        else:
-            ntiles = contextily.howmany(lonl, latb, lonr, latt, zoom, ll=True)
-        return ntiles
-
-    def _reproject_extent(self, extent):
-        """Project the extent in the standard Web Mercator to our CRS."""
-        x0, x1, y0, y1 = extent
-        west, south = mercantile.lnglat(x0, y0)
-        east, north = mercantile.lnglat(x1, y1)
-        logger.debug("Reprojecting extent %s or %f %f %f %f",
-                     extent, west, east, south, north)
-
-        x0, y0 = self.projection.calc_xy(west, south)
-        x1, y1 = self.projection.calc_xy(east, north)
-        extent = x0, x1, y0, y1
-        logger.debug(" to extent %s", extent)
-        return extent
-
-    def _fetch_tiles(self, lonl, lonr, latb, latt, zoom):
-        tiles = []
-        if util.is_crossing_date_line(lonl, lonr):
-            # Send two tile requests by dividing the longitude range
-            # at the dateline crossing.
-            eps = 1.0e-10
-            basemap1, extent1 = contextily.bounds2img(lonl, latb,
-                                                      180.0 - eps, latt,
-                                                      zoom=zoom, ll=True,
-                                                      source=self.tile_provider)
-            extent1 = self._reproject_extent(extent1)
-            tiles.append([basemap1, extent1])
-
-            basemap2, extent2 = contextily.bounds2img(-180.0 + eps, latb,
-                                                      lonr, latt,
-                                                      zoom=zoom, ll=True,
-                                                      source=self.tile_provider)
-            extent2 = self._reproject_extent(extent2)
-            tiles.append([basemap2, extent2])
-        else:
-            basemap, extent = contextily.bounds2img(lonl, latb, lonr, latt,
-                                                    zoom=zoom, ll=True,
-                                                    source=self.tile_provider)
-            extent = self._reproject_extent(extent)
-            tiles.append([basemap, extent])
-        logger.debug("Fetched tiles for extent(s) %s",
-                     [elem[1] for elem in tiles])
-        return tiles
-
     def draw(self, ax, corners_xy, corners_lonlat):
         # Do nothing if the spatial extent has not changed.
         if self.last_extent == ax.axis():
@@ -543,31 +481,13 @@ class AbstractStreetMap(AbstractMapBackground):
         # Find a zoom level that does not fail HTTP pulls.
         lonl, lonr, latb, latt = corners_lonlat
         zoom = self._compute_initial_zoom(lonl, latb, lonr, latt)
+        logger.debug('draw: corners_xy %s', corners_xy)
+        logger.debug('draw: corners_lonlat %s', corners_lonlat)
 
-        ntiles = 0
-        continueQ = True
-        while continueQ:
-            try:
-                ntiles = self._compute_tile_count(lonl, lonr, latb, latt, zoom)
-                if ntiles > 0:
-                    tiles = self._fetch_tiles(lonl, lonr, latb, latt, zoom)
-                continueQ = False
-            except urllib.error.HTTPError as ex:
-                logger.error("Could not pull street map images at zoom "
-                             "level {}: {}".format(zoom, ex))
-                if zoom == 0:
-                    continueQ = False
-                else:
-                    zoom -= 1
-
-        if ntiles > 0:
-            for tile in tiles:
-                basemap, extent = tile
-                ax.imshow(basemap, extent=extent, interpolation='bilinear')
-
-            self.last_extent = corners_xy
-
-        ax.axis(corners_xy)
+        contextily.add_basemap(ax, crs=self.projection.crs,
+                               source=self.tile_provider,
+                               zoom=zoom)
+        self.last_extent = corners_xy
 
         self.clear_text_objs(ax)
 
