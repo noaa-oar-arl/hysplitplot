@@ -258,7 +258,7 @@ class AbstractPlot(ABC):
         if self.settings.noaa_logo:
             self._draw_noaa_logo(ax, self.settings.drawLogoInColor)
         if not matplotlib.is_interactive():
-           self.add_cartopy_map_scale(ax, x_pos=0.05, y_pos=0.95, use_km=True)
+           self.add_cartopy_map_scale(ax, x_pos=0.05, y_pos=0.95, use_km=False)
 
     def _make_labels_filename(self, output_suffix):
         if not self.settings.process_id_set:
