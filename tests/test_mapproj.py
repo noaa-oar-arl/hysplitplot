@@ -137,7 +137,7 @@ def test_AbstractMapProjection___init__():
     assert m.deltas == [1.0, 1.0]
 
     assert m.crs == None
-    assert m.crs_geodetic is not None
+    assert m.data_crs is not None
     assert m.center_loc == [-125.0, 45.0]
     assert m.corners_xy == None
     assert m.corners_lonlat == None

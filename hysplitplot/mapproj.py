@@ -72,9 +72,10 @@ class AbstractMapProjection(ABC):
         self.zoom_factor = zoom_factor
         self.aspect_ratio = aspect_ratio  # plot width over plot height
         self.deltas = grid_deltas  # (dlon, dlat)
+        self.aspect_ratio_adj = 1.0
         #
         self.crs = None  # to be created by a child class
-        self.crs_geodetic = cartopy.crs.Geodetic()
+        self.data_crs = cartopy.crs.PlateCarree()  # data in latitudes and longitudes
         self.center_loc = center_loc  # (lon, lat)
         self.corners_xy = None  # [x1, x2, y1, y2]
         self.corners_lonlat = None  # [lon_left,lon_right,lat_bottom,lat_top]
@@ -87,10 +88,10 @@ class AbstractMapProjection(ABC):
             plat = -90.0
         elif plat > 90.0:
             plat = 90.0
-        return self.crs.transform_point(plon, plat, self.crs_geodetic)
+        return self.crs.transform_point(plon, plat, self.data_crs)
 
     def calc_lonlat(self, x, y):
-        return self.crs_geodetic.transform_point(x, y, self.crs)
+        return self.data_crs.transform_point(x, y, self.crs)
 
     @abstractmethod
     def get_tangent_lat(self, center_loc):
@@ -407,6 +408,7 @@ class LambertProjection(PoleExcludingProjection):
                                                 center_loc, aspect_ratio, grid_deltas)
         self.proj_type = const.MapProjection.LAMBERT
         self.crs = self.create_crs()
+        self.aspect_ratio_adj = 0.95  # empirical
 
     def get_tangent_lat(self, center_loc):
         return center_loc[1]

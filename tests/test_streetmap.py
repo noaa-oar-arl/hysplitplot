@@ -321,11 +321,10 @@ def test_HYSPLITMapBackground__erase_gridlines(lambert_proj):
 
 def test_HYSPLITMapBackground__update_gridlines(lambert_proj):
     o = streetmap.HYSPLITMapBackground(lambert_proj)
-    data_crs = cartopy.crs.Geodetic()
     axes = plt.axes(projection=lambert_proj.crs)
 
     try:
-        o._update_gridlines(axes, lambert_proj, data_crs, 'k', const.LatLonLabel.AUTO, 1.0)
+        o._update_gridlines(axes, lambert_proj, 'k', const.LatLonLabel.AUTO, 1.0)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
 
@@ -365,12 +364,10 @@ def test_HYSPLITMapBackground__draw_latlon_labels():
 
     o = streetmap.HYSPLITMapBackground(projection)
 
-    data_crs = cartopy.crs.Geodetic()
-
     axes = plt.axes()
 
     try:
-        o._draw_latlon_labels(axes, projection, data_crs, 1.0, 1.0, 'k')
+        o._draw_latlon_labels(axes, projection, 1.0, 1.0, 'k')
         plt.close(axes.figure)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))

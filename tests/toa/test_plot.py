@@ -18,7 +18,7 @@ import xml.etree.ElementTree as ElementTree
 from hysplitdata.const import HeightUnit
 from hysplitdata.conc import model
 from hysplitplot import const, labels, mapfile, mapproj, multipage, smooth, streetmap, util
-from hysplitplot.conc import gisout, helper, plot as cplot 
+from hysplitplot.conc import gisout, helper, plot as cplot
 from hysplitplot.toa import helper as thelper, plot
 
 
@@ -45,13 +45,13 @@ def test_TimeOfArrivalPlotSettings___init__():
 
     # test one option in the base class
     assert s.map_background == "../graphics/arlmap"
-        
+
     assert s.input_file == "cdump"
     assert s.output_filename == "toaplot.ps"
     assert s.output_basename == "toaplot"
-    
+
     assert s.pollutant_index == 1
-    
+
     assert s.first_time_index == 1
     assert s.last_time_index == 9999
     assert s.time_index_step == 1
@@ -67,7 +67,7 @@ def test_TimeOfArrivalPlotSettings___init__():
     assert s.show_max_conc == 0
     assert s.mass_unit == "mass"
     assert s.mass_unit_by_user == False
-    assert s.CONADJ == 1.0 
+    assert s.CONADJ == 1.0
     assert s.DEPADJ == 1.0
     assert s.IDYNC == 0
     assert s.KHEMIN == 0
@@ -92,7 +92,6 @@ def test_TimeOfArrivalPlotSettings___init__():
     assert s.contour_levels is None
     assert s.contour_level_count == 4
     assert s.pollutant == ""
-    assert s.SCALE == pytest.approx(0.7784433)
     assert s.station_marker is not None
     assert s.station_marker_color != None
     assert s.station_marker_size > 0
@@ -112,20 +111,20 @@ def test_TimeOfArrivalPlotSettings_process_command_line_arguments():
 
     s.process_command_line_arguments(["-m1"])
     assert s.map_projection == 1
-    
+
     s.process_command_line_arguments(["-M2"])
     assert s.map_projection == 2
-    
+
     # test -a
     s.gis_output = 0
     s.process_command_line_arguments(["-a2"])
     assert s.gis_output == 10  # 1 or 2 are mapped to 10.
-    
+
     # test -A
     s.kml_option = 0
     s.process_command_line_arguments(["-A3"])
     assert s.kml_option == 3
-    
+
     # test internal change for the -a1 or -a2 options
     s.gis_output = 0
     s.process_command_line_arguments(["-a1"])
@@ -134,26 +133,26 @@ def test_TimeOfArrivalPlotSettings_process_command_line_arguments():
     s.gis_output = 0
     s.process_command_line_arguments(["-a2"])
     assert s.gis_output == 10
-    
+
     s.gis_output = 0
     s.process_command_line_arguments(["-a3"])
     assert s.gis_output == 3
-    
+
     # test +a or +A
     s.gis_alt_mode = 0
     s.process_command_line_arguments(["+a1"])
     assert s.gis_alt_mode == 1
-    
+
     s.process_command_line_arguments(["+A0"])
     assert s.gis_alt_mode == 0
-        
+
     # test -b or -B
     s.LEVEL1 = None
     s.process_command_line_arguments(["-b1"])
     assert s.LEVEL1 == 1
-    
+
     s.process_command_line_arguments(["-B2"])
-    assert s.LEVEL1 == 2   
+    assert s.LEVEL1 == 2
 
     # test -f or -F
     s.frames_per_file = 0
@@ -200,11 +199,11 @@ def test_TimeOfArrivalPlotSettings_process_command_line_arguments():
 
     s.process_command_line_arguments(["-H112.3:195.6"])
     assert s.center_loc == [180.0, 90.0]
-    
+
     # test -i or -I
     s.process_command_line_arguments(["-iINPUT"])
     assert s.input_file == "INPUT"
-    
+
     s.process_command_line_arguments(["-ITEST_INPUT"])
     assert s.input_file == "TEST_INPUT"
 
@@ -226,7 +225,7 @@ def test_TimeOfArrivalPlotSettings_process_command_line_arguments():
     s.process_command_line_arguments(["-K2"])
     assert s.color == 2
     assert s.drawLogoInColor is True
-    
+
     # test -l
     s.source_label = None
     s.process_command_line_arguments(["-l72"])
@@ -263,15 +262,15 @@ def test_TimeOfArrivalPlotSettings_process_command_line_arguments():
     s.QFILE = None
     s.process_command_line_arguments(["-qNAME"])
     assert s.QFILE == "NAME"
-    
+
     s.process_command_line_arguments(["-QNAME2"])
     assert s.QFILE == "NAME2"
-    
+
     # test -s or -S
     s.pollutant_index = None
     s.process_command_line_arguments(["-s1"])
     assert s.pollutant_index == 0
-    
+
     s.process_command_line_arguments(["-s2"])
     assert s.pollutant_index == 1
 
@@ -280,21 +279,21 @@ def test_TimeOfArrivalPlotSettings_process_command_line_arguments():
     s.LEVEL2 = None
     s.process_command_line_arguments(["-t1"])
     assert s.LEVEL2 == 1
-    
+
     s.process_command_line_arguments(["-T2"])
-    assert s.LEVEL2 == 2   
-        
+    assert s.LEVEL2 == 2
+
     # test -v
     s.process_command_line_arguments(["-v10E+2:USER1:100050200+10E+3:USER2:100070200"])
     assert len(s.contour_levels) == 2
     assert s.contour_level_count == 2
     assert s.contour_level_generator == const.ContourLevelGenerator.USER_SPECIFIED
-    
+
     # test -5
     s.KMLOUT = 0
     s.process_command_line_arguments(["-51"])
     assert s.KMLOUT == 1
-    
+
     # test -8
     s.process_command_line_arguments(["-87"])
     assert s.IZRO == 7
@@ -310,39 +309,39 @@ def test_TimeOfArrivalPlotSettings_parse_time_indices():
     assert s.first_time_index == 1
     assert s.last_time_index == 9999
     assert s.time_index_step == 1
-    
+
     s = plot.TimeOfArrivalPlotSettings()
     s.parse_time_indices("2:5")
     assert s.first_time_index == 2
     assert s.last_time_index == 5
     assert s.time_index_step == 1
-    
+
     s = plot.TimeOfArrivalPlotSettings()
     s.parse_time_indices("15")
     assert s.first_time_index == 1
     assert s.last_time_index == 15
     assert s.time_index_step == 1
-    
+
     s = plot.TimeOfArrivalPlotSettings()
     s.parse_time_indices("-5")
     assert s.first_time_index == 1
     assert s.last_time_index == 9999
     assert s.time_index_step == 5
-    
+
 
 def test_TimeOfArrivalPlotSettings_setup_contour_styles():
     s = plot.TimeOfArrivalPlotSettings()
     assert s.contour_level_generator != const.ContourLevelGenerator.USER_SPECIFIED
     assert s.user_color != True
     assert s.contour_level_count == 4
-    
+
     s.setup_contour_styles()
     assert s.contour_level_generator == const.ContourLevelGenerator.USER_SPECIFIED
     assert s.user_color == True
     assert s.contour_level_count == 5
     assert len(s.contour_levels) == 5
-    
-    
+
+
 def test_TimeOfArrivalPlotSettings_parse_contour_levels():
     s = plot.TimeOfArrivalPlotSettings()
     s.parse_contour_levels("1E3+100+10")
@@ -355,8 +354,7 @@ def test_TimeOfArrivalPlotSettings_parse_contour_levels():
     assert s.contour_levels[0].level == pytest.approx(10.0)
     assert s.contour_levels[1].level == pytest.approx(100.0)
     assert s.contour_levels[2].level == pytest.approx(1000.0)
-    
-    
+
     s = plot.TimeOfArrivalPlotSettings()
     s.parse_contour_levels("10E+2:USER1+10E+3:USER2")
     assert s.user_color == False
@@ -373,7 +371,6 @@ def test_TimeOfArrivalPlotSettings_parse_contour_levels():
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == "USER2"
-
 
     s = plot.TimeOfArrivalPlotSettings()
     s.parse_contour_levels("10E+2:USER1:100050200+10E+3:USER2:100070200")
@@ -447,7 +444,7 @@ def test_TimeOfArrivalPlotSettings_validate_contour_levels():
     s = plot.TimeOfArrivalPlotSettings()
     # without contour levels
     s.parse_contour_levels("::000255255+::000255000+::000000255+::255255000+::255000000")
-    assert s.validate_contour_levels(s.contour_levels) == False 
+    assert s.validate_contour_levels(s.contour_levels) == False
     # with contour levels
     s.parse_contour_levels("1E3+100+10")
     assert s.validate_contour_levels(s.contour_levels)
@@ -463,48 +460,48 @@ def test_TimeOfArrivalPlotSettings_parse_labeled_contour_levels():
     assert len(a) == 2
     assert len(clrs) == 2
     assert clr_set == True
-    
+
     k = 0
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == "USER1"
     assert clrs[k] == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
-    
+
     k += 1
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == "USER2"
     assert clrs[k] == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
-    
+
     # without labels
     a, clrs, clr_set = plot.TimeOfArrivalPlotSettings.parse_labeled_contour_levels("10E+2::100050200+10E+3::100070200")
     assert len(a) == 2
     assert len(clrs) == 2
     assert clr_set == True
-    
+
     k = 0
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == ""
     assert clrs[k] == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
-    
+
     k += 1
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == ""
     assert clrs[k] == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
-  
-    #without colors
+
+    # without colors
     a, clrs, clr_set = plot.TimeOfArrivalPlotSettings.parse_labeled_contour_levels("10E+2:USER1+10E+3:USER2")
     assert len(a) == 2
     assert len(clrs) == 0
     assert clr_set == False
-    
+
     k = 0
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == "USER1"
-    
+
     k += 1
     assert isinstance(a[k], plot.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
@@ -516,7 +513,7 @@ def test_TimeOfArrivalPlotSettings_get_reader():
     r = s.get_reader()
 
     assert isinstance(r, plot.TimeOfArrivalPlotSettingsReader)
-    assert r.settings is s  
+    assert r.settings is s
 
 
 def test_TimeOfArrivalPlotSettingsReader___init__():
@@ -553,7 +550,7 @@ def test_TimeOfArrivalPlotSettingsReader_read():
     assert s.ring_distance == 100.0
     # qpnt, l 19
     assert s.center_loc == [-84.22, 39.90]
-    
+
 
 def test_TimeOfArrivalPlot___init__():
     p = plot.TimeOfArrivalPlot()
@@ -576,6 +573,7 @@ def test_TimeOfArrivalPlot___init__():
     assert hasattr(p, "legends_axes")
     assert hasattr(p, "text_axes")
     assert hasattr(p, "plot_saver_list")
+    assert hasattr(p, "aspect_ratio")
 
     assert hasattr(p, "TFACT")
     assert hasattr(p, "initial_time")
@@ -583,23 +581,23 @@ def test_TimeOfArrivalPlot___init__():
     assert p.current_frame == 1
     assert p.time_period_count == 0
     assert p.datem is None
-    
-    
+
+
 def test_TimeOfArrivalPlot_merge_plot_settings():
     p = plot.TimeOfArrivalPlot()
     assert p.settings.map_projection != 4
-    
+
     p.merge_plot_settings("data/default_cplot", ["-m4"])
     assert p.settings.map_projection == 4
-    
-    
+
+
 def test_TimeOfArrivalPlot_get_street_map_target_axes():
     p = plot.TimeOfArrivalPlot()
     ax = plt.axes()
     p.conc_axes = ax
     assert p.get_street_map_target_axes() is ax
     plt.close(ax.get_figure())
-    
+
 
 def test_TimeOfArrivalPlot_read_data_files():
     p = plot.TimeOfArrivalPlot()
@@ -608,11 +606,11 @@ def test_TimeOfArrivalPlot_read_data_files():
     p.read_data_files()
 
     assert p.settings.KAVG == const.ConcentrationType.VERTICAL_AVERAGE
-    
+
     assert p.cdump is not None
     assert p.time_selector is not None
     assert p.time_selector.first == 0
-    assert p.time_selector.last == 23 # clipped at the last index in the data.
+    assert p.time_selector.last == 23  # clipped at the last index in the data.
     assert p.time_selector.step == 1
     assert p.pollutant_selector is not None
     assert p.pollutant_selector.index == 0
@@ -627,48 +625,48 @@ def test_TimeOfArrivalPlot_read_data_files():
     assert p.time_zone is not None
     assert p.datem is not None
     assert p.toa_generator is not None
-    
+
 
 def test_TimeOfArrivalPlot__post_file_processing(cdump):
     p = plot.TimeOfArrivalPlot()
-    
+
     p.settings.first_time_index = 0
     p.settings.last_time_index = 0
     p.settings.pollutant_index = 0
     p.settings.KAVG = const.ConcentrationType.VERTICAL_AVERAGE
-    
+
     p.time_selector = helper.TimeIndexSelector(p.settings.first_time_index,
                                                p.settings.last_time_index,
                                                p.settings.time_index_step)
     p.pollutant_selector = helper.PollutantSelector(p.settings.pollutant_index)
     p.level_selector = helper.VerticalLevelSelector(p.settings.LEVEL1, p.settings.LEVEL2)
     p.conc_type = helper.ConcentrationTypeFactory.create_instance(p.settings.KAVG)
-       
+
     p._post_file_processing(cdump)
-    
+
     assert p.conc_type.max_average * 1.0e+12 == pytest.approx(2.152324)
     assert p.conc_type.min_average * 1.0e+16 == pytest.approx(9.429794)
-    
+
 
 def test_TimeOfArrivalPlot__normalize_settings(cdump):
     p = plot.TimeOfArrivalPlot()
     s = p.settings
-     
+
     s.LEVEL1 = -10
     s.LEVEL2 = 1000000
-       
+
     assert s.height_unit == HeightUnit.METERS
     p.labels.cfg["ALTTD"] = "feet"
 
     p.contour_labels = None
-    
+
     p._normalize_settings(cdump)
 
     assert s.LEVEL1 == 100
     assert s.LEVEL2 == 100
-    
+
     assert s.height_unit == HeightUnit.FEET
-    
+
     assert p.contour_labels is not None
     assert p.contour_labels == ["", "", "", ""]
 
@@ -676,24 +674,24 @@ def test_TimeOfArrivalPlot__normalize_settings(cdump):
     p.contour_labels = None
     s.setup_contour_styles()
     assert s.contour_levels is not None
-    
+
     p._normalize_settings(cdump)
-    
+
     assert p.contour_labels is not None
     assert p.contour_labels == ["NONE", "NONE", "NONE", "NONE", "NONE"]
 
-        
+
 def test_TimeOfArrivalPlot__fix_map_color():
     p = plot.TimeOfArrivalPlot()
 
     color_mode = const.ConcentrationPlotColor.BLACK_AND_WHITE
-    assert p._fix_map_color('#6699cc', color_mode) == 'k' # black
+    assert p._fix_map_color('#6699cc', color_mode) == 'k'  # black
 
     color_mode = const.ConcentrationPlotColor.COLOR
     assert p._fix_map_color('#6699cc', color_mode) == '#6699cc'
 
     color_mode = const.ConcentrationPlotColor.BW_NO_LINES
-    assert p._fix_map_color('#6699cc', color_mode) == 'k' # black
+    assert p._fix_map_color('#6699cc', color_mode) == 'k'  # black
 
     color_mode = const.ConcentrationPlotColor.COLOR_NO_LINES
     assert p._fix_map_color('#6699cc', color_mode) == '#6699cc'
@@ -705,7 +703,7 @@ def test_TimeOfArrivalPlot_layout():
     p.read_data_files()
     p._initialize_map_projection(p.cdump)
 
-    p.layout( p.cdump.grids[0], {"resize_event" : blank_event_handler} )
+    p.layout(p.cdump.grids[0], {"resize_event": blank_event_handler})
 
     assert p.fig is not None
     assert p.conc_outer is not None
@@ -725,7 +723,7 @@ def test_TimeOfArrivalPlot_make_plot_title(cdump):
     toa.ending_datetime = g.ending_datetime
     level1 = util.LengthInMeters(1.0)
     level2 = util.LengthInMeters(2.0)
-    
+
     title = p.make_plot_title(toa, g, level1, level2)
     assert title == "NOAA HYSPLIT MODEL\n" + \
             "Time of arrival (h) averaged between 1 m and 2 m\n" + \
@@ -735,7 +733,7 @@ def test_TimeOfArrivalPlot_make_plot_title(cdump):
     # swap start and end datetimes
     toa.starting_datetime, toa.ending_datetime = toa.ending_datetime, toa.starting_datetime
     g.starting_datetime, g.ending_datetime = g.ending_datetime, g.starting_datetime
-   
+
     title = p.make_plot_title(toa, g, level1, level2)
     assert title == "NOAA HYSPLIT MODEL\n" + \
             "Time of arrival (h) averaged between 1 m and 2 m\n" + \
@@ -748,14 +746,14 @@ def test_TimeOfArrivalPlot_make_plot_title(cdump):
     assert title == "NOAA HYSPLIT MODEL\n" + \
             "Time of arrival (h) averaged between 1 m and 2 m\n" + \
             "Integrated from 0000 26 Sep to 1200 25 Sep 1983 (EST) [backward]\n" + \
-            "TEST Calculation started at 1200 25 Sep 1983 (EST)"   
+            "TEST Calculation started at 1200 25 Sep 1983 (EST)"
 
 
 def test_TimeOfArrivalPlot_make_ylabel(cdump):
     p = plot.TimeOfArrivalPlot()
     p.length_factory = util.LengthInMetersFactory()
     plotData = cdump
-    
+
     # with one release location
     plotData.release_locs = [(30.00, 20.00)]
     label = p.make_ylabel(plotData, "*")
@@ -776,18 +774,18 @@ def test_TimeOfArrivalPlot_make_xlabel(cdump):
     p = plot.TimeOfArrivalPlot()
     p.cdump = cdump
     g = cdump.grids[0]
-    
+
     assert p.make_xlabel(g) == "NARR METEOROLOGICAL DATA"
 
     g.ending_forecast_hr = 24
     p.prev_forecast_time = None
     assert p.make_xlabel(g) == "0500 25 Sep 1983 NARR FORECAST INITIALIZATION"
-    
+
     g.ending_forecast_hr = 23
     assert p.make_xlabel(g) == "NARR METEOROLOGICAL DATA"
 
     assert p.make_xlabel(g) == "0600 25 Sep 1983 NARR FORECAST INITIALIZATION"
-    
+
 
 def test_TimeOfArrivalPlot__initialize_map_projection():
     p = plot.TimeOfArrivalPlot()
@@ -795,21 +793,21 @@ def test_TimeOfArrivalPlot__initialize_map_projection():
     p.read_data_files()
     assert p.street_map is None
 
-    p._initialize_map_projection( p.cdump )
+    p._initialize_map_projection(p.cdump)
 
     assert isinstance(p.projection, mapproj.AbstractMapProjection)
     assert p.settings.center_loc == pytest.approx((150.98, -34.05))
     assert isinstance(p.street_map, streetmap.AbstractMapBackground)
     assert p.street_map.fix_map_color_fn is not None
-    assert p.initial_corners_lonlat == pytest.approx((134.5755, -176.1306, -67.06064, -10.51006))
-    assert p.initial_corners_xy == pytest.approx((-874405.0, 3812358.0, -3974490.0, 2046197.0))
+    assert p.initial_corners_lonlat == pytest.approx((132.95474, -171.44801, -60.00903, -16.98525))
+    assert p.initial_corners_xy == pytest.approx((-1121847.0, 4059800.0, -3081732.0, 1153440.0))
 
 
 def test_TimeOfArrivalPlot__create_map_box_instance():
     p = plot.TimeOfArrivalPlot()
     cdump = model.ConcentrationDump()
     cdump.grid_loc = [-84.0, 34.0]
-    
+
     # case 1 - 5 degrees by 3 degress
     cdump.grid_sz = [10, 6]
     cdump.grid_deltas = [0.05, 0.05]
@@ -817,7 +815,7 @@ def test_TimeOfArrivalPlot__create_map_box_instance():
     assert mb.grid_delta == 0.1
     assert mb.grid_corner == [-84.0, 34.0]
     assert mb.sz == [5, 3]
-    
+
     # case 2 - 4 degrees x 3 degrees
     cdump.grid_sz = [8, 6]
     cdump.grid_deltas = [0.5, 0.5]
@@ -833,17 +831,17 @@ def test_TimeOfArrivalPlot__create_map_box_instance():
     assert mb.grid_delta == 1.0
     assert mb.grid_corner == [-180.0, -90.0]
     assert mb.sz == [360, 181]
-    
+
 
 def test_TimeOfArrivalPlot__determine_map_limits(cdump):
     p = plot.TimeOfArrivalPlot()
     p.time_selector = helper.TimeIndexSelector()
     p.pollutant_selector = helper.PollutantSelector()
-    p.level_selector = helper.VerticalLevelSelector()    
-    
+    p.level_selector = helper.VerticalLevelSelector()
+
     mb = p._determine_map_limits(cdump, 2)
 
-    assert mb.grid_corner== [-180.0, -90.0]
+    assert mb.grid_corner == [-180.0, -90.0]
     assert mb.grid_delta == 1.0
     assert mb.sz == [360, 181]
     assert mb.plume_sz == [5.0, 4.0]
@@ -870,17 +868,17 @@ def test_TimeOfArrivalPlot_draw_toa_contour_plot():
     p = plot.TimeOfArrivalPlot()
     p.merge_plot_settings(None, ["-idata/rsmc.cdump2", "-jdata/arlmap_truncated"])
     p.read_data_files()
-    
+
     # See if no exception is thrown.
     try:
         p._initialize_map_projection(p.cdump)
-        p.layout(p.cdump.grids[0], {"resize_event" : blank_event_handler})
+        p.layout(p.cdump.grids[0], {"resize_event": blank_event_handler})
         color_table = cplot.ColorTableFactory.create_instance(p.settings)
         toa_data = p.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_0,
                                                    color_table.colors)
-        
+
         contour_set = p.draw_toa_contour_plot(toa_data)
-        
+
         assert isinstance(contour_set, QuadContourSet)
         cleanup_plot(p)
     except Exception as ex:
@@ -892,43 +890,43 @@ def test_TimeOfArrivalPlot_get_conc_unit():
     p.labels = labels.LabelsConfig()
     p.conc_map = helper.ThresholdLevelsMap(1)
     s = p.settings
-    
+
     # when both mass units and volume are specified in the labels.cfg
     p.labels.cfg["UNITS"] = "pg"
     p.labels.cfg["VOLUM"] = "/cm^3"
     s.mass_unit_by_user = False
     assert p.get_conc_unit(p.conc_map, s) == "pg/cm^3"
-    
+
     # when the mass unit is specified by the user
     s.mass_unit = "kg"
     s.mass_unit_by_user = True
     assert p.get_conc_unit(p.conc_map, s) == "kg/cm^3"
-    
+
     # no labels params.
     p.labels.cfg.clear()
     s.mass_unit = "ppm"
     s.mass_unit_by_user = False
     assert p.get_conc_unit(p.conc_map, s) == "ppm"
-    
-    
+
+
 def test_TimeOfArrivalPlot__limit_contour_levels_for_legends():
     p = plot.TimeOfArrivalPlot()
-    c = [0, 1, 3, 4, 5] # any list will do
+    c = [0, 1, 3, 4, 5]  # any list will do
     l = p._limit_contour_levels_for_legends(c, 3)
     assert len(l) == 3
     assert l[0] == 0
     assert l[2] == 3
-    
-    
+
+
 def test_TimeOfArrivalPlot_draw_contour_legends():
     p = plot.TimeOfArrivalPlot()
     p.merge_plot_settings(None, ["-idata/rsmc.cdump2", "-jdata/arlmap_truncated"])
     p.read_data_files()
-    
+
     # See if no exception is thrown.
     try:
         p._initialize_map_projection(p.cdump)
-        p.layout(p.cdump.grids[0], {"resize_event" : blank_event_handler})
+        p.layout(p.cdump.grids[0], {"resize_event": blank_event_handler})
         p.draw_contour_legends(
             p.cdump.grids[0],
             p.conc_map,
@@ -948,7 +946,7 @@ def test_TimeOfArrivalPlot_draw_bottom_text():
     # See if no exception is thrown.
     try:
         p._initialize_map_projection(p.cdump)
-        p.layout(p.cdump.grids[0], {"resize_event" : blank_event_handler})
+        p.layout(p.cdump.grids[0], {"resize_event": blank_event_handler})
         p.draw_bottom_text()
         cleanup_plot(p)
     except Exception as ex:
@@ -959,11 +957,11 @@ def test_TimeOfArrivalPlot__write_gisout():
     p = plot.TimeOfArrivalPlot()
     p.merge_plot_settings(None, ["-idata/rsmc.cdump2", "-jdata/arlmap_truncated", "-a3", "+a0", "-A0"])
     p.read_data_files()
-    
+
     p._initialize_map_projection(p.cdump)
     axes = plt.axes(projection=p.projection.crs)
     axes.axis(p.initial_corners_xy)
-    
+
     color_table = plot.ColorTableFactory.create_instance(p.settings)
     gis_writer = gisout.GISFileWriterFactory.create_instance(p.settings.gis_output,
                                                              p.settings.kml_option)
@@ -974,7 +972,7 @@ def test_TimeOfArrivalPlot__write_gisout():
                           p.settings.NSSLBL,
                           p.settings.show_max_conc,
                           const.DepositionType.NONE)
- 
+
     toa_data = p.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_0, color_table.colors)
     lower_vert_level = util.LengthInMeters(0)
     upper_vert_level = util.LengthInMeters(500)
@@ -984,28 +982,28 @@ def test_TimeOfArrivalPlot__write_gisout():
                                      colors=toa_data.fill_colors, extend="max",
                                      transform=p.data_crs)
     time_of_arrivals = [(18, 24), (12, 18), (6, 12), (0, 6)]
-    
+
     if os.path.exists("HYSPLIT_ps.kml"):
         os.remove("HYSPLIT_ps.kml")
     if os.path.exists("GELABEL_ps.txt"):
         os.remove("GELABEL_ps.txt")
-    
+
     p._write_gisout([gis_writer], toa_data.grid, lower_vert_level, upper_vert_level,
                     quad_contour_set, toa_data.contour_levels, color_table,
                     scaling_factor, time_of_arrivals)
-    
+
     gis_writer.finalize()
     plt.close(axes.figure)
-    
+
     assert os.path.exists("HYSPLIT_ps.kml")
     assert os.path.exists("GELABEL_ps.txt")
-    
+
     # parse the XML document and check some elements.
     tree = ElementTree.parse("HYSPLIT_ps.kml")
     root = tree.getroot()
     name = root.find("./{http://www.opengis.net/kml/2.2}Document/{http://www.opengis.net/kml/2.2}name")
     assert name.text == "NOAA HYSPLIT RESULTS"
-    
+
     os.remove("HYSPLIT_ps.kml")
     os.remove("GELABEL_ps.txt")
 
@@ -1014,12 +1012,12 @@ def test_TimeOfArrivalPlot_draw_toa_plot_above_ground():
     p = plot.TimeOfArrivalPlot()
     p.merge_plot_settings(None, ["-idata/rsmc.cdump2", "-jdata/arlmap_truncated", "-d1"])
     p.read_data_files()
-    
+
     ctbl = cplot.ColorTableFactory.create_instance(p.settings)
-    
+
     gis_writer = gisout.GISFileWriterFactory.create_instance(p.settings.gis_output,
                                                              p.settings.kml_option)
-                                                             
+
     gis_writer.initialize(p.settings.gis_alt_mode,
                           p.settings.KMLOUT,
                           p.settings.output_suffix,
@@ -1027,26 +1025,26 @@ def test_TimeOfArrivalPlot_draw_toa_plot_above_ground():
                           p.settings.NSSLBL,
                           p.settings.show_max_conc,
                           const.DepositionType.NONE)
-    
+
     toa_data = p.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_0,
                                                ctbl.colors)
-        
+
     # See if no exception is thrown.
     try:
         p._initialize_map_projection(p.cdump)
         p.depo_sum.initialize(p.cdump.grids, p.time_selector, p.pollutant_selector)
         p.contour_labels = [""] * p.settings.contour_level_count
         p.draw_toa_plot_above_ground(toa_data,
-                        {"resize_event" : blank_event_handler},
+                        {"resize_event": blank_event_handler},
                         ctbl,
                         block=False)
-        
+
         # with a gis writer
         p.draw_toa_plot_above_ground(toa_data,
-                        {"resize_event" : blank_event_handler},
+                        {"resize_event": blank_event_handler},
                         ctbl,
                         gis_writer,
-                        block=False)       
+                        block=False)
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
@@ -1056,12 +1054,12 @@ def test_TimeOfArrivalPlot_draw_toa_plot_on_ground():
     p = plot.TimeOfArrivalPlot()
     p.merge_plot_settings(None, ["-idata/rsmc.cdump2", "-jdata/arlmap_truncated", "-d1"])
     p.read_data_files()
-    
+
     ctbl = cplot.ColorTableFactory.create_instance(p.settings)
-    
+
     gis_writer = gisout.GISFileWriterFactory.create_instance(p.settings.gis_output,
                                                              p.settings.kml_option)
-                                                             
+
     gis_writer.initialize(p.settings.gis_alt_mode,
                           p.settings.KMLOUT,
                           p.settings.output_suffix,
@@ -1069,31 +1067,31 @@ def test_TimeOfArrivalPlot_draw_toa_plot_on_ground():
                           p.settings.NSSLBL,
                           p.settings.show_max_conc,
                           const.DepositionType.NONE)
-    
+
     toa_data = p.toa_generator.make_deposition_data(thelper.TimeOfArrival.DAY_0,
                                                ctbl.colors)
-        
+
     # See if no exception is thrown.
     try:
         p._initialize_map_projection(p.cdump)
         p.depo_sum.initialize(p.cdump.grids, p.time_selector, p.pollutant_selector)
         p.contour_labels = [""] * p.settings.contour_level_count
         p.draw_toa_plot_on_ground(toa_data,
-                        {"resize_event" : blank_event_handler},
+                        {"resize_event": blank_event_handler},
                         ctbl,
                         block=False)
-        
+
         # with a gis writer
         p.draw_toa_plot_on_ground(toa_data,
-                        {"resize_event" : blank_event_handler},
+                        {"resize_event": blank_event_handler},
                         ctbl,
                         gis_writer,
-                        block=False)       
+                        block=False)
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
-    
-    
+
+
 def test_TimeOfArrivalPlot__create_gis_writer_list():
     p = plot.TimeOfArrivalPlot()
     p.merge_plot_settings(None, ["-idata/rsmc.cdump2", "-jdata/arlmap_truncated", "-a3", "+a0", "-A0"])
@@ -1101,7 +1099,7 @@ def test_TimeOfArrivalPlot__create_gis_writer_list():
     p._initialize_map_projection(p.cdump)
     axes = plt.axes(projection=p.projection.crs)
     axes.axis(p.initial_corners_xy)
-    
+
     gis_writers = p._create_gis_writer_list(p.settings, p.time_zone)
 
     assert len(gis_writers) == 1
@@ -1111,12 +1109,12 @@ def test_TimeOfArrivalPlot_draw():
     p = plot.TimeOfArrivalPlot()
     p.merge_plot_settings(None, ["-idata/rsmc.cdump2", "-jdata/arlmap_truncated"])
     p.read_data_files()
-    
+
     # See if no exception is thrown.
     try:
         p._initialize_map_projection(p.cdump)
         p.contour_labels = [""] * p.settings.contour_level_count
-        p.draw({"resize_event" : blank_event_handler}, block=False)
+        p.draw({"resize_event": blank_event_handler}, block=False)
         assert p.time_period_count == 24
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
@@ -1145,25 +1143,25 @@ def test_TimeOfArrivalPlot_draw():
     os.remove("__conc0010.png")
     os.remove("__conc0011.png")
     os.remove("__conc0012.png")
-    
-    cleanup_plot(p)    
+
+    cleanup_plot(p)
 
 
 def test_TimeOfArrivalPlot_get_plot_count_str():
     p = plot.TimeOfArrivalPlot()
     p.toa_generator = thelper.TimeOfArrivalGenerator(None, None)
-    
+
     plot_saver = multipage.SinglePlotFileWriter("test", "png", "png")
     p.plot_saver_list = [ plot_saver ]
-    
+
     plot_saver.file_count = 7
     assert p.get_plot_count_str() == "7 output files"
-    
+
     plot_saver.file_count = 1
-    
+
     p.toa_generator.time_period_count = 1
     assert p.get_plot_count_str() == "1 time period"
-    
+
     p.toa_generator.time_period_count = 2
     assert p.get_plot_count_str() == "2 time periods"
 

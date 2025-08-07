@@ -9,6 +9,8 @@
 from abc import ABC, abstractmethod
 import cartopy.crs
 import logging
+import math
+import matplotlib
 import matplotlib.patches
 import os
 
@@ -239,15 +241,15 @@ class AbstractPlot(ABC):
 
     def update_plot_extents(self, ax):
         xmin, xmax, ymin, ymax = self.projection.corners_xy = ax.axis()
-        logger.debug("update_plot_extents: xy: %f %f %f %f",
-                     xmin, xmax, ymin, ymax)
-        lonl, latb = self.data_crs.transform_point(xmin, ymin,
-                                                   self.projection.crs)
-        lonr, latt = self.data_crs.transform_point(xmax, ymax,
-                                                   self.projection.crs)
+        ratio_xy = abs((ymax - ymin) / (xmax - xmin))
+        logger.debug("update_plot_extents: xy: %f %f %f %f, aspect ratio: %f",
+                     xmin, xmax, ymin, ymax, ratio_xy)
+        lonl, latb = self.projection.calc_lonlat(xmin, ymin)
+        lonr, latt = self.projection.calc_lonlat(xmax, ymax)
+        ratio_ll = abs((latt - latb) / (lonr - lonl))  # TODO: dateline change
         self.projection.corners_lonlat = (lonl, lonr, latb, latt)
-        logger.debug("update_plot_extents: lonlat: %f %f %f %f",
-                     lonl, lonr, latb, latt)
+        logger.debug("update_plot_extents: lonlat: %f %f %f %f, aspect ratio: %f",
+                     lonl, lonr, latb, latt, ratio_ll)
 
     def on_update_plot_extent(self):
         ax = self.get_street_map_target_axes()
@@ -255,6 +257,8 @@ class AbstractPlot(ABC):
         self.street_map.update_extent(ax, self.data_crs)
         if self.settings.noaa_logo:
             self._draw_noaa_logo(ax, self.settings.drawLogoInColor)
+        if not matplotlib.is_interactive():
+           self.add_cartopy_map_scale(ax, x_pos=0.05, y_pos=0.95, use_km=True)
 
     def _make_labels_filename(self, output_suffix):
         if not self.settings.process_id_set:
@@ -362,7 +366,9 @@ class AbstractPlot(ABC):
     def _draw_concentric_circles(self, axes, starting_loc, ring_number,
                                  ring_distance):
         lon, lat = starting_loc
-        R = ring_distance / 111.0
+        # distance between one degree of longitude at a given latitude
+        dist_lon = 111.320 * math.cos(lat * 3.14159 / 180.0)
+        R = ring_distance / dist_lon
         for k in range(ring_number):
             radius = R * (k + 1)
             circ = matplotlib.patches.CirclePolygon((lon, lat), radius,

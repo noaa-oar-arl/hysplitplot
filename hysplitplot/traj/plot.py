@@ -254,6 +254,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         self.cluster_list = None
         self.plot_saver_list = None
         self.current_frame = 1
+        self.aspect_ratio = 6.9474 / 8.5  # trajectory plot height divided by plot width
 
     def merge_plot_settings(self, filename, args):
         if filename is not None:
@@ -380,7 +381,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
             self.settings.map_projection,
             self.settings.zoom_factor,
             self.settings.center_loc,
-            1.3,
+            self.aspect_ratio,
             (map_box.grid_delta, map_box.grid_delta),
             map_box,
             self.settings.center_loc_fixed)
@@ -461,6 +462,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         # cluster information
         self._read_cluster_info_if_exists(data_list)
 
+        # Subgrid heights are 6.9474", 2.3158", and 1.7368"
         outer_grid = matplotlib.gridspec.GridSpec(
             3, 1,
             wspace=0.0, hspace=0.0,  # no spaces between subplots
@@ -473,6 +475,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
             subplot_spec=outer_grid[1, 0])
 
         self.fig = fig
+        # traj_axes is 8.5" wide and 6.9474" high.
         self.traj_axes = fig.add_subplot(outer_grid[0, 0],
                                          projection=self.projection.crs)
         self.height_axes_outer = fig.add_subplot(outer_grid[1, 0])
@@ -681,9 +684,6 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         self.settings.color_cycle.reset()
         self.settings.reset_marker_cycle()
 
-        # keep the plot size after zooming
-        axes.set_aspect("equal", adjustable="datalim")
-
         # turn off ticks and tick labels
         axes.tick_params(left="off", labelleft="off",
                          right="off", labelright="off",
@@ -720,8 +720,10 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         self.draw_trajectories(self.traj_axes, data_list)
         self.draw_source_markers(self.traj_axes, data_list)
 
-        if not self.settings.interactive_mode:
-           self.add_cartopy_map_scale(axes, x_pos=0.05, y_pos=0.95)
+        # keep the plot size after zooming
+        device_aspect_ratio = (12.4 / 15.3)  # readings from a printout
+        device_aspect_ratio *= self.projection.aspect_ratio_adj
+        axes.set_aspect(device_aspect_ratio, adjustable="datalim")
 
     def draw_trajectories(self, axes, data_list):
         # See if the data time span is longer than the specified interval

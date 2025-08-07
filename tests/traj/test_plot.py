@@ -374,6 +374,7 @@ def test_TrapjectoyPlot___init__():
     assert hasattr(p, "cluster_list")
     assert hasattr(p, "plot_saver_list")
     assert hasattr(p, "current_frame")
+    assert hasattr(p, "aspect_ratio")
 
 
 def test_TrajectoryPlot_merge_plot_settings():
@@ -521,8 +522,8 @@ def test_TrajectoryPlot__initialize_map_projection():
     assert isinstance(p.projection, mapproj.AbstractMapProjection)
     assert isinstance(p.street_map, streetmap.AbstractMapBackground)
     assert p.street_map.fix_map_color_fn is None
-    assert p.initial_corners_lonlat == pytest.approx((-93.78870, -80.84286, 34.65945, 42.03164))
-    assert p.initial_corners_xy == pytest.approx((-345800.0, 754263.0, -581972.0, 264230.0))
+    assert p.initial_corners_lonlat == pytest.approx((-93.4354, -81.2338, 34.6713, 42.06110))
+    assert p.initial_corners_xy == pytest.approx((-313424.0, 721887.0, -581972.0, 264230.0))
 
 
 def test_TrajectoryPlot__determine_map_limits(plotData):

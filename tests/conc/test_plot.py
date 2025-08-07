@@ -154,7 +154,6 @@ def test_ConcentrationPlotSettings___init__():
     assert s.contour_levels is None
     assert s.contour_level_count == 4
     assert s.pollutant == ""
-    assert s.SCALE == pytest.approx(0.7784433)
     assert s.station_marker is not None
     assert s.station_marker_color != None
     assert s.station_marker_size > 0
@@ -762,6 +761,7 @@ def test_ConcentrationPlot___init__():
     assert hasattr(p, "plot_saver_list")
     assert p.color_opacity == 100
     assert hasattr(p, "color_table")
+    assert hasattr(p, "aspect_ratio")
 
     assert hasattr(p, "TFACT")
     assert hasattr(p, "initial_time")
@@ -1009,8 +1009,8 @@ def test_ConcentrationPlot__initialize_map_projection():
     assert p.settings.center_loc == pytest.approx((-84.22, 39.90))
     assert isinstance(p.street_map, streetmap.AbstractMapBackground)
     assert p.street_map.fix_map_color_fn is not None
-    assert p.initial_corners_lonlat == pytest.approx((-86.20034, -78.26379, 37.26423, 44.64719))
-    assert p.initial_corners_xy == pytest.approx((-173882.0, 472159.0, -288162.0, 541751.0))
+    assert p.initial_corners_lonlat == pytest.approx((-87.24513, -77.21132, 37.94388, 43.88974))
+    assert p.initial_corners_xy == pytest.approx((-263570.0, 561847.0, -210529.0, 464118.0))
 
 
 def test_ConcentrationPlot__create_map_box_instance():

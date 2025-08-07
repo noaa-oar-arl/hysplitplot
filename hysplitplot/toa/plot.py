@@ -90,7 +90,6 @@ class TimeOfArrivalPlotSettings(plotbase.AbstractPlotSettings):
         self.contour_levels = None
         self.contour_level_count = 4
         self.pollutant = ""  # name of the selected pollutant
-        self.SCALE = 0.7784433  # aspect ratio of the main plot box
         self.station_marker = "o"
         self.station_marker_color = "k"  # black
         self.station_marker_size = 6 * 6
@@ -427,6 +426,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         self.legends_axes = None
         self.text_axes = None
         self.plot_saver_list = None
+        self.aspect_ratio = 6.9474 / 8.5  # plot height divided by plot width
 
         self.TFACT = 1.0
         self.initial_time = None
@@ -708,7 +708,7 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
             self.settings.map_projection,
             self.settings.zoom_factor,
             self.settings.center_loc,
-            self.settings.SCALE,
+            self.aspect_ratio,
             self.cdump.grid_deltas,
             map_box,
             self.settings.center_loc_fixed)
@@ -794,9 +794,6 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         contour_set = None
         axes = self.conc_axes
 
-        # keep the plot size after zooming
-        axes.set_aspect("equal", adjustable="datalim")
-
         # turn off ticks and tick labels
         axes.tick_params(left="off", labelleft="off",
                          right="off", labelright="off",
@@ -880,6 +877,11 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
                              self.datem,
                              toa_data.grid.starting_datetime,
                              toa_data.grid.ending_datetime)
+
+        # keep the plot size after zooming
+        device_aspect_ratio = (12.4 / 15.3)  # readings from a printout
+        device_aspect_ratio *= self.projection.aspect_ratio_adj
+        axes.set_aspect(device_aspect_ratio, adjustable="datalim")
 
         return contour_set
 

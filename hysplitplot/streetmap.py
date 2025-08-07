@@ -211,7 +211,6 @@ class HYSPLITMapBackground(AbstractMapBackground):
         clr = self._fix_map_color(self.map_color, self.color_mode)
         self._update_gridlines(ax,
                                self.projection,
-                               data_crs,
                                clr,
                                self.lat_lon_label_interval_option,
                                self.lat_lon_label_interval)
@@ -221,7 +220,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
            if gl is not None:
               gl.remove()
 
-    def _update_gridlines(self, axes, projection, data_crs, map_color,
+    def _update_gridlines(self, axes, projection, map_color,
                           latlon_label_opt, latlon_spacing):
         deltax = deltay = self._get_gridline_spacing(projection.corners_lonlat,
                                                      latlon_label_opt,
@@ -237,7 +236,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
             warnings.filterwarnings('ignore',
                                     message='Approximating coordinate system*',
                                     category=UserWarning)
-            lonlat_ext = axes.get_extent(data_crs)
+            lonlat_ext = axes.get_extent(projection.data_crs)
         logger.debug("determining gridlines for extent %s using deltas %f, %f",
                      lonlat_ext, deltax, deltay)
 
@@ -273,7 +272,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
         self._erase_gridlines(axes)
 
         # draw dotted gridlines
-        kwargs = {"crs": data_crs, "linestyle": ":",
+        kwargs = {"crs": projection.data_crs, "linestyle": ":",
                   "linewidth": 0.5, "color": map_color}
         if len(xticks) > 0:
             kwargs["xlocs"] = xticks
@@ -282,7 +281,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
         axes.gridlines(**kwargs)
 
         # lat/lon line labels
-        self._draw_latlon_labels(axes, projection, data_crs,
+        self._draw_latlon_labels(axes, projection,
                                  deltax, deltay, map_color)
 
     def _get_gridline_spacing(self, corners_lonlat, latlon_label_opt,
@@ -348,7 +347,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
 
         return list
 
-    def _draw_latlon_labels(self, axes, projection, data_crs, deltax, deltay,
+    def _draw_latlon_labels(self, axes, projection, deltax, deltay,
                             map_color):
         logger.debug("latlon labels at intervals %f, %f", deltax, deltay)
         ideltax = int(deltax * 10.0)
@@ -374,8 +373,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
             # 5/17/2019
             # The clip_on option does not work with the eps/ps renderer.
             # Clipping is done here.
-            ax, ay = axes.transLimits.transform(
-                projection.crs.transform_point(lon, lat, data_crs))
+            ax, ay = axes.transLimits.transform(projection.calc_xy(lon, lat))
             if ax < 0.0 or ax > 1.0 or ay < 0.0 or ay > 1.0:
                 continue
 
@@ -383,7 +381,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
                 str = "{0:.1f}".format(lon)
             else:
                 str = "{0}".format(int(lon))
-            t = axes.text(lon, lat, str, transform=data_crs,
+            t = axes.text(lon, lat, str, transform=projection.data_crs,
                           horizontalalignment="center",
                           verticalalignment="center",
                           color=map_color, clip_on=True)
@@ -398,8 +396,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
             # 5/17/2019
             # The clip_on option does not work with the eps/ps renderer.
             # Clipping is done here.
-            ax, ay = axes.transLimits.transform(
-                projection.crs.transform_point(lon, lat, data_crs))
+            ax, ay = axes.transLimits.transform(projection.calc_xy(lon, lat))
             if ax < 0.0 or ax > 1.0 or ay < 0.0 or ay > 1.0:
                 continue
 
@@ -407,7 +404,7 @@ class HYSPLITMapBackground(AbstractMapBackground):
                 str = "{0:.1f}".format(lat)
             else:
                 str = "{0}".format(int(lat))
-            t = axes.text(lon, lat, str, transform=data_crs,
+            t = axes.text(lon, lat, str, transform=projection.data_crs,
                           horizontalalignment="center",
                           verticalalignment="center",
                           color=map_color, clip_on=True)
