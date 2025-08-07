@@ -289,9 +289,9 @@ def test_AbstractMapProjection_validate_corners(lambert_proj):
 
 def test_AbstractMapProjection_scale_per_aspect_ratio():
     s = plot.TrajectoryPlotSettings()
-    m = AbstractMapProjectionTest(s.map_projection, s.zoom_factor, [-125.0, 45.0], 1.3, [1.0, 1.0])
+    m = AbstractMapProjectionTest(s.map_projection, s.zoom_factor, [-125.0, 45.0], 1 / 1.3, [1.0, 1.0])
     cnr = [ 498.888000, 501.112000, 493.328094, 506.671906 ]
-    cnr2 = m.scale_per_aspect_ratio(cnr, 1.3)
+    cnr2 = m.scale_per_aspect_ratio(cnr, 1 / 1.3)
     assert cnr2 == pytest.approx((491.326538, 508.673462, 493.328094, 506.671906))
 
 
