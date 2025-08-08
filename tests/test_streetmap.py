@@ -450,19 +450,16 @@ def test_StamenStreetMap___init__(web_merc_proj):
     assert o.min_zoom == 0
     assert o.max_zoom == 15
     assert o.tile_provider.url == contextily.providers.Stadia.StamenTerrain.url
-    assert o.attribution.startswith("Map tiles by Stamen Design,")
 
     o = streetmap.StamenStreetMap(web_merc_proj, "TONER")
     assert o.min_zoom == 0
     assert o.max_zoom == 15
     assert o.tile_provider.url == contextily.providers.Stadia.StamenTonerLite.url
-    assert o.attribution.startswith("Map tiles by Stamen Design,")
 
     o = streetmap.StamenStreetMap(web_merc_proj, "UNKNOWN")
     assert o.min_zoom == 0
     assert o.max_zoom == 15
     assert o.tile_provider.url == contextily.providers.Stadia.StamenTerrain.url
-    assert o.attribution.startswith("Map tiles by Stamen Design,")
 
 
 def test_StamenStreetMap_min_zoom():
@@ -480,17 +477,11 @@ def test_StamenStreetMap_tile_provider():
     pass
 
 
-def test_StamenStreetMap_attribution():
-    # Tested by test_StamenStreetMap___init__.
-    pass
-
-
 def test_OpenStreetMap___init__(web_merc_proj):
     o = streetmap.OpenStreetMap(web_merc_proj)
     assert o.min_zoom == 0
     assert o.max_zoom == 15
     assert o.tile_provider.url == contextily.providers.OpenStreetMap.Mapnik.url
-    assert o.attribution.startswith("(C) OpenStreetMap contributors")
 
 
 def test_OpenTopoMap___init__(web_merc_proj):
@@ -498,5 +489,4 @@ def test_OpenTopoMap___init__(web_merc_proj):
     assert o.min_zoom == 0
     assert o.max_zoom == 15
     assert o.tile_provider.url == contextily.providers.OpenTopoMap.url
-    assert o.attribution.startswith("Map data: (C) OpenStreetMap contributors,")
 

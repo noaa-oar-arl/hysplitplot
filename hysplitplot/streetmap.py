@@ -434,11 +434,6 @@ class AbstractStreetMap(AbstractMapBackground):
     def tile_provider(self):
         pass
 
-    @property
-    @abstractmethod
-    def attribution(self):
-        pass
-
     def _compute_tile_widths(self):
         tile_widths = numpy.empty(self.max_zoom - self.min_zoom + 1,
                                   dtype=float)
@@ -489,14 +484,6 @@ class AbstractStreetMap(AbstractMapBackground):
                                zoom=zoom)
         self.last_extent = corners_xy
 
-        self.clear_text_objs(ax)
-
-        str = " {}".format(self.attribution)
-        t = ax.text(0, 0, str, fontsize=8,
-                    horizontalalignment="left", verticalalignment="bottom",
-                    transform=ax.transAxes)
-        self.text_objs.append(t)
-
 
 class StamenStreetMap(AbstractStreetMap):
 
@@ -510,8 +497,6 @@ class StamenStreetMap(AbstractStreetMap):
                            stamen_type)
             stamen_type = "TERRAIN"
         self.__tile_provider = StamenStreetMap.providers.get(stamen_type)
-        self.__attribution = "Map tiles by Stamen Design, under CC BY 3.0. " \
-                             "Data by OpenStreetMap, under ODbL."
 
     @property
     def min_zoom(self):
@@ -526,10 +511,6 @@ class StamenStreetMap(AbstractStreetMap):
     @property
     def tile_provider(self):
         return self.__tile_provider
-
-    @property
-    def attribution(self):
-        return self.__attribution
 
 
 class OpenStreetMap(AbstractStreetMap):
@@ -537,7 +518,6 @@ class OpenStreetMap(AbstractStreetMap):
     def __init__(self, projection):
         super(OpenStreetMap, self).__init__(projection)
         self.__tile_provider = contextily.providers.OpenStreetMap.Mapnik
-        self.__attribution = "(C) OpenStreetMap contributors"
 
     @property
     def min_zoom(self):
@@ -552,10 +532,6 @@ class OpenStreetMap(AbstractStreetMap):
     @property
     def tile_provider(self):
         return self.__tile_provider
-
-    @property
-    def attribution(self):
-        return self.__attribution
 
 
 class OpenTopoMap(AbstractStreetMap):
@@ -563,8 +539,6 @@ class OpenTopoMap(AbstractStreetMap):
     def __init__(self, projection):
         super(OpenTopoMap, self).__init__(projection)
         self.__tile_provider = contextily.providers.OpenTopoMap
-        self.__attribution = "Map data: (C) OpenStreetMap contributors, " \
-                             "SRTM | Map style: (C) OpenTopoMap (CC-BY-SA)"
 
     @property
     def min_zoom(self):
@@ -579,8 +553,3 @@ class OpenTopoMap(AbstractStreetMap):
     @property
     def tile_provider(self):
         return self.__tile_provider
-
-    @property
-    def attribution(self):
-        return self.__attribution
-
