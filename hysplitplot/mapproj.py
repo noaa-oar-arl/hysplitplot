@@ -112,23 +112,31 @@ class AbstractMapProjection(ABC):
     def refine_corners(self, center_loc):
         corners_xy = self.validate_corners(self.corners_xy)
 
+        logger.debug("crs limits: x %s, y %s", self.crs.x_limits,
+                     self.crs.y_limits)
+        logger.debug("data_crs limits: x %s, y %s", self.data_crs.x_limits,
+                     self.data_crs.y_limits)
+
         # scale map per aspect ratio
         corners_saved = corners_xy
         corners_xy = self.scale_per_aspect_ratio(corners_xy, self.aspect_ratio)
         corners_xy = self.choose_corners(corners_xy, corners_saved)
-        logger.debug("X, Y asp-zum: %s", corners_xy)
+        logger.debug("X, Y asp-zum: %f %f %f %f", corners_xy[0],
+                     corners_xy[1], corners_xy[2], corners_xy[3])
 
         # projection zoom factor
         corners_saved = corners_xy
         corners_xy = self.zoom_corners(corners_xy, self.zoom_factor)
         corners_xy = self.choose_corners(corners_xy, corners_saved)
-        logger.debug("X, Y zum-adj: %s", corners_xy)
+        logger.debug("X, Y zum-adj: %f %f %f %f", corners_xy[0],
+                     corners_xy[1], corners_xy[2], corners_xy[3])
 
         # round map corners to match even grid index for plotting
         corners_saved = [util.nearest_int(a) for a in corners_xy]
         corners_xy = self.round_map_corners(corners_xy)
         corners_xy = self.choose_corners(corners_xy, corners_saved)
-        logger.debug("X, Y Adj: %s", corners_xy)
+        logger.debug("X, Y Adj: %f %f %f %f", corners_xy[0],
+                     corners_xy[1], corners_xy[2], corners_xy[3])
 
         # alatb, alonl, alatt, alonr will be used later to setup map
         corners_lonlat = self.calc_corners_lonlat(corners_xy)
@@ -142,8 +150,18 @@ class AbstractMapProjection(ABC):
         self.corners_lonlat = corners_lonlat
         ratio_xy = self.calc_aspect_ratio(corners_xy)
         ratio_ll = self.calc_aspect_ratio(corners_lonlat)
-        logger.debug("Final: %s (aspect ratio %f)", corners_xy, ratio_xy)
-        logger.debug("Final: lonlat %s (aspect ratio %f)", self.corners_lonlat, ratio_ll)
+        logger.debug("Final: %f %f %f %f", corners_xy[0],
+                     corners_xy[1], corners_xy[2], corners_xy[3])
+        logger.debug("Lx %f, Ly %f, aspect ratio %f",
+                     corners_xy[1] - corners_xy[0],
+                     corners_xy[3] - corners_xy[2],
+                     ratio_xy)
+        logger.debug("Final: lonlat %f %f %f %f", corners_lonlat[0],
+                     corners_lonlat[1], corners_lonlat[2], corners_lonlat[3])
+        logger.debug("Lx %f, Ly %f, aspect ratio %f",
+                     corners_lonlat[1] - corners_lonlat[0],
+                     corners_lonlat[3] - corners_lonlat[2],
+                     ratio_ll)
 
     def calc_aspect_ratio(self, corners) -> float:
         x1, x2, y1, y2 = corners
@@ -494,6 +512,7 @@ class WebMercatorProjection(PoleExcludingProjection):
                                                     grid_deltas)
         self.proj_type = const.MapProjection.WEB_MERCATOR
         self.crs = self.create_crs()
+        self.aspect_ratio_adj = 0.95  # empirical
 
     def get_tangent_lat(self, center_loc):
         return 0.0
@@ -521,14 +540,17 @@ class WebMercatorCRS(cartopy.crs.Projection):
         super(WebMercatorCRS, self).__init__(other_terms, globe)
 
         minlon, maxlon = self._determine_longitude_bounds(central_longitude)
-        x0, x1, y0, y1 = (minlon, maxlon, -85.06, 85.06)
-        geodetic = cartopy.crs.Geodetic()
+        bounds_lonlat = (minlon, maxlon, -85.06, 85.06)
+        logger.debug('WebMercatorCRS ll bounds %s', bounds_lonlat)
+        x0, x1, y0, y1 = bounds_lonlat
         lons = numpy.array([x0, x0, x1, x1])
         lats = numpy.array([y0, y1, y1, y0])
-        points = self.transform_points(geodetic, lons, lats)
+        data_crs = cartopy.crs.PlateCarree()
+        points = self.transform_points(data_crs, lons, lats)
         x = points[:, 0]
         y = points[:, 1]
         self.bounds = (x.min(), x.max(), y.min(), y.max())
+        logger.debug('WebMercatorCRS xy bounds %s', self.bounds)
 
     def __str__(self):
         return 'WebMercatorCRS(central_longitude={})' \

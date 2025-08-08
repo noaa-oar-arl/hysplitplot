@@ -254,7 +254,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         self.cluster_list = None
         self.plot_saver_list = None
         self.current_frame = 1
-        self.aspect_ratio = 6.9474 / 8.5  # trajectory plot height divided by plot width
+        self.aspect_ratio = (12.4 / 15.3)  # trajectory plot height divided by plot width
 
     def merge_plot_settings(self, filename, args):
         if filename is not None:
@@ -721,7 +721,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
         self.draw_source_markers(self.traj_axes, data_list)
 
         # keep the plot size after zooming
-        device_aspect_ratio = (12.4 / 15.3)  # readings from a printout
+        device_aspect_ratio = self.aspect_ratio
         device_aspect_ratio *= self.projection.aspect_ratio_adj
         axes.set_aspect(device_aspect_ratio, adjustable="datalim")
 

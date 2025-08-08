@@ -493,7 +493,7 @@ no calculated values are above the output thresholds.'''
         self.plot_saver_list = None
         self.color_opacity = 100  # 0 to 100%
         self.color_table = None
-        self.aspect_ratio = 6.9474 / 8.5  # conc plot height divided by plot width
+        self.aspect_ratio = (12.4 / 15.3)  # conc plot height divided by plot width
 
         self.TFACT = 1.0
         self.initial_time = None
@@ -1049,7 +1049,7 @@ no calculated values are above the output thresholds.'''
                              conc_grid.ending_datetime)
 
         # keep the plot size after zooming
-        device_aspect_ratio = (12.4 / 15.3)  # readings from a printout
+        device_aspect_ratio = self.aspect_ratio
         device_aspect_ratio *= self.projection.aspect_ratio_adj
         axes.set_aspect(device_aspect_ratio, adjustable="datalim")
 

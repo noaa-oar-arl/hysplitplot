@@ -242,14 +242,18 @@ class AbstractPlot(ABC):
     def update_plot_extents(self, ax):
         xmin, xmax, ymin, ymax = self.projection.corners_xy = ax.axis()
         ratio_xy = abs((ymax - ymin) / (xmax - xmin))
-        logger.debug("update_plot_extents: xy: %f %f %f %f, aspect ratio: %f",
-                     xmin, xmax, ymin, ymax, ratio_xy)
+        logger.debug("update_plot_extents: xy: %f %f %f %f,"
+                     " Lx: %f, Ly: %f, aspect ratio: %f",
+                     xmin, xmax, ymin, ymax,
+                     xmax - xmin, ymax - ymin, ratio_xy)
         lonl, latb = self.projection.calc_lonlat(xmin, ymin)
         lonr, latt = self.projection.calc_lonlat(xmax, ymax)
         ratio_ll = abs((latt - latb) / (lonr - lonl))  # TODO: dateline change
         self.projection.corners_lonlat = (lonl, lonr, latb, latt)
-        logger.debug("update_plot_extents: lonlat: %f %f %f %f, aspect ratio: %f",
-                     lonl, lonr, latb, latt, ratio_ll)
+        logger.debug("update_plot_extents: lonlat: %f %f %f %f,"
+                     " Lx: %f, Ly: %f, aspect ratio: %f",
+                     lonl, lonr, latb, latt,
+                     lonr - lonl, latt - latb, ratio_ll)
 
     def on_update_plot_extent(self):
         ax = self.get_street_map_target_axes()
@@ -258,7 +262,7 @@ class AbstractPlot(ABC):
         if self.settings.noaa_logo:
             self._draw_noaa_logo(ax, self.settings.drawLogoInColor)
         if not matplotlib.is_interactive():
-           self.add_cartopy_map_scale(ax, x_pos=0.05, y_pos=0.95, use_km=False)
+           self.add_cartopy_map_scale(ax, x_pos=0.05, y_pos=0.95, use_km=True)
 
     def _make_labels_filename(self, output_suffix):
         if not self.settings.process_id_set:
@@ -458,7 +462,11 @@ class AbstractPlot(ABC):
        # Get the data limits of the axes (in projected coordinates)
        x_min, x_max = ax.get_xlim()
        y_min, y_max = ax.get_ylim()
-       logger.debug('map scale data limits: x %f %f, y %f %f', x_min, x_max, y_min, y_max)
+       logger.debug('map scale data limits: x %f %f, y %f %f; Lx %f, Ly %f;'
+                    ' aspect ratio %f',
+                    x_min, x_max, y_min, y_max,
+                    x_max - x_min, y_max - y_min,
+                    (y_max - y_min) / (x_max - x_min))
 
        if use_km:
           units = 'km'
@@ -468,6 +476,7 @@ class AbstractPlot(ABC):
           units = 'mi'
           scale_len = util.get_nice_number((x_max - x_min) / 1609.34)  # m to mi
           length_in_data_units = scale_len * 1609.34  # mi to m
+       logger.debug('map scale len %f', length_in_data_units)
 
        # Calculate the position in data coordinates from axes fractions
        x_data_pos = x_min + x_pos * (x_max - x_min)
