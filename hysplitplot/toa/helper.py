@@ -12,7 +12,7 @@ import datetime
 import logging
 import numpy
 
-from hysplitplot.conc import helper
+from ..conc import helper
 
 
 logger = logging.getLogger(__name__)

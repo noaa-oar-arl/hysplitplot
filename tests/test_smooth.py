@@ -9,7 +9,7 @@
 import numpy
 import pytest
 
-from hysplitplot import smooth, const
+from ..hysplitplot import smooth, const
 
 
 def test_SmoothingKernelFactory_create_instance():

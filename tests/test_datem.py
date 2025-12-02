@@ -10,7 +10,7 @@ import datetime
 import pytest
 import pytz
 
-from hysplitplot import datem
+from ..hysplitplot import datem
 
 
 def test_Datem___init__():

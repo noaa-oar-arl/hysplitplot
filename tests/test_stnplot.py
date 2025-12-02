@@ -9,7 +9,7 @@
 import os
 import pytest
 
-from hysplitplot import stnplot
+from ..hysplitplot import stnplot
 
 
 def test_StationPlotConfig___init__():

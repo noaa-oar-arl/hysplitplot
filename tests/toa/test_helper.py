@@ -12,9 +12,9 @@ import pytest
 import pytz
 
 from hysplitdata.conc import model
-from hysplitplot import util
-from hysplitplot.conc import helper as chelper
-from hysplitplot.toa import helper
+from ...hysplitplot import util
+from ...hysplitplot.conc import helper as chelper
+from ...hysplitplot.toa import helper
 
 
 class TimeOfArrivalTest(helper.TimeOfArrival):

@@ -12,8 +12,8 @@ import numpy
 import pytest
 
 from hysplitdata.traj import model
-from hysplitplot import mapproj, mapbox, const
-from hysplitplot.traj import plot
+from ..hysplitplot import mapproj, mapbox, const
+from ..hysplitplot.traj import plot
 
 
 def create_map_box(s):

@@ -9,7 +9,7 @@
 from abc import ABC, abstractmethod
 import logging
 
-from hysplitplot.conc.helper import AbstractGisOutputFilename
+from ..conc.helper import AbstractGisOutputFilename
 
 
 logger = logging.getLogger(__name__)

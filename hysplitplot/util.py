@@ -16,7 +16,7 @@ import os
 import sys
 
 from hysplitdata.const import HeightUnit
-from hysplitplot import const
+from . import const
 
 PLOT_FORMATS = ["eps", "jpeg", "jpg", "pdf", "pgf", "png", "ps", "raw",
                 "rgba", "svg", "svgz", "tif", "tiff"]

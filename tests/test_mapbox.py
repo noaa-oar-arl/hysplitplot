@@ -9,41 +9,202 @@
 import numpy
 import pytest
 
-from hysplitplot import mapbox, const
-from hysplitplot.traj import plot
+from ..hysplitplot import mapbox, const
+from ..hysplitplot.traj import plot
+
+
+def test_LongitudeInterval__init__():
+   o = mapbox.LongitudeInterval()
+   assert o._l == 0.
+   assert o._r == 0.
+
+
+def test_LongitudeInterval__normalize_angle():
+   o = mapbox.LongitudeInterval()
+
+   assert o._normalize_angle(0.0) == pytest.approx(0.0)
+   assert o._normalize_angle(179.0) == pytest.approx(179.0)
+   assert o._normalize_angle(180.0) == pytest.approx(-180.0)
+   assert o._normalize_angle(181.0) == pytest.approx(-179.0)
+   assert o._normalize_angle(-179.0) == pytest.approx(-179.0)
+   assert o._normalize_angle(-180.0) == pytest.approx(-180.0)
+   assert o._normalize_angle(-181.0) == pytest.approx(179.0)
+
+
+def test_LongitudeInterval_is_angle_inside():
+   o = mapbox.LongitudeInterval(-90.0, 90.0)
+
+   assert o.is_angle_inside(-90.0) is True
+   assert o.is_angle_inside(0.0) is True
+   assert o.is_angle_inside(90.0) is True
+
+   assert o.is_angle_inside(-91.0) is False
+   assert o.is_angle_inside(91.0) is False
+
+
+def test_LongitudeInterval_is_angle_inside_case2():
+   o = mapbox.LongitudeInterval(170.0, -170.0)
+
+   assert o.is_angle_inside(169.0) is False
+   assert o.is_angle_inside(170.0) is True
+   assert o.is_angle_inside(179.0) is True
+   assert o.is_angle_inside(-180.0) is True
+   assert o.is_angle_inside(-175.0) is True
+   assert o.is_angle_inside(-170.0) is True
+   assert o.is_angle_inside(-169.0) is False
+
+
+def test_LongitudeInterval_union():
+   o = mapbox.LongitudeInterval(-90.0, 90.0)
+
+   o.union(45.0)
+   assert o._l == pytest.approx(-90.0)
+   assert o._r == pytest.approx(90.0)
+
+   o.union(-45.0)
+   assert o._l == pytest.approx(-90.0)
+   assert o._r == pytest.approx(90.0)
+
+   o.union(-91.0)
+   assert o._l == pytest.approx(-91.0)
+   assert o._r == pytest.approx(90.0)
+
+   o.union(95.0)
+   assert o._l == pytest.approx(-91.0)
+   assert o._r == pytest.approx(95.0)
+
+
+def test_LongitudeInterval_union_case1a():
+   o = mapbox.LongitudeInterval(-170.0, 170.0)
+
+   o.union(-175.0)
+   assert o._l == pytest.approx(-175.0)
+   assert o._r == pytest.approx(170.0)
+
+   o.union(179.0)
+   assert o._l == pytest.approx(179.0)
+   assert o._r == pytest.approx(170.0)
+
+
+def test_LongitudeInterval_union_case2():
+   o = mapbox.LongitudeInterval(170.0, -170.0)
+
+   o.union(-175.0)
+   assert o._l == pytest.approx(170.0)
+   assert o._r == pytest.approx(-170.0)
+
+   o.union(175.0)
+   assert o._l == pytest.approx(170.0)
+   assert o._r == pytest.approx(-170.0)
+
+   o.union(-165.0)
+   assert o._l == pytest.approx(170.0)
+   assert o._r == pytest.approx(-165.0)
+
+   o.union(165.0)
+   assert o._l == pytest.approx(165.0)
+   assert o._r == pytest.approx(-165.0)
+
+
+def test_AbstractMapBox___init__():
+    mb = mapbox.MapBox()  # use a concrete class
+
+    assert mb.grid_delta == 1.0
+    assert mb.grid_corner == [-180.0, -90.0]
+    assert mb.hit_count == 0
+    assert mb.bounding_box is None
+
+
+def test_AbstractMapBox_get_bounding_box_center():
+    mb = mapbox.MapBox()
+
+    mb._bbox = (-90., -88., 37.0, 38.0,)
+    assert mb.get_bounding_box_center() == pytest.approx((-89., 37.5,))
+
+    mb._bbox = (178.0, -178.0, 37.0, 38.0,)
+    assert mb.get_bounding_box_center() == pytest.approx((-180.0, 37.5,))
+
+
+def test_AbstractMapBox_get_bounding_box_corners():
+    mb = mapbox.MapBox()
+    mb.allocate()
+
+    corners = mb.get_bounding_box_corners()
+    assert len(corners) == 0
+
+    mb.plume_sz = [40.0, 10.0]
+    s = plot.TrajectoryPlotSettings()
+    s.center_loc = (-120.3, 45.3)
+    s.ring_number = 2
+    s.ring_distance = 101.0
+    mb.set_ring_extent(s, (-120.3, 45.3))
+
+    corners = mb.get_bounding_box_corners()
+    assert len(corners) == 4
+    assert corners[0] == pytest.approx((-122.1018, 43.49820))
+    assert corners[1] == pytest.approx((-118.4982, 43.49820))
+    assert corners[2] == pytest.approx((-118.4982, 47.10180))
+    assert corners[3] == pytest.approx((-122.1018, 47.10180))
+
+
+def test_AbstractMapBox__normalize_lon():
+    mb = mapbox.MapBox();
+    assert mb._normalize_lon(-185.0) == pytest.approx(175.0)
+    assert mb._normalize_lon(185.0) == pytest.approx(-175.0)
+    assert mb._normalize_lon(45.0) == pytest.approx(45.0)
+
+
+def test_AbstractMapBox__normalize_lat():
+    mb = mapbox.MapBox();
+    assert mb._normalize_lat(-95.0) == pytest.approx(-90.0)
+    assert mb._normalize_lat(95.0) == pytest.approx(90.0)
+    assert mb._normalize_lat(45.0) == pytest.approx(45.0)
+
+
+def test_AbstractMapBox_set_ring_extent():
+    mb = mapbox.MapBox()
+    mb.allocate()
+    mb.plume_sz = [40.0, 10.0]
+    s = plot.TrajectoryPlotSettings()
+    s.center_loc = (-120.3, 45.3)
+    s.ring_number = 2
+    s.ring_distance = 101.0
+
+    mb.set_ring_extent(s, (-120.3, 45.3))
+
+    assert s.ring_distance == 100.0
+    assert mb.bounding_box == pytest.approx((-122.1018, -118.4982, 43.49820, 47.10180))
+
+
+def test_AbstractMapBox_set_ring_extent_case2():
+    """
+    Test ring_number = 0
+    """
+    mb = mapbox.MapBox()
+    mb.allocate()
+    mb.plume_sz = [40.0, 10.0]
+    s = plot.TrajectoryPlotSettings()
+    s.center_loc = (-120.3, 45.3)
+    s.ring_number = 0
+    s.ring_distance = 202.0
+
+    mb.set_ring_extent(s, (-120.3, 45.3))
+
+    assert s.ring_distance == 200.0
+    assert mb.bounding_box == pytest.approx((-122.1018, -118.4982, 43.49820, 47.10180))
 
 
 def test_MapBox___init__():
     mb = mapbox.MapBox()
-
     assert mb._lon_hit_map is None
     assert mb._lat_hit_map is None
-    assert mb.sz == [360, 181]
-    assert mb.grid_delta == 1.0
-    assert mb.grid_corner == [-180.0, -90.0]
-    assert mb.plume_sz == [0.0, 0.0]
-    assert mb.plume_loc == [0, 0]
-    assert mb.hit_count == 0
-    assert mb.bounding_box is None
 
     mb = mapbox.MapBox(grid_corner=[-84.0, -23.0], grid_size=[10.0, 5.0], grid_delta=0.5)
-    assert mb.sz == [20, 10]
+    assert mb._sz == [20, 10]
+    assert mb.plume_sz == [0, 0]
+    assert mb.plume_loc == [0, 0]
     assert mb.grid_delta == 0.5
     assert mb.grid_corner == [-84.0, -23.0]
-
-
-def test_MapBox__normalize_lon():
-    mb = mapbox.MapBox();
-    assert mb._normalize_lon(-185.0) == pytest.approx( 175.0)
-    assert mb._normalize_lon( 185.0) == pytest.approx(-175.0)
-    assert mb._normalize_lon(  45.0) == pytest.approx(  45.0)
-
-
-def test_MapBox__normalize_lat():
-    mb = mapbox.MapBox();
-    assert mb._normalize_lat(-95.0) == pytest.approx(-90.0)
-    assert mb._normalize_lat( 95.0) == pytest.approx( 90.0)
-    assert mb._normalize_lat( 45.0) == pytest.approx( 45.0)
 
 
 def test_MapBox_allocate():
@@ -164,7 +325,7 @@ def test_MapBox_refine_grid():
 
     assert mb.grid_corner == [-121.0, 45.0]
     assert mb.grid_delta == 0.10
-    assert mb.sz == [10, 10]
+    assert mb._sz == [10, 10]
     assert mb._lon_hit_map is None
     assert mb._lat_hit_map is None
 
@@ -189,12 +350,12 @@ def test_MapBox_refine_grid_case2():
     mb.add_conc(conc, lons_right, lats_right)
     mb.determine_plume_extent()
     assert mb.bounding_box == pytest.approx((178.0, -178.0, 35.0, 42.0))
-    
+
     mb.refine_grid()
 
     assert mb.grid_corner == [178.0, 35.0]
-    assert mb.grid_delta == 0.10
-    assert mb.sz == [40, 70]
+    assert mb.grid_delta == 0.1
+    assert mb._sz == [40, 70]
     assert mb._lon_hit_map is None
     assert mb._lat_hit_map is None
 
@@ -224,56 +385,82 @@ def test_MapBox_clear_hit_map():
     assert mb.hit_count == 0
 
 
-def test_MapBox_set_ring_extent():
-    mb = mapbox.MapBox()
+def test_MapBoxUsingBoundingBox___init__():
+    mb = mapbox.MapBoxUsingBoundingBox()
+    assert mb._left == 0
+    assert mb._right == 0
+    assert mb._top == 0
+    assert mb._bottom == 0
+
+
+def test_MapBoxUsingBoundingBox_add():
+    mb = mapbox.MapBoxUsingBoundingBox()
     mb.allocate()
-    mb.plume_sz = [40.0, 10.0]
-    s = plot.TrajectoryPlotSettings()
-    s.center_loc = (-120.3, 45.3)
-    s.ring_number = 2
-    s.ring_distance = 101.0
 
-    mb.set_ring_extent(s, (-120.3, 45.3))
+    mb.add((-120.3, 45.3))
+    assert mb.hit_count == 1
+    assert mb.bounding_box == pytest.approx([-120.3, -120.3, 45.3, 45.3])
 
-    assert s.ring_distance == 100.0
-    assert mb.bounding_box == pytest.approx((-122.1018, -118.4982, 43.49820, 47.10180))
+    mb.add((-120.9, 45.8))
+    assert mb.hit_count == 2
+    assert mb.bounding_box == pytest.approx([-120.9, -120.3, 45.3, 45.8])
+
+    # Test a point near the longitude maximum.
+    mb.add((359.696, 45.3))
+    assert mb.hit_count == 3
+    assert mb.bounding_box == pytest.approx([-120.9, -0.304, 45.3, 45.8])
 
 
-def test_MapBox_set_ring_extent_case2():
+def test_MapBoxUsingBoundingBox_add_conc():
+    mb = mapbox.MapBoxUsingBoundingBox()
+    mb.allocate()
+
+    conc = numpy.array([
+        [0, 0, 0, 0, 0],
+        [0, 1, 2, 3, 0],
+        [0, 0, 1, 2, 0],
+        [0, 0, 0, 1, 0],
+        [0, 0, 0, 0, 0]])
+    lats = [35.0, 35.5, 36.0, 36.5, 37.0]
+    lons = [-90.0, -89.5, -89.0, -88.5, -88.0]
+    mb.add_conc(conc, lons, lats)
+
+    assert mb.hit_count == 6
+    assert mb.bounding_box == pytest.approx([-89.5, -88.5, 35.5, 36.5])
+
+
+def test_MapBoxUsingBoundingBox_determine_plume_extent():
+    mb = mapbox.MapBoxUsingBoundingBox()
+    mb.allocate()
+
+    mb.add((-120.3, 45.3))
+    mb.determine_plume_extent()
+
+    assert mb.bounding_box == pytest.approx((-120.3, -120.3, 45.3, 45.3))
+
+
+def test_MapBoxUsingBoundingBox_determine_plume_extent_case2():
     """
-    Test ring_number = 0
+    Test with a plume crossing the grid domain
     """
-    mb = mapbox.MapBox()
+    mb = mapbox.MapBoxUsingBoundingBox()
     mb.allocate()
-    mb.plume_sz = [40.0, 10.0]
-    s = plot.TrajectoryPlotSettings()
-    s.center_loc = (-120.3, 45.3)
-    s.ring_number = 0
-    s.ring_distance = 202.0
 
-    mb.set_ring_extent(s, (-120.3, 45.3))
+    conc = numpy.array([
+        [1, 1],
+        [1, 1],
+        [1, 1],
+        [1, 1],
+        [1, 1]])
+    lats_left = [35.0, 36.0, 37.0, 38.0, 39.0]
+    lons_left = [-180.0, -179.0]
+    mb.add_conc(conc, lons_left, lats_left)
 
-    assert s.ring_distance == 200.0
-    assert mb.bounding_box == pytest.approx((-122.1018, -118.4982, 43.49820, 47.10180))
+    lats_right = [37.0, 38.0, 39.0, 40.0, 41.0]
+    lons_right = [178.0, 179.0]
+    mb.add_conc(conc, lons_right, lats_right)
 
+    mb.determine_plume_extent()
 
-def test_MapBox_get_bounding_box_corners():
-    mb = mapbox.MapBox()
-    mb.allocate()
-    
-    corners = mb.get_bounding_box_corners()
-    assert len(corners) == 0
+    assert mb.bounding_box == pytest.approx((178.0, -179.0, 35.0, 41.0))
 
-    mb.plume_sz = [40.0, 10.0]
-    s = plot.TrajectoryPlotSettings()
-    s.center_loc = (-120.3, 45.3)
-    s.ring_number = 2
-    s.ring_distance = 101.0
-    mb.set_ring_extent(s, (-120.3, 45.3))
-
-    corners = mb.get_bounding_box_corners()
-    assert len(corners) == 4
-    assert corners[0] == pytest.approx((-122.1018, 43.49820))
-    assert corners[1] == pytest.approx((-118.4982, 43.49820))
-    assert corners[2] == pytest.approx((-118.4982, 47.10180))
-    assert corners[3] == pytest.approx((-122.1018, 47.10180))

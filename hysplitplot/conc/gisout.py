@@ -17,7 +17,7 @@ import numpy
 import xml.etree.ElementTree as ET
 
 from hysplitdata.conc import model
-from hysplitplot import const, util
+from .. import const, util
 
 
 logger = logging.getLogger(__name__)

@@ -10,7 +10,7 @@ import datetime
 import pytest
 import pytz
 
-from hysplitplot import timezone
+from ..hysplitplot import timezone
         
 
 def test_TimeZoneHelper___init__():

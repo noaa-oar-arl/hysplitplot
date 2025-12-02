@@ -8,7 +8,7 @@
 
 from abc import ABC, abstractmethod
 
-from hysplitplot import const
+from .. import const
 
 
 class ColorCycle(ABC):

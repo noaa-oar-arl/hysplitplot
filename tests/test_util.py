@@ -13,7 +13,7 @@ import pytest
 import zoneinfo
 
 from hysplitdata.const import HeightUnit
-from hysplitplot import util, const
+from ..hysplitplot import util, const
 
 
 def test_myzip():

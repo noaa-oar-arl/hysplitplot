@@ -8,8 +8,7 @@
 
 import logging
 
-from hysplitplot import util
-
+from . import util
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +50,7 @@ class CommandLineArguments:
                     if arg.count("=") > 0:
                         k = arg.index("=")
                         opt = arg[:k]
-                        val = arg[k+1:]
+                        val = arg[k + 1:]
                         self.args[opt] = val
                     else:
                         opt = arg

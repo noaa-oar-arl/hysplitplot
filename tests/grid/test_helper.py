@@ -8,7 +8,7 @@
 import logging
 import os
 
-from hysplitplot.grid import helper
+from ...hysplitplot.grid import helper
 
 
 logger = logging.getLogger(__name__)

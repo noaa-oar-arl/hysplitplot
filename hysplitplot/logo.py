@@ -11,7 +11,7 @@ import math
 import matplotlib.patches
 import numpy
 
-from hysplitplot import util
+from . import util
 
 logger = logging.getLogger(__name__)
 

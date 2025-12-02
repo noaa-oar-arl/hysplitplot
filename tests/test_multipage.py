@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import os
 import pytest
 
-from hysplitplot import multipage, const
+from ..hysplitplot import multipage, const
 
 
 class AbstractMultiplePlotFileWriterTest(multipage.AbstractMultiplePlotFileWriter):

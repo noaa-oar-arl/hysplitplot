@@ -21,8 +21,9 @@ register_matplotlib_converters()
 
 from hysplitdata.const import HeightUnit, VerticalCoordinate
 from hysplitdata.traj import model
-from hysplitplot import clist, const, labels, mapfile, mapproj, multipage, streetmap
-from hysplitplot.traj import plot
+from ...hysplitplot import clist, const, labels, mapbox, mapfile, mapproj, \
+                           multipage, streetmap
+from ...hysplitplot.traj import plot
 
 
 @pytest.fixture
@@ -514,6 +515,7 @@ def test_TrajectoryPlot__initialize_map_projection():
     p = plot.TrajectoryPlot()
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump"])
     p.read_data_files()
+    mbox = mapbox.MapBoxFactory.create_instance()
 
     assert p.street_map is None
 
@@ -522,8 +524,13 @@ def test_TrajectoryPlot__initialize_map_projection():
     assert isinstance(p.projection, mapproj.AbstractMapProjection)
     assert isinstance(p.street_map, streetmap.AbstractMapBackground)
     assert p.street_map.fix_map_color_fn is None
-    assert p.initial_corners_lonlat == pytest.approx((-93.4354, -81.2338, 34.6713, 42.06110))
-    assert p.initial_corners_xy == pytest.approx((-313424.0, 721887.0, -581972.0, 264230.0))
+    if isinstance(mbox, mapbox.MapBox):
+       assert p.initial_corners_lonlat == pytest.approx((-93.4834, -81.1807, 34.6698, 42.0572))
+       assert p.initial_corners_xy == pytest.approx((-317820.0, 726284.0, -581972.0, 264230.0))
+    else:
+       # MapBoxusingBoundingBox
+       assert p.initial_corners_lonlat == pytest.approx((-92.0201, -83.3123, 35.96464, 41.2151))
+       assert p.initial_corners_xy == pytest.approx((-180666.0, 558359.0, -442788.0, 156160.0))
 
 
 def test_TrajectoryPlot__determine_map_limits(plotData):
@@ -533,9 +540,14 @@ def test_TrajectoryPlot__determine_map_limits(plotData):
 
     assert mb.grid_corner == [-180.0, -90.0]
     assert mb.grid_delta == 1.0
-    assert mb.sz == [360, 181]
-    assert mb.plume_sz == [5.0, 5.0]
-    assert mb.plume_loc == [90, 126]
+    assert mb._sz == [360, 181]
+    if isinstance(mb, mapbox.MapBox):
+       assert mb.plume_sz == [5.0, 5.0]
+       assert mb.plume_loc == [90, 126]
+    else:
+       # MapBoxUsingBoundingBox
+       assert mb.plume_sz == pytest.approx([4.715, 3.114])
+       assert mb.plume_loc == [90, 126]
 
     nil_plot_data = model.TrajectoryDump()
 

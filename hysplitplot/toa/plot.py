@@ -20,11 +20,12 @@ import sys
 from hysplitdata import io
 from hysplitdata.conc import model
 from hysplitdata.const import HeightUnit
-from hysplitplot import cmdline, const, datem, mapbox, mapproj, \
+from .. import cmdline, const, datem, mapbox, mapproj, \
                         plotbase, smooth, streetmap, timezone, util
-from hysplitplot.conc import helper, gisout, cntr
-from hysplitplot.conc.plot import ColorTableFactory, LabelledContourLevel
-from hysplitplot.toa import helper as thelper
+from ..conc import helper, gisout, cntr
+from ..conc.clrtbl import ColorTableFactory
+from ..conc.cntrlvl import LabelledContourLevel
+from ..toa import helper as thelper
 
 logger = logging.getLogger(__name__)
 
@@ -733,19 +734,9 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
         lat_span = cdump.grid_sz[1] * cdump.grid_deltas[1]
         lon_span = cdump.grid_sz[0] * cdump.grid_deltas[0]
 
-        # use finer grids for small maps
-        if lat_span < 2.0 and lon_span < 2.0:
-            mbox = mapbox.MapBox(grid_corner=cdump.grid_loc,
-                                 grid_size=(lon_span, lat_span),
-                                 grid_delta=0.10)
-        elif lat_span < 5.0 and lon_span < 5.0:
-            mbox = mapbox.MapBox(grid_corner=cdump.grid_loc,
-                                 grid_size=(lon_span, lat_span),
-                                 grid_delta=0.20)
-        else:
-            mbox = mapbox.MapBox()
-
-        return mbox
+        return mapbox.MapBoxFactory.create_instance(lat_span,
+                                                    lon_span,
+                                                    grid_corner=cdump.grid_loc)
 
     def _determine_map_limits(self, cdump, map_opt_passes):
         mbox = self._create_map_box_instance(cdump)

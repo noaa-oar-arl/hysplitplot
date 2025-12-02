@@ -12,7 +12,7 @@ import numpy
 from matplotlib.path import Path
 import sys
 
-from hysplitplot import util
+from .. import util
 
 logger = logging.getLogger(__name__)
 

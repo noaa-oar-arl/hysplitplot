@@ -12,7 +12,7 @@ import os
 import shapely.geometry
 
 from hysplitdata import io
-from hysplitplot import util, mapproj
+from . import util, mapproj
 
 
 logger = logging.getLogger(__name__)

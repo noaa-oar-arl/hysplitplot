@@ -20,7 +20,7 @@ import shapely.geometry
 import urllib
 import warnings
 
-from hysplitplot import const, mapfile, util
+from . import const, mapfile, util
 from matplotlib.lines import segment_hits
 from numpy import isin
 from cartopy.mpl.gridliner import Gridliner

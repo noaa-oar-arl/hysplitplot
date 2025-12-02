@@ -18,8 +18,9 @@ import math
 
 from hysplitdata.const import HeightUnit
 from hysplitdata.conc import model
-from hysplitplot import const, labels, mapfile, mapproj, multipage, smooth, streetmap, util
-from hysplitplot.conc import gisout, helper, plot, cntr
+from ...hysplitplot import const, labels, mapbox, mapfile, mapproj, multipage, \
+                           smooth, streetmap, util
+from ...hysplitplot.conc import gisout, helper, plot, cntr, cntrlvl, clrtbl
 
 
 @pytest.fixture
@@ -43,10 +44,10 @@ def cdump2():
 @pytest.fixture
 def contourLevels():
     c = []
-    c.append(plot.LabelledContourLevel(10.0, "L1"))
-    c.append(plot.LabelledContourLevel(15.0, "L2"))
-    c.append(plot.LabelledContourLevel(20.0, "L3"))
-    c.append(plot.LabelledContourLevel(25.0, "L4"))
+    c.append(cntrlvl.LabelledContourLevel(10.0, "L1"))
+    c.append(cntrlvl.LabelledContourLevel(15.0, "L2"))
+    c.append(cntrlvl.LabelledContourLevel(20.0, "L3"))
+    c.append(cntrlvl.LabelledContourLevel(25.0, "L4"))
     return c
 
 
@@ -72,7 +73,7 @@ def cleanup_plot(p):
 # declare concrete classes below to test their corresponding abstract class.
 
 
-class AbstractContourLevelGeneratorTest(plot.AbstractContourLevelGenerator):
+class AbstractContourLevelGeneratorTest(cntrlvl.AbstractContourLevelGenerator):
 
     def make_levels(self, min_conc, max_conc, max_levels):
         pass
@@ -81,7 +82,7 @@ class AbstractContourLevelGeneratorTest(plot.AbstractContourLevelGenerator):
         return 0
 
 
-class AbstractColorTableTest(plot.AbstractColorTable):
+class AbstractColorTableTest(clrtbl.AbstractColorTable):
 
     def __init__(self, ncolors, color_opacity=100):
         super(AbstractColorTableTest, self).__init__(ncolors, color_opacity)
@@ -142,6 +143,7 @@ def test_ConcentrationPlotSettings___init__():
     assert s.near_min_cntr_multiplier == 0.8
     assert s.near_min_cntr_color == "#999999"
     assert s.near_min_cntr_raw_color == (0.6, 0.6, 0.6)
+    assert s.hitmap_generation_method == 0
 
     assert s.gis_output == const.GISOutput.NONE
     assert s.kml_option == const.KMLOption.NONE
@@ -462,6 +464,14 @@ def test_ConcentrationPlotSettings_process_command_line_arguments_opt4():
     assert s.near_min_cntr_raw_color == pytest.approx((0.8, 0.8, 0.8))
 
 
+def test_ConcentrationPlotSettings_process_command_line_arguments_negz():
+    s = plot.ConcentrationPlotSettings()
+    # negative zoom factor
+    s.process_command_line_arguments(["-z-50"])
+    assert s.hitmap_generation_method == 1
+    assert s.zoom_factor == 0.5
+
+
 def test_ConcentrationPlotSettings_parse_source_label():
     s = plot.ConcentrationPlotSettings()
     assert s.parse_source_label("72") == "*"
@@ -540,11 +550,11 @@ def test_ConcentrationPlotSettings_parse_contour_levels():
     assert len(a) == 2
     assert s.contour_level_count == 2
     k = 0
-    assert isinstance(a[k], plot.LabelledContourLevel)
+    assert isinstance(a[k], cntrlvl.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == "USER1"
     k += 1
-    assert isinstance(a[k], plot.LabelledContourLevel)
+    assert isinstance(a[k], cntrlvl.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == "USER2"
 
@@ -558,12 +568,12 @@ def test_ConcentrationPlotSettings_parse_contour_levels():
     assert len(a) == 2
     assert s.contour_level_count == 2
     k = 0
-    assert isinstance(a[k], plot.LabelledContourLevel)
+    assert isinstance(a[k], cntrlvl.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == "USER1"
     assert c[k] == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
     k += 1
-    assert isinstance(a[k], plot.LabelledContourLevel)
+    assert isinstance(a[k], cntrlvl.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == "USER2"
     assert c[k] == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
@@ -579,12 +589,12 @@ def test_ConcentrationPlotSettings_parse_contour_levels():
     assert len(a) == 5
     assert s.contour_level_count == 5
     k = 0
-    assert isinstance(a[k], plot.LabelledContourLevel)
+    assert isinstance(a[k], cntrlvl.LabelledContourLevel)
     assert a[k].level is None
     assert a[k].label == ""
     assert c[k] == pytest.approx((0.0, 1.0, 1.0), 1.0e-5)
     k += 4
-    assert isinstance(a[k], plot.LabelledContourLevel)
+    assert isinstance(a[k], cntrlvl.LabelledContourLevel)
     assert a[k].level is None
     assert a[k].label == ""
     assert c[k] == pytest.approx((1.0, 0.0, 0.0), 1.0e-5)
@@ -646,13 +656,13 @@ def test_ConcentrationPlotSettings_parse_labeled_contour_levels():
     assert clr_set == True
 
     k = 0
-    assert isinstance(a[k], plot.LabelledContourLevel)
+    assert isinstance(a[k], cntrlvl.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == "USER1"
     assert clrs[k] == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
 
     k += 1
-    assert isinstance(a[k], plot.LabelledContourLevel)
+    assert isinstance(a[k], cntrlvl.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == "USER2"
     assert clrs[k] == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
@@ -664,13 +674,13 @@ def test_ConcentrationPlotSettings_parse_labeled_contour_levels():
     assert clr_set == True
 
     k = 0
-    assert isinstance(a[k], plot.LabelledContourLevel)
+    assert isinstance(a[k], cntrlvl.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == ""
     assert clrs[k] == pytest.approx((0.392157, 0.196078, 0.784314), 1.0e-5)
 
     k += 1
-    assert isinstance(a[k], plot.LabelledContourLevel)
+    assert isinstance(a[k], cntrlvl.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == ""
     assert clrs[k] == pytest.approx((0.392157, 0.274510, 0.784314), 1.0e-5)
@@ -682,12 +692,12 @@ def test_ConcentrationPlotSettings_parse_labeled_contour_levels():
     assert clr_set == False
 
     k = 0
-    assert isinstance(a[k], plot.LabelledContourLevel)
+    assert isinstance(a[k], cntrlvl.LabelledContourLevel)
     assert a[k].level == pytest.approx(1000.0)
     assert a[k].label == "USER1"
 
     k += 1
-    assert isinstance(a[k], plot.LabelledContourLevel)
+    assert isinstance(a[k], cntrlvl.LabelledContourLevel)
     assert a[k].level == pytest.approx(10000.0)
     assert a[k].label == "USER2"
 
@@ -752,6 +762,8 @@ def test_ConcentrationPlot___init__():
     assert hasattr(p, "depo_map")
     assert hasattr(p, "prev_forecast_time")
     assert hasattr(p, "length_factory")
+    assert hasattr(p, "scaled_conc_level_generator")
+    assert hasattr(p, "scaled_depo_level_generator")
 
     assert hasattr(p, "fig")
     assert hasattr(p, "conc_outer")
@@ -807,7 +819,7 @@ def test_ConcentrationPlot_read_data_files():
     assert p.level_selector.min == 0
     assert p.level_selector.max == 99999
     assert p.conc_type is not None
-    assert isinstance(p.color_table, plot.AbstractColorTable)
+    assert isinstance(p.color_table, clrtbl.AbstractColorTable)
     assert p.plot_saver_list is not None
     assert p.conc_map is not None
     assert p.depo_map is not None
@@ -1000,21 +1012,27 @@ def test_ConcentrationPlot__initialize_map_projection():
     p = plot.ConcentrationPlot()
     p.merge_plot_settings(None, ["-idata/cdump"])
     p.read_data_files()
+    mbox = mapbox.MapBoxFactory.create_instance()
 
     assert p.street_map is None
 
     p._initialize_map_projection(p.cdump)
 
     assert isinstance(p.projection, mapproj.AbstractMapProjection)
-    assert p.settings.center_loc == pytest.approx((-84.22, 39.90))
+    assert p.settings.center_loc == pytest.approx((-82.5, 41.0))
     assert isinstance(p.street_map, streetmap.AbstractMapBackground)
     assert p.street_map.fix_map_color_fn is not None
-    assert p.initial_corners_lonlat == pytest.approx((-87.24513, -77.21132, 37.94388, 43.88974))
-    assert p.initial_corners_xy == pytest.approx((-263570.0, 561847.0, -210529.0, 464118.0))
+    if isinstance(mbox, mapbox.MapBox):
+       assert p.initial_corners_lonlat == pytest.approx((-87.1701, -77.3863, 37.9297, 43.91635))
+       assert p.initial_corners_xy == pytest.approx((-407748.0, 409748.0, -327241.0, 335305.0))
+    else:
+       assert p.initial_corners_lonlat == pytest.approx((-87.1701, -77.3863, 37.9297, 43.91635))
+       assert p.initial_corners_xy == pytest.approx((-407748.0, 409748.0, -327241.0, 335305.0))
 
 
 def test_ConcentrationPlot__create_map_box_instance():
     p = plot.ConcentrationPlot()
+
     cdump = model.ConcentrationDump()
     cdump.grid_loc = [-84.0, 34.0]
 
@@ -1024,7 +1042,7 @@ def test_ConcentrationPlot__create_map_box_instance():
     mb = p._create_map_box_instance(cdump);
     assert mb.grid_delta == 0.1
     assert mb.grid_corner == [-84.0, 34.0]
-    assert mb.sz == [5, 3]
+    assert mb._sz == [5, 3]
 
     # case 2 - 4 degrees x 3 degrees
     cdump.grid_sz = [8, 6]
@@ -1032,7 +1050,7 @@ def test_ConcentrationPlot__create_map_box_instance():
     mb = p._create_map_box_instance(cdump);
     assert mb.grid_delta == 0.2
     assert mb.grid_corner == [-84.0, 34.0]
-    assert mb.sz == [20, 15]
+    assert mb._sz == [20, 15]
 
     # case 3 - 25 degrees x 20 degrees
     cdump.grid_sz = [50, 40]
@@ -1040,7 +1058,7 @@ def test_ConcentrationPlot__create_map_box_instance():
     mb = p._create_map_box_instance(cdump);
     assert mb.grid_delta == 1.0
     assert mb.grid_corner == [-180.0, -90.0]
-    assert mb.sz == [360, 181]
+    assert mb._sz == [360, 181]
 
 
 def test_ConcentrationPlot__determine_map_limits(cdump):
@@ -1048,14 +1066,20 @@ def test_ConcentrationPlot__determine_map_limits(cdump):
     p.time_selector = helper.TimeIndexSelector()
     p.pollutant_selector = helper.PollutantSelector()
     p.level_selector = helper.VerticalLevelSelector()
+    p.cdump = cdump
 
     mb = p._determine_map_limits(cdump, 2)
 
     assert mb.grid_corner == [-180.0, -90.0]
     assert mb.grid_delta == 1.0
-    assert mb.sz == [360, 181]
-    assert mb.plume_sz == [5.0, 4.0]
-    assert mb.plume_loc == [95, 129]
+    assert mb._sz == [360, 181]
+    if isinstance(mb, mapbox.MapBox):
+       assert mb.plume_sz == [5.0, 4.0]
+       assert mb.plume_loc == [95, 129]
+    else:
+       # MapBoxUsingBoundingBox
+       assert mb.plume_sz == pytest.approx([3.35, 2.60])
+       assert mb.plume_loc == [95, 129]
 
     nil_plot_data = model.ConcentrationDump()
     nil_plot_data.grid_deltas = (1.0, 1.0)
@@ -1255,7 +1279,7 @@ def test_ConcentrationPlot__write_gisout():
     axes = plt.axes(projection=p.projection.crs)
     axes.axis(p.initial_corners_xy)
 
-    color_table = plot.ColorTableFactory.create_instance(p.settings)
+    color_table = clrtbl.ColorTableFactory.create_instance(p.settings)
     gis_writer = gisout.GISFileWriterFactory.create_instance(p.settings.gis_output,
                                                              p.settings.kml_option)
     gis_writer.initialize(p.settings.gis_alt_mode,
@@ -1387,11 +1411,15 @@ def test_ConcentrationPlot_draw_conc_above_ground():
     p.merge_plot_settings(None, ["-idata/cdump_deposit", "-jdata/arlmap_truncated", "-d1"])
     p.read_data_files()
 
-    lgen = plot.ContourLevelGeneratorFactory.create_instance(p.settings.contour_level_generator,
+    lgen0 = cntrlvl.ContourLevelGeneratorFactory.create_instance(p.settings.contour_level_generator,
                                                              p.settings.contour_levels,
                                                              p.settings.UCMIN,
                                                              p.settings.user_color)
-    ctbl = plot.ColorTableFactory.create_instance(p.settings)
+    lgen = cntrlvl.ScaledConcContourLevelGenerator(lgen0, p.conc_type, p.length_factory,
+                                                   conc_map=p.conc_map, vert_levels=p.cdump.vert_levels,
+                                                   TFACT=p.TFACT, LEVEL2=p.settings.LEVEL2)
+
+    ctbl = clrtbl.ColorTableFactory.create_instance(p.settings)
 
     gis_writer = gisout.GISFileWriterFactory.create_instance(p.settings.gis_output,
                                                              p.settings.kml_option)
@@ -1432,11 +1460,13 @@ def test_ConcentrationPlot_draw_conc_on_ground():
     p.merge_plot_settings(None, ["-idata/cdump_deposit", "-jdata/arlmap_truncated", "-d1"])
     p.read_data_files()
 
-    lgen = plot.ContourLevelGeneratorFactory.create_instance(p.settings.contour_level_generator,
+    lgen0 = cntrlvl.ContourLevelGeneratorFactory.create_instance(p.settings.contour_level_generator,
                                                              p.settings.contour_levels,
                                                              p.settings.UCMIN,
                                                              p.settings.user_color)
-    ctbl = plot.ColorTableFactory.create_instance(p.settings)
+    lgen = cntrlvl.ScaledDepoContourLevelGenerator(lgen0, p.conc_type, p.length_factory,
+                                                   DEPADJ=p.settings.DEPADJ)
+    ctbl = clrtbl.ColorTableFactory.create_instance(p.settings)
 
     gis_writer = gisout.GISFileWriterFactory.create_instance(p.settings.gis_output,
                                                              p.settings.kml_option)
@@ -1533,1000 +1563,3 @@ def test_ConcentrationPlot_get_plot_count_str():
     p.time_period_count = 2
     assert p.get_plot_count_str() == "2 time periods"
 
-
-def test_LabelledContourLevel___init__():
-    o = plot.LabelledContourLevel(10.0, "USER1")
-    assert o.level == 10.0
-    assert o.label == "USER1"
-
-    o = plot.LabelledContourLevel()
-    assert o.level == 0.0
-    assert o.label == ""
-
-
-def test_LabelledContourLevel___repr__():
-    o = plot.LabelledContourLevel(10.0, "USER1")
-    assert str(o) == "LabelledContourLevel(USER1, 10.0)"
-
-
-def test_LabelledContourLevel___lt__():
-    o1 = plot.LabelledContourLevel(10.0, "USER1")
-    o2 = plot.LabelledContourLevel(15.0, "USER1")
-    assert o1 < o2
-
-    o3 = plot.LabelledContourLevel(15.0, "USER2")
-    assert o2 < o3
-
-
-def test_ContourLevelGeneratorFactory_create_instance(contourLevels):
-    cntr_levels = None
-    cutoff = 3.14e-15
-    user_color = None
-
-    o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.EXPONENTIAL_DYNAMIC,
-                                                          cntr_levels,
-                                                          cutoff,
-                                                          user_color)
-    assert isinstance(o, plot.ExponentialDynamicLevelGenerator)
-
-    o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.EXPONENTIAL_FIXED,
-                                                          cntr_levels,
-                                                          cutoff,
-                                                          user_color)
-    assert isinstance(o, plot.ExponentialFixedLevelGenerator)
-
-    o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.CLG_60,
-                                                          cntr_levels,
-                                                          cutoff,
-                                                          user_color)
-    assert isinstance(o, plot.ExponentialDynamicLevelGeneratorVariation2)
-
-    o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.CLG_61,
-                                                          cntr_levels,
-                                                          cutoff,
-                                                          user_color)
-    assert isinstance(o, plot.ExponentialFixedLevelGeneratorVariation2)
-
-    o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.LINEAR_DYNAMIC,
-                                                          cntr_levels,
-                                                          cutoff,
-                                                          user_color)
-    assert isinstance(o, plot.LinearDynamicLevelGenerator)
-
-    o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.LINEAR_FIXED,
-                                                          cntr_levels,
-                                                          cutoff,
-                                                          user_color)
-    assert isinstance(o, plot.LinearFixedLevelGenerator)
-
-    o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.USER_SPECIFIED,
-                                                          contourLevels,
-                                                          cutoff,
-                                                          None)
-    assert isinstance(o, plot.UserSpecifiedLevelGenerator)
-
-    try:
-        o = plot.ContourLevelGeneratorFactory.create_instance(100000,
-                                                              None,
-                                                              cutoff,
-                                                              None)
-        pytest.fail("expected an exception")
-    except Exception as ex:
-        assert str(ex) == "unknown method 100000 for contour level generation"
-
-    o = plot.ContourLevelGeneratorFactory.create_instance(const.ContourLevelGenerator.CLG_60,
-                                                          cntr_levels,
-                                                          cutoff,
-                                                          user_color,
-                                                          True, 0.75)
-    assert isinstance(o, plot.NearMinLevelDecorator)
-    assert isinstance(o.level_generator, plot.ExponentialDynamicLevelGeneratorVariation2)
-    assert o.min_multiplier == pytest.approx(0.75)
-
-
-def test_AbstractContourLevelGenerator___init__():
-    o = AbstractContourLevelGeneratorTest()
-    assert o is not None
-    assert hasattr(o, "global_min")
-    assert hasattr(o, "global_max")
-
-
-def test_AbstractContourLevelGenerator_set_global_min_max():
-    o = AbstractContourLevelGeneratorTest()
-    o.set_global_min_max(0.25, 0.75)
-    assert o.global_min == pytest.approx(0.25)
-    assert o.global_max == pytest.approx(0.75)
-
-
-def test_AbstractContourLevelGenerator_get_min_conc():
-    o = AbstractContourLevelGeneratorTest()
-    o.set_global_min_max(0.25, 0.75)
-    assert o.get_min_conc(0.5) == pytest.approx(0.5)
-
-
-def test_AbstractContourLevelGenerator_get_max_conc():
-    o = AbstractContourLevelGeneratorTest()
-    o.set_global_min_max(0.25, 0.75)
-    assert o.get_max_conc(0.5) == pytest.approx(0.5)
-
-
-def test_ExponentialDynamicLevelGenerator___init__():
-    cutoff = 3.14e-15
-    o = plot.ExponentialDynamicLevelGenerator(cutoff, force_base_10=True)
-    assert o is not None
-    assert o.cutoff == pytest.approx(3.14e-15)
-    assert o.force_base_10 == True
-
-
-def test_ExponentialDynamicLevelGenerator__compute_interval():
-    o = plot.ExponentialDynamicLevelGenerator(0)
-
-    cint, cint_inverse = o._compute_interval(1.39594e-15, 8.17302e-13)
-    assert cint == pytest.approx(10.0)
-    assert cint_inverse == pytest.approx(0.1)
-
-    cint, cint_inverse = o._compute_interval(1.39594e-15, 8.17302e-6)
-    assert cint == pytest.approx(100.0)
-    assert cint_inverse == pytest.approx(0.01)
-
-    o.force_base_10 = True
-
-    cint, cint_inverse = o._compute_interval(1.39594e-15, 8.17302e-6)
-    assert cint == pytest.approx(10.0)
-    assert cint_inverse == pytest.approx(0.1)
-
-
-def test_ExponentialDynamicLevelGenerator_make_levels():
-    o = plot.ExponentialDynamicLevelGenerator(3.14e-19)
-
-    # base 10.0
-
-    # when int(log10(max_conc)) < 0
-    levels = o.make_levels(1.39594e-15, 8.17302e-13, 4)
-    # levels = [1.e-16 1.e-15 1.e-14 1.e-13]
-    assert levels * 1.e+16 == pytest.approx((1.0, 10.0, 100.0, 1000.0))
-    assert levels[-1] < 8.17302e-13
-
-    # when int(log10(max_conc)) == 0
-    levels = o.make_levels(0.0005, 0.5, 4)
-    # leves = [0.0001 0.001  0.01   0.1   ]
-    assert levels == pytest.approx((0.0001, 0.001, 0.01, 0.1))
-    assert levels[-1] < 0.5
-
-    # when int(log10(max_conc)) > 0
-    levels = o.make_levels(0.5, 500.0, 4)
-    # levels = [  0.1   1.   10.  100. ]
-    assert levels == pytest.approx((0.1, 1.0, 10.0, 100.0))
-    assert levels[-1] < 500.0
-
-    # base 100.0
-
-    # when int(log10(max_conc)) < 0
-    levels = o.make_levels(1.39594e-15, 8.17302e-07, 4)
-    assert levels * 1.e+13 == pytest.approx((0.1, 10.0, 1000.0, 100000.0))
-    assert levels[-1] < 8.17302e-07
-
-    # when int(log10(max_conc)) == 0
-    levels = o.make_levels(0.5e-9, 0.5, 4)
-    assert levels * 1.e+8 == pytest.approx((1., 100., 10000., 1000000.))
-    assert levels[-1] < 0.5
-
-    # when int(log10(max_conc)) > 0
-    levels = o.make_levels(0.5e-6, 500.0, 4)
-    assert levels == pytest.approx((0.0001, 0.01, 1.0, 100.0))
-    assert levels[-1] < 500.0
-
-    # force base 10
-
-    o.force_base_10 = True
-
-    # when int(log10(max_conc)) < 0
-    levels = o.make_levels(1.39594e-15, 8.17302e-7, 4)
-    assert levels * 1.e+10 == pytest.approx((1.0, 10.0, 100.0, 1000.0))
-    assert levels[-1] < 8.17302e-07
-
-    # when int(log10(max_conc)) == 0
-    levels = o.make_levels(0.5e-9, 0.5, 4)
-    assert levels == pytest.approx((0.0001, 0.001, 0.01, 0.1))
-    assert levels[-1] < 0.5
-
-    # when int(log10(max_conc)) > 0
-    levels = o.make_levels(0.5e-6, 500.0, 4)
-    assert levels == pytest.approx((0.1, 1.0, 10.0, 100.0))
-    assert levels[-1] < 500.0
-    #
-    # when cmax is zero
-    #
-    levels = o.make_levels(0, 0, 4)
-    assert levels == pytest.approx((0.001, 0.01, 0.1, 1.0))
-
-    # When the cutoff exceeds the min and max values.
-    o = plot.ExponentialDynamicLevelGenerator(1.0)
-    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
-    assert levels == pytest.approx((1.0))
-
-    # When the cutoff is between the min and max values
-    o = plot.ExponentialDynamicLevelGenerator(1.0e-14)
-    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
-    assert levels * 1.0e+15 == pytest.approx((10., 100.))
-    assert levels[-1] < 1.0e-12
-
-
-def test_ExponentialDynamicLevelGenerator_compute_color_table_offset():
-    o = plot.ExponentialDynamicLevelGenerator(0)
-    o.set_global_min_max(1.39594e-15, 8.17302e-13)
-    levels = o.make_levels(1.39594e-15, 8.17302e-13, 4)
-
-    assert o.compute_color_table_offset(levels) == 0
-
-    o.set_global_min_max(1.39594e-15, 8.17302e-12)
-
-    assert o.compute_color_table_offset(levels) == 1
-
-    assert o.compute_color_table_offset([1.0e-13]) == 1
-
-
-def test_ExponentialFixedLevelGenerator___init__():
-    cutoff = 3.14e-15
-    o = plot.ExponentialFixedLevelGenerator(cutoff, force_base_10=True)
-    assert o is not None
-    assert o.cutoff == pytest.approx(3.14e-15)
-    assert o.force_base_10 == True
-
-
-def test_ExponentialFixedLevelGenerator_get_min_conc():
-    o = plot.ExponentialFixedLevelGenerator(3.14e-19)
-    o.set_global_min_max(1.39594e-15, 8.17302e-13)
-    assert o.get_min_conc(1.0e-14) * 1.0e+15 == pytest.approx(1.39594)
-
-
-def test_ExponentialFixedLevelGenerator_get_max_conc():
-    o = plot.ExponentialFixedLevelGenerator(3.14e-19)
-    o.set_global_min_max(1.39594e-15, 8.17302e-13)
-    assert o.get_max_conc(1.0e-14) * 1.0e+15 == pytest.approx(8.17302e+02)
-
-
-def test_ExponentialFixedLevelGenerator_make_levels():
-    o = plot.ExponentialFixedLevelGenerator(3.14e-19)
-    o.set_global_min_max(1.39594e-15, 8.17302e-13)
-
-    levels = o.make_levels(1.39594e-16, 8.17302e-12, 4)
-
-    # levels should be generated using the global min and max.
-    assert levels * 1.e+16 == pytest.approx((1.0, 10.0, 100.0, 1000.0))
-    assert levels[-1] < 8.17302e-12
-
-    # when cmax is zero
-    o.set_global_min_max(0, 0)
-    levels = o.make_levels(1.39594e-16, 8.17302e-12, 4)
-    assert levels == pytest.approx((0.001, 0.01, 0.1, 1.0))
-
-    # When the cutoff exceeds the min and max values.
-    o = plot.ExponentialFixedLevelGenerator(1.0)
-    o.set_global_min_max(1.0e-16, 1.0e-12)
-    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
-    assert levels == pytest.approx((1.0))
-
-    # When the cutoff is between the min and max values
-    o = plot.ExponentialFixedLevelGenerator(1.0e-14)
-    o.set_global_min_max(1.0e-16, 1.0e-12)
-    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
-    assert levels * 1.0e+15 == pytest.approx((10., 100.))
-    assert levels[-1] < 1.0e-12
-
-
-def test_ExponentialFixedLevelGenerator_compute_color_table_offset():
-    o = plot.ExponentialFixedLevelGenerator(0)
-    o.set_global_min_max(1.39594e-15, 8.17302)
-    levels = o.make_levels(1.39594e-15, 8.17302e-13, 4)
-    assert o.compute_color_table_offset(levels) == 0
-
-
-def test_ExponentialDynamicLevelGeneratorVariation2___init__():
-    cutoff = 3.14e-15
-    o = plot.ExponentialDynamicLevelGeneratorVariation2(cutoff, force_base_sqrt10=True)
-    assert o is not None
-    assert o.cutoff == pytest.approx(3.14e-15)
-    assert o.force_base_sqrt10 == True
-
-
-def test_ExponentialDynamicLevelGeneratorVariation2__compute_interval():
-    o = plot.ExponentialDynamicLevelGeneratorVariation2(0)
-
-    cint, cint_inverse = o._compute_interval(1.39594e-15, 8.17302e-13)
-    assert cint == pytest.approx(math.sqrt(10.0))
-    assert cint_inverse == pytest.approx(1.0 / math.sqrt(10.0))
-
-    cint, cint_inverse = o._compute_interval(1.39594e-15, 8.17302e-6)
-    assert cint == pytest.approx(10.0)
-    assert cint_inverse == pytest.approx(0.1)
-
-    o.force_base_sqrt10 = True
-
-    cint, cint_inverse = o._compute_interval(1.39594e-15, 8.17302e-6)
-    assert cint == pytest.approx(math.sqrt(10.0))
-    assert cint_inverse == pytest.approx(1.0 / math.sqrt(10.0))
-
-
-def test_ExponentialDynamicLevelGeneratorVariation2_make_levels():
-    o = plot.ExponentialDynamicLevelGeneratorVariation2(3.14e-19)
-
-    # base sqrt(10.0)
-
-    # when int(log10(max_conc)) < 0
-    levels = o.make_levels(1.39594e-15, 8.17302e-13, 4)
-    assert levels * 1.e+16 == pytest.approx((100.0, 316.22776602, 1000.0, 3162.27766))
-    assert levels[-1] < 8.17302e-13
-
-    # when int(log10(max_conc)) == 0
-    levels = o.make_levels(0.0005, 0.5, 4)
-    # leves = [0.0001 0.001  0.01   0.1   ]
-    assert levels == pytest.approx((0.01, 0.0316227766, 0.1, 0.316227766))
-    assert levels[-1] < 0.5
-
-    # when int(log10(max_conc)) > 0
-    levels = o.make_levels(0.5, 500.0, 4)
-    assert levels == pytest.approx((10., 31.6227766, 100.0, 316.227766))
-    assert levels[-1] < 500.0
-
-    # base 10.0
-
-    # when int(log10(max_conc)) < 0
-    levels = o.make_levels(1.39594e-15, 8.17302e-07, 4)
-    assert levels * 1.e+10 == pytest.approx((1.0, 10.0, 100.0, 1000.0))
-    assert levels[-1] < 8.17302e-07
-
-    # when int(log10(max_conc)) == 0
-    levels = o.make_levels(0.5e-9, 0.5, 4)
-    assert levels == pytest.approx((0.0001, 0.001, 0.01, 0.1))
-    assert levels[-1] < 0.5
-
-    # when int(log10(max_conc)) > 0
-    levels = o.make_levels(0.5e-6, 500.0, 4)
-    assert levels == pytest.approx((0.1, 1.0, 10.0, 100.0))
-    assert levels[-1] < 500.0
-
-    # force base sqrt(10)
-
-    o.force_base_sqrt10 = True
-
-    # when int(log10(max_conc)) < 0
-    levels = o.make_levels(1.39594e-15, 8.17302e-7, 4)
-    assert levels * 1.e+10 == pytest.approx((100.0, 316.22776602, 1000.0, 3162.27766))
-    assert levels[-1] < 8.17302e-7
-
-    # when int(log10(max_conc)) == 0
-    levels = o.make_levels(0.5e-9, 0.5, 4)
-    assert levels == pytest.approx((0.01, 0.0316227766, 0.1, 0.316227766))
-    assert levels[-1] < 0.5
-
-    # when int(log10(max_conc)) > 0
-    levels = o.make_levels(0.5e-6, 500.0, 4)
-    assert levels == pytest.approx((10.0, 31.622776602, 100.0, 316.22776602))
-    assert levels[-1] < 500.0
-
-    # when cmax is zero
-    levels = o.make_levels(0, 0, 4)
-    assert levels == pytest.approx((0.0316227766, 0.1, 0.31622777, 1.0))
-
-    # When the cutoff exceeds the min and max values.
-    o = plot.ExponentialDynamicLevelGeneratorVariation2(1.0)
-    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
-    assert levels == pytest.approx((1.0))
-
-    # When the cutoff is between the min and max values
-    o = plot.ExponentialDynamicLevelGeneratorVariation2(2.5e-14)
-    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
-    assert levels * 1.e+16 == pytest.approx((316.22776602, 1000.0, 3162.2776602))
-    assert levels[-1] < 1.0e-12
-
-
-def test_ExponentialDynamicLevelGeneratorVariation2_compute_color_table_offset():
-    o = plot.ExponentialDynamicLevelGeneratorVariation2(0)
-    o.set_global_min_max(1.39594e-15, 8.17302e-13)
-    levels = o.make_levels(1.39594e-15, 8.17302e-13, 4)
-
-    # levels = [1.00000000e-14, 3.16227766e-14, 1.00000000e-13, 3.16227766e-13]
-    assert o.compute_color_table_offset(levels) == 0
-
-    o.set_global_min_max(1.39594e-15, 8.17302e-12)
-
-    assert o.compute_color_table_offset(levels) == 2
-
-    assert o.compute_color_table_offset([1.0e-13]) == 3
-
-
-def test_ExponentialFixedLevelGeneratorVariation2___init__():
-    cutoff = 3.14e-15
-    o = plot.ExponentialFixedLevelGeneratorVariation2(cutoff)
-    assert o is not None
-    assert o.cutoff == pytest.approx(3.14e-15)
-
-
-def test_ExponentialFixedLevelGeneratorVariation2_get_min_conc():
-    o = plot.ExponentialFixedLevelGeneratorVariation2(3.14e-19)
-    o.set_global_min_max(1.39594e-15, 8.17302e-13)
-    assert o.get_min_conc(1.0e-14) * 1.0e+15 == pytest.approx(1.39594)
-
-
-def test_ExponentialFixedLevelGeneratorVariation2_get_max_conc():
-    o = plot.ExponentialFixedLevelGeneratorVariation2(3.14e-19)
-    o.set_global_min_max(1.39594e-15, 8.17302e-13)
-    assert o.get_max_conc(1.0e-14) * 1.0e+15 == pytest.approx(8.17302e+2)
-
-
-def test_ExponentialFixedLevelGeneratorVariation2_make_levels():
-    o = plot.ExponentialFixedLevelGeneratorVariation2(3.14e-19)
-
-    # levels should be generated using the global min and max.
-    # when int(log10(max_conc)) < 0
-    o.set_global_min_max(1.39594e-15, 8.17302e-13)
-    levels = o.make_levels(1.39594e-16, 8.17302e-12, 4)
-    assert levels * 1.e+16 == pytest.approx((100.0, 316.22776602, 1000.0, 3162.27766))
-    assert levels[-1] < 8.17302e-13
-
-    # when int(log10(max_conc)) == 0
-    o.set_global_min_max(0.0005, 0.5)
-    levels = o.make_levels(0.5, 50.0, 4)
-    assert levels == pytest.approx((0.01, 0.0316227766, 0.1, 0.316227766))
-    assert levels[-1] < 0.5
-
-    # when int(log10(max_conc)) > 0
-    o.set_global_min_max(0.5, 500.0)
-    levels = o.make_levels(50.0, 5000.0, 4)
-    assert levels == pytest.approx((10., 31.6227766, 100.0, 316.227766))
-    assert levels[-1] < 500.0
-
-    # when cmax is zero
-    o.set_global_min_max(0, 0)
-    levels = o.make_levels(1.39594e-16, 8.17302e-12, 4)
-    assert levels == pytest.approx((0.0316227766, 0.1, 0.316227766, 1.0))
-
-    # When the cutoff exceeds the min and max values.
-    o = plot.ExponentialFixedLevelGeneratorVariation2(1.0)
-    o.set_global_min_max(1.0e-16, 1.0e-12)
-    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
-    assert levels == pytest.approx((1.0))
-
-    # When the cutoff is between the min and max values
-    o = plot.ExponentialFixedLevelGeneratorVariation2(1.25e-14)
-    o.set_global_min_max(1.0e-16, 1.0e-12)
-    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
-    assert levels * 1.0e+16 == pytest.approx((316.22776602, 1000.0, 3162.2776602))
-    assert levels[-1] < 1.0e-12
-
-
-def test_ExponentialFixedLevelGeneratorVariation2_compute_color_table_offset():
-    o = plot.ExponentialFixedLevelGeneratorVariation2(0)
-    o.set_global_min_max(1.39594e-15, 8.17302)
-    levels = o.make_levels(1.39594e-15, 8.17302e-13, 4)
-    assert o.compute_color_table_offset(levels) == 0
-
-
-def test_LinearDynamicLevelGenerator___init__():
-    o = plot.LinearDynamicLevelGenerator()
-    assert o is not None
-
-
-def test_LinearDynamicLevelGenerator__compute_interval():
-    o = plot.LinearDynamicLevelGenerator()
-    assert o._compute_interval(1.0, 10.0) == pytest.approx((2.0, 0.5))
-    assert o._compute_interval(0.0, 0.0) == pytest.approx((1.0, 1.0))
-
-
-def test_LinearDynamicLevelGenerator_make_levels():
-    o = plot.LinearDynamicLevelGenerator()
-
-    levels = o.make_levels(1.0, 10.0, 4)
-    assert levels == pytest.approx((2., 4., 6., 8.))
-
-    # when cmax is zero
-    levels = o.make_levels(0.0, 0.0, 4)
-    assert levels == pytest.approx((1., 2., 3., 4.))
-
-
-def test_LinearDynamicLevelGenerator_compute_color_table_offset():
-    o = plot.LinearDynamicLevelGenerator()
-    o.set_global_min_max(0, 10.0)
-    levels = o.make_levels(1.0, 10.0, 4)
-
-    # levels[-1] = 8.0
-    assert o.compute_color_table_offset(levels) == 1
-
-    o.set_global_min_max(0, 9.0)
-
-    assert o.compute_color_table_offset(levels) == 0
-
-    assert o.compute_color_table_offset([4.0]) == 2
-
-
-def test_LinearFixedLevelGenerator___init__():
-    o = plot.LinearFixedLevelGenerator()
-    assert o is not None
-
-
-def test_LinearFixedLevelGenerator_get_min_conc():
-    o = plot.LinearFixedLevelGenerator()
-    o.set_global_min_max(1.0, 10.0)
-    assert o.get_min_conc(5.0) == pytest.approx(1.0)
-
-
-def test_LinearFixedLevelGenerator_get_max_conc():
-    o = plot.LinearFixedLevelGenerator()
-    o.set_global_min_max(1.0, 10.0)
-    assert o.get_max_conc(5.0) == pytest.approx(10.0)
-
-
-def test_LinearFixedLevelGenerator_make_levels():
-    o = plot.LinearFixedLevelGenerator()
-    o.set_global_min_max(1.0, 10.0)
-
-    levels = o.make_levels(1.0, 50.0, 4)
-
-    # levels should be generated using the global min and max.
-    assert levels == pytest.approx((2., 4., 6., 8.))
-
-    # when cmax is zero
-    o.set_global_min_max(0.0, 0.0)
-    levels = o.make_levels(1.0, 50.0, 4)
-    assert levels == pytest.approx((1., 2., 3., 4.))
-
-
-def test_LinearFixedLevelGenerator_compute_color_table_offset():
-    o = plot.LinearFixedLevelGenerator()
-    o.set_global_min_max(0, 10.0)
-    levels = o.make_levels(1.0, 10.0, 4)
-
-    assert o.compute_color_table_offset(levels) == 0
-
-    o.set_global_min_max(0, 12.0)
-
-    assert o.compute_color_table_offset(levels) == 0
-
-
-def test_UserSpecifiedLevelGenerator___init__(contourLevels):
-    o = plot.UserSpecifiedLevelGenerator(contourLevels)
-    assert o is not None
-    assert len(contourLevels) == 4
-    assert len(o.contour_levels) == 4
-
-    o = plot.UserSpecifiedLevelGenerator(None)
-    assert o is not None
-    assert len(o.contour_levels) == 0
-
-
-def test_UserSpecifiedLevelGenerator_make_levels(contourLevels):
-    o = plot.UserSpecifiedLevelGenerator(contourLevels)
-
-    levels = o.make_levels(1.0, 10.0, 4)
-
-    assert levels == pytest.approx((10., 15., 20., 25.))
-
-
-def test_UserSpecifiedLevelGenerator_compute_color_table_offset(contourLevels):
-    o = plot.UserSpecifiedLevelGenerator(contourLevels)
-
-    levels = o.make_levels(1.0, 10.0, 4)
-
-    assert levels == pytest.approx((10., 15., 20., 25.))
-
-    o.set_global_min_max(0, 100.0)
-    assert o.compute_color_table_offset(levels) == 0
-
-
-def test_NearMinLevelDecorator___init__():
-    p = plot.ExponentialDynamicLevelGeneratorVariation2(3.14e-19)
-    o = plot.NearMinLevelDecorator(p)
-    assert o.level_generator is not None
-    assert o.min_multiplier == pytest.approx(0.8)
-
-
-def test_NearMinLevelDecorator_set_min_multiplier():
-    p = plot.ExponentialDynamicLevelGeneratorVariation2(3.14e-19)
-    o = plot.NearMinLevelDecorator(p)
-    o.set_min_multiplier(0.75)
-    assert o.min_multiplier == pytest.approx(0.75)
-
-
-def test_NearMinLevelDecorator__approx_le():
-    p = plot.ExponentialDynamicLevelGeneratorVariation2(3.14e-19)
-    o = plot.NearMinLevelDecorator(p)
-    assert o._approx_le(0., 0.) is True
-    assert o._approx_le(0., 10.) is True
-    assert o._approx_le(10., 0.) is False
-    #
-    assert o._approx_le(0., -1.0e-6) is True
-    assert o._approx_le(1.0, 0.70, 0.2) is False
-    assert o._approx_le(1.0, 0.70, 0.5) is True
-
-
-def test_NearMinLevelDecorator_set_global_min_max():
-    p = plot.ExponentialDynamicLevelGeneratorVariation2(3.14e-19)
-    o = plot.NearMinLevelDecorator(p)
-    o.set_global_min_max(2.0, 8.0)
-    assert o.level_generator.global_min == pytest.approx(2.0)
-    assert o.level_generator.global_max == pytest.approx(8.0)
-
-
-def test_NearMinLevelDecorator_make_levels():
-    o = plot.NearMinLevelDecorator(plot.ExponentialDynamicLevelGeneratorVariation2(3.14e-19))
-
-    # base sqrt(10.0)
-
-    levels = o.make_levels(1.39594e-15, 8.17302e-13, 4)
-    assert levels * 1.e+16 == pytest.approx((11.16752, 100.0, 316.22776602, 1000.0, 3162.2776602))
-
-    # base 10.0
-
-    levels = o.make_levels(1.39594e-15, 8.17302e-07, 4)
-    assert levels * 1.e+13 == pytest.approx((1.116752e-02, 1000.0, 10000.0, 100000.0, 1000000.0))
-
-    # force base sqrt(10)
-
-    o.level_generator.force_base_sqrt10 = True
-    levels = o.make_levels(1.39594e-15, 8.17302e-7, 4)
-    assert levels * 1.e+10 == pytest.approx((1.116752e-05, 100.0, 316.22776602, 1000.0, 3162.2776602))
-
-    # when cmax is zero
-    levels = o.make_levels(0, 0, 4)
-    assert levels == pytest.approx((3.14e-19, 0.031622777, 0.1, 0.31622777, 1.0))
-
-    # When the cutoff exceeds the min and max values.
-    o = plot.NearMinLevelDecorator(plot.ExponentialDynamicLevelGeneratorVariation2(1.0))
-    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
-    assert levels == pytest.approx((1.0))
-
-    # When the cutoff is between the min and max values
-    o = plot.NearMinLevelDecorator(plot.ExponentialDynamicLevelGeneratorVariation2(5.0e-14))
-    levels = o.make_levels(1.0e-16, 1.0e-12, 4)
-    assert levels * 1.e+16 == pytest.approx((500.0, 1000.0, 3162.2776602))
-
-
-def test_NearMinLevelDecorator_compute_color_table_offset():
-    o = plot.NearMinLevelDecorator(plot.LinearDynamicLevelGenerator())
-    o.level_generator.set_global_min_max(0, 10.0)
-    levels = o.make_levels(1.0, 10.0, 4)
-
-    # levels[-1] = 8.0
-    assert o.compute_color_table_offset(levels) == 1
-
-
-def test_ColorTableFactory():
-    p = plot.ColorTableFactory()
-    assert len(p.COLOR_TABLE_FILE_NAMES) == 2
-
-
-def test_ColorTableFactory_create_instance():
-    p = plot.ConcentrationPlot()
-    s = p.settings
-
-    saved = plot.ColorTableFactory.COLOR_TABLE_FILE_NAMES
-    plot.ColorTableFactory.COLOR_TABLE_FILE_NAMES = ["data/CLRTBL.CFG"]
-
-    # DefaultChemicalThresholdColorTable
-    s.KMAP = const.ConcentrationMapType.THRESHOLD_LEVELS
-    s.KHEMIN = 1
-    ct = plot.ColorTableFactory.create_instance(s)
-    assert isinstance(ct, plot.DefaultChemicalThresholdColorTable)
-    assert ct.scaled_opacity == pytest.approx(1.0)
-    # repeat with the color opacity specified
-    ct = plot.ColorTableFactory.create_instance(s, 50)
-    assert isinstance(ct, plot.DefaultChemicalThresholdColorTable)
-    assert ct.scaled_opacity == pytest.approx(0.5)
-
-    # UserColorTable
-    s.KMAP = const.ConcentrationMapType.CONCENTRATION
-    s.user_color = True
-    s.parse_contour_levels("10E+2:USER1:100050200+10E+3:USER2:100070200")
-    ct = plot.ColorTableFactory.create_instance(s)
-    assert isinstance(ct, plot.UserColorTable)
-    assert ct.scaled_opacity == pytest.approx(1.0)
-    # repeat with the color opacity specified
-    ct = plot.ColorTableFactory.create_instance(s, 50)
-    assert isinstance(ct, plot.UserColorTable)
-    assert ct.scaled_opacity == pytest.approx(0.5)
-
-    # DefaultColorTable
-    s.user_color = False
-    ct = plot.ColorTableFactory.create_instance(s)
-    assert isinstance(ct, plot.DefaultColorTable)
-    assert ct.scaled_opacity == pytest.approx(1.0)
-    # repeat with the color opacity specified
-    ct = plot.ColorTableFactory.create_instance(s, 50)
-    assert isinstance(ct, plot.DefaultColorTable)
-    assert ct.scaled_opacity == pytest.approx(0.5)
-
-    # check conversion to grayscale table
-    s.color = const.ConcentrationPlotColor.BLACK_AND_WHITE
-    ct = plot.ColorTableFactory.create_instance(s)
-    assert isinstance(ct, plot.DefaultColorTable)
-    for rgb in ct.rgbs:
-        r, g, b, a = rgb
-        assert r == g and g == b
-        assert a == pytest.approx(1.0)
-
-    plot.ColorTableFactory.COLOR_TABLE_FILE_NAMES = saved
-
-
-def test_ColorTableFactory__get_color_table_filename():
-    p = plot.ColorTableFactory()
-    assert p._get_color_table_filename() == None
-
-    saved = plot.ColorTableFactory.COLOR_TABLE_FILE_NAMES
-    plot.ColorTableFactory.COLOR_TABLE_FILE_NAMES = ["data/CLRTBL.CFG"]
-    assert p._get_color_table_filename() == "data/CLRTBL.CFG"
-    plot.ColorTableFactory.COLOR_TABLE_FILE_NAMES = saved
-
-
-def test_AbstractColorTable___init__():
-    o = AbstractColorTableTest(4, 50)
-    assert hasattr(o, "ncolors")
-    assert hasattr(o, "rgbs")
-    assert hasattr(o, "offset")
-    assert o.ncolors == 4
-    assert o.scaled_opacity == pytest.approx(0.5)
-    assert o.offset == 0
-    assert o.use_offset == False
-
-
-def test_AbstractColorTable_get_reader():
-    o = AbstractColorTableTest(4)
-    r = o.get_reader()
-    assert isinstance(r, plot.ColorTableReader)
-    assert r.color_table is o
-
-
-def test_AbstractColorTable_set_rgb():
-    o = AbstractColorTableTest(2)
-    o.rgbs = [(0, 0, 0), (.5, .5, .5)]
-
-    o.set_rgb(0, (.2, .2, .2))
-    assert o.rgbs[0] == pytest.approx((0.2, 0.2, 0.2, 1.0))
-
-    # repeat with an alpha value specified
-    o.set_rgb(0, (.1, .2, .2, 0.75))
-    assert o.rgbs[0] == pytest.approx((0.1, 0.2, 0.2, 0.75))
-
-
-def test_AbstractColorTable_change_to_grayscale():
-    o = AbstractColorTableTest(2)
-    o.rgbs = [(0, 0, 0), (.5, .6, .7)]
-
-    o.change_to_grayscale()
-
-    assert o.rgbs[0] == pytest.approx((0.0, 0.0, 0.0, 1.0))
-    assert o.rgbs[1] == pytest.approx((0.5815, 0.5815, 0.5815, 1.0))
-
-    # repeat with an alpha value specified
-    o.scaled_opacity = 0.50
-    o.rgbs = [(0, 0, 0), (.5, .6, .7)]
-    o.change_to_grayscale()
-    assert o.rgbs[0] == pytest.approx((0.0, 0.0, 0.0, 0.5))
-    assert o.rgbs[1] == pytest.approx((0.5815, 0.5815, 0.5815, 0.5))
-
-
-def test_AbstractColorTable_get_luminance():
-    assert AbstractColorTableTest.get_luminance((0.5, 0.6, 0.7)) == pytest.approx(0.5815)
-    assert AbstractColorTableTest.get_luminance((0.5, 0.6, 0.7, 0.8)) == pytest.approx(0.5815)
-
-
-def test_AbstractColorTable_create_plot_colors():
-    clrs = AbstractColorTableTest.create_plot_colors([(.5, .5, .5), (1., 1., 1.)])
-    assert len(clrs) == 2
-    assert clrs[0] == "#808080"
-    assert clrs[1] == "#ffffff"
-
-    # include alpha
-    clrs = AbstractColorTableTest.create_plot_colors([(.5, .5, .5, 0.0), (1., 1., 1., 0.5)])
-    assert len(clrs) == 2
-    assert clrs[0] == "#80808000"
-    assert clrs[1] == "#ffffff80"
-
-
-def test_AbstractColorTable_set_offset():
-    o = AbstractColorTableTest(4)
-
-    o.enable_offset(True)
-
-    o.set_offset(1)
-    assert o.offset == 1
-
-    o.set_offset(2)
-    assert o.offset == 2
-
-    o.enable_offset(False)
-
-    o.set_offset(1)
-    assert o.offset == 0
-
-    o.set_offset(2)
-    assert o.offset == 0
-
-
-def test_AbstractColorTable_enable_offset():
-    o = AbstractColorTableTest(4)
-
-    o.enable_offset()
-    assert o.use_offset == True
-
-    o.enable_offset(False)
-    assert o.use_offset == False
-
-    o.enable_offset(True)
-    assert o.use_offset == True
-
-
-def test_DefaultColorTable___init__():
-    o = plot.DefaultColorTable(3, False)
-    assert o.ncolors == 3
-    assert o.scaled_opacity == pytest.approx(1.0)
-    assert o.skip_std_colors == False
-    assert len(o.rgbs) == 32
-    assert o.rgbs[3] == pytest.approx((0.0, 1.0, 0.0, 1.0))
-    assert hasattr(o, "colors")
-    assert hasattr(o, "raw_colors")
-    assert o._DefaultColorTable__current_offset == 0
-
-    # repeat with an alpha value
-    o = plot.DefaultColorTable(3, False, 50)
-    assert o.scaled_opacity == pytest.approx(0.5)
-
-
-def test_DefaultColorTable_raw_colors():
-    o = plot.DefaultColorTable(3, False)
-    clrs = o.raw_colors
-    assert len(clrs) == 3
-    assert clrs[0] == pytest.approx((0.0, 1.0, 0.0, 1.0))
-    assert clrs[1] == pytest.approx((0.0, 0.0, 1.0, 1.0))
-    assert clrs[2] == pytest.approx((1.0, 1.0, 0.0, 1.0))
-
-    o = plot.DefaultColorTable(3, True)
-    clrs = o.raw_colors
-    assert len(clrs) == 3
-    assert clrs[0] == pytest.approx((1.0, 1.0, 0.0, 1.0))
-    assert clrs[1] == pytest.approx((1.0, 0.6, 0.0, 1.0))
-    assert clrs[2] == pytest.approx((1.0, 0.0, 0.0, 1.0))
-
-    o.enable_offset(True)
-    o.set_offset(1)
-
-    clrs = o.raw_colors
-    assert len(clrs) == 3
-    assert clrs[0] == pytest.approx((0.8, 1.0, 0.0, 1.0))
-    assert clrs[1] == pytest.approx((1.0, 1.0, 0.0, 1.0))
-    assert clrs[2] == pytest.approx((1.0, 0.6, 0.0, 1.0))
-
-
-def test_DefaultColorTable_colors():
-    o = plot.DefaultColorTable(3, False)
-    clrs = o.colors
-    assert len(clrs) == 3
-    assert clrs[0] == "#00ff00"
-    assert clrs[1] == "#0000ff"
-    assert clrs[2] == "#ffff00"
-
-    o = plot.DefaultColorTable(3, True)
-    clrs = o.colors
-    assert len(clrs) == 3
-    assert clrs[0] == "#ffff00"
-    assert clrs[1] == "#ff9900"
-    assert clrs[2] == "#ff0000"
-
-    o.enable_offset(True)
-    o.set_offset(1)
-
-    clrs = o.colors
-    assert len(clrs) == 3
-    assert clrs[0] == "#ccff00"
-    assert clrs[1] == "#ffff00"
-    assert clrs[2] == "#ff9900"
-
-
-def test_DefaultChemicalThresholdColorTable___init__():
-    o = plot.DefaultChemicalThresholdColorTable(3, False)
-    assert o.ncolors == 3
-    assert o.scaled_opacity == pytest.approx(1.0)
-    assert o.skip_std_colors == False
-    assert len(o.rgbs) == 32
-    assert o.rgbs[3] == pytest.approx((1.0, 0.5, 0.0, 1.0))
-    assert hasattr(o, "colors")
-    assert hasattr(o, "raw_colors")
-    assert o._DefaultChemicalThresholdColorTable__current_offset == 0
-
-    # repeat with an alpha value
-    o = plot.DefaultChemicalThresholdColorTable(3, False, 50)
-    assert o.scaled_opacity == pytest.approx(0.5)
-
-
-def test_DefaultChemicalThresholdColorTable_raw_colors():
-    o = plot.DefaultChemicalThresholdColorTable(3, False)
-    clrs = o.raw_colors
-    assert len(clrs) == 3
-    assert clrs[2] == pytest.approx((1.0, 0.5, 0.0, 1.0))
-    assert clrs[1] == pytest.approx((1.0, 1.0, 0.0, 1.0))
-    assert clrs[0] == pytest.approx((0.8, 0.8, 0.8, 1.0))
-
-    o.enable_offset(True)
-    o.set_offset(1)
-
-    clrs = o.raw_colors
-    assert len(clrs) == 3
-    assert clrs[2] == pytest.approx((1.0, 0.0, 0.0, 1.0))
-    assert clrs[1] == pytest.approx((1.0, 0.5, 0.0, 1.0))
-    assert clrs[0] == pytest.approx((1.0, 1.0, 0.0, 1.0))
-
-    o = plot.DefaultChemicalThresholdColorTable(3, True)
-    clrs = o.raw_colors
-    assert len(clrs) == 3
-    assert clrs[2] == pytest.approx((1.0, 1.0, 1.0, 1.0))
-    assert clrs[1] == pytest.approx((1.0, 1.0, 1.0, 1.0))
-    assert clrs[0] == pytest.approx((1.0, 1.0, 1.0, 1.0))
-
-
-def test_DefaultChemicalThresholdColorTable_colors():
-    o = plot.DefaultChemicalThresholdColorTable(3, False)
-    clrs = o.colors
-    assert len(clrs) == 3
-    assert clrs[2] == "#ff8000"
-    assert clrs[1] == "#ffff00"
-    assert clrs[0] == "#cccccc"
-
-    o.enable_offset(True)
-    o.set_offset(1)
-
-    clrs = o.colors
-    assert len(clrs) == 3
-    assert clrs[2] == "#ff0000"
-    assert clrs[1] == "#ff8000"
-    assert clrs[0] == "#ffff00"
-
-    o = plot.DefaultChemicalThresholdColorTable(3, True)
-    clrs = o.colors
-    assert len(clrs) == 3
-    assert clrs[2] == "#ffffff"
-    assert clrs[1] == "#ffffff"
-    assert clrs[0] == "#ffffff"
-
-
-def test_UserColorTable___init__(userColors):
-    o = plot.UserColorTable(userColors)
-    assert o.scaled_opacity == pytest.approx(1.0)
-    assert len(o.rgbs) == 4
-    assert o.rgbs[0] == pytest.approx((0.4, 0.4, 0.4, 1.0))
-
-    # repeat with an alpha value.
-    o = plot.UserColorTable(userColors, 50)
-    assert o.scaled_opacity == pytest.approx(0.5)
-
-
-def test_UserColorTable_raw_colors(userColors):
-    o = plot.UserColorTable(userColors)
-    clrs = o.raw_colors
-    assert len(clrs) == 4
-
-
-def test_UserColorTable_colors(userColors):
-    o = plot.UserColorTable(userColors)
-    clrs = o.colors
-    assert len(clrs) == 4
-
-
-def test_ColorTableReader___init__():
-    tbl = plot.DefaultColorTable(4, False)
-    o = plot.ColorTableReader(tbl)
-    assert o.color_table is tbl
-
-
-def test_ColorTableReader_read():
-    tbl = plot.DefaultColorTable(4, False)
-    o = plot.ColorTableReader(tbl)
-    tbl2 = o.read("data/CLRTBL.CFG")
-    assert tbl2 is tbl
-    assert tbl2.rgbs[20] == pytest.approx((153.0 / 255.0, 0, 0, 1.0))
-
-    # repeat with an alpha value specified
-    tbl = plot.DefaultColorTable(4, False, 50)
-    o = plot.ColorTableReader(tbl)
-    tbl2 = o.read("data/CLRTBL.CFG")
-    assert tbl2 is tbl
-    assert tbl2.rgbs[20] == pytest.approx((153.0 / 255.0, 0, 0, 0.5))

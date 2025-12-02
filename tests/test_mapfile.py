@@ -10,7 +10,7 @@ import geopandas
 import os
 import pytest
 
-from hysplitplot import mapfile
+from ..hysplitplot import mapfile
 
 
 def test_ARLMap___init__():

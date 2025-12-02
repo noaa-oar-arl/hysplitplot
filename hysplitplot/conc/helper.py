@@ -14,7 +14,7 @@ import numpy
 import sys
 
 from hysplitdata.conc import model
-from hysplitplot import util, const
+from .. import util, const
 
 
 logger = logging.getLogger(__name__)

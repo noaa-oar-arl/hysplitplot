@@ -14,8 +14,8 @@ import pytest
 import pytz
 
 from hysplitdata.conc import model
-from hysplitplot import const, util
-from hysplitplot.conc import helper
+from ...hysplitplot import const, util
+from ...hysplitplot.conc import helper
 
 
 logger = logging.getLogger(__name__)

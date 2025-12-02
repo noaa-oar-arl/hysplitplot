@@ -8,7 +8,7 @@
 
 import pytest
 
-from hysplitplot.cmdline import CommandLineArguments
+from ..hysplitplot.cmdline import CommandLineArguments
 
 
 def test_CommandLineArguments___init__():

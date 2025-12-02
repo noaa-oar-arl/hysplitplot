@@ -9,7 +9,7 @@
 import os
 import pytest
 
-from hysplitplot import clist
+from ..hysplitplot import clist
 
 
 @pytest.fixture

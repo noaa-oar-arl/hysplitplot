@@ -9,7 +9,7 @@
 import matplotlib.pyplot as plt
 import pytest
 
-from hysplitplot import logo
+from ..hysplitplot import logo
 
 
 def test_NOAALogoDrawer___init__():

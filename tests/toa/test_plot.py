@@ -17,9 +17,10 @@ import xml.etree.ElementTree as ElementTree
 
 from hysplitdata.const import HeightUnit
 from hysplitdata.conc import model
-from hysplitplot import const, labels, mapfile, mapproj, multipage, smooth, streetmap, util
-from hysplitplot.conc import gisout, helper, plot as cplot
-from hysplitplot.toa import helper as thelper, plot
+from ...hysplitplot import const, labels, mapbox, mapfile, mapproj, multipage, \
+                           smooth, streetmap, util
+from ...hysplitplot.conc import gisout, helper, clrtbl
+from ...hysplitplot.toa import helper as thelper, plot
 
 
 @pytest.fixture
@@ -791,6 +792,7 @@ def test_TimeOfArrivalPlot__initialize_map_projection():
     p = plot.TimeOfArrivalPlot()
     p.merge_plot_settings(None, ["-idata/rsmc.cdump2"])
     p.read_data_files()
+    mbox = mapbox.MapBoxFactory.create_instance()
     assert p.street_map is None
 
     p._initialize_map_projection(p.cdump)
@@ -799,8 +801,12 @@ def test_TimeOfArrivalPlot__initialize_map_projection():
     assert p.settings.center_loc == pytest.approx((150.98, -34.05))
     assert isinstance(p.street_map, streetmap.AbstractMapBackground)
     assert p.street_map.fix_map_color_fn is not None
-    assert p.initial_corners_lonlat == pytest.approx((132.95474, -171.44801, -60.00903, -16.98525))
-    assert p.initial_corners_xy == pytest.approx((-1121847.0, 4059800.0, -3081732.0, 1153440.0))
+    if isinstance(mbox, mapbox.MapBox):
+       assert p.initial_corners_lonlat == pytest.approx((132.95474, -171.44801, -60.00903, -16.98525))
+       assert p.initial_corners_xy == pytest.approx((-1121847.0, 4059800.0, -3081732.0, 1153440.0))
+    else:
+       assert p.initial_corners_lonlat == pytest.approx((137.8417, -175.2874, -58.5639, -23.13813))
+       assert p.initial_corners_xy == pytest.approx((-842429.0, 3434944.0, -2857350.0, 638724.0))
 
 
 def test_TimeOfArrivalPlot__create_map_box_instance():
@@ -814,7 +820,7 @@ def test_TimeOfArrivalPlot__create_map_box_instance():
     mb = p._create_map_box_instance(cdump);
     assert mb.grid_delta == 0.1
     assert mb.grid_corner == [-84.0, 34.0]
-    assert mb.sz == [5, 3]
+    assert mb._sz == [5, 3]
 
     # case 2 - 4 degrees x 3 degrees
     cdump.grid_sz = [8, 6]
@@ -822,7 +828,7 @@ def test_TimeOfArrivalPlot__create_map_box_instance():
     mb = p._create_map_box_instance(cdump);
     assert mb.grid_delta == 0.2
     assert mb.grid_corner == [-84.0, 34.0]
-    assert mb.sz == [20, 15]
+    assert mb._sz == [20, 15]
 
     # case 3 - 25 degrees x 20 degrees
     cdump.grid_sz = [50, 40]
@@ -830,7 +836,7 @@ def test_TimeOfArrivalPlot__create_map_box_instance():
     mb = p._create_map_box_instance(cdump);
     assert mb.grid_delta == 1.0
     assert mb.grid_corner == [-180.0, -90.0]
-    assert mb.sz == [360, 181]
+    assert mb._sz == [360, 181]
 
 
 def test_TimeOfArrivalPlot__determine_map_limits(cdump):
@@ -843,9 +849,13 @@ def test_TimeOfArrivalPlot__determine_map_limits(cdump):
 
     assert mb.grid_corner == [-180.0, -90.0]
     assert mb.grid_delta == 1.0
-    assert mb.sz == [360, 181]
-    assert mb.plume_sz == [5.0, 4.0]
-    assert mb.plume_loc == [95, 129]
+    assert mb._sz == [360, 181]
+    if isinstance(mb, mapbox.MapBox):
+       assert mb.plume_sz == [5.0, 4.0]
+       assert mb.plume_loc == [95, 129]
+    else:
+       assert mb.plume_sz == pytest.approx([3.35, 2.6])
+       assert mb.plume_loc == [95, 129]
 
     nil_plot_data = model.ConcentrationDump()
     nil_plot_data.grid_deltas = (1.0, 1.0)
@@ -873,7 +883,7 @@ def test_TimeOfArrivalPlot_draw_toa_contour_plot():
     try:
         p._initialize_map_projection(p.cdump)
         p.layout(p.cdump.grids[0], {"resize_event": blank_event_handler})
-        color_table = cplot.ColorTableFactory.create_instance(p.settings)
+        color_table = clrtbl.ColorTableFactory.create_instance(p.settings)
         toa_data = p.toa_generator.make_plume_data(thelper.TimeOfArrival.DAY_0,
                                                    color_table.colors)
 
@@ -1013,7 +1023,7 @@ def test_TimeOfArrivalPlot_draw_toa_plot_above_ground():
     p.merge_plot_settings(None, ["-idata/rsmc.cdump2", "-jdata/arlmap_truncated", "-d1"])
     p.read_data_files()
 
-    ctbl = cplot.ColorTableFactory.create_instance(p.settings)
+    ctbl = clrtbl.ColorTableFactory.create_instance(p.settings)
 
     gis_writer = gisout.GISFileWriterFactory.create_instance(p.settings.gis_output,
                                                              p.settings.kml_option)
@@ -1055,7 +1065,7 @@ def test_TimeOfArrivalPlot_draw_toa_plot_on_ground():
     p.merge_plot_settings(None, ["-idata/rsmc.cdump2", "-jdata/arlmap_truncated", "-d1"])
     p.read_data_files()
 
-    ctbl = cplot.ColorTableFactory.create_instance(p.settings)
+    ctbl = clrtbl.ColorTableFactory.create_instance(p.settings)
 
     gis_writer = gisout.GISFileWriterFactory.create_instance(p.settings.gis_output,
                                                              p.settings.kml_option)

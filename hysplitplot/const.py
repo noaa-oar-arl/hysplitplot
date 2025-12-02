@@ -10,11 +10,11 @@
 class GISOutput:
     NONE = 0
     GENERATE_POINTS = 1
-    GENERATE_POINTS_2 = 2     # TODO better name?
+    GENERATE_POINTS_2 = 2  # TODO better name?
     KML = 3
     PARTIAL_KML = 4
     GENERATE_LINES = 5
-    GENERATE_POINTS_STR = 10    # internal use for time-of-arrival plots.
+    GENERATE_POINTS_STR = 10  # internal use for time-of-arrival plots.
 
 
 class GISOutputAltitude:
@@ -104,10 +104,10 @@ class DepositionType:  # NDEP in the FORTRAN code
 class ConcentrationMapType:  # KMAP in the FORTRAN code
     CONCENTRATION = 1
     EXPOSURE = 2
-    DEPOSITION = 3          # Not used?
+    DEPOSITION = 3  # Not used?
     THRESHOLD_LEVELS = 4
     VOLCANIC_ERUPTION = 5
-    DEPOSITION_6 = 6        # TODO: to better name it.
+    DEPOSITION_6 = 6  # TODO: to better name it.
     MASS_LOADING = 7
     TIME_OF_ARRIVAL = 8
 
@@ -126,3 +126,8 @@ class ShowMaxSquare:  # for the +m option of concplot.
     BOTH = 1
     VALUE = 2
     SQUARE = 3
+
+
+class PlotRangeDetermination:
+    NONZERO = 0
+    MIN_CONTOUR_LEVEL = 1

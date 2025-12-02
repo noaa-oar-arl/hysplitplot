@@ -13,7 +13,7 @@ import logging
 import os
 from matplotlib.backends.backend_pdf import PdfPages
 
-from hysplitplot import const, util
+from . import const, util
 
 logger = logging.getLogger(__name__)
 

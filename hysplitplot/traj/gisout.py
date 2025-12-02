@@ -13,8 +13,8 @@ import xml.etree.ElementTree as ET
 
 from hysplitdata.const import HeightUnit, VerticalCoordinate
 from hysplitdata.traj import model
-from hysplitplot import const, util
-from hysplitplot.traj.color import (
+from .. import const, util
+from .color import (
    ColorCycle,
    ColorCycleFactory
 )
@@ -50,9 +50,9 @@ class AbstractTrajectoryStyle(ABC):
         pass
 
     @abstractmethod
-    def get_id(self, t: model.Trajectory, t_index: int, thinner: bool = False) -> str:
+    def get_id(self, t: model.Trajectory, t_index: int, thinner: bool=False) -> str:
         return None
-     
+
     def set_colors(self, o: list) -> None:
         self.colors = o  # list of color strings formatted in '#RRGGBB'
 
@@ -64,7 +64,7 @@ class IndexBasedTrajectoryStyle(AbstractTrajectoryStyle):
 
     def _get_iconhref(self, k: int) -> str:
         k = k % len(self.colors)
-        return 'ball{:02d}.png'.format(k+1)
+        return 'ball{:02d}.png'.format(k + 1)
 
     def write_styles(self, doc: ET.SubElement) -> None:
         styles = []
@@ -96,7 +96,7 @@ class IndexBasedTrajectoryStyle(AbstractTrajectoryStyle):
             polystyle = ET.SubElement(style, 'PolyStyle')
             ET.SubElement(polystyle, 'color').text = s['polycolor']
 
-    def get_id(self, t: model.Trajectory, t_index: int, thinner: bool = False) -> str:
+    def get_id(self, t: model.Trajectory, t_index: int, thinner: bool=False) -> str:
         '''
         Return a style ID based on the trajectory index.
         '''
@@ -110,8 +110,8 @@ class IndexBasedTrajectoryStyle(AbstractTrajectoryStyle):
 class AbstractGISFileWriter(ABC):
 
     def __init__(self, time_zone=None):
-        self.output_suffix = "ps"           # for backward compatibility
-        self.output_name = "trajplot.ps"    # for backward compatibility
+        self.output_suffix = "ps"  # for backward compatibility
+        self.output_name = "trajplot.ps"  # for backward compatibility
         self.kml_option = const.KMLOption.NONE
         self.kml_trajectory_style = IndexBasedTrajectoryStyle()
         self.time_zone = time_zone
@@ -156,7 +156,7 @@ class PointsAttributeFileWriter(AbstractAttributeFileWriter):
                         dt = t.datetimes[j].astimezone(time_zone)
                     f.write("{0:6d},{1:4d}{2:02d}{3:02d},{4:02d}{5:02d},"
                             "{6:8d}.\n".format(
-                                (k+1)*1000 + j,
+                                (k + 1) * 1000 + j,
                                 dt.year,
                                 dt.month,
                                 dt.day,
@@ -179,7 +179,7 @@ class LinesAttributeFileWriter(AbstractAttributeFileWriter):
                     dt = t.starting_datetime.astimezone(time_zone)
                 f.write("{0:6d},{1:4d}{2:02d}{3:02d},{4:02d}{5:02d},"
                         "{6:8d}.\n".format(
-                            (k+1),
+                            (k + 1),
                             dt.year,
                             dt.month,
                             dt.day,
@@ -212,7 +212,7 @@ class PointsGenerateFileWriter(AbstractGISFileWriter):
             for k, t in enumerate(plot_data.trajectories):
                 for j in range(len(t.longitudes)):
                     f.write("{0:6d},{1:9.4f},{2:9.4f},{3:8d}.\n".format(
-                        (k+1)*1000 + j,
+                        (k + 1) * 1000 + j,
                         t.longitudes[j],
                         t.latitudes[j],
                         int(t.heights[j])))
@@ -237,7 +237,7 @@ class LinesGenerateFileWriter(AbstractGISFileWriter):
         with open(gisout, "wt") as f:
             for k, t in enumerate(plot_data.trajectories):
                 f.write("{0:3d},{1:9.4f},{2:9.4f}\n".format(
-                    (k+1),
+                    (k + 1),
                     t.starting_loc[0],
                     t.starting_loc[1]))
                 for j in range(len(t.longitudes)):
@@ -347,7 +347,7 @@ class KMLWriter(AbstractGISFileWriter):
         ET.SubElement(lookAt, 'tilt').text = '0'
         ET.SubElement(lookAt, 'range').text = '13700'
         ET.SubElement(lookAt, 'gx:altitudeMode').text = 'relativeToSeaFloor'
-        
+
         self.kml_trajectory_style.write_styles(doc)
 
     def _write_postamble(self, doc):
@@ -420,7 +420,7 @@ class KMLWriter(AbstractGISFileWriter):
         folder = ET.SubElement(doc, 'Folder')
         ET.SubElement(folder, 'name').text = f'{t.starting_level:.1f} {self._get_level_type(t)} Trajectory'
         ET.SubElement(folder, 'open').text = '1'
-        
+
         placemark = ET.SubElement(folder, 'Placemark')
         ET.SubElement(placemark, 'name').text = f'{t.starting_level:.1f} {self._get_level_type(t)} Trajectory'
         lookAt = ET.SubElement(placemark, 'LookAt')
@@ -438,12 +438,12 @@ class KMLWriter(AbstractGISFileWriter):
         lineString = ET.SubElement(placemark, 'LineString')
         ET.SubElement(lineString, 'extrude').text = '1'
         ET.SubElement(lineString, 'altitudeMode').text = self._get_alt_mode(t)
-        
+
         buffer = '\n'
         for k in range(len(t.longitudes)):
             buffer += f'{t.longitudes[k]:.4f},{t.latitudes[k]:.4f},{vc.values[k]:.1f}\n'
         ET.SubElement(lineString, 'coordinates').text = buffer
-        
+
         starttime_str = self._get_timestamp_str(t.starting_datetime,
                                                 self.time_zone)
 
@@ -474,7 +474,7 @@ LAT: {1:.4f} LON: {2:.4f} Hght({3}): {4:.1f}
     def _write_ellipses_of_uncertainty(self, doc, t, t_index, vc):
         is_backward = False if t.parent.is_forward_calculation() else True
         npts_ellipse = 64
-        delta_theta = 2*math.pi / npts_ellipse
+        delta_theta = 2 * math.pi / npts_ellipse
 
         folder = ET.SubElement(doc, 'Folder')
         ET.SubElement(folder, 'name').text = 'Ellipses of uncertainty for center-of-mass trajectory'
@@ -518,7 +518,7 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
             lineString = ET.SubElement(placemark, 'LineString')
             ET.SubElement(lineString, 'extrude').text = '1'
             ET.SubElement(lineString, 'altitudeMode').text = self._get_alt_mode(t)
-            
+
             buffer = '\n'
             slon, slat = t.trajectory_stddevs[k]
             for j in range(npts_ellipse + 1):
@@ -561,10 +561,10 @@ LAT: {2:9.4f} LON: {3:9.4f} Hght({4}): {5:8.1f}
             ET.SubElement(lookAt, 'range').text = '20000.0'
             timeSpan = ET.SubElement(placemark, 'TimeSpan')
             if is_backward:
-                ET.SubElement(timeSpan, 'end').text = util.get_iso_8601_str(t.datetimes[k-1], self.time_zone)
+                ET.SubElement(timeSpan, 'end').text = util.get_iso_8601_str(t.datetimes[k - 1], self.time_zone)
                 ET.SubElement(timeSpan, 'begin').text = util.get_iso_8601_str(t.datetimes[k], self.time_zone)
             else:
-                ET.SubElement(timeSpan, 'begin').text = util.get_iso_8601_str(t.datetimes[k-1], self.time_zone)
+                ET.SubElement(timeSpan, 'begin').text = util.get_iso_8601_str(t.datetimes[k - 1], self.time_zone)
                 ET.SubElement(timeSpan, 'end').text = util.get_iso_8601_str(t.datetimes[k], self.time_zone)
             ET.SubElement(placemark, 'styleUrl').text = self.kml_trajectory_style.get_id(t, t_index)
             point = ET.SubElement(placemark, 'Point')
@@ -595,7 +595,7 @@ class PartialKMLWriter(KMLWriter):
             self.kml_filename = self.make_filename(self.output_name,
                                                    self.output_suffix,
                                                    file_no)
- 
+
             self.xml_root = ET.Element('kml',
                     attrib={'xmlns':'http://www.opengis.net/kml/2.2',
                             'xmlns:gx':'http://www.google.com/kml/ext/2.2'})

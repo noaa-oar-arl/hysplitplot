@@ -22,11 +22,11 @@ import sys
 from hysplitdata import io
 from hysplitdata.conc import model
 from hysplitdata.const import HeightUnit
-from hysplitplot import cmdline, const, mapbox, mapproj, \
+from .. import cmdline, const, mapbox, mapproj, \
                         plotbase, smooth, streetmap, timezone, util
-from hysplitplot.conc import helper, cntr, gisout
-from hysplitplot.conc.plot import ColorTableFactory
-from hysplitplot.grid.helper import GisOutputFilenameForGridPlot, \
+from ..conc import helper, cntr, gisout
+from ..conc.clrtbl import ColorTableFactory
+from ..grid.helper import GisOutputFilenameForGridPlot, \
                                     KmlOutputFilenameForGridPlot, \
                                     TextOutputForGridPlot
 
@@ -601,19 +601,9 @@ class GridPlot(plotbase.AbstractPlot):
             logger.debug('region of interest: l {}, r {}, b {}, t {}'.format(l, r, b, t))
             logger.debug('corner {}; span lon {}, lat {}'.format(start_corner, lon_span, lat_span))
 
-        # use finer grids for small maps
-        if lat_span < 2.0 and lon_span < 2.0:
-            mbox = mapbox.MapBox(grid_corner=start_corner,
-                                 grid_size=(lon_span, lat_span),
-                                 grid_delta=0.10)
-        elif lat_span < 5.0 and lon_span < 5.0:
-            mbox = mapbox.MapBox(grid_corner=start_corner,
-                                 grid_size=(lon_span, lat_span),
-                                 grid_delta=0.20)
-        else:
-            mbox = mapbox.MapBox()
-
-        return mbox
+        return mapbox.MapBoxFactory.create_instance(lat_span,
+                                                    lon_span,
+                                                    grid_corner=cdump.grid_loc)
 
     def _determine_map_limits(self, cdump, map_opt_passes):
         mbox = self._create_map_box_instance(cdump)

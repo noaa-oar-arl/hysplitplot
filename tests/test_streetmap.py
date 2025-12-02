@@ -14,7 +14,7 @@ import os
 import pytest
 import shapely.geometry
 
-from hysplitplot import const, mapbox, mapfile, mapproj, streetmap
+from ..hysplitplot import const, mapbox, mapfile, mapproj, streetmap
 
 
 @pytest.fixture

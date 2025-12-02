@@ -12,8 +12,8 @@ import pytest
 import pytz
 
 from hysplitdata.const import HeightUnit
-from hysplitplot import const, datem, labels, mapbox, mapfile, mapproj, plotbase, streetmap
-from hysplitplot.traj import plot
+from ..hysplitplot import const, datem, labels, mapbox, mapfile, mapproj, plotbase, streetmap
+from ..hysplitplot.traj import plot
 
 
 def blank_event_handler(event):

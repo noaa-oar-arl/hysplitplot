@@ -15,8 +15,8 @@ import pytz
 import xml.etree.ElementTree as ET
 
 from hysplitdata.conc import model
-from hysplitplot import const, util
-from hysplitplot.conc import gisout, plot, helper, cntr
+from ...hysplitplot import const, util
+from ...hysplitplot.conc import gisout, plot, helper, cntr
 
 
 logger = logging.getLogger(__name__)

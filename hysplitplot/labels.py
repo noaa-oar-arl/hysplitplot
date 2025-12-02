@@ -9,7 +9,7 @@
 import logging
 
 from hysplitdata.const import HeightUnit
-from hysplitplot import const
+from . import const
 
 
 logger = logging.getLogger(__name__)

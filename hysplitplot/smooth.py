@@ -10,7 +10,7 @@ from abc import ABC
 import logging
 import numpy
 
-from hysplitplot import const
+from . import const
 
 
 logger = logging.getLogger(__name__)

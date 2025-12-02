@@ -19,10 +19,10 @@ import sys
 
 from hysplitdata.const import VerticalCoordinate
 from hysplitdata.traj import model
-from hysplitplot import clist, cmdline, const, mapbox, mapproj, \
+from .. import clist, cmdline, const, mapbox, mapproj, \
                         plotbase, stnplot, streetmap, timezone, util
-from hysplitplot.traj import gisout
-from hysplitplot.traj.color import ColorCycleFactory
+from . import gisout
+from .color import ColorCycleFactory
 
 logger = logging.getLogger(__name__)
 
@@ -401,7 +401,7 @@ class TrajectoryPlot(plotbase.AbstractPlot):
             self.projection.corners_lonlat)
 
     def _determine_map_limits(self, plot_data, map_opt_passes):
-        mb = mapbox.MapBox()
+        mb = mapbox.MapBoxFactory.create_instance()
 
         for ipass in range(map_opt_passes):
             mb.allocate()

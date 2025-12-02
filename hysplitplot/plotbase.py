@@ -15,7 +15,7 @@ import matplotlib.patches
 import os
 
 from hysplitdata.const import HeightUnit
-from hysplitplot import cmdline, const, labels, logo, multipage, \
+from . import cmdline, const, labels, logo, multipage, \
                         stnplot, streetmap, util
 
 logger = logging.getLogger(__name__)

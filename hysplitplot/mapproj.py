@@ -13,7 +13,7 @@ import math
 import numpy
 import shapely
 
-from hysplitplot import util, const
+from . import util, const
 
 logger = logging.getLogger(__name__)
 
