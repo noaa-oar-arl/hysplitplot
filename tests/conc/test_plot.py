@@ -1061,13 +1061,16 @@ def test_ConcentrationPlot__create_map_box_instance():
     assert mb._sz == [360, 181]
 
 
-def test_ConcentrationPlot__determine_map_limits(cdump):
+def test_ConcentrationPlot__determine_map_limits():
     p = plot.ConcentrationPlot()
+    p.merge_plot_settings(None, ["-idata/cdump", "-jdata/arlmap_truncated"])
+    p.read_data_files()
+
     p.time_selector = helper.TimeIndexSelector()
     p.pollutant_selector = helper.PollutantSelector()
     p.level_selector = helper.VerticalLevelSelector()
-    p.cdump = cdump
 
+    cdump = p.cdump
     mb = p._determine_map_limits(cdump, 2)
 
     assert mb.grid_corner == [-180.0, -90.0]
@@ -1417,7 +1420,7 @@ def test_ConcentrationPlot_draw_conc_above_ground():
                                                              p.settings.user_color)
     lgen = cntrlvl.ScaledConcContourLevelGenerator(lgen0, p.conc_type, p.length_factory,
                                                    conc_map=p.conc_map, vert_levels=p.cdump.vert_levels,
-                                                   TFACT=p.TFACT, LEVEL2=p.settings.LEVEL2)
+                                                   CONADJ=p.settings.CONADJ, LEVEL2=p.settings.LEVEL2)
 
     ctbl = clrtbl.ColorTableFactory.create_instance(p.settings)
 

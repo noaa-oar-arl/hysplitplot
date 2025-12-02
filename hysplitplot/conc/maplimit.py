@@ -24,13 +24,15 @@ class HitmapConcGeneratorConfig:
                 time_selector,
                 scaled_conc_level_generator,
                 scaled_depo_level_generator,
-                contour_level_count):
+                contour_level_count,
+                depo_sum):
       self.level_selector = level_selector
       self.pollutant_selector = pollutant_selector
       self.time_selector = time_selector
       self.scaled_conc_level_generator = scaled_conc_level_generator
       self.scaled_depo_level_generator = scaled_depo_level_generator
       self.contour_level_count = contour_level_count
+      self.depo_sum = depo_sum
 
 
 class HitmapConcGeneratorFactory:
@@ -45,7 +47,8 @@ class HitmapConcGeneratorFactory:
                config.time_selector,
                config.scaled_conc_level_generator,
                config.scaled_depo_level_generator,
-               config.contour_level_count)
+               config.contour_level_count,
+               config.depo_sum)
       elif method != const.PlotRangeDetermination.NONZERO:
          logger.warn(f"Unknown method for determining plot range: {method}."
                      " Will use the default method.")
@@ -94,36 +97,70 @@ class MinContourLevelBasedHitmapConcGenerator(AbstractHitmapConcGenerator):
 
    def __init__(self, level_selector, pollutant_selector, time_selector,
                 scaled_conc_level_generator, scaled_depo_level_generator,
-                contour_level_count):
+                contour_level_count, depo_sum):
       super().__init__(level_selector, pollutant_selector, time_selector)
       self.scaled_conc_level_generator = scaled_conc_level_generator
       self.scaled_depo_level_generator = scaled_depo_level_generator
       self.contour_level_count = contour_level_count
+      self.conc_type = scaled_conc_level_generator.conc_type
+      self.conc_map = scaled_conc_level_generator.conc_map
+      self.CONADJ = scaled_conc_level_generator.CONADJ
+      self.depo_sum = depo_sum
 
    def make_conc(self, grids):
       conc = None
-      fn = lambda g: \
-         g.time_index in self.time_selector and \
-         g.pollutant_index in self.pollutant_selector and \
-         g.vert_level in self.level_selector
 
-      filtered = list(filter(fn, grids))
-      for g in filtered:
-         if conc is None:
-            conc = numpy.zeros_like(g.conc)
+      self.depo_sum.initialize(grids,
+                               self.time_selector,
+                               self.pollutant_selector)
 
-         if g.vert_level == 0:
-            scaled_level_generator = self.scaled_depo_level_generator
-         else:
+      for t_index in self.time_selector:
+         t_grids = helper.TimeIndexGridFilter(grids,
+                                              helper.TimeIndexSelector(t_index, t_index))
+         initial_timeQ = (t_index == self.time_selector.first)
+
+         grids_above_ground, grids_on_ground = \
+               self.conc_type.prepare_grids_for_plotting(t_grids)
+
+         self.depo_sum.add(grids_on_ground, initial_timeQ)
+
+         # concentration unit conversion factor
+         TFACT = self.CONADJ
+         if self.conc_map.need_time_scaling():
+             f = abs(grids_above_ground[0].get_duration_in_sec())
+             TFACT = self.conc_map.scale_time(TFACT,
+                                              self.conc_type,
+                                              f,
+                                              initial_timeQ)
+         self.scaled_conc_level_generator.TFACT = TFACT
+
+         for g in grids_above_ground:
             scaled_level_generator = self.scaled_conc_level_generator
 
-         # Find the concentration threshold using the smallest contour level
-         contour_levels = scaled_level_generator.make_levels(g,
-                                                             self.contour_level_count)
-         threshold = min(contour_levels) / scaled_level_generator.last_scaling_factor
+            # Find the concentration threshold using the smallest contour level
+            contour_levels = scaled_level_generator.make_levels(g,
+                                                                self.contour_level_count,
+                                                                TFACT=TFACT)
+            threshold = min(contour_levels) / scaled_level_generator.last_scaling_factor
 
-         # Add the concentration values over the threshold.
-         mask = numpy.greater(g.conc, threshold)
-         conc[mask] += g.conc[mask]
+            # Add the concentration values over the threshold.
+            mask = numpy.greater(g.conc, threshold)
+            if conc is None:
+               conc = numpy.zeros_like(g.conc)
+            conc[mask] += g.conc[mask]
+
+         grids = self.depo_sum.get_grids_to_plot(grids_on_ground,
+                                                 t_index == self.time_selector.last)
+         for g in grids:
+            scaled_level_generator = self.scaled_depo_level_generator
+            contour_levels = scaled_level_generator.make_levels(g,
+                                                                self.contour_level_count)
+            threshold = min(contour_levels) / scaled_level_generator.last_scaling_factor
+
+            # Add the concentration values over the threshold.
+            mask = numpy.greater(g.conc, threshold)
+            if conc is None:
+               conc = numpy.zeros_like(g.conc)
+            conc[mask] += g.conc[mask]
 
       return conc

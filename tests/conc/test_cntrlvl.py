@@ -713,7 +713,7 @@ def test_AbstractScaledContourLevelGenerator___init__():
     vert_levels = [0, 100]
     p = cntrlvl.ScaledConcContourLevelGenerator(level_generator, conc_type, length_factory,  # Use a concrete class
                                                 conc_map=conc_map, vert_levels=vert_levels,
-                                                TFACT=1.0, LEVEL2=99999)
+                                                CONADJ=1.0, LEVEL2=99999)
 
     assert p.level_generator is level_generator
     assert hasattr(p, 'last_level1')
@@ -735,7 +735,7 @@ def test_AbstractScaledContourLevelGenerator_compute_color_table_offset():
     vert_levels = [0, 100]
     p = cntrlvl.ScaledConcContourLevelGenerator(level_generator, conc_type, length_factory,  # Use a concrete class
                                                 conc_map=conc_map, vert_levels=vert_levels,
-                                                TFACT=1.0, LEVEL2=99999)
+                                                CONADJ=1.0, LEVEL2=99999)
 
     assert p.compute_color_table_offset([1.0e-13]) == 1
 
@@ -753,13 +753,13 @@ def test_ScaledConcContourLevelGenerator___init__():
     vert_levels = [0, 100]
     p = cntrlvl.ScaledConcContourLevelGenerator(level_generator, conc_type, length_factory,  # Use a concrete class
                                                 conc_map=conc_map, vert_levels=vert_levels,
-                                                TFACT=1.0, LEVEL2=99999)
+                                                CONADJ=1.0, LEVEL2=99999)
 
     assert p.conc_type is conc_type
     assert p.length_factory is length_factory
     assert p.conc_map is conc_map
     assert p.vert_levels == pytest.approx([0, 100])
-    assert p.TFACT == 1.0
+    assert p.CONADJ == 1.0
     assert p.LEVEL2 == 99999
 
 

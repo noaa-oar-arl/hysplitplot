@@ -61,18 +61,21 @@ def test_HitmapConcGeneratorConfig__init__():
    scaled_conc_level_generator = Mock()
    scaled_depo_level_generator = Mock()
    contour_level_count = 4
+   depo_sum = Mock()
    o = maplimit.HitmapConcGeneratorConfig(level_selector,
                                           pollutant_selector,
                                           time_selector,
                                           scaled_conc_level_generator,
                                           scaled_depo_level_generator,
-                                          contour_level_count)
+                                          contour_level_count,
+                                          depo_sum)
    assert o.level_selector is level_selector
    assert o.pollutant_selector is pollutant_selector
    assert o.time_selector is time_selector
    assert o.scaled_conc_level_generator is scaled_conc_level_generator
    assert o.scaled_depo_level_generator is scaled_depo_level_generator
    assert o.contour_level_count == 4
+   assert o.depo_sum is depo_sum
 
 
 def test_HitmapConcGeneratorFactory_create_instance():
@@ -93,6 +96,7 @@ def test_HitmapConcGeneratorFactory_create_instance():
    assert instance.scaled_conc_level_generator is config.scaled_conc_level_generator
    assert instance.scaled_depo_level_generator is config.scaled_depo_level_generator
    assert instance.contour_level_count == config.contour_level_count
+   assert instance.depo_sum == config.depo_sum
 
 
 def test_AbstractHitmapConcGenerator___init__():
@@ -133,19 +137,22 @@ def test_MinContourLevelBasedHitmapConcGenerator___init__():
    scaled_conc_level_generator = Mock()
    scaled_depo_level_generator = Mock()
    contour_level_count = 5
+   depo_sum = Mock()
    generator = maplimit.MinContourLevelBasedHitmapConcGenerator(
        level_selector,
        pollutant_selector,
        time_selector,
        scaled_conc_level_generator,
        scaled_depo_level_generator,
-       contour_level_count)
+       contour_level_count,
+       depo_sum)
    assert generator.level_selector is level_selector
    assert generator.pollutant_selector is pollutant_selector
    assert generator.time_selector is time_selector
    assert generator.scaled_conc_level_generator is scaled_conc_level_generator
    assert generator.scaled_depo_level_generator is scaled_depo_level_generator
    assert generator.contour_level_count == contour_level_count
+   assert generator.depo_sum == depo_sum
 
 
 def test_MinContourLevelBasedHitmapConcGenerator_make_conc():
@@ -164,7 +171,8 @@ def test_MinContourLevelBasedHitmapConcGenerator_make_conc():
        time_selector,
        p.scaled_conc_level_generator,
        p.scaled_depo_level_generator,
-       contour_level_count)
+       contour_level_count,
+       p.depo_sum)
    #
    levels = p.scaled_conc_level_generator.make_levels(p.cdump.grids[0], contour_level_count)
    assert levels * 1.0e+15 == pytest.approx([1.0, 10.0, 100.0, 1000.0])

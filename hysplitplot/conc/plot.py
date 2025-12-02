@@ -888,7 +888,8 @@ no calculated values are above the output thresholds.'''
               self.time_selector,
               self.scaled_conc_level_generator,
               self.scaled_depo_level_generator,
-              self.settings.contour_level_count)
+              self.settings.contour_level_count,
+              self.depo_sum)
         conc_maker = maplimit.HitmapConcGeneratorFactory.create_instance(
               self.settings.hitmap_generation_method,
               config=conc_maker_config)
@@ -1352,6 +1353,7 @@ no calculated values are above the output thresholds.'''
            raw_colors.insert(0, self.settings.near_min_cntr_raw_color)
            contour_labels.insert(0, '')
 
+        logger.debug("scaling conc by multiplying %g", scaled_level_generator.last_scaling_factor)
         scaled_conc = numpy.copy(g.conc)
         if scaled_level_generator.last_scaling_factor != 1.0:
             scaled_conc *= scaled_level_generator.last_scaling_factor
@@ -1445,6 +1447,7 @@ no calculated values are above the output thresholds.'''
            raw_colors.insert(0, self.settings.near_min_cntr_raw_color)
            contour_labels.insert(0, '')
 
+        logger.debug("scaling depo by multiplying %g", self.settings.DEPADJ)
         scaled_conc = numpy.copy(g.conc)
         if self.settings.DEPADJ != 1.0:
             scaled_conc *= self.settings.DEPADJ
@@ -1551,7 +1554,7 @@ no calculated values are above the output thresholds.'''
         self.scaled_conc_level_generator = cntrlvl.ScaledConcContourLevelGenerator(
             level_generator, self.conc_type, self.length_factory,
             conc_map=self.conc_map, vert_levels=self.cdump.vert_levels,
-            TFACT=self.TFACT, LEVEL2=self.settings.LEVEL2)
+            CONADJ=self.settings.CONADJ, LEVEL2=self.settings.LEVEL2)
         self.scaled_depo_level_generator = cntrlvl.ScaledDepoContourLevelGenerator(
             level_gen_depo, self.conc_type, self.length_factory,
             DEPADJ=self.settings.DEPADJ)
@@ -1596,6 +1599,7 @@ no calculated values are above the output thresholds.'''
                                                       initial_timeQ)
             logger.debug("CONADJ %g, TFACT %g",
                          self.settings.CONADJ, self.TFACT)
+            self.scaled_conc_level_generator.TFACT = self.TFACT
 
             for g in grids_above_ground:
                 self.draw_conc_above_ground(g, ev_handlers, self.scaled_conc_level_generator,

@@ -431,10 +431,10 @@ class ScaledConcContourLevelGenerator(AbstractScaledContourLevelGenerator):
       self.length_factory = length_factory
       self.conc_map = kwarg['conc_map']
       self.vert_levels = kwarg['vert_levels']
-      self.TFACT = kwarg['TFACT']
+      self.CONADJ = kwarg['CONADJ']
       self.LEVEL2 = kwarg['LEVEL2']
 
-   def make_levels(self, g, contour_level_count):
+   def make_levels(self, g, contour_level_count, TFACT=1.0):
       LEVEL0 = self.conc_type.get_lower_level(g.vert_level,
                                               self.vert_levels)
       LEVEL2 = self.conc_type.get_upper_level(g.vert_level,
@@ -446,20 +446,27 @@ class ScaledConcContourLevelGenerator(AbstractScaledContourLevelGenerator):
       # Scaling should be done prior to determining the min and max
       # concentration values.
       f = float(g.vert_level - LEVEL0)
-      self.last_scaling_factor = self.conc_map.scale_exposure(self.TFACT,
+      self.last_scaling_factor = self.conc_map.scale_exposure(TFACT,
                                                               self.conc_type,
                                                               f)
+      logger.debug('TFACT %g, hgt %g, scaling factor %g',
+                   TFACT, f, self.last_scaling_factor)
 
       min_conc, max_conc = self.conc_type.get_plot_conc_range(g,
                                                               self.last_scaling_factor)
       self.last_min_conc = min_conc
+      logger.debug('min conc %g, max conc %g', min_conc, max_conc)
 
       self.level_generator.set_global_min_max(self.conc_type.contour_min_conc,
                                               self.conc_type.contour_max_conc)
+      logger.debug('global min conc %g, max conc %g',
+                   self.conc_type.contour_min_conc,
+                   self.conc_type.contour_max_conc)
 
       contour_levels = self.level_generator.make_levels(min_conc,
                                                         max_conc,
                                                         contour_level_count)
+      logger.debug(f'cntr levels {contour_levels}')
 
       return contour_levels
 
