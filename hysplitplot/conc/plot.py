@@ -1334,7 +1334,8 @@ no calculated values are above the output thresholds.'''
         self._turn_off_ticks(self.conc_outer)
 
         contour_levels = scaled_level_generator.make_levels(g,
-                                                            self.settings.contour_level_count)
+                                                            self.settings.contour_level_count,
+                                                            TFACT=self.TFACT)
 
         if self.settings.write_contour_levels_only != 0:
             self.create_contour_levels_file(contour_levels, 'CONTUR')
@@ -1599,7 +1600,6 @@ no calculated values are above the output thresholds.'''
                                                       initial_timeQ)
             logger.debug("CONADJ %g, TFACT %g",
                          self.settings.CONADJ, self.TFACT)
-            self.scaled_conc_level_generator.TFACT = self.TFACT
 
             for g in grids_above_ground:
                 self.draw_conc_above_ground(g, ev_handlers, self.scaled_conc_level_generator,

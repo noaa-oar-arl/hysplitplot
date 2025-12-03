@@ -16,7 +16,6 @@ import sys
 from hysplitdata.conc import model
 from .. import util, const
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -29,6 +28,12 @@ def sum_over_pollutants_per_level(grids, level_selector, pollutant_selector):
     """
 
     # select grids
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug('selecting grids in vert levels [%d,%d], pollutant idx %d',
+                     level_selector.min, level_selector.max, pollutant_selector.index)
+        for g in grids:
+            logger.debug('grid vert level %d, pollutant idx %d',
+                         g.vert_level, g.pollutant_index)
     fn = lambda g: \
         g.vert_level in level_selector and \
         g.pollutant_index in pollutant_selector
@@ -37,10 +42,12 @@ def sum_over_pollutants_per_level(grids, level_selector, pollutant_selector):
     # obtain unique level indices
     level_indices = list(set([g.vert_level_index for g in grids]))
     if len(level_indices) == 0:
+        logger.debug('no conc grids to sum')
         return []
 
     v_grids = []
     for k in level_indices:
+        logger.debug('computing sum of conc grids at level idx %d', k)
         a = list(filter(lambda g: g.vert_level_index == k, grids))
         if len(a) == 1:
             v_grids.append(a[0])
@@ -84,7 +91,7 @@ def find_nonzero_min_max(mat):
 
     if mat is not None:
         vmax = mat.max()
-        vmin = util.nonzero_min(mat)    # may return None.
+        vmin = util.nonzero_min(mat)  # may return None.
 
     return vmin, vmax
 
@@ -228,7 +235,7 @@ class GridProperties:
     def update(self, conc):
         vmin, self.max_conc = find_nonzero_min_max(conc)
         self.min_conc = vmin if vmin is not None else 0.0
- 
+
     def __repr__(self) -> str:
         return "GridProperties[min {}, max {}, avg min {}, avg max {}," \
                " max locs {}]".format(self.min_conc,
@@ -687,11 +694,11 @@ class LevelConcentration(ConcentrationType):
 
     @property
     def contour_min_conc(self):
-        return self.min_concs[-1]   # at the top level
+        return self.min_concs[-1]  # at the top level
 
     @property
     def contour_max_conc(self):
-        return self.max_concs[-1]   # at the top level
+        return self.max_concs[-1]  # at the top level
 
     @property
     def ground_min_conc(self):

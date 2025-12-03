@@ -110,6 +110,12 @@ class MinContourLevelBasedHitmapConcGenerator(AbstractHitmapConcGenerator):
    def make_conc(self, grids):
       conc = None
 
+      if logger.isEnabledFor(logging.DEBUG):
+         logger.debug('Examining conc grids')
+         for k, g in enumerate(grids):
+            logger.debug('grid %d, time idx %d, level %d, pollutant idx %d',
+                         k, g.time_index, g.vert_level, g.pollutant_index)
+
       self.depo_sum.initialize(grids,
                                self.time_selector,
                                self.pollutant_selector)
@@ -118,9 +124,12 @@ class MinContourLevelBasedHitmapConcGenerator(AbstractHitmapConcGenerator):
          t_grids = helper.TimeIndexGridFilter(grids,
                                               helper.TimeIndexSelector(t_index, t_index))
          initial_timeQ = (t_index == self.time_selector.first)
+         logger.debug('At time index %d, %d conc grid(s)', t_index, len(t_grids.grids))
 
          grids_above_ground, grids_on_ground = \
                self.conc_type.prepare_grids_for_plotting(t_grids)
+         logger.debug("grid counts: above the ground %d, on the ground %d",
+                      len(grids_above_ground), len(grids_on_ground))
 
          self.depo_sum.add(grids_on_ground, initial_timeQ)
 
@@ -132,16 +141,14 @@ class MinContourLevelBasedHitmapConcGenerator(AbstractHitmapConcGenerator):
                                               self.conc_type,
                                               f,
                                               initial_timeQ)
-         self.scaled_conc_level_generator.TFACT = TFACT
 
          for g in grids_above_ground:
-            scaled_level_generator = self.scaled_conc_level_generator
-
+            logger.debug('Examining conc grid at time idx %d, level %d', t_index, g.vert_level)
             # Find the concentration threshold using the smallest contour level
-            contour_levels = scaled_level_generator.make_levels(g,
-                                                                self.contour_level_count,
-                                                                TFACT=TFACT)
-            threshold = min(contour_levels) / scaled_level_generator.last_scaling_factor
+            contour_levels = self.scaled_conc_level_generator.make_levels(g,
+                                                                          self.contour_level_count,
+                                                                          TFACT=TFACT)
+            threshold = min(contour_levels) / self.scaled_conc_level_generator.last_scaling_factor
 
             # Add the concentration values over the threshold.
             mask = numpy.greater(g.conc, threshold)
@@ -149,13 +156,13 @@ class MinContourLevelBasedHitmapConcGenerator(AbstractHitmapConcGenerator):
                conc = numpy.zeros_like(g.conc)
             conc[mask] += g.conc[mask]
 
-         grids = self.depo_sum.get_grids_to_plot(grids_on_ground,
-                                                 t_index == self.time_selector.last)
-         for g in grids:
-            scaled_level_generator = self.scaled_depo_level_generator
-            contour_levels = scaled_level_generator.make_levels(g,
-                                                                self.contour_level_count)
-            threshold = min(contour_levels) / scaled_level_generator.last_scaling_factor
+         grids_on_ground = self.depo_sum.get_grids_to_plot(grids_on_ground,
+                                                           t_index == self.time_selector.last)
+         for g in grids_on_ground:
+            logger.debug('Examining conc grid at time idx %d, level %d', t_index, g.vert_level)
+            contour_levels = self.scaled_depo_level_generator.make_levels(g,
+                                                                          self.contour_level_count)
+            threshold = min(contour_levels) / self.scaled_depo_level_generator.last_scaling_factor
 
             # Add the concentration values over the threshold.
             mask = numpy.greater(g.conc, threshold)
