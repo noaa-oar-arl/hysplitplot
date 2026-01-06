@@ -122,21 +122,21 @@ class AbstractMapProjection(ABC):
         corners_xy = self.scale_per_aspect_ratio(corners_xy, self.aspect_ratio)
         corners_xy = self.choose_corners(corners_xy, corners_saved)
         logger.debug("X, Y asp-zum: %f %f %f %f", corners_xy[0],
-                     corners_xy[1], corners_xy[2], corners_xy[3])
+                     corners_xy[2], corners_xy[1], corners_xy[3])
 
         # projection zoom factor
         corners_saved = corners_xy
         corners_xy = self.zoom_corners(corners_xy, self.zoom_factor)
         corners_xy = self.choose_corners(corners_xy, corners_saved)
         logger.debug("X, Y zum-adj: %f %f %f %f", corners_xy[0],
-                     corners_xy[1], corners_xy[2], corners_xy[3])
+                     corners_xy[2], corners_xy[1], corners_xy[3])
 
         # round map corners to match even grid index for plotting
         corners_saved = [util.nearest_int(a) for a in corners_xy]
         corners_xy = self.round_map_corners(corners_xy)
         corners_xy = self.choose_corners(corners_xy, corners_saved)
         logger.debug("X, Y Adj: %f %f %f %f", corners_xy[0],
-                     corners_xy[1], corners_xy[2], corners_xy[3])
+                     corners_xy[2], corners_xy[1], corners_xy[3])
 
         # alatb, alonl, alatt, alonr will be used later to setup map
         corners_lonlat = self.calc_corners_lonlat(corners_xy)
@@ -151,13 +151,13 @@ class AbstractMapProjection(ABC):
         ratio_xy = self.calc_aspect_ratio(corners_xy)
         ratio_ll = self.calc_aspect_ratio(corners_lonlat)
         logger.debug("Final: %f %f %f %f", corners_xy[0],
-                     corners_xy[1], corners_xy[2], corners_xy[3])
+                     corners_xy[2], corners_xy[1], corners_xy[3])
         logger.debug("Lx %f, Ly %f, aspect ratio %f",
                      corners_xy[1] - corners_xy[0],
                      corners_xy[3] - corners_xy[2],
                      ratio_xy)
         logger.debug("Final: lonlat %f %f %f %f", corners_lonlat[0],
-                     corners_lonlat[1], corners_lonlat[2], corners_lonlat[3])
+                     corners_lonlat[2], corners_lonlat[1], corners_lonlat[3])
         logger.debug("Lx %f, Ly %f, aspect ratio %f",
                      corners_lonlat[1] - corners_lonlat[0],
                      corners_lonlat[3] - corners_lonlat[2],
@@ -274,7 +274,7 @@ class AbstractMapProjection(ABC):
 
         alonl, alatb = self.calc_lonlat(x1, y1)
         alonr, alatt = self.calc_lonlat(x2, y2)
-        logger.debug("Corners: %f %f %f %f", alonl, alonr, alatb, alatt)
+        logger.debug("Corners: %f %f %f %f", alatb, alonl, alatt, alonr)
 
         # map exceeds limits
         if alatt > 90.0 or alatb < -90.0:
@@ -351,7 +351,7 @@ class AbstractMapProjection(ABC):
         alonl, alatb = self.calc_lonlat(x1, y1)
         alonr, alatt = self.calc_lonlat(x2, y2)
         self.corners_lonlat = (alonl, alonr, alatb, alatt)
-        logger.debug("Corners: %f %f %f %f", alonl, alonr, alatb, alatt)
+        logger.debug("Corners: %f %f %f %f", alatb, alonl, alatt, alonr)
 
     def _estimate_plot_extent_with_center_fixed(self, x1, x2, y1, y2, lonlat_pts):
         xc = 0.5 * (x1 + x2)

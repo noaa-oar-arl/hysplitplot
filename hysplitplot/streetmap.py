@@ -222,10 +222,18 @@ class HYSPLITMapBackground(AbstractMapBackground):
 
     def _update_gridlines(self, axes, projection, map_color,
                           latlon_label_opt, latlon_spacing):
+        # print plot range in lat-lon
+        x1, x2 = axes.get_xlim()
+        y1, y2 = axes.get_ylim()
+        logger.debug("plot data limits: x %f %f, y %f %f", x1, x2, y1, y2)
+        l, b = projection.calc_lonlat(x1, y1)
+        r, t = projection.calc_lonlat(x2, y2)
+        logger.debug("plot data limits: l %f, b %f, r %f, t %f", l, b, r, t)
+
         deltax = deltay = self._get_gridline_spacing(projection.corners_lonlat,
                                                      latlon_label_opt,
                                                      latlon_spacing)
-        ideltax = ideltay = int(deltax * 10.0)
+        ideltax = ideltay = int(deltax * 100.0)
         if ideltax == 0:
             logger.debug("not updating gridlines because deltas are %f, %f",
                          deltax, deltay)
@@ -244,28 +252,28 @@ class HYSPLITMapBackground(AbstractMapBackground):
         if util.is_crossing_date_line(alonl, alonr):
             alonr += 360.0
 
-        xticks = self._collect_tick_values(-1800, 1800, ideltax,
-                                           0.1, lonlat_ext[0:2])
+        xticks = self._collect_tick_values(-18000, 18000, ideltax,
+                                           0.01, lonlat_ext[0:2])
         logger.debug("gridlines at lons %s", xticks)
         if len(xticks) == 0 \
                 or deltax >= abs(self._GRIDLINE_DENSITY * (alonr - alonl)):
             # recompute deltax with zero latitude span and try again
             deltax = self._calc_gridline_spacing([alonl, alonr, alatb, alatb])
-            ideltax = int(deltax * 10.0)
-            xticks = self._collect_tick_values(-1800, 1800, ideltax,
-                                               0.1, lonlat_ext[0:2])
-            logger.debug("gridlines at lats %s", xticks)
+            ideltax = int(deltax * 100.0)
+            xticks = self._collect_tick_values(-18000, 18000, ideltax,
+                                               0.01, lonlat_ext[0:2])
+            logger.debug("gridlines at lons %s", xticks)
 
-        yticks = self._collect_tick_values(-900 + ideltay, 900, ideltay,
-                                           0.1, lonlat_ext[2:4])
+        yticks = self._collect_tick_values(-9000 + ideltay, 9000, ideltay,
+                                           0.01, lonlat_ext[2:4])
         logger.debug("gridlines at lats %s", yticks)
         if len(yticks) == 0 \
                 or deltay >= abs(self._GRIDLINE_DENSITY * (alatt - alatb)):
             # recompute deltay with zero longitude span and try again
             deltay = self._calc_gridline_spacing([alonl, alonl, alatb, alatt])
-            ideltay = int(deltay * 10.0)
-            yticks = self._collect_tick_values(-900 + ideltay, 900, ideltay,
-                                               0.1, lonlat_ext[2:4])
+            ideltay = int(deltay * 100.0)
+            yticks = self._collect_tick_values(-9000 + ideltay, 9000, ideltay,
+                                               0.01, lonlat_ext[2:4])
             logger.debug("gridlines at lats %s", yticks)
 
         # erase gridlines
@@ -295,7 +303,8 @@ class HYSPLITMapBackground(AbstractMapBackground):
 
     def _calc_gridline_spacing(self, corners_lonlat):
         # potential gridline spacings
-        spacings = [45.0, 30.0, 20.0, 15.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2]
+        spacings = [45.0, 30.0, 20.0, 15.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2,
+                    0.1, 0.05, 0.02]
 
         alonl, alonr, alatb, alatt = corners_lonlat
         if util.is_crossing_date_line(alonl, alonr):
@@ -350,8 +359,8 @@ class HYSPLITMapBackground(AbstractMapBackground):
     def _draw_latlon_labels(self, axes, projection, deltax, deltay,
                             map_color):
         logger.debug("latlon labels at intervals %f, %f", deltax, deltay)
-        ideltax = int(deltax * 10.0)
-        ideltay = int(deltay * 10.0)
+        ideltax = int(deltax * 100.0)
+        ideltay = int(deltay * 100.0)
         if ideltax == 0 or ideltay == 0:
             logger.debug("not drawing latlon labels because deltas are %f, %f",
                          deltax, deltay)
@@ -367,17 +376,21 @@ class HYSPLITMapBackground(AbstractMapBackground):
 
         # lon labels
         lat = (clat - 0.5 * deltay) if (clat > 80.0) else clat + 0.5 * deltay
-        for k in range(-(1800 - ideltax), 1800, ideltax):
-            lon = 0.1 * k
+        for k in range(-(18000 - ideltax), 18000, ideltax):
+            lon = 0.01 * k
 
             # 5/17/2019
             # The clip_on option does not work with the eps/ps renderer.
             # Clipping is done here.
             ax, ay = axes.transLimits.transform(projection.calc_xy(lon, lat))
             if ax < 0.0 or ax > 1.0 or ay < 0.0 or ay > 1.0:
+                # logger.debug('out-of-range lon %f, lat %f: ax %f, ay %f',
+                #             lon, lat, ax, ay)
                 continue
 
-            if deltax < 1.0:
+            if deltax < 0.1:
+                str = "{0:.2f}".format(lon)
+            elif deltax < 1.0:
                 str = "{0:.1f}".format(lon)
             else:
                 str = "{0}".format(int(lon))
@@ -390,17 +403,21 @@ class HYSPLITMapBackground(AbstractMapBackground):
 
         # lat labels
         lon = clon + 0.5 * deltax
-        for k in range(-(900 - ideltay), 900, ideltay):
-            lat = 0.1 * k
+        for k in range(-(9000 - ideltay), 9000, ideltay):
+            lat = 0.01 * k
 
             # 5/17/2019
             # The clip_on option does not work with the eps/ps renderer.
             # Clipping is done here.
             ax, ay = axes.transLimits.transform(projection.calc_xy(lon, lat))
             if ax < 0.0 or ax > 1.0 or ay < 0.0 or ay > 1.0:
+                # logger.debug('out-of-range lon %f, lat %f: ax %f, ay %f',
+                #             lon, lat, ax, ay)
                 continue
 
-            if deltay < 1.0:
+            if deltay < 0.1:
+                str = "{0:.2f}".format(lat)
+            elif deltay < 1.0:
                 str = "{0:.1f}".format(lat)
             else:
                 str = "{0}".format(int(lat))

@@ -54,6 +54,14 @@ def test_LongitudeInterval_is_angle_inside_case2():
    assert o.is_angle_inside(-169.0) is False
 
 
+def test_LongitudeInterval_length():
+   o = mapbox.LongitudeInterval(-90.0, 90.0)
+   assert o.length == pytest.approx(180.0)
+
+   p = mapbox.LongitudeInterval(170.0, -170.0)
+   assert p.length == pytest.approx(20.0)
+
+
 def test_LongitudeInterval_union():
    o = mapbox.LongitudeInterval(-90.0, 90.0)
 
@@ -106,6 +114,30 @@ def test_LongitudeInterval_union_case2():
    assert o._r == pytest.approx(-165.0)
 
 
+def test_MapBoxFactory_create_instance():
+    o = mapbox.MapBoxFactory.create_instance(kind=1)
+    assert isinstance(o, mapbox.MapBoxUsingBoundingBox)
+    assert o.grid_delta == pytest.approx(0.125)
+
+    # Test with spans smaller than 2.0 degrees.
+    o = mapbox.MapBoxFactory.create_instance(lat_span=1.0, lon_span=1.0)
+    assert isinstance(o, mapbox.MapBox)
+    assert o.grid_delta == pytest.approx(0.10)
+    assert o._sz == [10, 10]
+
+    # Test with spans smaller than 5.0 but larger than 2.0.
+    o = mapbox.MapBoxFactory.create_instance(lat_span=2.5, lon_span=2.5)
+    assert isinstance(o, mapbox.MapBox)
+    assert o.grid_delta == pytest.approx(0.20)
+    assert o._sz == [12, 12]
+
+    # Test with spans larger than 5.0.
+    o = mapbox.MapBoxFactory.create_instance(lat_span=10.0, lon_span=10.0)
+    assert isinstance(o, mapbox.MapBox)
+    assert o.grid_delta == pytest.approx(1.0)
+    assert o._sz == [360, 181]
+
+
 def test_AbstractMapBox___init__():
     mb = mapbox.MapBox()  # use a concrete class
 
@@ -113,6 +145,21 @@ def test_AbstractMapBox___init__():
     assert mb.grid_corner == [-180.0, -90.0]
     assert mb.hit_count == 0
     assert mb.bounding_box is None
+
+
+def test_AbstractMapBox__update_grid_delta():
+    mb = mapbox.MapBox()  # use a concrete class
+    assert mb.grid_delta == 1.0
+
+    mb._update_grid_delta(0.5)
+    assert mb.grid_delta == 0.5
+
+
+def test_AbstractMapBox_bounding_box():
+    mb = mapbox.MapBox()
+
+    mb._bbox = (-90., -88., 37.0, 38.0,)
+    assert mb.bounding_box == pytest.approx((-90., -88., 37., 38.,))
 
 
 def test_AbstractMapBox_get_bounding_box_center():
@@ -132,7 +179,7 @@ def test_AbstractMapBox_get_bounding_box_corners():
     corners = mb.get_bounding_box_corners()
     assert len(corners) == 0
 
-    mb.plume_sz = [40.0, 10.0]
+    mb._plume_sz = [40.0, 10.0]
     s = plot.TrajectoryPlotSettings()
     s.center_loc = (-120.3, 45.3)
     s.ring_number = 2
@@ -164,7 +211,7 @@ def test_AbstractMapBox__normalize_lat():
 def test_AbstractMapBox_set_ring_extent():
     mb = mapbox.MapBox()
     mb.allocate()
-    mb.plume_sz = [40.0, 10.0]
+    mb._plume_sz = [40.0, 10.0]
     s = plot.TrajectoryPlotSettings()
     s.center_loc = (-120.3, 45.3)
     s.ring_number = 2
@@ -182,7 +229,7 @@ def test_AbstractMapBox_set_ring_extent_case2():
     """
     mb = mapbox.MapBox()
     mb.allocate()
-    mb.plume_sz = [40.0, 10.0]
+    mb._plume_sz = [40.0, 10.0]
     s = plot.TrajectoryPlotSettings()
     s.center_loc = (-120.3, 45.3)
     s.ring_number = 0
@@ -201,8 +248,8 @@ def test_MapBox___init__():
 
     mb = mapbox.MapBox(grid_corner=[-84.0, -23.0], grid_size=[10.0, 5.0], grid_delta=0.5)
     assert mb._sz == [20, 10]
-    assert mb.plume_sz == [0, 0]
-    assert mb.plume_loc == [0, 0]
+    assert mb._plume_sz == [0, 0]
+    assert mb._plume_loc == [0, 0]
     assert mb.grid_delta == 0.5
     assert mb.grid_corner == [-84.0, -23.0]
 
@@ -269,8 +316,8 @@ def test_MapBox_determine_plume_extent():
     mb.add((-120.3, 45.3))
     mb.determine_plume_extent()
 
-    assert mb.plume_sz == [1.0, 1.0]
-    assert mb.plume_loc == [59, 135]
+    assert mb._plume_sz == [1.0, 1.0]
+    assert mb._plume_loc == [59, 135]
     assert mb.bounding_box == pytest.approx((-121.0, -120.0, 45.0, 46.0))
 
 
@@ -297,21 +344,21 @@ def test_MapBox_determine_plume_extent_case2():
 
     mb.determine_plume_extent()
 
-    assert mb.plume_sz == [4.0, 7.0]
-    assert mb.plume_loc == [358, 125]
+    assert mb._plume_sz == [4.0, 7.0]
+    assert mb._plume_loc == [358, 125]
     assert mb.bounding_box == pytest.approx((178.0, -178.0, 35.0, 42.0))
 
 
 def test_MapBox_need_to_refine_grid():
     mb = mapbox.MapBox()
 
-    mb.plume_sz = [0.0, 0.0]
+    mb._plume_sz = [0.0, 0.0]
     assert mb.need_to_refine_grid() == True
 
-    mb.plume_sz = [2.5, 0.0]
+    mb._plume_sz = [2.5, 0.0]
     assert mb.need_to_refine_grid() == False
 
-    mb.plume_sz = [0.0, 2.5]
+    mb._plume_sz = [0.0, 2.5]
     assert mb.need_to_refine_grid() == False
 
 
@@ -365,8 +412,8 @@ def test_MapBox_refine_grid_case2():
     mb.add_conc(conc, lons_left, lats_left)
     mb.add_conc(conc, lons_right, lats_right)
     mb.determine_plume_extent()
-    assert mb.plume_sz == pytest.approx([3.1, 6.1])
-    assert mb.plume_loc == [0, 0]
+    assert mb._plume_sz == pytest.approx([3.1, 6.1])
+    assert mb._plume_loc == [0, 0]
     assert mb.bounding_box == pytest.approx((178.0, -178.9, 35.0, 41.1))
 
 
@@ -426,7 +473,7 @@ def test_MapBoxUsingBoundingBox_add_conc():
     mb.add_conc(conc, lons, lats)
 
     assert mb.hit_count == 6
-    assert mb.bounding_box == pytest.approx([-89.5, -88.5, 35.5, 36.5])
+    assert mb.bounding_box == pytest.approx([-89.5, -88.0, 35.5, 37.0])
 
 
 def test_MapBoxUsingBoundingBox_determine_plume_extent():
@@ -462,5 +509,19 @@ def test_MapBoxUsingBoundingBox_determine_plume_extent_case2():
 
     mb.determine_plume_extent()
 
-    assert mb.bounding_box == pytest.approx((178.0, -179.0, 35.0, 41.0))
+    assert mb.bounding_box == pytest.approx((178.0, -178.0, 35.0, 42.0))
+    assert mb.grid_delta == pytest.approx(0.4)
+
+
+def test_MapBoxUsingBoundingBox_need_to_refine_grid():
+    mb = mapbox.MapBoxUsingBoundingBox()
+    assert mb.need_to_refine_grid() == False
+
+
+def test_MapBoxUsingBoundingBox_refine_grid():
+    mb = mapbox.MapBoxUsingBoundingBox()
+    try:
+        mb.refine_grid()
+    except Exception as e:
+        pytest.fail(f"Unexpected exception: {str(e)}")
 

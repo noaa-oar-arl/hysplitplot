@@ -346,7 +346,7 @@ def test_HYSPLITMapBackground__calc_gridline_spacing(lambert_proj):
     # across the dateline
     assert o._calc_gridline_spacing([+350.0, -10.0, 35.0, 55.0]) == 5.0
     # test min.
-    assert o._calc_gridline_spacing([0.0, 0.1, 0.0, 0.1]) == 0.2
+    assert o._calc_gridline_spacing([0.0, 0.1, 0.0, 0.1]) == 0.02
 
 
 def test_HYSPLITMapBackground__collect_tick_values():

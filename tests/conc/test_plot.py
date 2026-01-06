@@ -1077,12 +1077,12 @@ def test_ConcentrationPlot__determine_map_limits():
     assert mb.grid_delta == 1.0
     assert mb._sz == [360, 181]
     if isinstance(mb, mapbox.MapBox):
-       assert mb.plume_sz == [5.0, 4.0]
-       assert mb.plume_loc == [95, 129]
+       assert mb._plume_sz == [5.0, 4.0]
+       assert mb._plume_loc == [95, 129]
     else:
        # MapBoxUsingBoundingBox
-       assert mb.plume_sz == pytest.approx([3.35, 2.60])
-       assert mb.plume_loc == [95, 129]
+       assert mb._plume_sz == pytest.approx([3.35, 2.60])
+       assert mb._plume_loc == [95, 129]
 
     nil_plot_data = model.ConcentrationDump()
     nil_plot_data.grid_deltas = (1.0, 1.0)
@@ -1516,6 +1516,18 @@ def test_ConcentrationPlot__create_gis_writer_list():
     gis_writers = p._create_gis_writer_list(p.cdump.grids, p.settings, p.time_zone)
 
     assert len(gis_writers) == 1
+
+
+def test_ConcentrationPlot__create_scaled_level_generators():
+    p = plot.ConcentrationPlot()
+    p.merge_plot_settings("data/default_cplot", ["-idata/cdump", "-jdata/arlmap_truncated", "-a3", "+a0", "-A0"])
+    p.read_data_files()
+    p._initialize_map_projection(p.cdump)
+
+    p._create_scaled_level_generators()
+
+    assert isinstance(p.scaled_conc_level_generator, cntrlvl.ScaledConcContourLevelGenerator)
+    assert isinstance(p.scaled_depo_level_generator, cntrlvl.ScaledDepoContourLevelGenerator)
 
 
 def test_ConcentrationPlot_draw():

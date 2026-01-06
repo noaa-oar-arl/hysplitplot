@@ -542,12 +542,12 @@ def test_TrajectoryPlot__determine_map_limits(plotData):
     assert mb.grid_delta == 1.0
     assert mb._sz == [360, 181]
     if isinstance(mb, mapbox.MapBox):
-       assert mb.plume_sz == [5.0, 5.0]
-       assert mb.plume_loc == [90, 126]
+       assert mb._plume_sz == [5.0, 5.0]
+       assert mb._plume_loc == [90, 126]
     else:
        # MapBoxUsingBoundingBox
-       assert mb.plume_sz == pytest.approx([4.715, 3.114])
-       assert mb.plume_loc == [90, 126]
+       assert mb._plume_sz == pytest.approx([4.715, 3.114])
+       assert mb._plume_loc == [90, 126]
 
     nil_plot_data = model.TrajectoryDump()
 

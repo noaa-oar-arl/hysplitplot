@@ -851,11 +851,11 @@ def test_TimeOfArrivalPlot__determine_map_limits(cdump):
     assert mb.grid_delta == 1.0
     assert mb._sz == [360, 181]
     if isinstance(mb, mapbox.MapBox):
-       assert mb.plume_sz == [5.0, 4.0]
-       assert mb.plume_loc == [95, 129]
+       assert mb._plume_sz == [5.0, 4.0]
+       assert mb._plume_loc == [95, 129]
     else:
-       assert mb.plume_sz == pytest.approx([3.35, 2.6])
-       assert mb.plume_loc == [95, 129]
+       assert mb._plume_sz == pytest.approx([3.35, 2.6])
+       assert mb._plume_loc == [95, 129]
 
     nil_plot_data = model.ConcentrationDump()
     nil_plot_data.grid_deltas = (1.0, 1.0)

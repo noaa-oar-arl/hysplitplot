@@ -48,6 +48,14 @@ class LongitudeInterval:
          return (self._l <= angle and angle <= 180.0) or \
                 (-180.0 <= angle and angle <= self._r)
 
+   @property
+   def length(self):
+       if self._l <= self._r:
+           return self._r - self._l
+       else:
+           # boundary crossing case
+           return (180.0 - self._l) + (self._r + 180.0)
+
    def union(self, angle):
       """
       Compare a target angle with the angle interval [_l, _r)
@@ -125,6 +133,10 @@ class AbstractMapBox(ABC):
       self.hit_count = 0
       self._bbox = None  # bounding box [l, r, b, t] in degrees.
 
+   def _update_grid_delta(self, delta):
+      logger.debug('mapbox: changing grid delta from %f to %f', self.grid_delta, delta)
+      self.grid_delta = delta
+
    @property
    def bounding_box(self):
       return self._bbox
@@ -193,7 +205,7 @@ class AbstractMapBox(ABC):
       self.hit_count = 0
 
    def set_ring_extent(self, settings, ring_loc):
-      kspan, ring_distance = util.calc_ring_distance(self.plume_sz,
+      kspan, ring_distance = util.calc_ring_distance(self._plume_sz,
                                                      self.grid_delta,
                                                      ring_loc,
                                                      settings.ring_number,
@@ -228,8 +240,8 @@ class MapBox(AbstractMapBox):
         self._sz = [util.nearest_int(v / self.grid_delta) for v in grid_size]
         logger.debug("initial mapbox: grid delta {0}, sz {1}, corner {2}"
                      .format(self.grid_delta, self._sz, self.grid_corner))
-        self.plume_sz = [0.0, 0.0]  # (lon, lat)
-        self.plume_loc = [0, 0]  # lon-, lat-indices
+        self._plume_sz = [0.0, 0.0]  # (lon, lat)
+        self._plume_loc = [0, 0]  # lon-, lat-indices
         self._lon_hit_map = None
         self._lat_hit_map = None
 
@@ -322,12 +334,12 @@ class MapBox(AbstractMapBox):
                     right = lon_indices[k]
 
         if right >= left:
-            self.plume_sz[0] = self.grid_delta * (right - left + 1)
+            self._plume_sz[0] = self.grid_delta * (right - left + 1)
         else:
-            self.plume_sz[0] = self.grid_delta * (right + 1 + self._sz[0] - left)
-        self.plume_sz[1] = self.grid_delta * (top - bottom + 1)
-        self.plume_loc[0] = left
-        self.plume_loc[1] = bottom
+            self._plume_sz[0] = self.grid_delta * (right + 1 + self._sz[0] - left)
+        self._plume_sz[1] = self.grid_delta * (top - bottom + 1)
+        self._plume_loc[0] = left
+        self._plume_loc[1] = bottom
 
         l = self.grid_corner[0] + self.grid_delta * left
         r = self.grid_corner[0] + self.grid_delta * (right + 1)
@@ -338,16 +350,16 @@ class MapBox(AbstractMapBox):
         self._bbox = [l, r, b, t]
 
         logger.debug("plume location: index (%d, %d), lonlat (%f, %f)",
-                     self.plume_loc[0], self.plume_loc[1],
-                     self.grid_corner[0] + self.plume_loc[0] * self.grid_delta,
-                     self.grid_corner[1] + self.plume_loc[1] * self.grid_delta)
+                     self._plume_loc[0], self._plume_loc[1],
+                     self.grid_corner[0] + self._plume_loc[0] * self.grid_delta,
+                     self.grid_corner[1] + self._plume_loc[1] * self.grid_delta)
         logger.debug("plume size in degs: %f x %f",
-                     self.plume_sz[0],
-                     self.plume_sz[1])
+                     self._plume_sz[0],
+                     self._plume_sz[1])
         logger.debug("plume bbox: {}".format(self._bbox))
 
     def need_to_refine_grid(self):
-        if self.plume_sz[0] <= 2.0 and self.plume_sz[1] <= 2.0:
+        if self._plume_sz[0] <= 2.0 and self._plume_sz[1] <= 2.0:
             return True
         return False
 
@@ -355,11 +367,11 @@ class MapBox(AbstractMapBox):
         logger.debug("grid delta {0}, sz {1}, corner {2}"
                      .format(self.grid_delta, self._sz, self.grid_corner))
         # new corner point based on minimum
-        self.grid_corner[0] += self.plume_loc[0] * self.grid_delta
-        self.grid_corner[1] += self.plume_loc[1] * self.grid_delta
+        self.grid_corner[0] += self._plume_loc[0] * self.grid_delta
+        self.grid_corner[1] += self._plume_loc[1] * self.grid_delta
         self.grid_delta = max(0.01, min(0.1, self.grid_delta * 0.25))
-        self._sz[1] = int(self.plume_sz[1] / self.grid_delta)
-        self._sz[0] = int(self.plume_sz[0] / self.grid_delta)
+        self._sz[1] = int(self._plume_sz[1] / self.grid_delta)
+        self._sz[0] = int(self._plume_sz[0] / self.grid_delta)
         self._lon_hit_map = None
         self._lat_hit_map = None
         logger.debug("refined: grid delta {0}, sz {1}, corner {2}"
@@ -417,17 +429,24 @@ class MapBoxUsingBoundingBox(AbstractMapBox):
       if len(rows) == 0:
          return
 
+      dlat = lats0[1] - lats0[0]
+      dlon = lons0[1] - lons0[0]
+      logger.debug("add_conc: dlat %f, dlon %f", dlat, dlon)
+
       lats = [self._normalize_lat(lats0[j]) for j in rows]
       lat_min = min(lats)
-      lat_max = max(lats)
+      lat_max = max(lats) + dlat
+      logger.debug("lat range: %f, %f", lat_min, lat_max)
 
       lons = [LongitudeInterval._normalize_angle(lons0[i]) for i in cols]
       if self._bbox is None:
-         interval = LongitudeInterval(lons[0], lons[0])
+         interval = LongitudeInterval(lons[0], lons[0] + dlon)
       else:
          interval = LongitudeInterval(self._bbox[0], self._bbox[1])
       for lon in lons:
          interval.union(lon)
+      interval.union(lons[-1] + dlon)
+      logger.debug("lon range: %f, %f", interval._l, interval._r)
 
       if self._bbox is None:
          self._bbox = [interval._l, interval._r, lat_min, lat_max]
@@ -436,7 +455,7 @@ class MapBoxUsingBoundingBox(AbstractMapBox):
 
          if lat_min < b:
             b = lat_min
-         elif lat_max > t:
+         if lat_max > t:
             t = lat_max
 
          self._bbox = [interval._l, interval._r, b, t]
@@ -445,7 +464,13 @@ class MapBoxUsingBoundingBox(AbstractMapBox):
 
    def determine_plume_extent(self):
       l, r, b, t = self._bbox
-      logger.debug('mapbox: bounding box l,r,b,t=%f,%f,%f,%f', l, r, b, t)
+      logger.debug('mapbox: bounding box b,l,t,r=%f,%f,%f,%f', b, l, t, r)
+
+      # compute grid delta
+      lon = LongitudeInterval(l, r)
+      span = max(min(lon.length, t - b), 0.01)
+      delta = span / 10
+      self._update_grid_delta(delta)
 
    def need_to_refine_grid(self):
       return False
