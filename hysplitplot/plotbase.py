@@ -38,6 +38,7 @@ class AbstractPlotSettings(ABC):
         self.use_street_map = False  # for the --street-map option
         self.street_map_type = 0
         self.map_scale = "km"  # for the --map-scale option
+        self.color_alpha = 1.0  # for the --color-alpha option
         self.map_projection = const.MapProjection.AUTO
         self.gis_output = const.GISOutput.NONE
         self.kml_option = const.KMLOption.NONE
@@ -85,6 +86,14 @@ class AbstractPlotSettings(ABC):
         if args.has_arg(["-z", "-Z"]):
             self.zoom_factor = self.parse_zoom_factor(
                 args.get_value(["-z", "-Z"]))
+
+        if args.has_arg(["--color-alpha"]):
+            alpha = args.get_float_value("--color-alpha", 1.0)
+            if alpha >= 0.0 and alpha <= 1.0:
+                self.color_alpha = alpha
+            else:
+                logger.warning("Discarding the --color-alpha option: "
+                               "invalid value %f", alpha)
 
         if args.has_arg(["--interactive"]):
             self.interactive_mode = True

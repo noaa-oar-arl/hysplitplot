@@ -1024,6 +1024,7 @@ no calculated values are above the output thresholds.'''
                                             scaled_conc,
                                             actual_contour_levels,
                                             colors=actual_fill_colors,
+                                            alpha=self.settings.color_alpha,
                                             extend="max",
                                             transform=self.data_crs)
                 if self.settings.color != \

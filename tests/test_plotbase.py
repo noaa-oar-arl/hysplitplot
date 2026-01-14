@@ -54,6 +54,7 @@ def test_AbstractPlotSettings___init__():
     assert s.use_street_map == False
     assert s.street_map_type == 0
     assert s.map_scale == "km"
+    assert s.color_alpha == 1.0
     assert s.map_projection == 0
     assert s.gis_output == 0
     assert s.kml_option == 0
@@ -139,6 +140,10 @@ def test_AbstractPlotSettings__process_cmdline_args():
     s.interactive_mode = False
     s._process_cmdline_args(["--interactive"])
     assert s.interactive_mode == True
+
+    # test --color-alpha
+    s._process_cmdline_args(["--color-alpha=0.5"])
+    assert s.color_alpha == pytest.approx(0.5)
 
     # test --map-scale
     s.map_scale = "km"
