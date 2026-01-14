@@ -37,6 +37,7 @@ class AbstractPlotSettings(ABC):
         self.time_zone_str = None  # for the --time-zone option
         self.use_street_map = False  # for the --street-map option
         self.street_map_type = 0
+        self.map_scale = "km"  # for the --map-scale option
         self.map_projection = const.MapProjection.AUTO
         self.gis_output = const.GISOutput.NONE
         self.kml_option = const.KMLOption.NONE
@@ -87,6 +88,14 @@ class AbstractPlotSettings(ABC):
 
         if args.has_arg(["--interactive"]):
             self.interactive_mode = True
+
+        if args.has_arg(["--map-scale"]):
+            val = args.get_value("--map-scale")
+            if val.lower() in ("none", "km", "mi"):
+                self.map_scale = val.lower()
+            else:
+                logger.warning("Discarding the --map-scale option: "
+                               " unknown value '%s'", val)
 
         if args.has_arg(["--more-formats"]):
             val = args.get_value("--more-formats")
@@ -262,7 +271,9 @@ class AbstractPlot(ABC):
         if self.settings.noaa_logo:
             self._draw_noaa_logo(ax, self.settings.drawLogoInColor)
         if not matplotlib.is_interactive():
-           self.add_cartopy_map_scale(ax, x_pos=0.05, y_pos=0.95, use_km=True)
+           if self.settings.map_scale != "none":
+               use_km = True if self.settings.map_scale == "km" else False
+               self.add_cartopy_map_scale(ax, x_pos=0.05, y_pos=0.95, use_km=use_km)
 
     def _make_labels_filename(self, output_suffix):
         if not self.settings.process_id_set:

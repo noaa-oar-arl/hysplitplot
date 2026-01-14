@@ -24,15 +24,15 @@ def blank_event_handler(event):
 def cleanup_plot(p):
     if p.fig is not None:
         plt.close(p.fig)
-        
+
 
 class AbstractPlotTest(plotbase.AbstractPlot):
-    
+
     def __init__(self):
         super(AbstractPlotTest, self).__init__()
         self.target_axes = None
         self.settings = plotbase.AbstractPlotSettings()
-        
+
     def get_street_map_target_axes(self):
         return self.target_axes
 
@@ -53,6 +53,7 @@ def test_AbstractPlotSettings___init__():
     assert s.time_zone_str is None
     assert s.use_street_map == False
     assert s.street_map_type == 0
+    assert s.map_scale == "km"
     assert s.map_projection == 0
     assert s.gis_output == 0
     assert s.kml_option == 0
@@ -68,17 +69,18 @@ def test_AbstractPlotSettings___init__():
     assert s.station_marker_size > 0
     assert s.height_unit == HeightUnit.METERS
     assert s.street_map_update_delay > 0
-    
+
     assert s.process_id_set == False
-#         
+#
+
 
 def test_AbstractPlotSettings__process_cmdline_args():
     s = plotbase.AbstractPlotSettings()
-    
+
     # test -j or -J
     s._process_cmdline_args(["-j../graphics/else"])
     assert s.map_background == "../graphics/else"
-    
+
     s._process_cmdline_args(["-J../graphics/else_where"])
     assert s.map_background == "../graphics/else_where"
 
@@ -100,14 +102,14 @@ def test_AbstractPlotSettings__process_cmdline_args():
     assert s.output_filename == "test.ps"
     assert s.interactive_mode == True
     assert s.process_id_set == False
-    
+
     s.output_filename = None
     s.interactive_mode = True
-    
+
     s._process_cmdline_args(["-Oresult"])
     assert s.output_filename == "result.ps"
     assert s.interactive_mode == True
-    
+
     # test -p or -P
     s.output_filename = "result"
     s.output_suffix = "ps"
@@ -119,11 +121,11 @@ def test_AbstractPlotSettings__process_cmdline_args():
 
     s.output_filename = "result"
     s.output_suffix = "ps"
-    
+
     s._process_cmdline_args(["-Ppng"])
     assert s.output_suffix == "png"
     assert s.output_format == "png"
-    
+
      # test -z or -Z
     s.zoom_factor = 0
 
@@ -137,14 +139,25 @@ def test_AbstractPlotSettings__process_cmdline_args():
     s.interactive_mode = False
     s._process_cmdline_args(["--interactive"])
     assert s.interactive_mode == True
-    
+
+    # test --map-scale
+    s.map_scale = "km"
+    s._process_cmdline_args(["--map-scale=NONE"])
+    assert s.map_scale == "none"  # case insensitive
+    s._process_cmdline_args(["--map-scale=km"])
+    assert s.map_scale == "km"
+    s._process_cmdline_args(["--map-scale=mi"])
+    assert s.map_scale == "mi"
+    s._process_cmdline_args(["--map-scale=meters"])  # unknown
+    assert s.map_scale == "mi"  # no change
+
     # test --more-formats
     s.output_format = "ps"
     s.output_filename = "test.ps"
     s.additional_output_formats = []
     s._process_cmdline_args(["--more-formats=png,tif,pdf,jpg"])
     assert len(s.additional_output_formats) == 4
-    
+
     # test --source-time-zone
     s.use_source_time_zone = False
     s._process_cmdline_args(["--source-time-zone"])
@@ -155,12 +168,12 @@ def test_AbstractPlotSettings__process_cmdline_args():
     s._process_cmdline_args(["--street-map"])
     assert s.use_street_map == True
     assert s.street_map_type == 0
-    
+
     s.use_street_map = False
     s._process_cmdline_args(["--street-map=3"])
     assert s.use_street_map == True
     assert s.street_map_type == 3
-    
+
     # test --time-zone option
     s.use_source_time_zone = True
     s._process_cmdline_args(["--time-zone=US/Eastern"])
@@ -195,38 +208,38 @@ def test_AbstractPlotSettings_parse_output_formats():
     a = plotbase.AbstractPlotSettings.parse_output_formats("png")
     assert len(a) == 1
     assert a[0] == "png"
-    
+
     a = plotbase.AbstractPlotSettings.parse_output_formats("png,jpg")
     assert len(a) == 2
     assert a[0] == "png"
     assert a[1] == "jpg"
-    
+
     a = plotbase.AbstractPlotSettings.parse_output_formats(None)
     assert len(a) == 0
-    
+
     a = plotbase.AbstractPlotSettings.parse_output_formats("png,jpg,,jpg,,,unknown,")
     assert len(a) == 2
     assert a[0] == "png"
     assert a[1] == "jpg"
-        
+
     a = plotbase.AbstractPlotSettings.parse_output_formats("png,jpg,pdf,tif")
     assert len(a) == 4
     assert a[0] == "png"
     assert a[1] == "jpg"
     assert a[2] == "pdf"
     assert a[3] == "tif"
-    
+
 
 def test_AbstractPlotSettings_normalzie_output_suffix():
     s = plotbase.AbstractPlotSettings()
-    
+
     s.process_id_set = True
     s.output_suffix = "12345"
     assert s.normalize_output_suffix("pdf") == "12345.pdf"
-    
+
     s.process_id_set = False
     assert s.normalize_output_suffix("pdf") == "pdf"
-        
+
 
 def test_AbstractPlot___init__():
     p = AbstractPlotTest()
@@ -250,7 +263,7 @@ def test_AbstractPlot__connect_event_handlers():
     p.fig = axes.figure
 
     try:
-        p._connect_event_handlers({"resize_event" : blank_event_handler})
+        p._connect_event_handlers({"resize_event": blank_event_handler})
         plt.close(axes.figure)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
@@ -264,7 +277,7 @@ def test_AbstractPlot_compute_pixel_aspect_ratio():
     p.settings.interactive_mode = False
     assert p.compute_pixel_aspect_ratio(axes) == pytest.approx(1.0)
     plt.close(axes.figure)
-  
+
 
 def test_AbstractPlot__turn_off_spines():
     p = AbstractPlotTest()
@@ -308,24 +321,24 @@ def test_AbstractPlot_create_street_map():
     assert len(street_map.background_maps) > 0
     assert isinstance(street_map.background_maps[0], mapfile.DrawableBackgroundMap)
     assert street_map.background_maps[0].map.crs == mapproj.AbstractMapProjection._WGS84
-    
+
 
 def test_AbstractPlot_update_plot_extents():
     p = AbstractPlotTest()
     p.projection = mapproj.LambertProjection(const.MapProjection.LAMBERT, 0.5, [-125.0, 45.0], 1.3, [1.0, 1.0])
     p.projection.corners_xy = [-645202.80, 248127.59, -499632.13, 248127.59]
     p.projection.corners_lonlat = [-132.6424, -121.7551, 40.2331, 47.1785]
-    
+
     p.target_axes = plt.axes(projection=p.projection.crs)
-    p.target_axes.axis( (-642202.80, 245127.59, -496632.13, 246127.59) )
-    
+    p.target_axes.axis((-642202.80, 245127.59, -496632.13, 246127.59))
+
     p.update_plot_extents(p.target_axes)
 
     assert p.projection.corners_xy == pytest.approx((-642202.80, 245127.59, -496632.13, 246127.59))
     assert p.projection.corners_lonlat == pytest.approx((-132.5834, -121.7633, 40.22826, 47.17279))
 
     plt.close(p.target_axes.get_figure())
-    
+
 
 def test_AbstractPlot_on_update_plot_extent():
     p = AbstractPlotTest()
@@ -343,7 +356,7 @@ def test_AbstractPlot_on_update_plot_extent():
         raise pytest.fail("unexpected exception: {0}".format(ex))
     pass
 
-    
+
 def test_AbstractPlot__make_labels_filename():
     p = AbstractPlotTest()
     assert p._make_labels_filename("ps") == "LABELS.CFG"
@@ -355,13 +368,13 @@ def test_AbstractPlot__make_labels_filename():
 
 
 def test_AbstractPlot_read_custom_labels_if_exists():
-    p = plot.TrajectoryPlot() # need a concrete class
+    p = plot.TrajectoryPlot()  # need a concrete class
     assert p.labels.get("TITLE") == "NOAA HYSPLIT MODEL"
 
     # Without the filename argument, it will try to read LABELS.CFG.
     p.read_custom_labels_if_exists()
     assert p.labels.get("TITLE") == "NOAA HYSPLIT MODEL"
-    
+
     p.read_custom_labels_if_exists("data/nonexistent")
     assert p.labels.get("TITLE") == "NOAA HYSPLIT MODEL"
 
@@ -370,7 +383,7 @@ def test_AbstractPlot_read_custom_labels_if_exists():
 
 
 def test_AbstractPlot__escape_str_for_matplotlib():
-    p = plot.TrajectoryPlot() # need a concrete class
+    p = plot.TrajectoryPlot()  # need a concrete class
     assert p._escape_str_for_matplotlib("%") == "\%"
     assert p._escape_str_for_matplotlib("mass/cm^3") == "mass/cm^3"
 
@@ -378,25 +391,25 @@ def test_AbstractPlot__escape_str_for_matplotlib():
 def test_AbstractPlot_update_height_unit():
     p = AbstractPlotTest()
     o = labels.LabelsConfig()
-    
+
     # check the default
     assert p.settings.height_unit == HeightUnit.METERS
-    
+
     # test with "feet"
     o.cfg["ALTTD"] = "feet"
     p.update_height_unit(o)
     assert p.settings.height_unit == HeightUnit.FEET
-    
+
     # test with "ft"
     o.cfg["ALTTD"] = "ft"
     p.update_height_unit(o)
     assert p.settings.height_unit == HeightUnit.FEET
-    
+
     # test with "meters"
     o.cfg["ALTTD"] = "meters"
     p.update_height_unit(o)
     assert p.settings.height_unit == HeightUnit.METERS
-    
+
     # test with "m"
     o.cfg["ALTTD"] = "m"
     p.update_height_unit(o)
@@ -428,7 +441,7 @@ def test_AbstractPlot__draw_stations_if_exists():
     axes = plt.axes(projection=p.projection.crs)
 
     s = plotbase.AbstractPlotSettings()
-    
+
     # See if no exception is thrown.
     try:
         p._draw_stations_if_exists(axes, s, "data/STATIONPLOT.CFG")
@@ -437,7 +450,7 @@ def test_AbstractPlot__draw_stations_if_exists():
         raise pytest.fail("unexpected exception: {0}".format(ex))
 
     plt.close(axes.get_figure())
-    
+
 
 def test_AbstractPlot__draw_datem():
     p = AbstractPlotTest()
@@ -446,9 +459,9 @@ def test_AbstractPlot__draw_datem():
     axes = plt.axes(projection=p.projection.crs)
 
     s = plotbase.AbstractPlotSettings()
-    
+
     d = datem.Datem().get_reader().read("data/meas-t1.txt")
-    
+
     utc = pytz.utc
     dt1 = datetime.datetime(1983, 9, 18, 18, 0, 0, 0, utc)
     dt2 = datetime.datetime(1983, 9, 18, 21, 0, 0, 0, utc)
@@ -459,7 +472,7 @@ def test_AbstractPlot__draw_datem():
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
-      
+
     plt.close(axes.get_figure())
 
 
@@ -474,8 +487,8 @@ def test_AbstractPlot_make_maptext_filename():
 
 
 def test_AbstractPlot__draw_maptext_if_exists():
-    p = plot.TrajectoryPlot() # need a concrete class
-    #p = AbstractPlotTest()
+    p = plot.TrajectoryPlot()  # need a concrete class
+    # p = AbstractPlotTest()
     p.merge_plot_settings("data/default_tplot", ["-idata/tdump", "-jdata/arlmap_truncated"])
     p.read_data_files()
     p.layout(p.data_list)
@@ -488,7 +501,7 @@ def test_AbstractPlot__draw_maptext_if_exists():
         cleanup_plot(p)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
- 
+
 
 def test_AbstractPlot__draw_alt_text_boxes():
     p = AbstractPlotTest()
@@ -502,7 +515,7 @@ def test_AbstractPlot__draw_alt_text_boxes():
         plt.close(axes.figure)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
- 
+
 
 def test_AbstractPlot__draw_concentric_circles():
     p = AbstractPlotTest()
@@ -516,18 +529,18 @@ def test_AbstractPlot__draw_concentric_circles():
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
 
-    
+
 def test_AbstractPlot__draw_noaa_logo():
     p = AbstractPlotTest()
     axes = plt.axes()
-    
+
     # draw the logo in color
     try:
         p._draw_noaa_logo(axes)
         plt.close(axes.figure)
     except Exception as ex:
         raise pytest.fail("unexpected exception: {0}".format(ex))
-    
+
     # draw the logo in grayscale
     try:
         p._draw_noaa_logo(axes, False)
@@ -539,25 +552,25 @@ def test_AbstractPlot__draw_noaa_logo():
 def test_AbstractPlot_adjust_for_time_zone():
     p = AbstractPlotTest()
     assert p.time_zone is None
-    
+
     dt = datetime.datetime(2019, 7, 10, 14, 3, 0, 0, pytz.utc)
-    
+
     p.time_zone = pytz.timezone("America/New_York")
     t = p.adjust_for_time_zone(dt)
-    assert t.year        == 2019
-    assert t.month       == 7
-    assert t.day         == 10
-    assert t.hour        == 10
-    assert t.minute      == 3
-    assert t.second      == 0
+    assert t.year == 2019
+    assert t.month == 7
+    assert t.day == 10
+    assert t.hour == 10
+    assert t.minute == 3
+    assert t.second == 0
     assert t.tzinfo.zone == "America/New_York"
 
 
 def test_AbstractPlot__create_plot_saver_list():
     p = AbstractPlotTest()
-    
+
     p.settings.additional_output_formats = ["png", "tif"]
-    
-    plot_saver_list = p._create_plot_saver_list( p.settings )
+
+    plot_saver_list = p._create_plot_saver_list(p.settings)
 
     assert len(plot_saver_list) == 3
