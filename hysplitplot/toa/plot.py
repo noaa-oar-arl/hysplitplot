@@ -852,9 +852,13 @@ class TimeOfArrivalPlot(plotbase.AbstractPlot):
                 if self.settings.color != const.ConcentrationPlotColor.COLOR_NO_LINES and \
                         self.settings.color != const.ConcentrationPlotColor.BW_NO_LINES:
                     # draw contour lines
-                    for c in contour_set.collections:
-                        c.set_edgecolor('k')
-                        c.set_linewidth(0.25)
+                    if hasattr(contour_set, "collections"):
+                        # for Matplotlib versions prior to 3.10
+                        for c in contour_set.collections:
+                            c.set_edgecolor('k')
+                            c.set_linewidth(0.25)
+                    else:
+                        contour_set.set(edgecolor='k', linewidth=0.25)
             except ValueError as ex:
                 logger.warning("Cannot generate contours: {}".format(str(ex)))
 
