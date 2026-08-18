@@ -7,23 +7,17 @@
 # ---------------------------------------------------------------------------
 
 from abc import ABC, abstractmethod
-import cartopy.crs
-import contextily
-import copy
-import geopandas
 import logging
-import mercantile
 import math
-import numpy
 import os
-import shapely.geometry
-import urllib
 import warnings
-
-from . import const, mapfile, util
-from matplotlib.lines import segment_hits
-from numpy import isin
+import contextily
+import geopandas
+import numpy
+import shapely.geometry
 from cartopy.mpl.gridliner import Gridliner
+
+from . import const, mapfile, util, meta
 
 logger = logging.getLogger(__name__)
 
@@ -496,8 +490,15 @@ class AbstractStreetMap(AbstractMapBackground):
         logger.debug('draw: corners_xy %s', corners_xy)
         logger.debug('draw: corners_lonlat %s', corners_lonlat)
 
+        # User-Agent string is required per OpenStreetMap policy
+        default_user_agent = f'HYSPLITPLOT/{meta.__version__}' \
+                              ' (contact: arl.webmaster@noaa.gov)'
+        custom_headers = {
+            "User-Agent": os.environ.get('OSM_USER_AGENT', default_user_agent)
+        }
         contextily.add_basemap(ax, crs=self.projection.crs,
                                source=self.tile_provider,
+                               headers=custom_headers,
                                zoom=zoom)
         self.last_extent = corners_xy
 

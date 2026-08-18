@@ -21,7 +21,7 @@ setup(
     author_email=meta.__email__,
     packages=["hysplitplot", "hysplitplot.traj", "hysplitplot.conc",
               "hysplitplot.toa", "hysplitplot.grid"],
-    python_requires="==3.9",
+    python_requires=">=3.10",  # contextily 1.7.1 needs 3.10 or later
     install_requires=[
         "hysplitdata==0.3.*",  # omit the patch level
         "geopandas==0.14.4",
@@ -29,6 +29,5 @@ setup(
         "numpy==2.0.2",
         "pytz==2025.2",
         "timezonefinder==6.5.9",
-        "contextily==1.6.2",
-        "mercantile==1.2.1"]
+        "contextily==1.7.1"]
 )
