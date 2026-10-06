@@ -1435,6 +1435,9 @@ no calculated values are above the output thresholds.'''
 
         contour_levels = scaled_level_generator.make_levels(g,
                                                             self.settings.contour_level_count)
+        logger.debug("contour_levels %s", contour_levels)
+        logger.debug("last_levels %s, %s", scaled_level_generator.last_level1,
+                                           scaled_level_generator.last_level2)
 
         if self.settings.write_contour_levels_only != 0:
             self.create_contour_levels_file(contour_levels, 'CONTUR')

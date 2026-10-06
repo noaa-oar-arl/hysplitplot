@@ -772,6 +772,10 @@ def test_ScaledConcContourLevelGenerator_make_levels():
     o = p.scaled_conc_level_generator
     levels = o.make_levels(p.cdump.grids[0], 4)
     assert levels == pytest.approx([0, 1.0e-14, 1.0e-13, 1.0e-12])
+    assert str(o.last_level1) == "0 m"
+    assert str(o.last_level2) == "100 m"
+    assert o.last_scaling_factor == 1.0
+    assert o.last_min_conc == pytest.approx(0.94298e-17)
 
 
 def test_ScaledDepoContourLevelGenerator___init__():
@@ -798,4 +802,7 @@ def test_ScaledDepoContourLevelGenerator_make_levels():
     o = p.scaled_depo_level_generator
     levels = o.make_levels(p.cdump.grids[0], 4)
     assert levels == pytest.approx([1.0e-9, 1.0e-8, 1.0e-7, 1.0e-6])
-
+    assert str(o.last_level1) == "0 m"
+    assert str(o.last_level2) == "0 m"
+    assert o.last_scaling_factor == 1.0
+    assert o.last_min_conc == pytest.approx(0.98593e-9)
