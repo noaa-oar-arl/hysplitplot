@@ -7,8 +7,6 @@
 # ---------------------------------------------------------------------------
 
 import cartopy.crs
-import math
-import numpy
 import pytest
 
 from hysplitdata.traj import model

@@ -6,8 +6,8 @@
 # Performs unit tests on functions and class methods declared in multipage.py.
 # ---------------------------------------------------------------------------
 
-import matplotlib.pyplot as plt
 import os
+import matplotlib.pyplot as plt
 import pytest
 
 from ..hysplitplot import multipage, const

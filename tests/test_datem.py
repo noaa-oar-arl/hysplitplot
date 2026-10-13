@@ -6,9 +6,7 @@
 # Performs unit tests on functions and class methods declared in datem.py.
 # ---------------------------------------------------------------------------
 
-import datetime
-import pytest
-import pytz
+from datetime import datetime, timezone
 
 from ..hysplitplot import datem
 
@@ -37,12 +35,12 @@ def test_Datem_get_reader():
 def test_Datem_make_plot_data():
     o = datem.Datem()
     
-    sampling_start_dt   = datetime.datetime(2019, 7, 12, 6, 0)
-    sampling_end_dt     = datetime.datetime(2019, 7, 12, 9, 0)
+    sampling_start_dt   = datetime(2019, 7, 12, 6, 0)
+    sampling_end_dt     = datetime(2019, 7, 12, 9, 0)
     
     # before sampling ended
-    starting_datetime   = datetime.datetime(2019, 7, 12, 4, 30)
-    ending_datetime     = datetime.datetime(2019, 7, 12, 5, 30)
+    starting_datetime   = datetime(2019, 7, 12, 4, 30)
+    ending_datetime     = datetime(2019, 7, 12, 5, 30)
     latitude            =  43.18
     longitude           = -79.40
     value               =   3.14
@@ -51,8 +49,8 @@ def test_Datem_make_plot_data():
     o.items.append(m)
     
     # during the sampling period with zero value
-    starting_datetime   = datetime.datetime(2019, 7, 12, 6, 30)
-    ending_datetime     = datetime.datetime(2019, 7, 12, 8, 30)
+    starting_datetime   = datetime(2019, 7, 12, 6, 30)
+    ending_datetime     = datetime(2019, 7, 12, 8, 30)
     latitude            =  43.18
     longitude           = -79.40
     value               =   0.0
@@ -61,8 +59,8 @@ def test_Datem_make_plot_data():
     o.items.append(m)   
     
     # during the sampling period with non-zero value
-    starting_datetime   = datetime.datetime(2019, 7, 12, 6, 30)
-    ending_datetime     = datetime.datetime(2019, 7, 12, 8, 30)
+    starting_datetime   = datetime(2019, 7, 12, 6, 30)
+    ending_datetime     = datetime(2019, 7, 12, 8, 30)
     latitude            =  45.18
     longitude           = -77.40
     value               =   3.14
@@ -71,8 +69,8 @@ def test_Datem_make_plot_data():
     o.items.append(m)   
 
     # during the sampling period with non-zero value
-    starting_datetime   = datetime.datetime(2019, 7, 12, 6, 30)
-    ending_datetime     = datetime.datetime(2019, 7, 12, 8, 30)
+    starting_datetime   = datetime(2019, 7, 12, 6, 30)
+    ending_datetime     = datetime(2019, 7, 12, 8, 30)
     latitude            =  45.18
     longitude           = -77.40
     value               =   5.14
@@ -94,8 +92,8 @@ def test_Datem_make_plot_data():
     
 
 def test_Item___init():
-    starting_datetime   = datetime.datetime(2019, 7, 12, 11, 25)
-    ending_datetime     = datetime.datetime(2019, 7, 12, 11, 30)
+    starting_datetime   = datetime(2019, 7, 12, 11, 25)
+    ending_datetime     = datetime(2019, 7, 12, 11, 30)
     latitude            =  43.18
     longitude           = -79.40
     value               =   3.14
@@ -112,8 +110,8 @@ def test_Item___init():
 
 
 def test_Item_value_str():
-    starting_datetime   = datetime.datetime(2019, 7, 12, 11, 25)
-    ending_datetime     = datetime.datetime(2019, 7, 12, 11, 30)
+    starting_datetime   = datetime(2019, 7, 12, 11, 25)
+    ending_datetime     = datetime(2019, 7, 12, 11, 30)
     latitude            =  43.18
     longitude           = -79.40
     value               =   3.14
@@ -145,12 +143,12 @@ def test_DatemReader_read():
     assert obj is o
     assert len(o.items) == 2281
     
-    utc = pytz.utc
+    utc = timezone.utc
     
     # check the first entry
     k = o.items[0]
-    assert k.starting_datetime == datetime.datetime(1983, 9, 18, 18, 0, 0, 0, utc)
-    assert k.ending_datetime == datetime.datetime(1983, 9, 18, 21, 0, 0, 0, utc)
+    assert k.starting_datetime == datetime(1983, 9, 18, 18, 0, 0, 0, utc)
+    assert k.ending_datetime == datetime(1983, 9, 18, 21, 0, 0, 0, utc)
     assert k.latitude == 39.65
     assert k.longitude == -80.42
     assert k.value == 0.0
@@ -158,8 +156,8 @@ def test_DatemReader_read():
     
     # check the last entry
     k = o.items[-1]
-    assert k.starting_datetime == datetime.datetime(1983, 10, 31, 6, 0, 0, 0, utc)
-    assert k.ending_datetime == datetime.datetime(1983, 10, 31, 12, 0, 0, 0, utc)
+    assert k.starting_datetime == datetime(1983, 10, 31, 6, 0, 0, 0, utc)
+    assert k.ending_datetime == datetime(1983, 10, 31, 12, 0, 0, 0, utc)
     assert k.latitude == 40.78
     assert k.longitude == -74.67
     assert k.value == 0.0

@@ -9,7 +9,7 @@
 import numpy
 import pytest
 
-from ..hysplitplot import mapbox, const
+from ..hysplitplot import mapbox
 from ..hysplitplot.traj import plot
 
 

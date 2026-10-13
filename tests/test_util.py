@@ -6,14 +6,15 @@
 # Performs unit tests on functions and class methods declared in util.py.
 # ---------------------------------------------------------------------------
 
-import datetime
-import numpy
 import os
-import pytest
+import datetime
 import zoneinfo
+import numpy
+import pytest
+
 
 from hysplitdata.const import HeightUnit
-from ..hysplitplot import util, const
+from ..hysplitplot import util
 
 
 def test_myzip():

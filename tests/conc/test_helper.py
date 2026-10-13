@@ -6,12 +6,11 @@
 # Performs unit tests on functions and class methods declared in conc/helper.py.
 # ---------------------------------------------------------------------------
 
-import datetime
+from datetime import datetime, timezone
 import logging
 import matplotlib.pyplot as plt
 import numpy
 import pytest
-import pytz
 
 from hysplitdata.conc import model
 from ...hysplitplot import const, util
@@ -1593,7 +1592,7 @@ def test_NullDeposit_initialize(cdump3):
 
     try:
         o.initialize(cdump3.grids, ts, ps)
-        assert o.summation_from_datetime == datetime.datetime(1983, 9, 25, 18, 0, 0, 0, pytz.utc)
+        assert o.summation_from_datetime == datetime(1983, 9, 25, 18, 0, 0, 0, timezone.utc)
     except Exception as ex:
         pytest.fail("unexpected exception: {0}".format(ex))
 
@@ -1606,7 +1605,7 @@ def test_NullDeposit_add(cdump3):
 
     try:
         o.add([cdump3.grids[2]])  # next time index
-        assert o.summation_from_datetime == datetime.datetime(1983, 9, 25, 21, 0, 0, 0, pytz.utc)
+        assert o.summation_from_datetime == datetime(1983, 9, 25, 21, 0, 0, 0, timezone.utc)
     except Exception as ex:
         pytest.fail("unexpected exception: {0}".format(ex))
 
@@ -1660,7 +1659,7 @@ def test_SumDeposit_initialize(cdump3):
 
     o.initialize(cdump3.grids, ts, ps)
 
-    assert o.summation_from_datetime == datetime.datetime(1983, 9, 25, 18, 0, 0, 0, pytz.utc)
+    assert o.summation_from_datetime == datetime(1983, 9, 25, 18, 0, 0, 0, timezone.utc)
 
     # the summation grid should have accumulated concentrations from time index 0 to 1.
     assert o.summation_grid.conc[23, 26] * 1.0e+7 == pytest.approx(19.36063 + 5.659043)
@@ -1677,12 +1676,12 @@ def test_SumDeposit_add(cdump3):
     o = helper.SumDeposit()
     ts = helper.TimeIndexSelector(1, 99999)
     ps = helper.PollutantSelector()
-    utc = pytz.utc
+    utc = timezone.utc
 
     # initialize with grids at time index at 0.
     o.initialize(cdump3.grids, ts, ps)
 
-    assert o.summation_from_datetime == datetime.datetime(1983, 9, 25, 18, 0, 0, 0, pytz.utc)
+    assert o.summation_from_datetime == datetime(1983, 9, 25, 18, 0, 0, 0, timezone.utc)
 
     # find grids at time index 1.
     t_grids = list(filter(lambda g: g.vert_level == 0 and g.time_index == 1, cdump3.grids))
@@ -1690,11 +1689,11 @@ def test_SumDeposit_add(cdump3):
     o.add(t_grids, True)
 
     # summation_from_datetime should not change.
-    assert o.summation_from_datetime == datetime.datetime(1983, 9, 25, 18, 0, 0, 0, pytz.utc)
+    assert o.summation_from_datetime == datetime(1983, 9, 25, 18, 0, 0, 0, timezone.utc)
 
     # the summation grid should have accumulated concentrations from time index 0 to 1.
     assert o.summation_grid.conc[23, 26] * 1.0e+7 == pytest.approx(19.36063 + 5.659043)
-    assert o.summation_grid.starting_datetime == datetime.datetime(1983, 9, 25, 21, 0, 0, 0, utc)
+    assert o.summation_grid.starting_datetime == datetime(1983, 9, 25, 21, 0, 0, 0, utc)
 
 
 def test_SumDeposit_get_grids_to_plot(cdump3):
@@ -1718,14 +1717,14 @@ def test_SumDeposit__update_properties(cdump3):
     o = helper.SumDeposit()
     ts = helper.TimeIndexSelector(1, 99999)
     ps = helper.PollutantSelector()
-    utc = pytz.utc
+    utc = timezone.utc
 
     # initialize with grids at time index at 0.
     o.initialize(cdump3.grids, ts, ps)
 
     # check what we know.
     assert o.summation_grid.time_index == 0
-    assert o.summation_grid.ending_datetime == datetime.datetime(1983, 9, 25, 21, 0, 0, 0, utc)
+    assert o.summation_grid.ending_datetime == datetime(1983, 9, 25, 21, 0, 0, 0, utc)
     assert o.summation_grid.ending_forecast_hr == 0
     assert o.summation_grid.nonzero_conc_count == 14
     assert o.summation_grid.extension.min_conc is None
@@ -1737,7 +1736,7 @@ def test_SumDeposit__update_properties(cdump3):
     o._update_properties(t_grids)
 
     assert o.summation_grid.time_index == 1
-    assert o.summation_grid.ending_datetime == datetime.datetime(1983, 9, 26, 0, 0, 0, 0, utc)
+    assert o.summation_grid.ending_datetime == datetime(1983, 9, 26, 0, 0, 0, 0, utc)
     assert o.summation_grid.ending_forecast_hr == 0
     assert o.summation_grid.nonzero_conc_count == 14
     assert o.summation_grid.extension.min_conc * 1.0e+10 == pytest.approx(9.859312)
@@ -1759,7 +1758,7 @@ def test_TotalDeposit_get_grids_to_plot(cdump3):
     o = helper.TotalDeposit()
     ts = helper.TimeIndexSelector(1, 99999)
     ps = helper.PollutantSelector()
-    utc = pytz.utc
+    utc = timezone.utc
 
     # initialize with grids at time index at 0.
     o.initialize(cdump3.grids, ts, ps)
@@ -1779,7 +1778,7 @@ def test_TotalDeposit_get_grids_to_plot(cdump3):
 
     assert len(grids) == 1
     assert o.summation_grid.time_index == 7
-    assert o.summation_grid.ending_datetime == datetime.datetime(1983, 9, 26, 18, 0, 0, 0, utc)
+    assert o.summation_grid.ending_datetime == datetime(1983, 9, 26, 18, 0, 0, 0, utc)
     assert o.summation_grid.ending_forecast_hr == 0
     assert o.summation_grid.nonzero_conc_count == 349
     assert o.summation_grid.extension.min_conc * 1.0e+10 == pytest.approx(4.308542)

@@ -6,13 +6,13 @@
 # Performs unit tests on functions and class methods declared in streetmap.py.
 # ---------------------------------------------------------------------------
 
+import os
 import cartopy
 import contextily
 import geopandas
 import matplotlib.pyplot as plt
-import os
-import pytest
 import shapely.geometry
+import pytest
 
 from ..hysplitplot import const, mapbox, mapfile, mapproj, streetmap
 

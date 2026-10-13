@@ -6,13 +6,13 @@
 # Performs unit tests on functions and class methods declared in plotbase.py.
 # ---------------------------------------------------------------------------
 
-import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 import matplotlib.pyplot as plt
 import pytest
-import pytz
 
 from hysplitdata.const import HeightUnit
-from ..hysplitplot import const, datem, labels, mapbox, mapfile, mapproj, plotbase, streetmap
+from ..hysplitplot import const, datem, labels, mapfile, mapproj, plotbase, streetmap
 from ..hysplitplot.traj import plot
 
 
@@ -467,9 +467,9 @@ def test_AbstractPlot__draw_datem():
 
     d = datem.Datem().get_reader().read("data/meas-t1.txt")
 
-    utc = pytz.utc
-    dt1 = datetime.datetime(1983, 9, 18, 18, 0, 0, 0, utc)
-    dt2 = datetime.datetime(1983, 9, 18, 21, 0, 0, 0, utc)
+    utc = timezone.utc
+    dt1 = datetime(1983, 9, 18, 18, 0, 0, 0, utc)
+    dt2 = datetime(1983, 9, 18, 21, 0, 0, 0, utc)
 
     # See if no exception is thrown.
     try:
@@ -558,9 +558,9 @@ def test_AbstractPlot_adjust_for_time_zone():
     p = AbstractPlotTest()
     assert p.time_zone is None
 
-    dt = datetime.datetime(2019, 7, 10, 14, 3, 0, 0, pytz.utc)
+    dt = datetime(2019, 7, 10, 14, 3, 0, 0, timezone.utc)
 
-    p.time_zone = pytz.timezone("America/New_York")
+    p.time_zone = ZoneInfo("America/New_York")
     t = p.adjust_for_time_zone(dt)
     assert t.year == 2019
     assert t.month == 7
@@ -568,7 +568,7 @@ def test_AbstractPlot_adjust_for_time_zone():
     assert t.hour == 10
     assert t.minute == 3
     assert t.second == 0
-    assert t.tzinfo.zone == "America/New_York"
+    assert t.tzinfo == ZoneInfo("America/New_York")
 
 
 def test_AbstractPlot__create_plot_saver_list():

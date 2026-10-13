@@ -15,7 +15,6 @@ import matplotlib.gridspec
 import matplotlib.pyplot as plt
 import numpy
 import os
-import pytz
 import shapely  # shapely.errors.TopologicalError
 import sys
 

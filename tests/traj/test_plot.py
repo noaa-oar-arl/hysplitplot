@@ -6,22 +6,21 @@
 # Performs unit tests on functions and class methods declared in traj/plot.py.
 # ---------------------------------------------------------------------------
 
-import cartopy.crs
-import datetime
+import os
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+from xml.etree import ElementTree
 import matplotlib.pyplot as plt
 import matplotlib.dates
-import os
 import pytest
-import pytz
-import xml.etree.ElementTree as ElementTree
 
 # Register a converter to avoid a warning message.
 from pandas.plotting import register_matplotlib_converters
 register_matplotlib_converters()
 
-from hysplitdata.const import HeightUnit, VerticalCoordinate
+from hysplitdata.const import VerticalCoordinate
 from hysplitdata.traj import model
-from ...hysplitplot import clist, const, labels, mapbox, mapfile, mapproj, \
+from ...hysplitplot import clist, const, labels, mapbox, mapproj, \
                            multipage, streetmap
 from ...hysplitplot.traj import plot
 
@@ -627,7 +626,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
            "TEST  Meteorological Data"
 
     # Add time zone
-    p.time_zone = pytz.timezone("EST")
+    p.time_zone = ZoneInfo("EST")
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "Forward trajectories starting at 1900 EST 15 Oct 1995\n" + \
@@ -637,7 +636,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
     # Change the starting time of a trajectory
 
     t = plotData.trajectories[2]
-    t.starting_datetime = datetime.datetime(1993, 10, 16, 1, 0)
+    t.starting_datetime = datetime(1993, 10, 16, 1, 0)
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
            "Forward trajectories starting at various times\n" + \
@@ -694,7 +693,7 @@ def test_TrajectoryPlot_make_plot_title(plotData):
            "11 UTC 15 Oct  TEST  Forecast Initialization"
 
     # Time zone
-    p.time_zone = pytz.timezone("EST")
+    p.time_zone = ZoneInfo("EST")
 
     title = p.make_plot_title(plotData)
     assert title == "NOAA HYSPLIT MODEL\n" + \
@@ -1137,14 +1136,14 @@ def test_TimeVerticalProjection_calc_xrange(plotData):
     axes = plt.axes()
     o = plot.TimeVerticalProjection(axes, s, 6)
     r = o.calc_xrange(plotData)
-    utc = pytz.utc
-    assert r[0] == datetime.datetime(1995, 10, 16, 0, 0, 0, 0, utc)
-    assert r[1] == datetime.datetime(1995, 10, 16, 12, 0, 0, 0, utc)
+    utc = timezone.utc
+    assert r[0] == datetime(1995, 10, 16, 0, 0, 0, 0, utc)
+    assert r[1] == datetime(1995, 10, 16, 12, 0, 0, 0, utc)
 
-    est = pytz.timezone("EST")
+    est = ZoneInfo("EST")
     r = o.calc_xrange(plotData, est)
-    assert r[0] == datetime.datetime(1995, 10, 15, 19, 0, 0, 0)
-    assert r[1] == datetime.datetime(1995, 10, 16, 7, 0, 0, 0)
+    assert r[0] == datetime(1995, 10, 15, 19, 0, 0, 0)
+    assert r[1] == datetime(1995, 10, 16, 7, 0, 0, 0)
 
     plt.close(axes.get_figure())
 
@@ -1173,14 +1172,14 @@ def test_TimeVerticalProjection_create_xvalue_formatter():
 
 
 def test_TimeVerticalProjection__format_datetime():
-    dt = matplotlib.dates.date2num(datetime.datetime(2019, 4, 18, 9, 0, 0))
+    dt = matplotlib.dates.date2num(datetime(2019, 4, 18, 9, 0, 0))
     assert plot.TimeVerticalProjection._format_datetime(dt, None) == ""
     assert plot.TimeVerticalProjection._format_datetime(dt, 100) == "9"
 
-    dt = matplotlib.dates.date2num(datetime.datetime(2019, 4, 18, 9, 30, 0))
+    dt = matplotlib.dates.date2num(datetime(2019, 4, 18, 9, 30, 0))
     assert plot.TimeVerticalProjection._format_datetime(dt, 100) == ""
 
-    dt = matplotlib.dates.date2num(datetime.datetime(2019, 4, 18, 0, 0, 0))
+    dt = matplotlib.dates.date2num(datetime(2019, 4, 18, 0, 0, 0))
     assert plot.TimeVerticalProjection._format_datetime(dt, 100) == "0\n4/18"
 
 
@@ -1190,15 +1189,15 @@ def test_TimeVerticalProjection_select_xvalues(plotData):
     o = plot.TimeVerticalProjection(axes, s, 6)
 
     x = o.select_xvalues(plotData.trajectories[0])
-    utc = pytz.utc
+    utc = timezone.utc
     assert len(x) > 0
-    assert x[0] == datetime.datetime(1995, 10, 16, 0, 0, 0, 0, utc)
+    assert x[0] == datetime(1995, 10, 16, 0, 0, 0, 0, utc)
 
-    est = pytz.timezone("EST")
+    est = ZoneInfo("EST")
     x = o.select_xvalues(plotData.trajectories[0], est)
-    utc = pytz.utc
+    utc = timezone.utc
     assert len(x) > 0
-    assert x[0] == datetime.datetime(1995, 10, 15, 19, 0, 0, 0)
+    assert x[0] == datetime(1995, 10, 15, 19, 0, 0, 0)
 
     plt.close(axes.get_figure())
 
@@ -1226,7 +1225,7 @@ def test_AgeVerticalProjection_calc_xrange(plotData):
     axes = plt.axes()
     o = plot.AgeVerticalProjection(axes, s, 6)
     assert o.calc_xrange(plotData) == (0.0, 12.0)
-    assert o.calc_xrange(plotData, pytz.utc) == (0.0, 12.0)
+    assert o.calc_xrange(plotData, timezone.utc) == (0.0, 12.0)
     plt.close(axes.get_figure())
 
 
@@ -1263,7 +1262,7 @@ def test_AgeVerticalProjection_select_xvalues(plotData):
     assert len(x) > 0
     assert x[0] == 0
 
-    est = pytz.timezone("EST")
+    est = ZoneInfo("EST")
     x = o.select_xvalues(plotData.trajectories[0], est)
     assert len(x) > 0
     assert x[0] == 0

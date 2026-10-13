@@ -7,16 +7,13 @@
 # ---------------------------------------------------------------------------
 
 import abc
-import datetime
-import logging
-import math
-import matplotlib
-import numpy
 import os
 import sys
+import logging
+import math
+import numpy
 
 from hysplitdata.const import HeightUnit
-from . import const
 
 PLOT_FORMATS = ["eps", "jpeg", "jpg", "pdf", "pgf", "png", "ps", "raw",
                 "rgba", "svg", "svgz", "tif", "tiff"]

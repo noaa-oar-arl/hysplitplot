@@ -6,9 +6,9 @@
 # For reading an ARL map file or a shape file.
 # ---------------------------------------------------------------------------
 
-import geopandas
-import logging
 import os
+import logging
+import geopandas
 import shapely.geometry
 
 from hysplitdata import io

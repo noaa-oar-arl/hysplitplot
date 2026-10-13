@@ -6,20 +6,18 @@
 # Performs unit tests on functions and class methods declared in conc/plot.py.
 # ---------------------------------------------------------------------------
 
-import datetime
+import os
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+from xml.etree import ElementTree
 import matplotlib.pyplot as plt
 from matplotlib.contour import QuadContourSet
 import numpy
-import os
 import pytest
-import pytz
-import xml.etree.ElementTree as ElementTree
-import math
 
-from hysplitdata.const import HeightUnit
 from hysplitdata.conc import model
-from ...hysplitplot import const, labels, mapbox, mapfile, mapproj, multipage, \
-                           smooth, streetmap, util
+from ...hysplitplot import const, labels, mapbox, mapproj, multipage, \
+                           streetmap, util
 from ...hysplitplot.conc import gisout, helper, plot, cntr, cntrlvl, clrtbl
 
 
@@ -943,7 +941,7 @@ def test_ConcentrationPlot_make_plot_title(cdump):
     # use the release start time for the integration start time.
     p.settings.NSSLBL = 1
     saved = g.parent.release_datetimes[0]
-    g.parent.release_datetimes[0] = datetime.datetime(1983, 9, 25, 21, 13, 0, 0, pytz.utc)
+    g.parent.release_datetimes[0] = datetime(1983, 9, 25, 21, 13, 0, 0, timezone.utc)
     title = p.make_plot_title(g, p.conc_map, level1, level2, g.starting_datetime)
     assert title == "NOAA HYSPLIT MODEL\n" + \
             "Concentration ($mass/m^3$) at level 2 m\n" + \
@@ -962,7 +960,7 @@ def test_ConcentrationPlot_make_plot_title(cdump):
             "TEST Calculation started at 1700 25 Sep 1983 (UTC)"
 
     # set the time zone
-    p.time_zone = pytz.timezone("EST")
+    p.time_zone = ZoneInfo("EST")
     title = p.make_plot_title(g, p.conc_map, level1, level2, g.starting_datetime)
     assert title == "NOAA HYSPLIT MODEL\n" + \
             "Concentration ($mass/m^3$) at level 2 m\n" + \

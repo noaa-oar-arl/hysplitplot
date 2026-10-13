@@ -6,12 +6,12 @@
 # Performs unit tests on functions and class methods declared in traj/gisout.py.
 # ---------------------------------------------------------------------------
 
-import datetime
-import numpy
 import os
-import pytest
-import pytz
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 import xml.etree.ElementTree as ET
+import numpy
+import pytest
 
 from hysplitdata.const import HeightUnit
 from hysplitdata.traj import model
@@ -42,7 +42,7 @@ class AbstractGISFileWriterTest(gisout.AbstractGISFileWriter):
 
 
 def test_GISFileWriterFactory_create_instance():
-    tz = pytz.utc
+    tz = timezone.utc
 
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.GENERATE_POINTS, HeightUnit.FEET, tz)
     assert isinstance(w, gisout.PointsGenerateFileWriter)
@@ -130,7 +130,6 @@ def test_IndexBasedTrajectoryStyle_write_styles():
 
 def test_IndexBasedTrajectoryStyle_get_id():
     # mock a trajectory object
-    from unittest.mock import Mock
     Foo = type("Foo", (object,), {})
     t = Foo()
 
@@ -156,7 +155,7 @@ def test_AbstractGISFileWriter___init__():
     assert w.kml_trajectory_style is not None
     assert w.time_zone is None
 
-    tz = pytz.utc
+    tz = timezone.utc
     w = AbstractGISFileWriterTest(tz)
     assert w.time_zone is tz
 
@@ -174,7 +173,7 @@ def test_NullGISFileWriter___init__():
     w = gisout.NullGISFileWriter()
     assert w.time_zone is None
 
-    tz = pytz.utc
+    tz = timezone.utc
     w = gisout.NullGISFileWriter(tz)
     assert w.time_zone is tz
 
@@ -195,7 +194,7 @@ def test_PointsAttributeFileWriter_write(plotData):
         gisout.GenerateAttributeFileWriter.write("__gis.att", plotData)
         os.remove("__gis.att")
 
-        tz = pytz.timezone("EST")
+        tz = ZoneInfo("EST")
         gisout.PointsAttributeFileWriter.write("__gis.att", plotData, tz)
         line_count = len(open("__gis.att").readlines())
         os.remove("__gis.att")
@@ -211,7 +210,7 @@ def test_LinesAttributeFileWriter_write(plotData):
         gisout.GenerateAttributeFileWriter.write("__gis.att", plotData)
         os.remove("__gis.att")
 
-        tz = pytz.timezone("EST")
+        tz = ZoneInfo("EST")
         gisout.LinesAttributeFileWriter.write("__gis.att", plotData, tz)
         line_count = len(open("__gis.att").readlines())
         os.remove("__gis.att")
@@ -226,7 +225,7 @@ def test_GenerateAttributeFileWriter_write(plotData):
         gisout.GenerateAttributeFileWriter.write("__gis.att", plotData)
         os.remove("__gis.att")
 
-        tz = pytz.timezone("EST")
+        tz = ZoneInfo("EST")
         gisout.GenerateAttributeFileWriter.write("__gis.att", plotData, tz)
         line_count = len(open("__gis.att").readlines())
         os.remove("__gis.att")
@@ -240,7 +239,7 @@ def test_PointsGenerateFileWriter___init__():
     assert w.time_zone is None
     assert w.att_writer is not None
 
-    tz = pytz.timezone("EST")
+    tz = ZoneInfo("EST")
     w = gisout.PointsGenerateFileWriter(tz)
     assert w.time_zone is tz
 
@@ -261,7 +260,7 @@ def test_LinesGenerateFileWriter___init__():
     assert w.time_zone is None
     assert w.att_writer is not None
 
-    tz = pytz.timezone("EST")
+    tz = ZoneInfo("EST")
     w = gisout.LinesGenerateFileWriter(tz)
     assert w.time_zone is tz
 
@@ -291,7 +290,7 @@ def test_KMLWriter___init__():
         assert w.height_unit == HeightUnit.FEET
         assert w.time_zone is None
 
-        tz = pytz.timezone("EST")
+        tz = ZoneInfo("EST")
         w = gisout.KMLWriter(HeightUnit.FEET, tz)
         assert w.height_unit == HeightUnit.FEET
         assert w.time_zone is tz
@@ -308,7 +307,7 @@ def test_KMLWriter_make_filename():
 
 
 def test_KMLWriter__get_timestamp_str():
-    dt = datetime.datetime(1983, 10, 13, 0, 15, 0, 0, pytz.utc)
+    dt = datetime(1983, 10, 13, 0, 15, 0, 0, timezone.utc)
     assert gisout.KMLWriter._get_timestamp_str(dt) == "10/13/1983 0015 UTC"
 
 
@@ -420,7 +419,7 @@ def test_PartialKMLWriter___init__():
         assert w.height_unit == HeightUnit.FEET
         assert w.time_zone is None
 
-        tz = pytz.timezone("EST")
+        tz = ZoneInfo("EST")
         w = gisout.PartialKMLWriter(HeightUnit.FEET, tz)
         assert w.height_unit == HeightUnit.FEET
         assert w.time_zone is tz

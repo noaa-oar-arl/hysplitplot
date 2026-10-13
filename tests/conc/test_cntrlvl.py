@@ -6,8 +6,8 @@
 # Performs unit tests on the source code in conc/cntrlvl.py.
 # ---------------------------------------------------------------------------
 
-import pytest
 import math
+import pytest
 
 from hysplitdata.const import HeightUnit
 from hysplitdata.conc import model

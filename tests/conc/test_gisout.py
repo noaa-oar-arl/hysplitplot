@@ -6,13 +6,13 @@
 # Performs unit tests on functions and class methods declared in conc/gisout.py.
 # ---------------------------------------------------------------------------
 
-import datetime
+import os
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+import xml.etree.ElementTree as ET
 import logging
 import matplotlib.pyplot as plt
-import os
 import pytest
-import pytz
-import xml.etree.ElementTree as ET
 
 from hysplitdata.conc import model
 from ...hysplitplot import const, util
@@ -54,7 +54,7 @@ class AbstractKMLContourWriterTest(gisout.AbstractKMLContourWriter):
     
 def test_GISFileWriterFactory_create_instance():
     kml_option = 0
-    tz = pytz.timezone("America/New_York")
+    tz = ZoneInfo("America/New_York")
     
     w = gisout.GISFileWriterFactory.create_instance(const.GISOutput.GENERATE_POINTS, kml_option, tz)
     assert isinstance(w, gisout.PointsGenerateFileWriter)
@@ -131,7 +131,7 @@ def test_AbstractWriter___init__():
     assert hasattr(o, 'NDEP')
     assert o.time_zone is None
 
-    tz = pytz.timezone("America/New_York")
+    tz = ZoneInfo("America/New_York")
     o = AbstractWriterTest(tz)
     assert o.time_zone is tz
     
@@ -209,7 +209,7 @@ def test_PointsGenerateFileWriter___init__():
     assert isinstance( o.formatter, gisout.PointsGenerateFileWriter.DecimalFormWriter )
     assert o.time_zone is None
     
-    tz = pytz.timezone("America/New_York")
+    tz = ZoneInfo("America/New_York")
     o = gisout.PointsGenerateFileWriter( f, tz )
     assert isinstance( o.formatter, gisout.PointsGenerateFileWriter.DecimalFormWriter )
     assert o.time_zone is tz
@@ -352,7 +352,7 @@ def test_DecimalFormWriter___init__():
     o = gisout.PointsGenerateFileWriter.DecimalFormWriter()
     assert o.time_zone is None
     
-    tz = pytz.timezone("America/New_York")
+    tz = ZoneInfo("America/New_York")
     o = gisout.PointsGenerateFileWriter.DecimalFormWriter( tz )
     assert o.time_zone is tz
     
@@ -400,7 +400,7 @@ def test_ExponentFormWriter___init__():
     o = gisout.PointsGenerateFileWriter.ExponentFormWriter()
     assert o.time_zone is None
     
-    tz = pytz.timezone("America/New_York")
+    tz = ZoneInfo("America/New_York")
     o = gisout.PointsGenerateFileWriter.ExponentFormWriter( tz )
     assert o.time_zone is tz
 
@@ -448,7 +448,7 @@ def test_StringFormWriter___init__():
     o = gisout.PointsGenerateFileWriter.StringFormWriter()
     assert o.time_zone is None
     
-    tz = pytz.timezone("America/New_York")
+    tz = ZoneInfo("America/New_York")
     o = gisout.PointsGenerateFileWriter.StringFormWriter( tz )
     assert o.time_zone is tz
 
@@ -524,7 +524,7 @@ def test_KMLWriter___init__():
     assert hasattr(o, 'frame_counter')
 
     
-    tz = pytz.timezone("America/New_York")
+    tz = ZoneInfo("America/New_York")
     o = gisout.KMLWriter(kml_option, tz)
     assert o.time_zone is tz
 
@@ -722,9 +722,9 @@ def test_KMLWriter_finalize():
 def test_KMLWriter__get_att_datetime_str():
     s = plot.ConcentrationPlotSettings()
     o = gisout.KMLWriter(s.kml_option)
-    utc = pytz.utc
+    utc = timezone.utc
     
-    dt = datetime.datetime(2019, 7, 2, 14, 50, 0, 0, utc)
+    dt = datetime(2019, 7, 2, 14, 50, 0, 0, utc)
     assert o._get_att_datetime_str(dt) == "1450 UTC Jul 02 2019&"
 
 
@@ -890,7 +890,7 @@ def test_PartialKMLWriter___init__():
     assert hasattr(o, 'xml_root')
     assert hasattr(o, 'kml_filename')
 
-    tz = pytz.timezone("America/New_York")
+    tz = ZoneInfo("America/New_York")
     o = gisout.PartialKMLWriter(kml_option, tz)
     assert o.time_zone is tz
 
@@ -1076,7 +1076,7 @@ def test_PartialKMLWriter__write_attributes(cdump_two_pollutants):
 def test_KMLContourWriterFactory_create_instance():
     gis_alt_mode = 0
     fc = gisout.FrameCounter()
-    tz = pytz.timezone("America/New_York")
+    tz = ZoneInfo("America/New_York")
     
     w = gisout.KMLContourWriterFactory.create_instance(const.ConcentrationMapType.CONCENTRATION, gis_alt_mode, tz, fc)
     assert isinstance(w, gisout.KMLConcentrationWriter)
@@ -1166,7 +1166,7 @@ def test_AbstractKMLContourWriter___init__():
     assert o.draw_max_conc_sqs == True
     assert o.expected_number_of_above_ground_grids is None
 
-    tz = pytz.timezone("America/New_York")
+    tz = ZoneInfo("America/New_York")
     o = AbstractKMLContourWriterTest("relativeToGround", tz)
     assert o.time_zone is tz
 
@@ -1206,7 +1206,7 @@ def test_AbstractKMLContourWriter__get_begin_end_timestamps(cdump_two_pollutants
     assert a[0] == "1983-09-25T17:00:00Z"
     assert a[1] == "1983-09-26T05:00:00Z"
     
-    o.time_zone = pytz.timezone("EST")
+    o.time_zone = ZoneInfo("EST")
     a = o._get_begin_end_timestamps(g)
     assert a[0] == "1983-09-25T12:00:00-05:00"
     assert a[1] == "1983-09-26T00:00:00-05:00"
@@ -1454,12 +1454,12 @@ def test_AbstractKMLContourWriter__draw_max_locations(cdump_two_pollutants):
 
 def test_AbstractKMLContourWriter__get_timestamp_str():
     o = AbstractKMLContourWriterTest("relativeToGround")
-    utc = pytz.utc
+    utc = timezone.utc
     
-    dt = datetime.datetime(2019, 7, 3, 8, 11, 0, 0, utc)
+    dt = datetime(2019, 7, 3, 8, 11, 0, 0, utc)
     assert o._get_timestamp_str(dt) == "20190703 0811 UTC"
     
-    o.time_zone = pytz.timezone("EST")
+    o.time_zone = ZoneInfo("EST")
     assert o._get_timestamp_str(dt) == "20190703 0311 EST"
     
 
@@ -1470,7 +1470,7 @@ def test_KMLConcentrationWriter___init__():
     assert o.time_zone is None
     assert o.frame_counter is not None
     
-    tz = pytz.timezone("America/New_York")
+    tz = ZoneInfo("America/New_York")
     o = gisout.KMLConcentrationWriter("relativeToGround", tz)
 
     assert o.alt_mode_str == "relativeToGround"
@@ -1479,18 +1479,18 @@ def test_KMLConcentrationWriter___init__():
 
 def test_KMLConcentrationWriter__get_name_cdata():
     o = gisout.KMLConcentrationWriter("relativeToGround")
-    utc = pytz.utc
+    utc = timezone.utc
     
-    dt = datetime.datetime(2019, 7, 5, 7, 42, 0, 0, utc)    
+    dt = datetime(2019, 7, 5, 7, 42, 0, 0, utc)    
     assert o._get_name_cdata(dt) == """<pre>Concentration
 (Valid:20190705 0742 UTC)</pre>"""
 
 
 def test_KMLConcentrationWriter__get_description_cdata():
     o = gisout.KMLConcentrationWriter("relativeToGround")
-    utc = pytz.utc
+    utc = timezone.utc
     
-    dt = datetime.datetime(2019, 7, 5, 7, 42, 0, 0, utc)
+    dt = datetime(2019, 7, 5, 7, 42, 0, 0, utc)
     lower_level = util.LengthInMeters(100)
     upper_level = util.LengthInMeters(500)    
     assert o._get_description_cdata(lower_level, upper_level, dt) == """\
@@ -1511,7 +1511,7 @@ def test_KMLChemicalThresholdWriter___init__():
     assert o.time_zone is None
     assert o.frame_counter is not None
     
-    tz = pytz.timezone("America/New_York")
+    tz = ZoneInfo("America/New_York")
     o = gisout.KMLChemicalThresholdWriter("relativeToGround", tz)
 
     assert o.alt_mode_str == "relativeToGround"
@@ -1533,7 +1533,7 @@ def test_KMLDepositionWriter___init__():
     assert o.time_zone is None
     assert o.frame_counter is not None
     
-    tz = pytz.timezone("America/New_York")
+    tz = ZoneInfo("America/New_York")
     o = gisout.KMLDepositionWriter("relativeToGround", tz)
 
     assert o.alt_mode_str == "relativeToGround"
@@ -1542,18 +1542,18 @@ def test_KMLDepositionWriter___init__():
 
 def test_KMLDepositionWriter__get_name_cdata():
     o = gisout.KMLDepositionWriter("relativeToGround")
-    utc = pytz.utc
+    utc = timezone.utc
     
-    dt = datetime.datetime(2019, 7, 5, 7, 42, 0, 0, utc)
+    dt = datetime(2019, 7, 5, 7, 42, 0, 0, utc)
     assert o._get_name_cdata(dt) == """<pre>Deposition
 (Valid:20190705 0742 UTC)</pre>"""
 
 
 def test_KMLDepositionWriter__get_description_cdata():
     o = gisout.KMLDepositionWriter("relativeToGround")
-    utc = pytz.utc
+    utc = timezone.utc
     
-    dt = datetime.datetime(2019, 7, 5, 7, 42, 0, 0, utc)
+    dt = datetime(2019, 7, 5, 7, 42, 0, 0, utc)
     assert o._get_description_cdata(100, 500, dt) == """\
 Valid:20190705 0742 UTC"""
 
@@ -1610,7 +1610,7 @@ def test_KMLMassLoadingWriter___init__():
     assert o.time_zone is None
     assert o.frame_counter is not None
     
-    tz = pytz.timezone("America/New_York")
+    tz = ZoneInfo("America/New_York")
     o = gisout.KMLMassLoadingWriter("relativeToGround", tz)
 
     assert o.alt_mode_str == "relativeToGround"
@@ -1619,18 +1619,18 @@ def test_KMLMassLoadingWriter___init__():
 
 def test_KMLMassLoadingWriter__get_name_cdata():
     o = gisout.KMLMassLoadingWriter("relativeToGround")
-    utc = pytz.utc
+    utc = timezone.utc
     
-    dt = datetime.datetime(2019, 7, 5, 7, 42, 0, 0, utc)
+    dt = datetime(2019, 7, 5, 7, 42, 0, 0, utc)
     assert o._get_name_cdata(dt) == """<pre>Mass_loading
 (Valid:20190705 0742 UTC)</pre>"""
 
 
 def test_KMLMassLoadingWriter__get_description_cdata():
     o = gisout.KMLMassLoadingWriter("relativeToGround")
-    utc = pytz.utc
+    utc = timezone.utc
     
-    dt = datetime.datetime(2019, 7, 5, 7, 42, 0, 0, utc)
+    dt = datetime(2019, 7, 5, 7, 42, 0, 0, utc)
     lower_level = util.LengthInMeters(100)
     upper_level = util.LengthInMeters(500)
     assert o._get_description_cdata(lower_level, upper_level, dt) == """\
@@ -1669,7 +1669,7 @@ def test_KMLTimeOfArrivalWriter___init__():
     assert o.time_zone is None
     assert o.frame_counter is not None
     
-    tz = pytz.timezone("America/New_York")
+    tz = ZoneInfo("America/New_York")
     o = gisout.KMLTimeOfArrivalWriter("relativeToGround", tz)
 
     assert o.alt_mode_str == "relativeToGround"
@@ -1678,18 +1678,18 @@ def test_KMLTimeOfArrivalWriter___init__():
 
 def test_KMLTimeOfArrivalWriter__get_name_cdata():
     o = gisout.KMLTimeOfArrivalWriter("relativeToGround")
-    utc = pytz.utc
+    utc = timezone.utc
     
-    dt = datetime.datetime(2019, 7, 5, 7, 42, 0, 0, utc)
+    dt = datetime(2019, 7, 5, 7, 42, 0, 0, utc)
     assert o._get_name_cdata(dt) == """<pre>Time of arrival (h)
 (Valid:20190705 0742 UTC)</pre>"""
 
 
 def test_KMLTimeOfArrivalWriter__get_description_cdata():
     o = gisout.KMLTimeOfArrivalWriter("relativeToGround")
-    utc = pytz.utc
+    utc = timezone.utc
     
-    dt = datetime.datetime(2019, 7, 5, 7, 42, 0, 0, utc)
+    dt = datetime(2019, 7, 5, 7, 42, 0, 0, utc)
     lower_level = util.LengthInMeters(100)
     upper_level = util.LengthInMeters(500)
     assert o._get_description_cdata(lower_level, upper_level, dt) == """\

@@ -6,19 +6,18 @@
 # Performs unit tests on functions and class methods declared in toa/plot.py.
 # ---------------------------------------------------------------------------
 
-import datetime
+import os
+from zoneinfo import ZoneInfo
+from xml.etree import ElementTree
 import matplotlib.pyplot as plt
 from matplotlib.contour import QuadContourSet
 import numpy
-import os
 import pytest
-import pytz
-import xml.etree.ElementTree as ElementTree
 
 from hysplitdata.const import HeightUnit
 from hysplitdata.conc import model
-from ...hysplitplot import const, labels, mapbox, mapfile, mapproj, multipage, \
-                           smooth, streetmap, util
+from ...hysplitplot import const, labels, mapbox, mapproj, multipage, \
+                           streetmap, util
 from ...hysplitplot.conc import gisout, helper, clrtbl
 from ...hysplitplot.toa import helper as thelper, plot
 
@@ -742,7 +741,7 @@ def test_TimeOfArrivalPlot_make_plot_title(cdump):
             "TEST Calculation started at 1700 25 Sep 1983 (UTC)"
 
     # set the time zone
-    p.time_zone = pytz.timezone("EST")
+    p.time_zone = ZoneInfo("EST")
     title = p.make_plot_title(toa, g, level1, level2)
     assert title == "NOAA HYSPLIT MODEL\n" + \
             "Time of arrival (h) averaged between 1 m and 2 m\n" + \

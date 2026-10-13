@@ -6,14 +6,12 @@
 # Performs unit tests on functions and class methods declared in conc/maplimit.py.
 # ---------------------------------------------------------------------------
 
+from unittest.mock import Mock
 import numpy
 import pytest
-from unittest.mock import Mock
 
-from hysplitdata.const import HeightUnit
 from hysplitdata.conc import model
-from ...hysplitplot import const, util
-from ...hysplitplot.conc import helper, maplimit, plot, cntrlvl
+from ...hysplitplot.conc import helper, maplimit, plot
 
 
 @pytest.fixture

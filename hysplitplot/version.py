@@ -6,9 +6,10 @@
 # Provides source code version information.
 # ---------------------------------------------------------------------------
 
+import logging
+
 import hysplitdata
 from . import __version__
-import logging
 
 logger = logging.getLogger(__name__)
 

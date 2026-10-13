@@ -27,7 +27,6 @@ setup(
         "geopandas==0.14.4",
         "cartopy==0.23.0",
         "numpy==2.0.2",
-        "pytz==2025.2",
         "timezonefinder==6.5.9",
         "contextily==1.7.1"]
 )

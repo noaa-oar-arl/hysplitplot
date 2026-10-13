@@ -6,8 +6,8 @@
 # For debugging.
 # ---------------------------------------------------------------------------
 
-import cartopy.crs
 import logging
+import cartopy.crs
 
 
 logger = logging.getLogger(__name__)

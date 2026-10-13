@@ -6,9 +6,8 @@
 # Provides a DATEM file reader.
 # ---------------------------------------------------------------------------
 
-import datetime
+from datetime import datetime, timedelta, timezone
 import logging
-import pytz
 
 from hysplitdata import io
 
@@ -94,19 +93,19 @@ class DatemReader(io.FormattedTextFileReader):
         self.fetch_line()
         self.fetch_line()
 
-        time_zone = pytz.utc
+        time_zone = timezone.utc
         while self.has_next():
             v = self.parse_line("I4,I3,I3,I5,I5,F6.2,F8.2,F8.1,A5")
 
             hour = int(v[3] / 100)
             minute = v[3] - hour * 100
-            starting_datetime = datetime.datetime(v[0], v[1], v[2], hour,
-                                                  minute, 0, 0, time_zone)
+            starting_datetime = datetime(v[0], v[1], v[2], hour,
+                                         minute, 0, 0, time_zone)
 
             hour = int(v[4] / 100)
             minute = v[4] - hour * 100
             ending_datetime = starting_datetime \
-                + datetime.timedelta(hours=hour, minutes=minute)
+                + timedelta(hours=hour, minutes=minute)
 
             entry = Datem.Item(starting_datetime, ending_datetime, v[6], v[5],
                                v[7], v[8])

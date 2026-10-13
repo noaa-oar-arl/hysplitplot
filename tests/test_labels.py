@@ -10,7 +10,7 @@ import os
 import pytest
 
 from hysplitdata.const import HeightUnit
-from ..hysplitplot import labels, const
+from ..hysplitplot import labels
 from ..hysplitplot.traj import plot
 
 

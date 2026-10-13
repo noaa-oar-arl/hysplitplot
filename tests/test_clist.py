@@ -6,7 +6,6 @@
 # Performs unit tests on functions and class methods declared in clist.py.
 # ---------------------------------------------------------------------------
 
-import os
 import pytest
 
 from ..hysplitplot import clist

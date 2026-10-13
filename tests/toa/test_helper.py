@@ -6,10 +6,9 @@
 # Performs unit tests on functions and class methods declared in toa/helper.py.
 # ---------------------------------------------------------------------------
 
-import datetime
+from datetime import datetime, timedelta, timezone
 import numpy
 import pytest
-import pytz
 
 from hysplitdata.conc import model
 from ...hysplitplot import util
@@ -96,50 +95,50 @@ def test_TimeOfArrivalGenerator__check_cdump_consistency():
     
     # backward run
     g = model.ConcentrationGrid(cdump)
-    g.starting_datetime = datetime.datetime(2019, 8, 17,  8, 0, 0, 0, pytz.utc)
-    g.ending_datetime   = datetime.datetime(2019, 8, 17,  7, 0, 0, 0, pytz.utc)
+    g.starting_datetime = datetime(2019, 8, 17,  8, 0, 0, 0, timezone.utc)
+    g.ending_datetime   = datetime(2019, 8, 17,  7, 0, 0, 0, timezone.utc)
     cdump.grids = [g]
     assert o._check_cdump_consistency(cdump) == False
 
     # insufficient sampling time resolution (7 hours)
-    g.starting_datetime = datetime.datetime(2019, 8, 17,  8, 0, 0, 0, pytz.utc)
-    g.ending_datetime   = datetime.datetime(2019, 8, 17, 15, 0, 0, 0, pytz.utc)
+    g.starting_datetime = datetime(2019, 8, 17,  8, 0, 0, 0, timezone.utc)
+    g.ending_datetime   = datetime(2019, 8, 17, 15, 0, 0, 0, timezone.utc)
     cdump.grids = [g]
     assert o._check_cdump_consistency(cdump) == False
 
     # sampling time resolution (5 hours) does not add up to 6 hours.
-    g.starting_datetime = datetime.datetime(2019, 8, 17,  8, 0, 0, 0, pytz.utc)
-    g.ending_datetime   = datetime.datetime(2019, 8, 17, 13, 0, 0, 0, pytz.utc)
+    g.starting_datetime = datetime(2019, 8, 17,  8, 0, 0, 0, timezone.utc)
+    g.ending_datetime   = datetime(2019, 8, 17, 13, 0, 0, 0, timezone.utc)
     cdump.grids = [g]
     assert o._check_cdump_consistency(cdump) == False
     
     # sampling time resolution: 15 mins
-    g.starting_datetime = datetime.datetime(2019, 8, 17,  8,  0, 0, 0, pytz.utc)
-    g.ending_datetime   = datetime.datetime(2019, 8, 17,  8, 15, 0, 0, pytz.utc)
+    g.starting_datetime = datetime(2019, 8, 17,  8,  0, 0, 0, timezone.utc)
+    g.ending_datetime   = datetime(2019, 8, 17,  8, 15, 0, 0, timezone.utc)
     cdump.grids = [g]
     assert o._check_cdump_consistency(cdump) == True
     
     # 1 hour
-    g.starting_datetime = datetime.datetime(2019, 8, 17,  8, 0, 0, 0, pytz.utc)
-    g.ending_datetime   = datetime.datetime(2019, 8, 17,  9, 0, 0, 0, pytz.utc)
+    g.starting_datetime = datetime(2019, 8, 17,  8, 0, 0, 0, timezone.utc)
+    g.ending_datetime   = datetime(2019, 8, 17,  9, 0, 0, 0, timezone.utc)
     cdump.grids = [g]
     assert o._check_cdump_consistency(cdump) == True
         
     # 2 hours
-    g.starting_datetime = datetime.datetime(2019, 8, 17,  8, 0, 0, 0, pytz.utc)
-    g.ending_datetime   = datetime.datetime(2019, 8, 17, 10, 0, 0, 0, pytz.utc)
+    g.starting_datetime = datetime(2019, 8, 17,  8, 0, 0, 0, timezone.utc)
+    g.ending_datetime   = datetime(2019, 8, 17, 10, 0, 0, 0, timezone.utc)
     cdump.grids = [g]
     assert o._check_cdump_consistency(cdump) == True
         
     # 3 hours
-    g.starting_datetime = datetime.datetime(2019, 8, 17,  8, 0, 0, 0, pytz.utc)
-    g.ending_datetime   = datetime.datetime(2019, 8, 17, 11, 0, 0, 0, pytz.utc)
+    g.starting_datetime = datetime(2019, 8, 17,  8, 0, 0, 0, timezone.utc)
+    g.ending_datetime   = datetime(2019, 8, 17, 11, 0, 0, 0, timezone.utc)
     cdump.grids = [g]
     assert o._check_cdump_consistency(cdump) == True
     
     # 6 hours
-    g.starting_datetime = datetime.datetime(2019, 8, 17,  8, 0, 0, 0, pytz.utc)
-    g.ending_datetime   = datetime.datetime(2019, 8, 17, 14, 0, 0, 0, pytz.utc)
+    g.starting_datetime = datetime(2019, 8, 17,  8, 0, 0, 0, timezone.utc)
+    g.ending_datetime   = datetime(2019, 8, 17, 14, 0, 0, 0, timezone.utc)
     cdump.grids = [g]
     assert o._check_cdump_consistency(cdump) == True
     
@@ -173,8 +172,8 @@ def test_TimeOfArrivalGenerator_process_conc_data__72_hr_limit(toa_gen):
     ref = cdump.grids[-1]
     for hr in range(0, 24, 6):
         g = ref.clone()
-        g.starting_time = ref.ending_datetime + datetime.timedelta(hours=hr)
-        g.ending_time = g.starting_time + datetime.timedelta(hours=6)
+        g.starting_time = ref.ending_datetime + timedelta(hours=hr)
+        g.ending_time = g.starting_time + timedelta(hours=6)
         cdump.grids.append( g )
         
     o.process_conc_data(cdump)
@@ -198,8 +197,8 @@ def test_TimeOfArrivalGenerator_make_deposition_data(toa_gen):
     assert t.grid is not None
     assert t.contour_levels == pytest.approx((1, 2, 3, 4))
     assert t.fill_colors == ("#111111", "#222222", "#333333", "#444444")
-    assert t.grid.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
-    assert t.grid.ending_datetime   == datetime.datetime(2019, 7, 17, 11, 0, 0, 0, pytz.utc)
+    assert t.grid.starting_datetime == datetime(2019, 7, 16, 11, 0, 0, 0, timezone.utc)
+    assert t.grid.ending_datetime   == datetime(2019, 7, 17, 11, 0, 0, 0, timezone.utc)
     assert t.time_intervals[0] == pytest.approx((18, 24))
     assert t.time_intervals[1] == pytest.approx((12, 18))
     assert t.time_intervals[2] == pytest.approx(( 6, 12))
@@ -210,8 +209,8 @@ def test_TimeOfArrivalGenerator_make_deposition_data(toa_gen):
     assert t.grid is not None
     assert t.contour_levels == pytest.approx((1, 2, 3, 4, 5))
     assert t.fill_colors == ("#111111", "#222222", "#333333", "#444444", "#808080")
-    assert t.grid.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
-    assert t.grid.ending_datetime   == datetime.datetime(2019, 7, 18, 11, 0, 0, 0, pytz.utc)
+    assert t.grid.starting_datetime == datetime(2019, 7, 16, 11, 0, 0, 0, timezone.utc)
+    assert t.grid.ending_datetime   == datetime(2019, 7, 18, 11, 0, 0, 0, timezone.utc)
     assert t.time_intervals[0] == pytest.approx((42, 48))
     assert t.time_intervals[1] == pytest.approx((36, 42))
     assert t.time_intervals[2] == pytest.approx((30, 36))
@@ -223,8 +222,8 @@ def test_TimeOfArrivalGenerator_make_deposition_data(toa_gen):
     assert t.grid is not None
     assert t.contour_levels == pytest.approx((1, 2, 3, 4, 5))
     assert t.fill_colors == ("#111111", "#222222", "#333333", "#444444", "#808080")
-    assert t.grid.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
-    assert t.grid.ending_datetime   == datetime.datetime(2019, 7, 19, 11, 0, 0, 0, pytz.utc)
+    assert t.grid.starting_datetime == datetime(2019, 7, 16, 11, 0, 0, 0, timezone.utc)
+    assert t.grid.ending_datetime   == datetime(2019, 7, 19, 11, 0, 0, 0, timezone.utc)
     assert t.time_intervals[0] == pytest.approx((66, 72))
     assert t.time_intervals[1] == pytest.approx((60, 66))
     assert t.time_intervals[2] == pytest.approx((54, 60))
@@ -243,8 +242,8 @@ def test_TimeOfArrivalGenerator_make_plume_data(toa_gen):
     assert t.grid is not None
     assert t.contour_levels == pytest.approx((1, 2, 3, 4))
     assert t.fill_colors == ("#111111", "#222222", "#333333", "#444444")
-    assert t.grid.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
-    assert t.grid.ending_datetime   == datetime.datetime(2019, 7, 17, 11, 0, 0, 0, pytz.utc)
+    assert t.grid.starting_datetime == datetime(2019, 7, 16, 11, 0, 0, 0, timezone.utc)
+    assert t.grid.ending_datetime   == datetime(2019, 7, 17, 11, 0, 0, 0, timezone.utc)
     assert t.time_intervals[0] == pytest.approx((18, 24))
     assert t.time_intervals[1] == pytest.approx((12, 18))
     assert t.time_intervals[2] == pytest.approx(( 6, 12))
@@ -255,8 +254,8 @@ def test_TimeOfArrivalGenerator_make_plume_data(toa_gen):
     assert t.grid is not None
     assert t.contour_levels == pytest.approx((1, 2, 3, 4, 5))
     assert t.fill_colors == ("#111111", "#222222", "#333333", "#444444", "#808080")
-    assert t.grid.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
-    assert t.grid.ending_datetime   == datetime.datetime(2019, 7, 18, 11, 0, 0, 0, pytz.utc)
+    assert t.grid.starting_datetime == datetime(2019, 7, 16, 11, 0, 0, 0, timezone.utc)
+    assert t.grid.ending_datetime   == datetime(2019, 7, 18, 11, 0, 0, 0, timezone.utc)
     assert t.time_intervals[0] == pytest.approx((42, 48))
     assert t.time_intervals[1] == pytest.approx((36, 42))
     assert t.time_intervals[2] == pytest.approx((30, 36))
@@ -268,8 +267,8 @@ def test_TimeOfArrivalGenerator_make_plume_data(toa_gen):
     assert t.grid is not None
     assert t.contour_levels == pytest.approx((1, 2, 3, 4, 5))
     assert t.fill_colors == ("#111111", "#222222", "#333333", "#444444", "#808080")
-    assert t.grid.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
-    assert t.grid.ending_datetime   == datetime.datetime(2019, 7, 19, 11, 0, 0, 0, pytz.utc)
+    assert t.grid.starting_datetime == datetime(2019, 7, 16, 11, 0, 0, 0, timezone.utc)
+    assert t.grid.ending_datetime   == datetime(2019, 7, 19, 11, 0, 0, 0, timezone.utc)
     assert t.time_intervals[0] == pytest.approx((66, 72))
     assert t.time_intervals[1] == pytest.approx((60, 66))
     assert t.time_intervals[2] == pytest.approx((54, 60))
@@ -344,8 +343,8 @@ def test_TimeOfArrival_create_contour():
     assert o.display_levels == ["18-24 hours", "12-18 hours", "6-12 hours", "0-6 hours"]
     assert o.grid.conc[0] == pytest.approx( [4, 4, 2] )
     assert o.grid.conc[1] == pytest.approx( [4, 2, 1] )
-    assert o.grid.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
-    assert o.grid.ending_datetime   == datetime.datetime(2019, 7, 17, 11, 0, 0, 0, pytz.utc)
+    assert o.grid.starting_datetime == datetime(2019, 7, 16, 11, 0, 0, 0, timezone.utc)
+    assert o.grid.ending_datetime   == datetime(2019, 7, 17, 11, 0, 0, 0, timezone.utc)
     assert o.time_intervals[0] == pytest.approx((18, 24))
     assert o.time_intervals[1] == pytest.approx((12, 18))
     assert o.time_intervals[2] == pytest.approx(( 6, 12))
@@ -367,8 +366,8 @@ def test_TimeOfArrival_create_contour():
     assert o.display_levels == ["42-48 hours", "36-42 hours", "30-36 hours", "24-30 hours", "0-24 hours"]
     assert o.grid.conc[0] == pytest.approx( [5, 4, 2] )
     assert o.grid.conc[1] == pytest.approx( [4, 2, 1] )
-    assert o.grid.starting_datetime == datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
-    assert o.grid.ending_datetime   == datetime.datetime(2019, 7, 18, 11, 0, 0, 0, pytz.utc)
+    assert o.grid.starting_datetime == datetime(2019, 7, 16, 11, 0, 0, 0, timezone.utc)
+    assert o.grid.ending_datetime   == datetime(2019, 7, 18, 11, 0, 0, 0, timezone.utc)
     assert o.fill_colors == ["#111", "#222", "#333", "#444", "#808080"]
     assert o.time_intervals[0] == pytest.approx((42, 48))
     assert o.time_intervals[1] == pytest.approx((36, 42))
@@ -383,8 +382,8 @@ def test_DepositionTimeOfArrival___init__():
     g = cdump.grids[0]
     o = helper.DepositionTimeOfArrival(g)
     
-    starting_datetime = datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
-    ending_datetime = datetime.datetime(2019, 7, 18, 11, 0, 0, 0, pytz.utc)
+    starting_datetime = datetime(2019, 7, 16, 11, 0, 0, 0, timezone.utc)
+    ending_datetime = datetime(2019, 7, 18, 11, 0, 0, 0, timezone.utc)
     
     s = o.get_map_id_line(0, 500, starting_datetime, ending_datetime)
     assert s == "Time of arrival (h) at ground-level" \
@@ -396,8 +395,8 @@ def test_PlumeTimeOfArrival___init__():
     g = cdump.grids[0]
     o = helper.PlumeTimeOfArrival(g)
     
-    starting_datetime = datetime.datetime(2019, 7, 16, 11, 0, 0, 0, pytz.utc)
-    ending_datetime = datetime.datetime(2019, 7, 18, 11, 0, 0, 0, pytz.utc)
+    starting_datetime = datetime(2019, 7, 16, 11, 0, 0, 0, timezone.utc)
+    ending_datetime = datetime(2019, 7, 18, 11, 0, 0, 0, timezone.utc)
     lower_vert_level = util.LengthInMeters(0)
     upper_vert_level = util.LengthInMeters(500)
     s = o.get_map_id_line(lower_vert_level, upper_vert_level, starting_datetime, ending_datetime)

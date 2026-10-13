@@ -8,9 +8,8 @@
 
 from abc import ABC, abstractmethod
 import logging
-import math
-import numpy
 import operator
+import numpy
 
 from . import util
 

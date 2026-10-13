@@ -6,14 +6,11 @@
 # Performs unit tests on functions and class methods declared in conc/cntr.py.
 # ---------------------------------------------------------------------------
 
-import datetime
 import logging
 import matplotlib.pyplot as plt
-import os
 import pytest
 
 from hysplitdata.conc import model
-from ...hysplitplot import const
 from ...hysplitplot.conc import cntr
 
 logger = logging.getLogger(__name__)

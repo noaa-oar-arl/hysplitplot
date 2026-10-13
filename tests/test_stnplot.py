@@ -6,9 +6,6 @@
 # Performs unit tests on functions and class methods declared in stnplot.py.
 # ---------------------------------------------------------------------------
 
-import os
-import pytest
-
 from ..hysplitplot import stnplot
 
 

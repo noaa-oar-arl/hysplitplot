@@ -14,7 +14,6 @@ import matplotlib.gridspec
 import matplotlib.pyplot as plt
 import numpy
 import os
-import pytz
 import sys
 
 from hysplitdata import io

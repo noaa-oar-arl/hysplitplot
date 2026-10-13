@@ -7,10 +7,10 @@
 # ---------------------------------------------------------------------------
 
 from abc import ABC, abstractmethod
-import cartopy.crs
 import logging
 import math
 import numpy
+import cartopy.crs
 import shapely
 
 from . import util, const

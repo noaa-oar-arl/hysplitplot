@@ -7,12 +7,12 @@
 # ---------------------------------------------------------------------------
 
 from abc import ABC, abstractmethod
-import cartopy.crs
-import logging
+import os
 import math
+import logging
+import cartopy.crs
 import matplotlib
 import matplotlib.patches
-import os
 
 from hysplitdata.const import HeightUnit
 from . import cmdline, const, labels, logo, multipage, \
@@ -299,7 +299,7 @@ class AbstractPlot(ABC):
 
     def _escape_str_for_matplotlib(self, v):
         # replace % with \% for matplotlib.
-        return v.replace('%', '\%')
+        return v.replace('%', "\\%")
 
     def update_height_unit(self, labels):
         # default values from labels.cfg

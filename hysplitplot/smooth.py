@@ -10,9 +10,6 @@ from abc import ABC
 import logging
 import numpy
 
-from . import const
-
-
 logger = logging.getLogger(__name__)
 
 
