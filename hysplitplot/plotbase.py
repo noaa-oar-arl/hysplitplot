@@ -206,6 +206,7 @@ class AbstractPlot(ABC):
         self.settings = None  # child class should create an instance.
         self.initial_corners_xy = None
         self.initial_corners_lonlat = None
+        self.map_scale_objs = []
 
     def _connect_event_handlers(self, handlers):
         for ev in handlers:
@@ -279,10 +280,9 @@ class AbstractPlot(ABC):
         self.street_map.update_extent(ax, self.data_crs)
         if self.settings.noaa_logo:
             self._draw_noaa_logo(ax, self.settings.drawLogoInColor)
-        if not matplotlib.is_interactive():
-           if self.settings.map_scale != "none":
-               use_km = True if self.settings.map_scale == "km" else False
-               self.add_cartopy_map_scale(ax, x_pos=0.05, y_pos=0.95, use_km=use_km)
+        if self.settings.map_scale != "none":
+            use_km = True if self.settings.map_scale == "km" else False
+            self.add_cartopy_map_scale(ax, x_pos=0.05, y_pos=0.95, use_km=use_km)
 
     def _make_labels_filename(self, output_suffix):
         if not self.settings.process_id_set:
@@ -479,6 +479,11 @@ class AbstractPlot(ABC):
        - zorder (int): The drawing order for the scale bar. Higher values draw on top.
        """
 
+       if len(self.map_scale_objs) > 0:
+          for o in self.map_scale_objs:
+              o.remove()
+          self.map_scale_objs.clear()
+
        # Get the data limits of the axes (in projected coordinates)
        x_min, x_max = ax.get_xlim()
        y_min, y_max = ax.get_ylim()
@@ -506,27 +511,34 @@ class AbstractPlot(ABC):
        height_data_units = scale_height * (y_max - y_min)
 
        # Draw the main bar
-       ax.plot([x_data_pos, x_data_pos + length_in_data_units],
+       # Important: use transData for drawing in data coordinates
+       o, = ax.plot([x_data_pos, x_data_pos + length_in_data_units],
                [y_data_pos + height_data_units / 2, y_data_pos + height_data_units / 2],
                color=color, linewidth=3, solid_capstyle='butt', zorder=zorder,
-               transform=ax.transData)  # Important: use transData for drawing in data coordinates
+               transform=ax.transData, clip_on=True)
+       self.map_scale_objs.append(o)
 
        # Draw the ends of the bar
-       ax.plot([x_data_pos, x_data_pos],
+       o, = ax.plot([x_data_pos, x_data_pos],
                [y_data_pos, y_data_pos + height_data_units],
                color=color, linewidth=2, zorder=zorder,
-               transform=ax.transData)
-       ax.plot([x_data_pos + length_in_data_units, x_data_pos + length_in_data_units],
+               transform=ax.transData, clip_on=True)
+       self.map_scale_objs.append(o)
+       o, = ax.plot([x_data_pos + length_in_data_units, x_data_pos + length_in_data_units],
                [y_data_pos, y_data_pos + height_data_units],
                color=color, linewidth=2, zorder=zorder,
-               transform=ax.transData)
+               transform=ax.transData, clip_on=True)
+       self.map_scale_objs.append(o)
 
        # Add the text label below the bar
-       ax.text(x_data_pos + length_in_data_units / 2, y_data_pos - height_data_units / 2,
+       # Important: use transData for text in data coordinates
+       o = ax.text(x_data_pos + length_in_data_units / 2, y_data_pos - height_data_units / 2,
                f'{scale_len} {units}',
                horizontalalignment='center',
                verticalalignment='top',
                color=text_color,
                fontsize=font_size,
                zorder=zorder,
-               transform=ax.transData)  # Important: use transData for text in data coordinates
+               transform=ax.transData,
+               clip_on=True)
+       self.map_scale_objs.append(o)

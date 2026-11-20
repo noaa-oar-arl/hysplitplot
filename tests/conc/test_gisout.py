@@ -1291,11 +1291,6 @@ def test_AbstractKMLContourWriter_write_case2(cdump_two_pollutants):
 
     assert o.frame_counter.get() == 1
 
-    tree = ET.ElementTree(xml_root)
-    tree.write('test_filename.xml', encoding='UTF-8',
-                       xml_declaration=True,
-                       short_empty_elements=False)
-    
     # Folder/Snippet should be present when no contours are there.
     snippet = doc.findall('./Folder/Snippet')
     assert len(snippet) == 1

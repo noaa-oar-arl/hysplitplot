@@ -260,6 +260,11 @@ def test_AbstractPlot___init__():
     assert hasattr(p, "settings")
     assert hasattr(p, "initial_corners_xy") and p.initial_corners_xy is None
     assert hasattr(p, "initial_corners_lonlat") and p.initial_corners_lonlat is None
+    assert (
+        hasattr(p, "map_scale_objs")
+        and isinstance(p.map_scale_objs, list)
+        and len(p.map_scale_objs) == 0
+    )
 
 
 def test_AbstractPlot__connect_event_handlers():
